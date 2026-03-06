@@ -1,13 +1,39 @@
-# Maven build
-target/
+# OS / Editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+*.swp
 
-# IntelliJ IDEA
+# IntelliJ
 .idea/
 *.iml
 
-# logs
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# OS
-.DS_Store
-Thumbs.db
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# Env files
+.env
+.env.*
+!.env.example
+venv/
+
+# Java / Maven
+target/
+
+# Temp / backup
+*.tmp
+*.temp
+*.backup
