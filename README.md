@@ -19,8 +19,9 @@ MQTT → Backend (Spring Boot) → WebSocket → Frontend
 
 ## Documentation
 
-- System Design: docs/v0.5-design.md
-- Development Plan: docs/plan.md
+- Architecture: docs/design.md
+- Frontend Design: docs/frontend-design.md
+- API Specification: docs/api.md
 
 ## Tech Stack
 
