@@ -4,8 +4,11 @@ import com.whut.map.map_service.mqtt.AisMessageListener;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.springframework.context.annotation.Configuration;
 
+// 原计划使用 Spring Integration ，但 Spring Integration 适用于复杂消息集成场景；
+// 对于简单实时流处理，直接使用客户端库（如 Paho）可以减少框架复杂度并提高可控性。
 @Slf4j // 使用 Lombok 的 @Slf4j 注解来自动生成日志记录器
 @Configuration
 public class MqttConfig {
@@ -30,10 +33,11 @@ public class MqttConfig {
      */
     @PostConstruct
     public void init() throws Exception {
-
+        MemoryPersistence memoryPersistence = new MemoryPersistence();
         MqttClient  client = new MqttClient (
                 mqttProperties.getBroker(),
-                mqttProperties.getClientId()
+                mqttProperties.getClientId(),
+                memoryPersistence
         );
         MqttConnectOptions options = new MqttConnectOptions();
         if (mqttProperties.getUsername() != null && !mqttProperties.getUsername().isEmpty()) {

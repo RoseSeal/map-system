@@ -1,41 +1,33 @@
 package com.whut.map.map_service.mqtt;
 
-import com.whut.map.map_service.domain.AisMessage;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Data
 public class MqttAisDto {
 
-    private OffsetDateTime msgTime;
+    @JsonProperty("MSGTIME")
+    @JsonFormat(pattern = "yyyy-M-d HH:mm:ss")
+    private LocalDateTime msgTime;
+
+    @JsonProperty("MMSI")
     private String mmsi;
+
+    @JsonProperty("LON")
     private double longitude;
+
+    @JsonProperty("LAT")
     private double latitude;
+
+    @JsonProperty("SOG")
     private double sog;
+
+    @JsonProperty("COG")
     private double cog;
+
+    @JsonProperty("HEADING")
     private double heading;
-
-    public AisMessage toDomain() {
-        int parsedMmsi = -1; // 默认值，表示解析失败
-
-        if (this.mmsi != null && !this.mmsi.trim().isEmpty()) {
-            try {
-                parsedMmsi = Integer.parseInt(this.mmsi);
-            } catch (NumberFormatException e) {
-                // 记录日志或处理解析错误
-                System.err.println("Invalid MMSI format: " + this.mmsi);
-            }
-        }
-
-        return AisMessage.builder()
-                .msgTime(this.msgTime)
-                .mmsi(parsedMmsi) // 传入安全的 MMSI 值
-                .longitude(this.longitude)
-                .latitude(this.latitude)
-                .sog(this.sog)
-                .cog(this.cog)
-                .heading(this.heading != 511 ? this.heading : null) // 511 表示未知
-                .build();
-    }
 }
