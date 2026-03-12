@@ -1,36 +1,45 @@
 package com.whut.map.map_service.websocket;
 
-import com.whut.map.map_service.domain.AisMessage;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.whut.map.map_service.dto.RiskObjectDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Component
 public class AisWebSocketService {
 
-    private static final String TOPIC_AIS  = "/topic/ais";
-    private static final String TOPIC_CV_PREDICTION = "/topic/cv-prediction";
-    private static final String TOPIC_CPA_TCPA = "/topic/cpa-tcpa";
-    private static final String TOPIC_SHIP_DOMAIN = "/topic/ship-domain";
+    private final StreamWebSocketHandler webSocketHandler;
+    private final ObjectMapper objectMapper;
 
-    private void sendMessage(String topic, Object payload) {
-        // 1. 将数据发送到WebSocket客户端
-        log.debug("Sending message to WebSocket topic: {}, payload: {}", topic, payload);
+    private final AtomicLong messageCounter = new AtomicLong(1);
+
+    public AisWebSocketService(StreamWebSocketHandler webSocketHandler, ObjectMapper objectMapper) {
+        this.webSocketHandler = webSocketHandler;
+        this.objectMapper = objectMapper;
     }
 
-    public void sentAisMessage(AisMessage message) {
-        sendMessage(TOPIC_AIS, message);
+    public void sendAisMessage(RiskObjectDto message) {
+        try {
+            // 组装符合前端需求的信封
+            Map<String, Object> envelope = new HashMap<>();
+            envelope.put("type", "RISK_UPDATE");
+            envelope.put("sequence_id", messageCounter.getAndIncrement());
+            envelope.put("payload", message);
+
+            // 将信封对象序列化为 JSON 字符串
+            String jsonMessage = objectMapper.writeValueAsString(envelope);
+
+            // 发送 JSON 字符串到 WebSocket 客户端
+            webSocketHandler.broadcastMessage(jsonMessage);
+
+        } catch (Exception e) {
+            log.error("Error serializing AIS message: {}", e.getMessage());
+        }
     }
 
-    public void sentCvPrediction(Object prediction) {
-        sendMessage(TOPIC_CV_PREDICTION, prediction);
-    }
-
-    public void sentCpaTcpa(Object cpaTcpa) {
-        sendMessage(TOPIC_CPA_TCPA, cpaTcpa);
-    }
-
-    public void sentShipDomain(Object shipDomain) {
-        sendMessage(TOPIC_SHIP_DOMAIN, shipDomain);
-    }
 }
