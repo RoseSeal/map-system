@@ -2,6 +2,7 @@ package com.whut.map.map_service.mqtt;
 
 import com.whut.map.map_service.config.AisProperties;
 import com.whut.map.map_service.domain.AisMessage;
+import com.whut.map.map_service.domain.ShipRole;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,7 @@ public class AisMessageMapper {
 
     public AisMessage toDomain(MqttAisDto mqttAisDto) {
         int parsedMmsi = -1; // 默认值，表示解析失败
+        int ownShipMmsi = aisProperties.getOwnShipMmsi(); // 获取配置的本船 MMSI
         OffsetDateTime msgTime = null; // 用于存储解析后的时间
 
         // 解析 MMSI，确保它是一个有效的整数
@@ -43,6 +45,11 @@ public class AisMessageMapper {
             }
         }
 
+        // 识别ShipRole
+        ShipRole computedRole = (parsedMmsi == ownShipMmsi)
+                ? ShipRole.OWN_SHIP
+                : ShipRole.TARGET_SHIP;
+
         return AisMessage.builder()
                 .msgTime(msgTime)
                 .mmsi(parsedMmsi) // 传入安全的 MMSI 值
@@ -51,6 +58,7 @@ public class AisMessageMapper {
                 .sog(mqttAisDto.getSog())
                 .cog(mqttAisDto.getCog())
                 .heading(mqttAisDto.getHeading() != 511 ? mqttAisDto.getHeading() : null) // 511 表示未知
+                .role(computedRole) // 状态一但确定，整个JVM生命周期内只读
                 .build();
     }
 }

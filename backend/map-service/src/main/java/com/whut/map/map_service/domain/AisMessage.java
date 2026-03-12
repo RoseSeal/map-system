@@ -15,4 +15,5 @@ public class AisMessage {
     private double sog;
     private double cog;
     private Double heading;
+    private ShipRole role;
 }

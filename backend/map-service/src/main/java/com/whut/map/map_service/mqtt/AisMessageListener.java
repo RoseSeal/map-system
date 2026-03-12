@@ -2,6 +2,7 @@ package com.whut.map.map_service.mqtt;
 
 import com.whut.map.map_service.domain.AisMessage;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.whut.map.map_service.pipeline.AisDispatcher;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.stereotype.Component;
@@ -11,10 +12,11 @@ import org.springframework.stereotype.Component;
 public class AisMessageListener implements MqttCallback {
 
     private ObjectMapper objectMapper;
-
     private final AisMessageMapper mapper;
+    private AisDispatcher dispatcher;
 
-    public AisMessageListener(AisMessageMapper mapper, ObjectMapper objectMapper) {
+    public AisMessageListener(AisMessageMapper mapper, ObjectMapper objectMapper, AisDispatcher dispatcher) {
+        this.dispatcher = dispatcher;
         this.objectMapper = objectMapper;
         this.mapper = mapper;
     }
@@ -32,6 +34,7 @@ public class AisMessageListener implements MqttCallback {
             MqttAisDto aisDto = objectMapper.readValue(payload, MqttAisDto.class);
             AisMessage aisMessage = mapper.toDomain(aisDto);
             log.debug("已解析Ais数据: {}", aisMessage);
+            dispatcher.dispatch(aisMessage);
         } catch (Exception e) {
             log.error("Failed to parse MQTT message payload", e);
         }
