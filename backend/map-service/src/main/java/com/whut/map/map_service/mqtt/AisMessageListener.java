@@ -1,8 +1,8 @@
 package com.whut.map.map_service.mqtt;
 
-import com.whut.map.map_service.domain.AisMessage;
+import com.whut.map.map_service.domain.ShipStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.whut.map.map_service.pipeline.AisDispatcher;
+import com.whut.map.map_service.pipeline.ShipDispatcher;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.stereotype.Component;
@@ -13,9 +13,9 @@ public class AisMessageListener implements MqttCallback {
 
     private ObjectMapper objectMapper;
     private final AisMessageMapper mapper;
-    private AisDispatcher dispatcher;
+    private ShipDispatcher dispatcher;
 
-    public AisMessageListener(AisMessageMapper mapper, ObjectMapper objectMapper, AisDispatcher dispatcher) {
+    public AisMessageListener(AisMessageMapper mapper, ObjectMapper objectMapper, ShipDispatcher dispatcher) {
         this.dispatcher = dispatcher;
         this.objectMapper = objectMapper;
         this.mapper = mapper;
@@ -32,7 +32,7 @@ public class AisMessageListener implements MqttCallback {
             String payload = new String(message.getPayload());
             log.debug("payload: {}", payload);
             MqttAisDto aisDto = objectMapper.readValue(payload, MqttAisDto.class);
-            AisMessage aisMessage = mapper.toDomain(aisDto);
+            ShipStatus aisMessage = mapper.toDomain(aisDto);
             log.debug("已解析Ais数据: {}", aisMessage);
             dispatcher.dispatch(aisMessage);
         } catch (Exception e) {
@@ -42,6 +42,6 @@ public class AisMessageListener implements MqttCallback {
 
     @Override
     public void deliveryComplete(IMqttDeliveryToken token) {
-        // 这个方法在客户端发布消息时被调用，不需要处理
+        // 这个方法在客户端发布消息时被调用，目前暂时仅接收数据
     }
 }

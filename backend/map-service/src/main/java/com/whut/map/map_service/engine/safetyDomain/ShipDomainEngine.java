@@ -1,6 +1,6 @@
 package com.whut.map.map_service.engine.safetyDomain;
 
-import com.whut.map.map_service.domain.AisMessage;
+import com.whut.map.map_service.domain.ShipStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -14,9 +14,9 @@ public class ShipDomainEngine {
         // 3. 将结果发送到WebSocket服务
     }
 
-    public void consume(AisMessage message) {
+    public void consume(ShipStatus message) {
         // 1. 从数据源获取数据
-        log.debug("Received AIS message for ship domain calculation, MMSI: {}", message.getMmsi());
+        log.debug("Received AIS message for ship domain calculation, MMSI: {}", message.getId());
         // 2. 调用计算方法
         calculate();
     }

@@ -35,6 +35,6 @@ with open(
         client.publish("usv/AisMessage", payload)
         print(f"Published data for MMSI: {mmsi}")
         # Sleep for a short time to simulate real-time data streaming
-        time.sleep(0.1)
+        time.sleep(0.5)
 
 

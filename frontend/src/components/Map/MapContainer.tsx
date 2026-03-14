@@ -122,6 +122,7 @@ export function MapContainer() {
     map.current.on('load', () => {
       if (!map.current) return;
       
+
       // Add S-57 MVT sources (one per layer for compatibility)
       Object.entries(s57Sources).forEach(([sourceId, sourceSpec]) => {
         map.current!.addSource(sourceId, sourceSpec);
@@ -131,7 +132,7 @@ export function MapContainer() {
       s57Layers.forEach(layer => {
         map.current!.addLayer(layer);
       });
-      
+
       setMapLoaded(true);
     });
     
@@ -145,8 +146,9 @@ export function MapContainer() {
   useEffect(() => {
     if (!mapLoaded || !map.current || !environment) return;
     updateWaterDepthStyle(map.current, environment.safety_contour_val);
-  }, [mapLoaded, environment?.safety_contour_val]);
-  
+    }, [mapLoaded, environment?.safety_contour_val]);
+    
+
   // Build Deck.gl layers
   const buildDeckLayers = useCallback(() => {
     const layers: Layer[] = [];

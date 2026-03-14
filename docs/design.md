@@ -59,7 +59,7 @@
             │PostgreSQL│   │ │ CV 预测  │ │   │
             │+ PostGIS │◄──┤ ├──────────┤ │   │
             │          │   │ │ model/   │ │   │
-            │ 表:       │   │ │ 安全模型 │ │   │
+            │ 表:       │  │ │ 安全模型 │ │   │
             │ais_history│  │ │(启动加载)│ │   │
             │density    │  │ ├──────────┤ │   │
             │behavior   │  │ │websocket/│ │   │
@@ -402,7 +402,7 @@ map-system/
 
 ## 七、旧服务复用策略 (Legacy Service Strategy)
 
-以下 4 个 Spring Boot 服务为此前开发的原型，核心算法思路有参考价值，代码需重构。
+以下 4 个 Spring Boot 服务为此前开发的原型，核心算法思路有参考价值，代码重构。
 
 | 旧服务 | 决策 | 理由 | 目标版本 |
 |--------|------|------|---------|
@@ -410,8 +410,6 @@ map-system/
 | **Geointel Processor** — 离线 ETL 计算密度/行为/禁航区模型 | 重构复用 | 核心 ETL 算法有价值，提取计算逻辑重构为 Module C | v1 |
 | **Geointel Dashboard** — 海图瓦片 MVT + 样式服务 + WebSocket | 提取复用 | 提取 MVT 生成与样式服务合并到 Module B 的 `api/`；WebSocket 部分自己重写 | v1 |
 | **Anomaly Detection Service** — MQTT 实时异常检测 | 参考后重写 | 功能与 Module B `engine/` 高度重叠；CPA/TCPA 等逻辑自己重写，确保面试能讲清楚 | v0.5 |
-
-**核心原则：算法思路可参考旧代码，核心逻辑必须自己写。**
 
 ---
 
@@ -423,13 +421,13 @@ map-system/
 
 - [x] Module A：MQTT → PostgreSQL 数据落库
 - [ ] Module B 核心功能：
-  - [ ] 订阅 MQTT，解析 AIS 消息
-  - [ ] 区分本船 / 目标船
-  - [ ] CPA/TCPA 实时计算（自己写）
-  - [ ] WebSocket 推送前端
-  - [ ] 前端渲染船舶位置 + 预警信息
+- [x] 订阅 MQTT，解析 AIS 消息
+- [x] 区分本船 / 目标船
+- [ ] CPA/TCPA 实时计算
+- [ ] WebSocket 推送前端
+- [ ] 前端渲染船舶位置 + 预警信息
 
-**可选（有时间就做）：**
+**可选：**
 
 - [ ] CV (Constant Velocity) 航线预测
 - [ ] 静态海图 RESTful API
@@ -473,15 +471,15 @@ map-system/
 | 日期 | 任务 | 产出 |
 |------|------|------|
 | 3/04 ✅ | 撰写 v0.5 设计文档；迁移 Listener 和前端 | 目录结构建立，GitHub 仓库创建 |
-| 3/05 ✅ | 清理重构 PostgreSQL；确认 Listener 运行 | 数据库可用 |
-| 3/06 ✅ | Listener 重构 + MQTT Broker Docker + AIS Simulator + 数据链路跑通 | AIS → MQTT → Listener → PostgreSQL ✅ |
-| 3/07-08 | 创建 map-service 骨架；MQTT 订阅 + AIS 解析 | 后端能收到并解析 MQTT 消息 |
-| 3/09 | WebSocket 配置 + 前端对接 | 前端实时渲染船舶位置 |
-| 3/10-11 | CPA/TCPA 计算引擎（自己写） | 预警算法可用 |
-| 3/12 | 预警推送 + 前端预警渲染 | 预警可视化 |
-| 3/13 | 航线数据查询 + 推送（可选） | 航线可视化 |
-| 3/14-15 | 联调测试 + Bug 修复 + 汇报准备 | 系统稳定 |
-| **3/16** | **汇报** | **v0.5 交付** |
+| 3/06 ✅ | 清理重构 PostgreSQL；确认 Listener 运行 | 数据库可用 |
+| 3/08 ✅ | Listener 重构 + MQTT Broker Docker + AIS Simulator + 数据链路跑通 | AIS → MQTT → Listener → PostgreSQL ✅ |
+| 3/13✅ | 创建 map-service 骨架；MQTT 订阅 + AIS 解析 | 后端能收到并解析 MQTT 消息 |
+| 3/14 | WebSocket 配置 + 前端对接 | 前端实时渲染船舶位置 |
+| 3/15 | CPA/TCPA 计算引擎（自己写） | 预警算法可用 |
+| 3/16 | 预警推送 + 前端预警渲染 | 预警可视化 |
+| 3/17 | 航线数据查询 + 推送（可选） | 航线可视化 |
+| 3/18 | 联调测试 + Bug 修复 + 汇报准备 | 系统稳定 |
+| **3/19** | **汇报** | **v0.5 交付** |
 
 ---
 

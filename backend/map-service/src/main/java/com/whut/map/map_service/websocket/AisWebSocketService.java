@@ -16,7 +16,8 @@ public class AisWebSocketService {
     private final StreamWebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper;
 
-    private final AtomicLong messageCounter = new AtomicLong(1);
+    // 使用当前毫秒级时间戳作为初始序列号，保证即使服务重启，序列号也绝对单调递增 (Monotonically Increasing)
+    private final AtomicLong sequenceGenerator = new AtomicLong(System.currentTimeMillis());
 
     public AisWebSocketService(StreamWebSocketHandler webSocketHandler, ObjectMapper objectMapper) {
         this.webSocketHandler = webSocketHandler;
@@ -28,7 +29,7 @@ public class AisWebSocketService {
             // 组装符合前端需求的信封
             Map<String, Object> envelope = new HashMap<>();
             envelope.put("type", "RISK_UPDATE");
-            envelope.put("sequence_id", messageCounter.getAndIncrement());
+            envelope.put("sequence_id", sequenceGenerator.getAndIncrement());
             envelope.put("payload", message);
 
             // 将信封对象序列化为 JSON 字符串
@@ -41,5 +42,4 @@ public class AisWebSocketService {
             log.error("Error serializing AIS message: {}", e.getMessage());
         }
     }
-
 }

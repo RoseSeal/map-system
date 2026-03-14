@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class AisDispatcher {
+public class ShipDispatcher {
 
     private final ShipDomainEngine shipDomainEngine;
     private final CvPredictionEngine cvPredictionEngine;
@@ -22,7 +22,7 @@ public class AisDispatcher {
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler RiskObjectAssembler;
 
-    public AisDispatcher(
+    public ShipDispatcher(
             ShipDomainEngine shipDomainEngine,
             CvPredictionEngine cvPredictionEngine,
             CpaTcpaEngine cpaTcpaEngine,
@@ -39,7 +39,11 @@ public class AisDispatcher {
     }
 
     // 分发数据
-    public void dispatch(AisMessage message) {
+    public void dispatch(ShipStatus message) {
+        if(message == null) {
+            log.warn("Received null ShipStatus message, skipping dispatch");
+            return;
+        }
         /**
          * TODO:
          * 目前实现的顺序分发，后续需要修改为异步分发，
@@ -56,7 +60,7 @@ public class AisDispatcher {
 
         // 对于未知角色的消息，记录日志并跳过处理
         if(message.getRole() == ShipRole.UNKNOWN) {
-            log.debug("Received AIS message with unknown ship role, MMSI: {}", message.getMmsi());
+            log.debug("Received AIS message with unknown ship role, MMSI: {}", message.getId());
             return;
         }
 

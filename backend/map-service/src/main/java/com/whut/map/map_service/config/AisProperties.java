@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "ais")
 public class AisProperties {
 
-    private int ownShipMmsi;
+    private String ownShipMmsi;
     private String timezone;
     private String dateFormat;
-
+    private double confidence;
 }

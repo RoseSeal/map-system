@@ -21,7 +21,7 @@ public class StreamWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        // 连接建立后，可以在这里进行一些初始化操作
+        // 连接建立后，在这里进行一些初始化操作
         // 将新建立的连接加入到会话列表中
         sessions.add(session);
         log.debug("WebSocket connected: {}", session.getId());
@@ -51,7 +51,6 @@ public class StreamWebSocketHandler extends TextWebSocketHandler {
         // 移除发生错误的连接，避免内存泄漏
         sessions.remove(session);
         log.error("WebSocket transport error in session {}: {}", session.getId(), exception.getMessage());
-
     }
 
     @Override

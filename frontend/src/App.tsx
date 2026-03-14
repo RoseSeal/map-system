@@ -5,17 +5,16 @@
 
 import { useEffect } from 'react';
 import { MapContainer, StatusPanel, TargetsPanel, CompassOverlay } from './components';
-import { startMockDataGenerator, stopMockDataGenerator } from './services';
+import { socketService, startMockDataGenerator, stopMockDataGenerator } from './services';
 
 function App() {
-  // Start mock data on mount (for development)
+  // start websocket connection
   useEffect(() => {
-    // Use mock data generator in development
-    // In production, use socketService.connect() instead
-    startMockDataGenerator(1000); // 1Hz updates
+    
+    socketService.connect();
     
     return () => {
-      stopMockDataGenerator();
+      socketService.disconnect();
     };
   }, []);
   
