@@ -1,33 +1,39 @@
-# Map-System 系统设计文档
+﻿# Map-System 系统设计文档
 
-> **版本 (Version)**：v0.5 → v2.0 Roadmap
-> **目标 (Objective)**：面向无人船的海上态势感知与风险预警系统
-> **当前里程碑 (Current Milestone)**：v0.5 — 跑通基本数据通路，实现最小可用系统
-> **截止日期 (Deadline)**：2026-03-16（v0.5 汇报）
+> **版本 (Version)**：v0.5 -> v2.0 Roadmap
+> **目标 (Objective)**：面向内河窄航道运货船的轻量级外挂式态势感知与风险预警系统
+> **当前里程碑 (Current Milestone)**：v0.5 - 跑通实时预警主链路，实现最小可用系统
 > **作者 (Author)**：xin
 
 ---
 
 ## 一、项目概述 (Project Overview)
 
-### 1.1 系统定位
+### 1.1 项目背景
 
-基于无人船 AIS (Automatic Identification System) 数据的海上态势感知系统。实时采集船舶动态数据，结合静态海图信息与安全模型，向 2.5D WebGL 前端推送船舶位置、航行预警和航线预测。
+本项目面向一艘在中国内陆固定 A-B 点之间航行的运货船，航行区域为内河窄航道场景。受项目预算与工程周期约束，系统定位为外挂式、轻量级辅助预警系统，而非完整替代船载航行系统的重型平台。
 
-### 1.2 数据源
+系统目标是在不预设最终传感器组合的前提下，先建立一条稳定的实时预警链路：接收外部感知数据，统一转换为系统内部目标对象，完成碰撞风险与态势计算，并将结果同步提供给前端和大模型模块。
 
-- **动态数据**：船舶 AIS 消息，通过 MQTT Broker 实时广播（航速、航向、经纬度等）
-- **静态数据**：S-57 电子海图 (ENC)、Coastlines、Ports、预规划航线，存储于 PostgreSQL + PostGIS
-- **历史数据**：国家数据中心 AIS 数据（武汉附近水域，约 1400 万条），用于离线模型计算和轨迹分析
+### 1.2 输入与数据策略
+
+系统采用多源输入、统一语义、后续按需补 mapper 的策略。
+
+- **动态输入源**：可能包括 AIS、雷达、计算机视觉等一种或多种外部感知源；现阶段不写死最终输入组合。
+- **接入方式**：各输入源统一通过 MQTT 接入系统。
+- **适配方式**：每类输入源单独实现对应 mapper，将外部消息转换为系统内部统一目标对象。
+- **核心原则**：系统核心计算逻辑不直接依赖某一种传感器字段，而是依赖统一内部对象；待输入源最终确定后，再补充对应 mapper。
+- **静态数据**：电子海图、岸线、港口、预规划航线等静态地理信息，存储于 PostgreSQL + PostGIS。
+- **历史数据**：已申请约 1400 万条 AIS 历史数据，用于危险场景案例提取、后续评估、知识增强与检索增强，不作为当前版本实时主链路前提。
 
 ### 1.3 当前工程状态
 
 | 组件 | 状态 | 说明 |
 |------|------|------|
-| **backend/listener-service** | ✅ 已完成 | 订阅 MQTT → 解析 AIS → Batch 写入 PostgreSQL |
-| **frontend/** | ✅ 可运行 | 基于 MapLibre + Deck.gl 的 2.5D WebGL 海图前端，当前 Mock 数据驱动 |
-| **simulator/** | ✅ 可运行 | Python 脚本，读取国家数据中心 AIS 数据，发布到本地 MQTT Docker Broker |
-| **backend/map-service** | 🔨 开发中 | 核心后端服务，v0.5 主要交付物 |
+| **backend/listener-service** | ✅ 已完成 | 订阅 MQTT 并落库 PostgreSQL |
+| **frontend/** | ✅ 可运行 | 基于 MapLibre + Deck.gl 的 2.5D WebGL 前端，当前由 Mock 数据驱动 |
+| **simulator/** | ✅ 可运行 | 可用于模拟 AIS 数据输入 |
+| **backend/map-service** | 🔨 开发中 | 核心后端服务，承载 mapper、实时计算、WebSocket 推送与 LLM 对接 |
 | **docs/** | ✅ 已有 | 本设计文档 |
 
 ---
@@ -36,350 +42,173 @@
 
 ### 2.1 整体架构
 
-系统分为三个核心模块与两个扩展模块：
+当前系统围绕一条轻量实时主链路组织：
 
-```
-                          ┌───────────────┐
-                          │  MQTT Broker  │
-                          └───────┬───────┘
-                                  │
-                     ┌────────────┼────────────┐
-                     │            │            │
-                     ▼            ▼            │
-            ┌────────────┐ ┌──────────────┐   │
-            │  Module A  │ │  Module B    │   │
-            │  Listener  │ │  map-service │   │
-            │            │ │              │   │
-            │ MQTT→PgSQL │ │ ┌──────────┐ │   │
-            │ (数据落库)  │ │ │ mqtt/    │ │   │
-            └─────┬──────┘ │ │ 订阅 AIS │ │   │
-                  │        │ ├──────────┤ │   │
-                  ▼        │ │ engine/  │ │   │
-            ┌──────────┐   │ │ CPA/TCPA │ │   │
-            │PostgreSQL│   │ │ CV 预测  │ │   │
-            │+ PostGIS │◄──┤ ├──────────┤ │   │
-            │          │   │ │ model/   │ │   │
-            │ 表:       │  │ │ 安全模型 │ │   │
-            │ais_history│  │ │(启动加载)│ │   │
-            │density    │  │ ├──────────┤ │   │
-            │behavior   │  │ │websocket/│ │   │
-            │nogo_area  │  │ │ 实时推送 │ ├──→ Frontend (2.5D WebGL)
-            │coastlines │  │ ├──────────┤ │   │
-            │routes     │  │ │ api/     │ │   │
-            └─────┬─────┘  │ │ 海图 REST│ ├──→ Frontend (初始化拉取)
-                  │        │ └──────────┘ │
-                  │        └──────────────┘
-                  │
-                  ▼
-            ┌──────────────┐
-            │  Module C    │
-            │  Processor   │         (v1)
-            │              │
-            │ 离线计算:     │
-            │  密度模型     │
-            │  行为模型     │
-            │  禁航区       │
-            └──────────────┘
-
-            ┌──────────────┐
-            │  Extension   │
-            │  LLM Agent   │         (v2)
-            │              │
-            │ Prompt + RAG │
-            │ 输出: 决策建议│
-            └──────────────┘
+```text
+外部输入源
+  ├─ AIS
+  ├─ Radar
+  └─ CV
+      ↓
+ MQTT Broker
+      ↓
+ map-service
+  ├─ mqtt/           订阅外部消息
+  ├─ mapper/         各输入源 -> 内部统一目标对象
+  ├─ domain/         内部确信类 / 预警对象 / 航迹对象
+  ├─ engine/         CPA/TCPA、航迹预测、本船安全领域
+  ├─ llm/            结构化事实封装、大模型调用、多智能体编排（后续）
+  ├─ websocket/      动态结果推送前端
+  └─ api/            静态海图与辅助查询接口
+      ↓
+  Frontend (目标、置信度、预测航迹、安全领域、危险预警)
+      ↓
+  LLM Agent (基于结构化事实给出解释与建议)
 ```
 
 ### 2.2 模块职责
 
-#### Module A — Data Ingestion Pipeline (数据采集管线)
+#### Module A - Data Ingestion / Source Access
 
-**服务名**：`listener-service`
-**状态**：✅ 已完成
+**服务名**：`listener-service` / 或由 `map-service` 直接订阅
 
-职责单一：订阅 MQTT AIS 广播 → 解析 → Batch Queue 聚合 → 批量写入 PostgreSQL + PostGIS。
+职责是接入 MQTT 消息并完成基础转发或落库，不承担核心业务判断。若某类输入源最终不再单独经过 `listener-service`，也可直接由 `map-service` 订阅，不影响总体架构。
 
-不做任何业务计算，只负责数据持久化。
-
-#### Module B — Stream Processing & Gateway (流处理与网关)
+#### Module B - Core Real-time Service
 
 **服务名**：`map-service`
-**状态**：🔨 v0.5 开发中
 
-核心后端服务，承担实时计算与数据推送。为控制 v0.5 复杂度，物理上保持单一 Spring Boot 服务，代码层面用 Package 做逻辑隔离，后续按需拆分。
+核心职责如下：
 
-**Package 结构：**
+- 订阅 MQTT 输入消息。
+- 调用不同输入源对应的 mapper。
+- 将外部消息转换为系统内部统一目标对象，并记录 `confidence`。
+- 基于内部对象完成 CPA/TCPA、航迹预测、本船安全领域等实时计算。
+- 将结构化结果推送给前端渲染。
+- 将结构化事实封装给大模型，降低幻觉并增强可解释性。
 
-```
-map-service/src/main/java/com/xin/map/
-├── config/              # MQTT、WebSocket、缓存等配置
-├── mqtt/                # MQTT 订阅，AIS 消息接入
-├── engine/              # 计算引擎：CPA/TCPA、CV 预测、Ship Domain
-├── model/               # 安全模型缓存（启动时从 DB 加载，事件驱动刷新）
-├── websocket/           # WebSocket 推送（动态流）
-├── api/                 # RESTful API（静态流）
-├── domain/              # 数据模型：AisMessage, Warning, Route 等
-└── MapServiceApplication.java
-```
+#### Extension - LLM Risk Warning
 
-**输出分为两条流：**
+LLM 模块不直接做底层数学计算，而是消费系统已经算出的结构化事实，输出风险解释与辅助决策建议。
 
-| 流类型 | 协议 | 内容 | 推送频率 |
-|--------|------|------|---------|
-| **动态流** | WebSocket | AIS 位置更新、CPA/TCPA 预警、CV 航线预测、安全模型告警 | 实时（秒级） |
-| **静态流** | RESTful HTTP + Cache | 海图数据 (Coastlines, Ports)、预规划航线 | 前端初始化时拉取 |
+当前方向为：
 
-**关于 WebSocket 的技术决策：**
-针对后端向前端的单向高频数据流，SSE (Server-Sent Events) 是更标准的方案。但考虑到未来可能需要双向通信（如用户点击某艘船查看详情），且现有前端已基于 WebSocket 实现，v0.5 沿用 WebSocket 协议。此架构妥协记录为 Tech Debt，留待 v1 前端重构时评估。
+- 通过 API 调用大模型。
+- 先将 CPA/TCPA、目标船预测航迹、本船安全领域、目标置信度、必要环境上下文封装给大模型。
+- 后续参考论文复现多智能体设计，初步考虑 5 个智能体，分别承担感知理解、调度、文本交互等任务。
+- 接入海事法律法规做 RAG。
+- 基于历史 AIS 数据提取危险场景案例，用于案例库构建、知识增强与评估，不在当前文档中承诺具体训练方案。
 
-#### Module C — Offline Analytics (离线分析)
+### 2.3 关于 Module C 的取舍
 
-**服务名**：`processor`
-**状态**：v1 实现
+原设计中的 `Module C - Offline Analytics` 及其位置密度模型、行为网格模型、禁航区模型，依赖稳定且广域的历史轨迹数据。当前项目已转向单船外挂式轻量预警系统，实时输入也不再限定为 AIS，因此该模块不再作为当前主方案的一部分。
 
-离线 / 批处理管道，定时或手动触发。从 PostgreSQL 拉取历史 AIS 轨迹与电子海图，计算三类安全模型：
-
-| 模型 | 功能 | 告警触发条件 |
-|------|------|------------|
-| Position Density Model | 基于历史轨迹的区域密度分析 | 船舶进入低密度（罕见）区域 |
-| Gridded Behavior Model | 基于网格的行为概率统计 | 船舶执行低概率行为 |
-| No-Go Area | 聚合静态障碍 + 低密度区域 | 船舶进入禁航区 |
-
-采用 ETL 流程 (Extract → Transform → Load)，支持流式批次处理防止内存溢出。计算结果写入 PostgreSQL，供 Module B 消费。
-
-#### Extension — LLM Agent (大模型智能体)
-
-**状态**：v2 实现
-
-将 Module B 的实时计算结果封装为自然语言上下文，输入 LLM 进行推理，输出航行决策建议。
-
-**技术方案：**
-
-1. **上下文封装 (Prompt Engineering)**：将 CPA/TCPA 计算结果 + 历史轨迹组装为结构化文本
-2. **LLM Decision Layer**：大模型负责推理和策略输出（不做数学计算）
-3. **RAG (Retrieval-Augmented Generation)**：将历史船舶事故���录向量化，存入 PostgreSQL pgvector 插件，为 LLM 提供检索增强
-
-**输入示例：**
-> "目标船舶是一艘油轮，距离我方 0.5 海里，预计 3 分钟后发生碰撞，当前天气大雾。"
-
-**输出示例：**
-> "危险等级：极高。建议立即向右满舵 15 度，并用 VHF 频道呼叫对方。"
+现阶段不保留 `Module C` 作为正式架构模块；若后续获得稳定多源历史数据，再单独评估是否恢复离线分析能力。
 
 ---
 
-## 三、Module B 核心设计 (Core Design)
+## 三、核心设计 (Core Design)
 
-### 3.1 数据模型 (Domain Model)
+### 3.1 内部统一对象
 
-```java
-// AIS 消息
-public class AisMessage {
-    private String mmsi;          // 船舶 MMSI 唯一标识
-    private Double longitude;     // 经度
-    private Double latitude;      // 纬度
-    private Double speed;         // 航速 (knots)
-    private Double course;        // 航向 (degrees)
-    private Double heading;       // 船首向 (degrees)
-    private Long timestamp;       // Unix 时间戳
-}
+系统内部不直接围绕 AIS 字段建模，而是围绕“本船周边目标”的统一内部对象建模。该对象用于承接不同来源的外部观测结果，并作为实时计算、前端渲染与 LLM 输入的共同基础。
 
-// 预警信息
-public class Warning {
-    private String targetMmsi;    // 目标船 MMSI
-    private WarningLevel level;   // GREEN / YELLOW / RED
-    private Double cpa;           // CPA (nautical miles)
-    private Double tcpa;          // TCPA (seconds)
-    private String message;       // 预警描述
-}
+内部对象遵循以下原则：
 
-// 安全领域
-public class ShipDomain {
-    private double[] center;      // [lon, lat]
-    private Double semiMajor;     // 长半轴 (nm)
-    private Double semiMinor;     // 短半轴 (nm)
-    private Double orientation;   // 朝向 (degrees)
-}
-```
+- 表达目标的统一时空状态与运动状态。
+- 区分本船与目标船。
+- 记录来源类型与时间戳。
+- 增加 `confidence` 字段表示当前观测或融合结果的确信度。
+- 允许保留来源特有原始信息作为扩展字段。
 
-### 3.2 实时预警引擎 (Real-time Warning Engine)
+文档当前不再固化具体字段列表；字段以代码实现为准，待接口与对象基本稳定后再回填文档。
 
-v0.5 实现基于静态规则的实时预警，不涉及 AI 模型。
+### 3.2 实时预警引擎
 
-**规则定义：**
+实时预警引擎基于内部统一对象运行，当前确定的核心能力包括：
 
-| 规则 | 计算方式 | 触发条件 |
-|------|---------|---------|
-| CPA 预警 | 计算本船与每艘目标船的 Closest Point of Approach | CPA < 0.5 nm → RED; CPA < 1.0 nm → YELLOW |
-| TCPA 预警 | 计算 Time to CPA | TCPA < 600s 且 TCPA > 0（正在接近）→ 触发 |
-| Ship Domain 预警 | 基于本船航速和航向计算安全领域椭圆 | 目标船进入椭圆区域 → 触发 |
+- **CPA/TCPA 计算**：作为第一优先级能力，用于计算本船与目标之间的最近会遇距离与时间。
+- **航迹预测**：先实现轻量级预测方案，为危险趋势判断和前端渲染提供依据。
+- **本船安全领域**：计算本船安全领域，用于判断目标是否侵入危险区域。
+- **危险分级**：综合 CPA/TCPA、安全领域侵入、目标置信度等因素形成预警等级。
 
-**预警等级：**
+大模型只消费这些结果，不替代这些计算。
 
-```
-GREEN  → 安全，无需关注
-YELLOW → 需关注（CPA < 1.0 nm）
-RED    → 危险（CPA < 0.5 nm 且 TCPA < 10 min）
-```
+### 3.3 前端渲染目标
 
-### 3.3 航线预测 (Route Prediction)
+前端需要围绕“事实可视化 + 风险可解释”两个方向配合后端演进，重点渲染：
 
-**v0.5**：实现简易 Constant Velocity Model (CV)，基于目标船当前航速和航向做线性外推。
+- 本船与目标位置
+- 目标 `confidence`
+- CPA/TCPA 结果与危险等级
+- 目标预测航迹
+- 本船安全领域
+- 大模型生成的预警说明与建议
 
-**v1.5**：升级为机器学习模型，需要在内存中维护轻量级 Sliding Window（滑动窗口）缓存近期轨迹点作为模型输入，避免实时查询数据库。
+前端优化会穿插在后端计算能力实现过程中持续进行，而不是等所有后端能力完成后再统一处理。
 
-### 3.4 安全模型缓存策略 (Security Model Cache Strategy)
+### 3.4 LLM 集成原则
 
-Module C 的离线计算结果需要被 Module B 高效消费。采用三层策略：
+为降低幻觉并提高可解释性，LLM 输入应优先采用结构化事实，而不是直接输入原始传感器消息。
 
-**第一层：Event-Driven Cache Invalidation (事件驱动缓存失效)**
+建议的大模型输入事实包括：
 
-复用现有 MQTT Broker 作为内部通信总线。Module C 完成计算并入库后，向内部专属 Topic（`usv/internal/model_sync`）发布轻量级 JSON 变更事件。发布与订阅强制采用 QoS 1 (At Least Once)，确保更新信号必达。
+- 当前目标列表及其 `confidence`
+- 本船与各目标之间的 CPA/TCPA
+- 目标未来短时航迹预测结果
+- 本船安全领域参数与侵入情况
+- 必要的环境信息与规则上下文
+- 来自法规 RAG 与历史危险场景案例库的补充信息
 
-**第二层：Double Buffering (双缓冲 / 写时复制)**
+LLM 输出聚焦于：
 
-Module B 监听到同步信号后，不对当前 Active Cache 执行任何 `clear()` 或写锁操作。后台线程初始化全新缓存对象，异步加载最新数据，完成后通过 Java 引用的 Atomic Swap（原子替换）瞬间完成新老缓存交接。确保高并发 AIS 流处理零阻塞。
-
-**第三层：TTL Fallback (生存时间兜底)**
-
-为内存缓存配置粗粒度 TTL（如 12 小时）。若遭遇 Network Partition 导致 MQTT 消息链路崩溃，TTL 超时将强制触发拉取，作为最后一道防线确保模型数据不会无限期陈旧。
-
-### 3.5 WebSocket 推送格式 (Push Message Format)
-
-**AIS 位置更新：**
-
-```json
-{
-  "type": "AIS_UPDATE",
-  "data": {
-    "ownShip": {
-      "mmsi": "412000001",
-      "lon": 114.3,
-      "lat": 30.5,
-      "speed": 12.5,
-      "course": 45.0,
-      "heading": 44.8,
-      "timestamp": 1709712000
-    },
-    "targetShips": [
-      {
-        "mmsi": "413000002",
-        "lon": 114.5,
-        "lat": 30.6,
-        "speed": 8.2,
-        "course": 220.0,
-        "heading": 219.5,
-        "timestamp": 1709712000
-      }
-    ]
-  }
-}
-```
-
-**预警信息推送：**
-
-```json
-{
-  "type": "WARNING_UPDATE",
-  "data": {
-    "warnings": [
-      {
-        "targetMmsi": "413000002",
-        "level": "RED",
-        "cpa": 0.3,
-        "tcpa": 480,
-        "message": "目标船 413000002 将在 8 分钟后于 0.3 nm 处交会"
-      }
-    ],
-    "ownShipDomain": {
-      "center": [114.3, 30.5],
-      "semiMajor": 0.5,
-      "semiMinor": 0.3,
-      "orientation": 45.0
-    }
-  }
-}
-```
-
-**航线推送：**
-
-```json
-{
-  "type": "ROUTE_UPDATE",
-  "data": {
-    "ownRoute": {
-      "waypoints": [
-        { "lon": 114.3, "lat": 30.5, "eta": "2026-03-16T10:00:00Z" },
-        { "lon": 114.8, "lat": 30.8, "eta": "2026-03-16T12:00:00Z" }
-      ]
-    }
-  }
-}
-```
+- 风险解释
+- 危险等级总结
+- 建议动作或注意事项
+- 面向人的自然语言表述
 
 ---
 
-## 四、数据库设计 (Database Schema)
+## 四、数据库与数据留存 (Database & Persistence)
 
-```sql
--- AIS 历史数据表 (Module A 写入)
-CREATE TABLE ais_history (
-    id          BIGSERIAL PRIMARY KEY,
-    mmsi        VARCHAR(20) NOT NULL,
-    position    GEOMETRY(Point, 4326) NOT NULL,
-    speed       DOUBLE PRECISION,
-    course      DOUBLE PRECISION,
-    heading     DOUBLE PRECISION,
-    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+当前数据库设计以支撑实时链路、静态海图和必要的数据留存为主。
 
-CREATE INDEX idx_ais_mmsi ON ais_history(mmsi);
-CREATE INDEX idx_ais_time ON ais_history(received_at);
-CREATE INDEX idx_ais_position ON ais_history USING GIST(position);
+保留方向：
 
--- 预规划航线表
-CREATE TABLE planned_route (
-    id          SERIAL PRIMARY KEY,
-    ship_mmsi   VARCHAR(20) NOT NULL,
-    waypoints   GEOMETRY(LineString, 4326) NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+- 输入消息留存或回放所需的原始/标准化数据表
+- 静态海图与预规划航线
+- 前端初始化所需空间数据
+- 后续可扩展的危险场景案例表、法规检索索引、LLM 相关辅助数据
 
--- 以下表由 Module C 离线计算写入 (v1)
--- position_density_model   位置密度模型
--- gridded_behavior_model   行为网格模型
--- nogo_area                禁航区
-```
+删除方向：
+
+- 原文档中专门服务于 `Module C` 的位置密度模型、行为网格模型、禁航区模型等离线分析表，现阶段不纳入主文档。
+
+文档当前不展开具体字段说明；待表结构稳定后再补充 DDL 细节。
 
 ---
 
 ## 五、目录结构 (Project Structure)
 
-```
+```text
 map-system/
 ├── backend/
-│   ├── listener-service/            # Module A：MQTT → PostgreSQL (✅ 已完成)
-│   │   ├── src/
-│   │   └── pom.xml
-│   ├── map-service/                 # Module B：核心后端服务 (🔨 开发中)
-│   │   ├── src/main/java/com/xin/map/
-│   │   │   ├── config/
-│   │   │   ├── mqtt/
-│   │   │   ├── engine/
-│   │   │   ├── model/
-│   │   │   ├── websocket/
-│   │   │   ├── api/
-│   │   │   ├── domain/
-│   │   │   └── MapServiceApplication.java
-│   │   └── pom.xml
-│   └── pom.xml
+│   ├── listener-service/        # 可选接入与落库服务
+│   └── map-service/             # 核心后端服务
+│       └── src/main/java/com/xin/map/
+│           ├── config/
+│           ├── mqtt/
+│           ├── mapper/
+│           ├── engine/
+│           ├── llm/
+│           ├── websocket/
+│           ├── api/
+│           └── domain/
 ├── frontend/
-│   └── unmanned-fleet-ui/           # 2.5D WebGL 前端 (✅ 可运行)
 ├── simulator/
-│   └── ais_publisher.py             # AIS 数据模拟器 (✅ 可运行)
 ├── database/
-│   └── init.sql
 ├── docs/
-│   └── design.md                    # 本文档
+│   └── design.md
 └── README.md
 ```
 
@@ -389,97 +218,85 @@ map-system/
 
 | 组件 | 选型 | 理由 |
 |------|------|------|
-| 后端框架 | Spring Boot 3.x | 已有基础，生态成熟 |
-| MQTT Client | Eclipse Paho / Spring Integration MQTT | Listener 已在用 |
-| 实时推送 | Spring WebSocket | 替代 HTTP Polling，支持双向通信 |
-| 数据库 | PostgreSQL 16 + PostGIS 3.x | 已有，GIS 空间查询能力 |
-| ORM | MyBatis | 灵活控制 SQL，适合空间查询 |
-| 前端 | MapLibre GL JS + Deck.gl | 已有，WebGL 高性能渲染 |
-| 容器 | Docker + docker-compose | MQTT Broker 等基础设施容器化 |
-| 构建 | Maven | 已有 |
+| 后端框架 | Spring Boot 3.x | 已有基础，便于快速实现单体式轻量服务 |
+| MQTT Client | Eclipse Paho / Spring Integration MQTT | 适合多源消息统一接入 |
+| 实时推送 | Spring WebSocket | 当前前端已适配，便于实时渲染 |
+| 数据库 | PostgreSQL 16 + PostGIS 3.x | 支撑空间数据存储与查询 |
+| ORM | MyBatis | 灵活控制 SQL，适合空间与时序查询 |
+| 前端 | MapLibre GL JS + Deck.gl | 已有基础，适合 2.5D 航运场景渲染 |
+| 大模型接入 | API 调用 | 先以工程可落地为目标，后续再扩展多智能体 |
+| 检索增强 | PostgreSQL / pgvector（后续） | 用于法规与危险场景案例检索 |
 
 ---
 
 ## 七、旧服务复用策略 (Legacy Service Strategy)
 
-以下 4 个 Spring Boot 服务为此前开发的原型，核心算法思路有参考价值，代码重构。
+旧服务只保留“有助于当前轻量主链路”的复用价值，不再围绕离线大数据分析组织当前方案。
 
-| 旧服务 | 决策 | 理由 | 目标版本 |
-|--------|------|------|---------|
-| **Path Safety Service** — 禁航区 REST API | 吸收 | 功能简单，合并到 Module B 的 `api/` | v1 |
-| **Geointel Processor** — 离线 ETL 计算密度/行为/禁航区模型 | 重构复用 | 核心 ETL 算法有价值，提取计算逻辑重构为 Module C | v1 |
-| **Geointel Dashboard** — 海图瓦片 MVT + 样式服务 + WebSocket | 提取复用 | 提取 MVT 生成与样式服务合并到 Module B 的 `api/`；WebSocket 部分自己重写 | v1 |
-| **Anomaly Detection Service** — MQTT 实时异常检测 | 参考后重写 | 功能与 Module B `engine/` 高度重叠；CPA/TCPA 等逻辑自己重写，确保面试能讲清楚 | v0.5 |
+| 旧服务 | 决策 | 理由 |
+|--------|------|------|
+| **Anomaly Detection Service** | 参考后重写 | 与当前 `map-service/engine` 目标接近，可参考其实时预警思路 |
+| **Geointel Dashboard** | 部分提取 | 可择机提取海图服务或可视化相关能力 |
+| **Path Safety Service** | 视需求吸收 | 若其中有静态规则或接口能力可直接复用，可并入当前服务 |
+| **Geointel Processor** | 暂不纳入主方案 | 与已删除的离线分析主线绑定过深，现阶段不优先投入 |
 
 ---
 
 ## 八、版本路线图 (Version Roadmap)
 
-### v0.5 — 最小可用系统 (2026-03-16)
+### v0.5 - 最小可用系统
 
-**必须完成（汇报底线）：**
+目标是先跑通“输入 -> mapper -> 计算 -> 前端/LLM”的最短闭环。
 
-- [x] Module A：MQTT → PostgreSQL 数据落库
-- [ ] Module B 核心功能：
-- [x] 订阅 MQTT，解析 AIS 消息
-- [x] 区分本船 / 目标船
+- [x] MQTT 输入链路可用
+- [x] 统一内部对象与 `confidence` 机制
+- [x] 至少一种输入源 mapper 可用
 - [ ] CPA/TCPA 实时计算
-- [ ] WebSocket 推送前端
-- [ ] 前端渲染船舶位置 + 预警信息
+- [x] WebSocket 推送前端
+- [ ] 前端渲染目标位置、危险等级与基础预警
 
-**可选：**
+### v0.8 - 预警能力补全
 
-- [ ] CV (Constant Velocity) 航线预测
-- [ ] 静态海图 RESTful API
-- [ ] Ship Domain 安全领域计算
+- [ ] 接入或完善第二类输入源 mapper
+- [ ] 实现目标短时航迹预测
+- [ ] 实现本船安全领域
+- [ ] 前端渲染 `confidence`、预测航迹与安全领域
+- [ ] 优化预警分级与展示效果
 
-**不做：**
+### v1 - LLM 危险预警接入
 
-- ❌ Module C 离线分析 → v1
-- ❌ 旧服务复用整合 → v1
-- ❌ LLM Agent → v2
-- ❌ Kafka 削峰 → v2
-- ❌ Redis 缓存 → v2
+- [ ] 基于 API 接入大模型
+- [ ] 将 CPA/TCPA、预测航迹、本船安全领域封装为结构化事实输入
+- [ ] 输出风险解释、危险摘要与建议动作
+- [ ] 接入海事法律法规 RAG
+- [ ] 建设危险场景案例库的基础能力
 
-### v1 — 完整后端功能 (~2026-05)
+### v1.5 - 多智能体与知识增强
 
-- [ ] Module B 动态流补全：安全模型查询 + 告警推送
-- [ ] Module C 离线分析管道上线
-- [ ] 安全模型缓存策略实现（Event-Driven + Double Buffering + TTL Fallback）
-- [ ] 旧服务复用整合
-- [ ] 前端理解与视觉优化
-- [ ] 接入水文信息
+- [ ] 参考论文复现多智能体架构
+- [ ] 初步实现 5 个智能体的职责拆分与调度
+- [ ] 引入法规与案例检索增强
+- [ ] 评估历史 AIS 数据在知识增强、样本构建与评估中的使用方式
 
-### v1.5 — AI 模型接入 (~2026-06)
+### v2 - 性能与工程完善
 
-- [ ] 航线预测升级为机器学习模型
-- [ ] 内存 Sliding Window 缓存近期轨迹
-- [ ] 模型推理超时降级策略 (Timeout + Fallback)
-
-### v2 — 性能优化 + LLM 智能体 (~2026 暑假)
-
-- [ ] Kafka 削峰：MQTT → Kafka → Batch Consumer → PostgreSQL
-- [ ] Redis + Caffeine 多级缓存：海图瓦片、安全模型
-- [ ] LLM Agent：Prompt Engineering + RAG (pgvector)
-- [ ] JMeter 压测 + 性能优化
-- [ ] 完整 Docker Compose 部署方案
+- [ ] 完善回放、评估与调试工具链
+- [ ] 优化缓存、推送与部署方案
+- [ ] 视输入规模决定是否引入 Kafka 等削峰组件
+- [ ] 完整整理数据库字段与接口文档
 
 ---
 
-## 九、v0.5 开发计划 (Development Schedule)
+## 九、实现步骤 (Implementation Plan)
 
-| 日期 | 任务 | 产出 |
-|------|------|------|
-| 3/04 ✅ | 撰写 v0.5 设计文档；迁移 Listener 和前端 | 目录结构建立，GitHub 仓库创建 |
-| 3/06 ✅ | 清理重构 PostgreSQL；确认 Listener 运行 | 数据库可用 |
-| 3/08 ✅ | Listener 重构 + MQTT Broker Docker + AIS Simulator + 数据链路跑通 | AIS → MQTT → Listener → PostgreSQL ✅ |
-| 3/13✅ | 创建 map-service 骨架；MQTT 订阅 + AIS 解析 | 后端能收到并解析 MQTT 消息 |
-| 3/14 | WebSocket 配置 + 前端对接 | 前端实时渲染船舶位置 |
-| 3/15 | CPA/TCPA 计算引擎（自己写） | 预警算法可用 |
-| 3/16 | 预警推送 + 前端预警渲染 | 预警可视化 |
-| 3/17 | 航线数据查询 + 推送（可选） | 航线可视化 |
-| 3/18 | 联调测试 + Bug 修复 + 汇报准备 | 系统稳定 |
-| **3/19** | **汇报** | **v0.5 交付** |
+当前实现步骤暂定为：
+
+1. 实现 CPA/TCPA 计算。
+2. 复现并接入大模型方案的基础版本。
+3. 实现目标航迹预测与本船安全领域。
+4. 在上述过程中穿插前端渲染效果优化。
+
+其中第 2 步的大模型实现，当前先以“结构化事实输入 + API 调用”落地，再逐步推进论文中的多智能体设计。
 
 ---
 
@@ -487,23 +304,27 @@ map-system/
 
 | 风险 | 概率 | 应对 |
 |------|------|------|
-| 前端 WebSocket 对接困难 | 中 | 先用最简消息格式跑通，再迭代优化 |
-| CPA/TCPA 算法实现有误 | 中 | 查阅论文确认公式；编写单元测试验证 |
-| 12 天时间不够 | 中 | 砍掉航线模块和 Ship Domain，优先保证 AIS 通路 + CPA 预警 |
-| MQTT 消息量过大导致 map-service 过载 | 低 | v0.5 使用模拟器控制发送速率；v2 引入 Kafka 削峰 |
+| 最终输入源迟迟未定 | 高 | 先稳定内部统一对象与 mapper 接口，避免核心逻辑绑死在单一输入源上 |
+| 不同输入源质量差异大 | 高 | 通过 `confidence` 明确表达确信度，避免后续模块误用低可信观测 |
+| CPA/TCPA 或安全领域实现有误 | 中 | 优先补公式校验、样例验证与单元测试 |
+| 大模型输出幻觉或建议不稳定 | 中 | 强化结构化事实输入，限制 LLM 仅做解释与建议，不做底层数值计算 |
+| 多智能体方案过于超前 | 中 | 先做单模型 API 版本，论文复现作为后续迭代 |
+| 工期不足 | 高 | 优先保证 CPA/TCPA、基础前端渲染和最小 LLM 接入，延后复杂知识增强与多智能体 |
 
 ### 时间不够时的优先级
 
-```
-P0（必须完成）：
-  AIS 数据通路跑通：MQTT → map-service → WebSocket → 前端渲染
-  至少一条预警规则可用：CPA < 阈值 → 推送前端
+```text
+P0（必须完成）
+  MQTT -> mapper -> 内部对象 -> CPA/TCPA -> WebSocket -> 前端
 
-P1（尽量完成）：
-  完整预警体系：CPA + TCPA + Ship Domain
-  CV 航线预测
+P1（尽量完成）
+  LLM 基础接入
+  航迹预测
+  本船安全领域
 
-P2（可延后）：
-  航线展示
-  静态海图 REST API
+P2（可延后）
+  多输入源同时接入
+  法规 RAG
+  多智能体复现
+  历史 AIS 案例库深化
 ```

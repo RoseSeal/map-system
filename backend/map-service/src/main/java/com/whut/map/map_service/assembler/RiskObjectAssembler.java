@@ -2,6 +2,10 @@ package com.whut.map.map_service.assembler;
 
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
+import com.whut.map.map_service.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
+import com.whut.map.map_service.engine.safety.ShipDomainResult;
+import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -14,7 +18,13 @@ public class RiskObjectAssembler {
      * 目前先使用Stub(桩实现)
      */
 
-    public RiskObjectDto assembleRiskObject(ShipStatus message) {
+    public RiskObjectDto assembleRiskObject(
+            ShipStatus message,
+            CpaTcpaResult cpaResult,
+            RiskAssessmentResult riskResult,
+            ShipDomainResult domainResult,
+            CvPredictionResult cvResult
+    ) {
 
         // 1. 组装本船的实体数据 (Entity State)
         Map<String, Object> ownShipData = new HashMap<>();
@@ -23,7 +33,7 @@ public class RiskObjectAssembler {
         ownShipData.put("platform_health", "NORMAL");
         ownShipData.put("governance", Map.of("mode", "AUTO", "trust_factor", 0.99));
 
-        // --- 核心修复：把高阶属性作为本船的特征放入 ownShip，并用空集合防止前端 filter/map 崩溃 ---
+        // 把高阶属性作为本船的特征放入 ownShip，并用空集合防止前端 filter/map 崩溃
         ownShipData.put("safety_domain", java.util.Collections.emptyList());
         ownShipData.put("future_trajectory", java.util.Collections.emptyList());
 

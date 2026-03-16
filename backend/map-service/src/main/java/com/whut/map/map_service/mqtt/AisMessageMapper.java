@@ -42,6 +42,8 @@ public class AisMessageMapper {
             return null; // 或者抛出异常，取决于错误处理策略
         }
 
+        mmsi = (mmsi.equals(ownShipMmsi)) ? "ownShip" : mmsi; // 如果是本船，id 统一为 "ownShip"，否则使用原始 MMSI 作为 id
+
         // 解析时间，确保它是一个有效的日期时间字符串
         if (mqttAisDto.getMsgTime() != null) {
             try {
@@ -53,7 +55,7 @@ public class AisMessageMapper {
         }
 
         // 识别ShipRole
-        ShipRole computedRole = (mmsi.equals(ownShipMmsi))
+        ShipRole computedRole = (mmsi.equals("ownShip"))
                 ? ShipRole.OWN_SHIP
                 : ShipRole.TARGET_SHIP;
 
