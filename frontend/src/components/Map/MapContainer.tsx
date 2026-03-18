@@ -211,7 +211,7 @@ export function MapContainer() {
 
     // 3. Own Ship Trajectory - HARDCODED WAYPOINT ROUTE with fade effect
     // Shows planned route from current position to next 3 waypoints
-    const upcomingWaypoints = getRemainingWaypoints(3);
+    const upcomingWaypoints: LonLat[] = [];
     const trajectoryPath: LonLat[] = [ownPos, ...upcomingWaypoints];
     
     if (trajectoryPath.length > 1) {
@@ -488,3 +488,4 @@ function buildOZTData(targets: Target[], ownPos: LonLat): { polygon: LonLat[]; i
       id: t.id,
     }));
 }
+

@@ -16,6 +16,9 @@ import com.whut.map.map_service.websocket.AisWebSocketService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @Slf4j
 @Component
 public class ShipDispatcher {
@@ -28,7 +31,6 @@ public class ShipDispatcher {
     private final RiskObjectAssembler riskObjectAssembler;
     private final ShipStateStore shipStateStore;
 
-    // 注入
     public ShipDispatcher(
             ShipDomainEngine shipDomainEngine,
             CvPredictionEngine cvPredictionEngine,
@@ -47,62 +49,66 @@ public class ShipDispatcher {
         this.shipStateStore = shipStateStore;
     }
 
-    // 分发数据
     public void dispatch(ShipStatus message) {
-        /**
-         * TODO:
-         * 目前实现的顺序分发，后续需要修改为异步分发，
-         * 使用线程池或者消息队列来处理不同引擎的消费逻辑，以提高系统的吞吐量和响应速度
-         */
-        // 对于未知角色的消息，记录日志并跳过处理
         if (message.getRole() == ShipRole.UNKNOWN) {
-            log.debug("Received AIS message with unknown ship role, MMSI: {}", message.getId());
+            log.debug("Received AIS message with unknown ship role, id: {}", message.getId());
             return;
         }
 
-        // 更新状态
         if (!shipStateStore.update(message)) {
             return;
         }
 
-        CpaTcpaResult cpaResult = null;
         RiskAssessmentResult riskResult = null;
         ShipDomainResult shipDomainResult = null;
         CvPredictionResult cvPredictionResult = null;
+        ShipStatus ownShip = shipStateStore.getOwnShip();
+        Map<String, CpaTcpaResult> cpaResults = new LinkedHashMap<>();
 
-        // 根据船舶角色分发到不同的引擎
         if (message.getRole() == ShipRole.OWN_SHIP) {
             shipDomainResult = shipDomainEngine.consume(message);
         }
 
         if (message.getRole() == ShipRole.TARGET_SHIP) {
-            ShipStatus ownShip = shipStateStore.getOwnShip();
-            if (ownShip != null) {
-                cpaResult = cpaTcpaEngine.calculate(ownShip, message);
-            }
             cvPredictionResult = cvPredictionEngine.consume(message);
         }
 
-        // 所有消息都需要风险评估并发送到WebSocket服务
+        if (ownShip != null) {
+            shipStateStore.getAll().values().forEach(ship -> {
+                if (ship == null || ship.getId() == null || ship.getId().equals(ownShip.getId())) {
+                    return;
+                }
+                cpaResults.put(ship.getId(), cpaTcpaEngine.calculate(ownShip, ship));
+            });
+        }
+
         riskResult = riskAssessmentEngine.consume(message);
-        // 目前是同步流，未来修改为异步后，需要去缓存池中获取各个引擎的计算结果，再进行组装和发送
+
+        if (ownShip == null) {
+            log.debug("Skipping RiskObject broadcast until ownShip is available, incoming id={}", message.getId());
+            return;
+        }
+
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
-                message,
-                cpaResult,
+                ownShip,
+                shipStateStore.getAll().values(),
+                cpaResults,
                 riskResult,
                 shipDomainResult,
                 cvPredictionResult
         );
-        aisWebSocketService.sendAisMessage(dto);
+        if (dto != null) {
+            aisWebSocketService.sendAisMessage(dto);
+        }
 
-        // 验证CPA/TCPA计算结果是否正确
-        if (cpaResult != null) {
+        if (message.getRole() == ShipRole.TARGET_SHIP && cpaResults.containsKey(message.getId())) {
+            CpaTcpaResult cpaResult = cpaResults.get(message.getId());
             log.info("CPA={}m, TCPA={}s, target={}",
                     String.format("%.1f", cpaResult.getCpaDistance()),
                     String.format("%.1f", cpaResult.getTcpaTime()),
                     cpaResult.getTargetMmsi());
         } else {
-            log.info("CPA/TCPA calculation skipped for MMSI: {}", message.getId());
+            log.info("CPA/TCPA calculation skipped for id: {}", message.getId());
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Mock Data Generator
  * Generates realistic RiskObject data for UI development without backend
  * 
@@ -319,7 +319,7 @@ function generateRiskObject(): RiskObject {
       trust_factor: 0.75 + Math.sin(frameCount * 0.05) * 0.2, // Oscillates 0.55 - 0.95
     },
     own_ship: {
-      mmsi: '413000000',
+      id: 'ownShip',
       position: { lat: ownShipPosition[1], lon: ownShipPosition[0] },
       dynamics: {
         sog: 12.5,
@@ -470,4 +470,5 @@ export function isTargetInTrackingRange(targetId: string): boolean {
   const dist = calculateDistance(ownShipPosition, target.position);
   return dist <= 1.5;  // 1.5 NM tracking range
 }
+
 

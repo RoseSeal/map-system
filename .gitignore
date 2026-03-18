@@ -37,3 +37,7 @@ target/
 *.tmp
 *.temp
 *.backup
+
+# python
+__pycache__/
+*.pyc

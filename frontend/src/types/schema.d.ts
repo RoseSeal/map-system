@@ -113,8 +113,8 @@ export interface SafetyDomain {
 
 /** Own ship state */
 export interface OwnShip {
-  /** MMSI identifier */
-  mmsi: string;
+  /** Canonical ship identifier */
+  id: string;
   /** WGS84 position */
   position: Position;
   /** Real-time dynamics */
