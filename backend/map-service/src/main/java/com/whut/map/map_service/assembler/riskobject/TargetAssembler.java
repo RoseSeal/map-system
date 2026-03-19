@@ -1,6 +1,7 @@
 package com.whut.map.map_service.assembler.riskobject;
 
 import com.whut.map.map_service.domain.ShipStatus;
+import com.whut.map.map_service.dto.llm.LlmExplanation;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.RiskConstants;
@@ -28,7 +29,8 @@ public class TargetAssembler {
             ShipStatus ownShip,
             Collection<ShipStatus> allShips,
             Map<String, CpaTcpaResult> cpaResults,
-            RiskAssessmentResult riskResult
+            RiskAssessmentResult riskResult,
+            Map<String, LlmExplanation> llmExplanations
     ) {
         List<Map<String, Object>> targets = new ArrayList<>();
         if (allShips == null) {
@@ -41,7 +43,8 @@ public class TargetAssembler {
             }
             CpaTcpaResult cpaResult = cpaResults == null ? null : cpaResults.get(ship.getId());
             TargetRiskAssessment assessment = riskResult == null ? null : riskResult.getTargetAssessment(ship.getId());
-            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment));
+            LlmExplanation llmExplanation = llmExplanations == null ? null : llmExplanations.get(ship.getId());
+            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment, llmExplanation));
         }
         return targets;
     }
@@ -50,7 +53,8 @@ public class TargetAssembler {
             ShipStatus ownShip,
             ShipStatus targetShip,
             CpaTcpaResult cpaResult,
-            TargetRiskAssessment assessment
+            TargetRiskAssessment assessment,
+            LlmExplanation llmExplanation
     ) {
         Map<String, Object> position = new LinkedHashMap<>();
         position.put("lon", targetShip.getLongitude());
@@ -81,8 +85,8 @@ public class TargetAssembler {
         }
 
         Map<String, Object> explanation = new LinkedHashMap<>();
-        explanation.put("source", assessment == null ? RiskConstants.EXPLANATION_SOURCE_RULE : assessment.getExplanationSource());
-        explanation.put("text", assessment == null ? RiskConstants.EXPLANATION_TEXT_AWAITING_CPA : assessment.getExplanationText());
+        explanation.put("source", resolveExplanationSource(assessment, llmExplanation));
+        explanation.put("text", resolveExplanationText(assessment, llmExplanation));
         riskAssessment.put("explanation", explanation);
 
         Map<String, Object> target = new LinkedHashMap<>();
@@ -94,7 +98,28 @@ public class TargetAssembler {
         return target;
     }
 
+    private String resolveExplanationSource(TargetRiskAssessment assessment, LlmExplanation llmExplanation) {
+        if (llmExplanation != null && llmExplanation.getSource() != null) {
+            return llmExplanation.getSource();
+        }
+        if (assessment != null && assessment.getExplanationSource() != null) {
+            return assessment.getExplanationSource();
+        }
+        return RiskConstants.EXPLANATION_SOURCE_FALLBACK;
+    }
+
+    private String resolveExplanationText(TargetRiskAssessment assessment, LlmExplanation llmExplanation) {
+        if (llmExplanation != null && llmExplanation.getText() != null && !llmExplanation.getText().isBlank()) {
+            return llmExplanation.getText();
+        }
+        if (assessment != null && assessment.getExplanationText() != null && !assessment.getExplanationText().isBlank()) {
+            return assessment.getExplanationText();
+        }
+        return RiskConstants.EXPLANATION_TEXT_AWAITING_CPA;
+    }
+
     private double toNm(double meters) {
         return meters / METERS_PER_NAUTICAL_MILE;
     }
 }
+

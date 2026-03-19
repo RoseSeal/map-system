@@ -5,6 +5,7 @@ import com.whut.map.map_service.assembler.riskobject.RiskObjectMetaAssembler;
 import com.whut.map.map_service.assembler.riskobject.TargetAssembler;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
+import com.whut.map.map_service.dto.llm.LlmExplanation;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
@@ -36,6 +37,7 @@ public class RiskObjectAssembler {
             Collection<ShipStatus> allShips,
             Map<String, CpaTcpaResult> cpaResults,
             RiskAssessmentResult riskResult,
+            Map<String, LlmExplanation> llmExplanations,
             ShipDomainResult domainResult,
             CvPredictionResult cvResult
     ) {
@@ -50,7 +52,7 @@ public class RiskObjectAssembler {
                 .timestamp(snapshotTimestamp)
                 .governance(riskObjectMetaAssembler.buildGovernance())
                 .ownShip(ownShipAssembler.assemble(ownShip, domainResult, cvResult))
-                .targets(targetAssembler.assembleTargets(ownShip, allShips, cpaResults, riskResult))
+                .targets(targetAssembler.assembleTargets(ownShip, allShips, cpaResults, riskResult, llmExplanations))
                 .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext())
                 .build();
     }

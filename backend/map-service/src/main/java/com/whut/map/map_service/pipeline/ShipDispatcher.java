@@ -1,9 +1,11 @@
 package com.whut.map.map_service.pipeline;
 
+import com.whut.map.map_service.assembler.LlmRiskContextAssembler;
 import com.whut.map.map_service.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
+import com.whut.map.map_service.dto.llm.LlmExplanation;
 import com.whut.map.map_service.engine.collision.CpaTcpaEngine;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
@@ -12,6 +14,7 @@ import com.whut.map.map_service.engine.safety.ShipDomainEngine;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.service.llm.LlmExplanationService;
 import com.whut.map.map_service.store.ShipStateStore;
 import com.whut.map.map_service.websocket.AisWebSocketService;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +33,8 @@ public class ShipDispatcher {
     private final AisWebSocketService aisWebSocketService;
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
+    private final LlmRiskContextAssembler llmRiskContextAssembler;
+    private final LlmExplanationService llmExplanationService;
     private final ShipStateStore shipStateStore;
 
     public ShipDispatcher(
@@ -39,6 +44,8 @@ public class ShipDispatcher {
             AisWebSocketService aisWebSocketService,
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
+            LlmRiskContextAssembler llmRiskContextAssembler,
+            LlmExplanationService llmExplanationService,
             ShipStateStore shipStateStore
     ) {
         this.shipDomainEngine = shipDomainEngine;
@@ -47,6 +54,8 @@ public class ShipDispatcher {
         this.aisWebSocketService = aisWebSocketService;
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
+        this.llmRiskContextAssembler = llmRiskContextAssembler;
+        this.llmExplanationService = llmExplanationService;
         this.shipStateStore = shipStateStore;
     }
 
@@ -95,11 +104,21 @@ public class ShipDispatcher {
             return;
         }
 
+        Map<String, LlmExplanation> llmExplanations = llmExplanationService.generateTargetExplanations(
+                llmRiskContextAssembler.assemble(
+                        ownShip,
+                        shipStateStore.getAll().values(),
+                        cpaResults,
+                        riskResult
+                )
+        );
+
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
                 ownShip,
                 shipStateStore.getAll().values(),
                 cpaResults,
                 riskResult,
+                llmExplanations,
                 shipDomainResult,
                 cvPredictionResult
         );
@@ -118,3 +137,4 @@ public class ShipDispatcher {
         }
     }
 }
+
