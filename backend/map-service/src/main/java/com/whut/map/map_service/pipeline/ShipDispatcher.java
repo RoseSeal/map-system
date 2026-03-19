@@ -1,15 +1,16 @@
 package com.whut.map.map_service.pipeline;
 
 import com.whut.map.map_service.assembler.RiskObjectAssembler;
-import com.whut.map.map_service.domain.*;
+import com.whut.map.map_service.domain.ShipRole;
+import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
 import com.whut.map.map_service.engine.collision.CpaTcpaEngine;
-import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
-import com.whut.map.map_service.engine.safety.ShipDomainResult;
-import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
+import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.safety.ShipDomainEngine;
+import com.whut.map.map_service.engine.safety.ShipDomainResult;
+import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.store.ShipStateStore;
 import com.whut.map.map_service.websocket.AisWebSocketService;
@@ -59,7 +60,6 @@ public class ShipDispatcher {
             return;
         }
 
-        RiskAssessmentResult riskResult = null;
         ShipDomainResult shipDomainResult = null;
         CvPredictionResult cvPredictionResult = null;
         ShipStatus ownShip = shipStateStore.getOwnShip();
@@ -82,7 +82,13 @@ public class ShipDispatcher {
             });
         }
 
-        riskResult = riskAssessmentEngine.consume(message);
+        RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
+                ownShip,
+                shipStateStore.getAll().values(),
+                cpaResults,
+                shipDomainResult,
+                cvPredictionResult
+        );
 
         if (ownShip == null) {
             log.debug("Skipping RiskObject broadcast until ownShip is available, incoming id={}", message.getId());
