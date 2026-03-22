@@ -75,6 +75,7 @@ public class LlmRiskContextAssembler {
                     .speedKn(ship.getSog())
                     .courseDeg(ship.getCog())
                     .confidence(ship.getConfidence())
+                    .ruleExplanation(assessment == null ? null : assessment.getExplanationText())
                     .build());
         }
 

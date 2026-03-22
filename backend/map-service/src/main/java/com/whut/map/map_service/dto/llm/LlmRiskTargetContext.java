@@ -16,4 +16,5 @@ public class LlmRiskTargetContext {
     private double speedKn;
     private double courseDeg;
     private Double confidence;
+    private String ruleExplanation;
 }

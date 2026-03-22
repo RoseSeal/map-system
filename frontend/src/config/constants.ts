@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Configuration Constants
  * Design tokens and system-wide configuration values
  */
@@ -16,13 +16,13 @@ export const COLORS = {
   CAUTION: '#F59E0B' as const,
   WARNING: '#F97316' as const,
   ALARM: '#EF4444' as const,
-  
+
   // Maritime
   LAND: '#374151' as const,
   WATER_DEEP: '#111827' as const,
   WATER_SHALLOW: '#1E3A8A' as const,
   GHOST: '#9CA3AF' as const,
-  
+
   // UI
   NUC_STATUS: '#7C3AED' as const, // Purple for NUC
   TRAJECTORY: '#10B981' as const,
@@ -69,13 +69,13 @@ export function getRiskColor(level: string): RGBColor {
 
 /** Default map view state */
 export const DEFAULT_VIEW_STATE = {
-  /**
   longitude: -73.835,  // Jamaica Bay center (updated)
   latitude: 40.615,    // Jamaica Bay center (updated)
-  */
 
+  /**
   longitude: 114.216525, // wuhan
   latitude: 30.578373,  // wuhan
+  */
 
   zoom: 12,
   pitch: 45, // 2.5D view
@@ -94,13 +94,23 @@ export const MAP_CONSTRAINTS = {
 // MVT Source Configuration
 // ============================================================
 
+/** Backend origins */
+export const BACKEND_CONFIG = {
+  HTTP_ORIGIN: 'http://localhost:8080',
+  WS_ORIGIN: 'ws://localhost:8080',
+  S57_API_PATH: '/api/s57',
+} as const;
+
 /** S-57 MVT tile source */
 export const MVT_CONFIG = {
+  API_BASE_URL: `${BACKEND_CONFIG.HTTP_ORIGIN}${BACKEND_CONFIG.S57_API_PATH}`,
   SOURCE_ID: 's57-source',
-  SOURCE_URL: 'http://localhost:8081/api/s57/tiles/{z}/{x}/{y}.pbf',
-  STYLE_URL: 'http://localhost:8081/api/s57/style.json',
-  LAYERS_URL: 'http://localhost:8081/api/s57/layers',
-  SAFETY_CONTOUR_URL: 'http://localhost:8081/api/s57/safety-contour',
+  TILE_BASE_URL: `${BACKEND_CONFIG.HTTP_ORIGIN}${BACKEND_CONFIG.S57_API_PATH}/tiles/{z}/{x}/{y}`,
+  SOURCE_URL: `${BACKEND_CONFIG.HTTP_ORIGIN}${BACKEND_CONFIG.S57_API_PATH}/tiles/{z}/{x}/{y}.pbf`,
+  STYLE_URL: `${BACKEND_CONFIG.HTTP_ORIGIN}${BACKEND_CONFIG.S57_API_PATH}/style.json`,
+  LAYERS_URL: `${BACKEND_CONFIG.HTTP_ORIGIN}${BACKEND_CONFIG.S57_API_PATH}/layers`,
+  SAFETY_CONTOUR_URL: `${BACKEND_CONFIG.HTTP_ORIGIN}${BACKEND_CONFIG.S57_API_PATH}/safety-contour`,
+  HEALTH_URL: `${BACKEND_CONFIG.HTTP_ORIGIN}${BACKEND_CONFIG.S57_API_PATH}/health`,
 } as const;
 
 // ============================================================
@@ -134,7 +144,7 @@ export const EXTRUSION = {
 // ============================================================
 
 export const WS_CONFIG = {
-  URL: 'ws://localhost:8080/api/v1/stream',
+  URL: `${BACKEND_CONFIG.WS_ORIGIN}/api/v1/stream`,
   HEARTBEAT_INTERVAL_MS: 30000,
   HEARTBEAT_TIMEOUT_MS: 10000,
   RECONNECT_BASE_DELAY_MS: 1000,
@@ -175,5 +185,3 @@ export const VISUALIZATION = {
   /** OZT sector radius in pixels */
   OZT_RADIUS: 100,
 } as const;
-
-

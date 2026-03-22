@@ -2,15 +2,20 @@
  * MapContainer Component
  * Main map visualization with MapLibre GL JS and Deck.gl overlay
  */
-
+/**
+ * 负责初始化地图，并把 store 里的船舶/目标/环境数据，转换成地图上的图层
+ * 1.地图容器
+ * 2.地图初始化入口
+ * 3.数据到图层的转化中心
+ */
 import { useRef, useEffect, useCallback, useState } from 'react';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+import maplibregl from 'maplibre-gl'; // 地图库
+import 'maplibre-gl/dist/maplibre-gl.css'; // 地图样式
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { Layer, Position } from '@deck.gl/core';
 import { IconLayer, PathLayer, PolygonLayer, LineLayer } from '@deck.gl/layers';
 
-import { useRiskStore, selectOwnShip, selectTargets, selectAllTargets, selectEnvironment } from '../../store';
+import { useRiskStore, selectOwnShip, selectTargets, selectAllTargets, selectEnvironment } from '../../store'; // 全局状态
 import { 
   DEFAULT_VIEW_STATE, 
   MAP_CONSTRAINTS, 
@@ -19,14 +24,14 @@ import {
   COLORS_RGBA,
   getRiskColor,
   VISUALIZATION,
-} from '../../config';
+} from '../../config'; // 配置
 import { s57Sources, s57Layers, updateWaterDepthStyle } from '../../config/layerStyles';
 import { 
   generateEllipsePolygon, 
   generateCurvedHeadline, 
   generateLinearTrajectory,
   generateOZTSector,
-} from '../../utils';
+} from '../../utils'; // 工具函数
 import { WAYPOINTS, getRemainingWaypoints, TARGET_WAYPOINTS, getTargetRemainingWaypoints, isTargetInTrackingRange } from '../../services/mockDataGenerator';
 import type { LonLat, Target, OwnShip, RGBAColor } from '../../types/schema';
 
@@ -71,10 +76,11 @@ const TARGET_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 `)}`;
 
 export function MapContainer() {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<maplibregl.Map | null>(null);
-  const deckOverlay = useRef<MapboxOverlay | null>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  // 运行时状态，非业务数据
+  const mapContainer = useRef<HTMLDivElement>(null); // 页面上的div容器，用于挂载地图实例
+  const map = useRef<maplibregl.Map | null>(null); // 地图实例，生命周期由组件控制
+  const deckOverlay = useRef<MapboxOverlay | null>(null); // Deck.gl覆盖层实例，用于渲染船舶/目标图层
+  const [mapLoaded, setMapLoaded] = useState(false); // 地图加载状态，控制何时添加图层和更新样式
   
   // Subscribe to store
   const ownShip = useRiskStore(selectOwnShip);
@@ -83,6 +89,7 @@ export function MapContainer() {
   const environment = useRiskStore(selectEnvironment);
   
   // Initialize map
+  // MapContainer 的启动阶段
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
     
@@ -110,9 +117,11 @@ export function MapContainer() {
     });
     
     // Add navigation controls
+    // 负责底图、视角、底图容器、瓦片图层
     map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
     
     // Initialize Deck.gl overlay
+    // 负责船图标、轨迹线、风险区域、多边形等可视化图层
     deckOverlay.current = new MapboxOverlay({
       interleaved: true,
       layers: [],
@@ -150,6 +159,7 @@ export function MapContainer() {
     
 
   // Build Deck.gl layers
+  // 将store里的业务数据翻译为Deck.gl图层数组
   const buildDeckLayers = useCallback(() => {
     const layers: Layer[] = [];
     
@@ -158,7 +168,10 @@ export function MapContainer() {
     const ownPos: LonLat = [ownShip.position.lon, ownShip.position.lat];
     
     // --- LAYER GROUP 1: POLYGONS (Bottom) ---
-
+    /**
+     * 1. Safety Domain Layer
+     * 2. OZT 风险扇区（现在注释掉了）
+     */
     // 1. Safety Domain Layer (Z=0, Sea Level)
     if (ownShip.safety_domain.shape_type === 'ellipse' && ownShip.safety_domain.dimensions) {
       const domainPolygon = generateEllipsePolygon(
@@ -187,6 +200,7 @@ export function MapContainer() {
     }
 
     // 2. OZT Sectors (Risk Polygons) - REMOVED per user request
+    // OZT扇区（风险区域） - 根据用户反馈暂时移除，后续可以考虑作为可选图层
     // Rendered before icons/lines so they appear underneath
     /* 
     if (targets.length > 0) {
@@ -208,7 +222,11 @@ export function MapContainer() {
     */
 
     // --- LAYER GROUP 2: TRAJECTORIES (Middle) ---
-
+    /**
+     * 3. 本船轨迹
+     * 4. 目标轨迹（只显示跟踪范围内的目标，且只显示未来2个航路点，且有淡出效果）
+     * 5. CPA线（只显示ALARM级别目标的CPA线）
+     */
     // 3. Own Ship Trajectory - HARDCODED WAYPOINT ROUTE with fade effect
     // Shows planned route from current position to next 3 waypoints
     const upcomingWaypoints: LonLat[] = [];
@@ -339,7 +357,12 @@ export function MapContainer() {
     }
 
     // --- LAYER GROUP 3: ICONS (Top) ---
-
+    /**
+     * 6. 本船图标（根据平台状态变色）
+     * 7. 目标图标（根据风险等级变色）
+     * 8. 其他可以考虑的图层：特殊目标标记（如AIS SART）、环境要素图标（如风向箭头）等
+    */
+  
     // 6. Own Ship Icon Layer (Z=50, Top Layer)
     const ownShipColor = getOwnShipColor(ownShip);
     layers.push(
@@ -402,6 +425,7 @@ export function MapContainer() {
   }, [buildDeckLayers]);
   
   // Center map on own ship position
+  // 视角跟随本船位置
   useEffect(() => {
     if (!map.current || !ownShip) return;
     
@@ -420,6 +444,7 @@ export function MapContainer() {
     }
   }, [ownShip?.position.lon, ownShip?.position.lat]);
   
+  // 最后返回一个div容器，地图实例会挂载在这个div上
   return (
     <div 
       ref={mapContainer} 
@@ -488,4 +513,3 @@ function buildOZTData(targets: Target[], ownPos: LonLat): { polygon: LonLat[]; i
       id: t.id,
     }));
 }
-

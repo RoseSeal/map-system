@@ -33,27 +33,31 @@ public class MqttConfig {
      */
     @PostConstruct
     public void init() throws Exception {
-        MemoryPersistence memoryPersistence = new MemoryPersistence();
-        MqttClient  client = new MqttClient (
-                mqttProperties.getBroker(),
-                mqttProperties.getClientId(),
-                memoryPersistence
-        );
-        MqttConnectOptions options = new MqttConnectOptions();
-        if (mqttProperties.getUsername() != null && !mqttProperties.getUsername().isEmpty()) {
-            options.setUserName(mqttProperties.getUsername());
-        }
-        if (mqttProperties.getPassword() != null && !mqttProperties.getPassword().isEmpty()) {
-            options.setPassword(mqttProperties.getPassword().toCharArray());
-        }
-        options.setAutomaticReconnect(true);
-        options.setKeepAliveInterval(60);
-        options.setCleanSession(true);
+        try {
+            MemoryPersistence memoryPersistence = new MemoryPersistence();
+            MqttClient  client = new MqttClient (
+                    mqttProperties.getBroker(),
+                    mqttProperties.getClientId(),
+                    memoryPersistence
+            );
+            MqttConnectOptions options = new MqttConnectOptions();
+            if (mqttProperties.getUsername() != null && !mqttProperties.getUsername().isEmpty()) {
+                options.setUserName(mqttProperties.getUsername());
+            }
+            if (mqttProperties.getPassword() != null && !mqttProperties.getPassword().isEmpty()) {
+                options.setPassword(mqttProperties.getPassword().toCharArray());
+            }
+            options.setAutomaticReconnect(true);
+            options.setKeepAliveInterval(60);
+            options.setCleanSession(true);
 
-        client.setCallback(listener);
-        client.connect(options);
-        client.subscribe(mqttProperties.getTopic());
+            client.setCallback(listener);
+            client.connect(options);
+            client.subscribe(mqttProperties.getTopic());
 
-        log.info("MQTT client connected to broker: {}, subscribed to topic: {}", mqttProperties.getBroker(), mqttProperties.getTopic());
+            log.info("MQTT client connected to broker: {}, subscribed to topic: {}", mqttProperties.getBroker(), mqttProperties.getTopic());
+        } catch (MqttException e) {
+            log.info("Failed to connect MQTT client to broker: {}, error: {}", mqttProperties.getBroker(), e.getMessage());
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * S-57 Chart Data Service
  * API client for S-57 ENC backend services
  */
@@ -57,10 +57,10 @@ export async function fetchStyleConfig(): Promise<any> {
  */
 export async function getSafetyContour(depth?: number): Promise<SafetyContour | null> {
   try {
-    const url = depth 
-      ? `?depth=`
+    const url = depth !== undefined
+      ? `${MVT_CONFIG.SAFETY_CONTOUR_URL}?depth=${depth}`
       : MVT_CONFIG.SAFETY_CONTOUR_URL;
-    
+
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error('Failed to fetch safety contour: ' + response.statusText);
@@ -77,7 +77,7 @@ export async function getSafetyContour(depth?: number): Promise<SafetyContour | 
  */
 export async function checkBackendHealth(): Promise<boolean> {
   try {
-    const response = await fetch('http://localhost:8081/api/s57/health');
+    const response = await fetch(MVT_CONFIG.HEALTH_URL);
     return response.ok;
   } catch (error) {
     console.error('Backend health check failed:', error);

@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Component
-public class AisWebSocketService {
+public class WebSocketService {
 
     private final StreamWebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper;
@@ -19,7 +19,7 @@ public class AisWebSocketService {
     // 使用当前毫秒级时间戳作为初始序列号，保证即使服务重启，序列号也绝对单调递增 (Monotonically Increasing)
     private final AtomicLong sequenceGenerator = new AtomicLong(System.currentTimeMillis());
 
-    public AisWebSocketService(StreamWebSocketHandler webSocketHandler, ObjectMapper objectMapper) {
+    public WebSocketService(StreamWebSocketHandler webSocketHandler, ObjectMapper objectMapper) {
         this.webSocketHandler = webSocketHandler;
         this.objectMapper = objectMapper;
     }

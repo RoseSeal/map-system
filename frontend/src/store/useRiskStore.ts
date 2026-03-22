@@ -3,16 +3,22 @@
  * Central state management for RiskObject data
  * Uses Zustand for high-frequency socket updates
  */
+/**
+ * useRiskStore 是页面级状态中心
+ * 负责承接 WebSocket 输入的风险业务数据，同时维护连接状态和前端交互态
+ * 并将部分核心业务字段扁平化/派生化，方便组件按需订阅和渲染。`
+ */
 
-import { create } from 'zustand';
+// 目前同时存储服务端业务数据与前端UI数据，后续可以考虑拆分成两个store：一个专注业务数据，一个专注UI状态
+import { create } from 'zustand'; // Zustand 是一个轻量的全局状态管理工具，用于管理和更新应用状态，特别适合频繁更新的场景，如WebSocket数据流
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { RiskObject, OwnShip, Target, EnvironmentContext, Governance } from '../types/schema';
 import { PERFORMANCE } from '../config/constants';
 
 interface RiskState {
   // Core data
-  riskObject: RiskObject | null;
-  lastUpdateTime: number;
+  riskObject: RiskObject | null; // 完整的RiskObject数据，直接从WebSocket接收并存储
+  lastUpdateTime: number; // 上次更新的时间戳，用于计算数据新鲜度
   
   // Derived state for quick access
   ownShip: OwnShip | null;
@@ -30,12 +36,14 @@ interface RiskState {
   selectedTargetId: string | null;
   
   // Actions
-  setRiskObject: (data: RiskObject) => void;
-  setConnectionStatus: (connected: boolean, error?: string | null) => void;
-  selectTarget: (targetId: string | null) => void;
-  reset: () => void;
+  // 修改这份状态仓库的标准入口
+  setRiskObject: (data: RiskObject) => void; // 写入新的风险数据
+  setConnectionStatus: (connected: boolean, error?: string | null) => void; // 写连接状态
+  selectTarget: (targetId: string | null) => void; // 记录当前选中的目标
+  reset: () => void; // 恢复初始状态
 }
 
+// 默认值，确保状态结构完整，避免undefined错误
 const initialState = {
   riskObject: null,
   lastUpdateTime: 0,
@@ -50,10 +58,18 @@ const initialState = {
   selectedTargetId: null,
 };
 
+// 创建store实例
+// 使用subscribeWithSelector中间件以支持高效的选择性订阅，避免不必要的组件重渲染
 export const useRiskStore = create<RiskState>()(
   subscribeWithSelector((set) => ({
     ...initialState,
 
+    /*
+    * 把完整 data 存进 riskObject
+    * 记录更新时间
+    * 把里面常用字段拆出来
+    * 计算一个派生状态 isLowTrust
+    */
     setRiskObject: (data: RiskObject) => {
       set({
         riskObject: data,
@@ -67,6 +83,7 @@ export const useRiskStore = create<RiskState>()(
       });
     },
 
+    // 连接状态也统一放在store里，方便全局访问和UI更新
     setConnectionStatus: (connected: boolean, error: string | null = null) => {
       set({
         isConnected: connected,
@@ -74,10 +91,12 @@ export const useRiskStore = create<RiskState>()(
       });
     },
 
+    // 记录当前选中的目标ID，UI组件可以订阅这个字段以显示目标详情
     selectTarget: (targetId: string | null) => {
       set({ selectedTargetId: targetId });
     },
 
+    // 重置状态到初始值，方便调试或重新连接时清空旧数据
     reset: () => {
       set(initialState);
     },
@@ -85,6 +104,7 @@ export const useRiskStore = create<RiskState>()(
 );
 
 // Selectors for optimized subscriptions
+// 快捷读取函数
 export const selectOwnShip = (state: RiskState) => state.ownShip;
 export const selectTargets = (state: RiskState) => state.targets;
 export const selectAllTargets = (state: RiskState) => state.allTargets;
