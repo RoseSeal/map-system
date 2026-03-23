@@ -7,17 +7,21 @@ import { useEffect } from 'react';
 import { MapContainer, StatusPanel, TargetsPanel, CompassOverlay } from './components';
 import { socketService, startMockDataGenerator, stopMockDataGenerator } from './services';
 
+// 主入口组件，负责整体布局和WebSocket连接管理
 function App() {
   // start websocket connection
+  // 组件挂载（打开页面）后建立 WebSocket 连接，用于接收实时目标/风险数据
   useEffect(() => {
     
     socketService.connect();
     
     return () => {
+      // 组件卸载（关闭页面）时断开 WebSocket 连接，避免重复连接或内存泄漏
       socketService.disconnect();
     };
   }, []);
   
+  // UI总布局：全屏地图 + 四个角的UI覆盖层（状态面板、指南针、目标列表、图例）
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-gray-900">
       {/* Map (full screen) */}
@@ -49,6 +53,7 @@ function App() {
   );
 }
 
+// 静态无业务UI组件，显示风险等级图例
 function Legend() {
   const items = [
     { color: '#10B981', label: 'SAFE' },
