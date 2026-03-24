@@ -15,6 +15,7 @@ import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.service.llm.LlmExplanationService;
+import com.whut.map.map_service.service.llm.LlmTriggerService;
 import com.whut.map.map_service.store.ShipStateStore;
 import com.whut.map.map_service.websocket.WebSocketService;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +35,7 @@ public class ShipDispatcher {
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
     private final LlmRiskContextAssembler llmRiskContextAssembler;
-    private final LlmExplanationService llmExplanationService;
+    private final LlmTriggerService llmTriggerService;
     private final ShipStateStore shipStateStore;
 
     public ShipDispatcher(
@@ -45,8 +46,9 @@ public class ShipDispatcher {
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
             LlmRiskContextAssembler llmRiskContextAssembler,
-            LlmExplanationService llmExplanationService,
+            LlmTriggerService llmTriggerService,
             ShipStateStore shipStateStore
+
     ) {
         this.shipDomainEngine = shipDomainEngine;
         this.cvPredictionEngine = cvPredictionEngine;
@@ -55,7 +57,7 @@ public class ShipDispatcher {
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
         this.llmRiskContextAssembler = llmRiskContextAssembler;
-        this.llmExplanationService = llmExplanationService;
+        this.llmTriggerService = llmTriggerService;
         this.shipStateStore = shipStateStore;
     }
 
@@ -109,7 +111,7 @@ public class ShipDispatcher {
         );
 
         // 8) Build LLM explanations and assemble the websocket payload.
-        Map<String, LlmExplanation> llmExplanations = llmExplanationService.generateTargetExplanations(
+        Map<String, LlmExplanation> llmExplanations = llmTriggerService.triggerExplanationsIfNeeded(
                 llmRiskContextAssembler.assemble(
                         ownShip,
                         shipStateStore.getAll().values(),

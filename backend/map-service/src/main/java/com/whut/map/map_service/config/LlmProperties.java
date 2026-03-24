@@ -9,8 +9,10 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "llm")
 public class LlmProperties {
     private boolean enabled = false;
-    private String model = "TODO_MODEL";
+    private String model;
     private long timeoutMs = 1500L;
     private int maxTargetsPerCall = 3;
     private boolean fallbackTemplateEnabled = true;
+    private String apiKey;
+    private int cooldownSeconds = 5;
 }

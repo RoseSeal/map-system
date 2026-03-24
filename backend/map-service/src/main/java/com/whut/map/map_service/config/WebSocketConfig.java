@@ -17,7 +17,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(streamWebSocketHandler, "/api/v1/stream")
-                // // 将 setAllowedOrigins("*") 改为 setAllowedOriginPatterns("*")
+                // 将 setAllowedOrigins("*") 改为 setAllowedOriginPatterns("*")
                 .setAllowedOriginPatterns("*"); // 开发阶段允许跨域
     }
 }

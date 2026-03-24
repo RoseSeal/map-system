@@ -32,6 +32,7 @@ venv/
 
 # Java / Maven
 target/
+backend/map-service/src/main/resources/application-local.properties
 
 # Temp / backup
 *.tmp
