@@ -1,14 +1,11 @@
 import argparse
-from email import parser
 import json
 import math
-import signal
-import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Tuple
 
-import paho.mqtt.client as mqtt
+from mqtt_publisher_base import BaseMqttPublisher, MqttConfig
 
 TOPIC = "usv/AisMessage"
 OWN_MMSI = "123456789"
@@ -69,6 +66,29 @@ class VesselRoute:
             self.segment_index = 0 if self.loop else len(self.waypoints) - 2
 
 
+class JamaicaBayAisPublisher(BaseMqttPublisher):
+    def __init__(self, config: MqttConfig, routes: List[VesselRoute], interval: float, speed_scale: float) -> None:
+        super().__init__(config)
+        self.routes = routes
+        self.interval = interval
+        self.speed_scale = speed_scale
+
+    def before_loop(self) -> None:
+        print(f"Publishing Jamaica Bay routes to {self.config.topic} every {self.interval:.1f}s")
+        print("Routes: own ship + patrol targets in Jamaica Bay demo area")
+
+    def publish_tick(self) -> None:
+        msg_time = datetime.now()
+        for route in self.routes:
+            original_sog = route.sog_kn
+            route.sog_kn *= self.speed_scale
+            (lon, lat), heading = route.step(self.interval)
+            route.sog_kn = original_sog
+            payload = to_payload(msg_time, route, lon, lat, heading)
+            self.publish(payload)
+            print(payload)
+
+
 def haversine_m(a: LonLat, b: LonLat) -> float:
     lon1, lat1 = map(math.radians, a)
     lon2, lat2 = map(math.radians, b)
@@ -101,17 +121,7 @@ def format_msg_time(msg_time: datetime) -> str:
 
 
 def build_routes() -> List[VesselRoute]:
-    """
-    Jamaica Bay, New York, USA
-    Lat: 40.57N ~ 40.64N  |  Lon: 73.78W ~ 73.92W
-
-    OWN_SHIP  : eastbound through the main channel (Rockaway Inlet -> JFK waterfront)
-    Target 1  : westbound, head-on risk with own ship
-    Target 2  : northbound cross-traffic from Rockaway
-    Target 3  : southbound from JFK cargo pier
-    """
     return [
-        # OWN SHIP
         VesselRoute(
             mmsi=OWN_MMSI,
             sog_kn=10.0,
@@ -126,8 +136,6 @@ def build_routes() -> List[VesselRoute]:
                 (-73.837910, 40.587080),
             ],
         ),
-
-        # TARGET 1 (T-101): Central patrol
         VesselRoute(
             mmsi="366000002",
             sog_kn=8.5,
@@ -138,7 +146,6 @@ def build_routes() -> List[VesselRoute]:
                 (-73.88222, 40.60926),
             ],
         ),
-        # TARGET 2 (T-102): Eastern patrol
         VesselRoute(
             mmsi="366000003",
             sog_kn=6.0,
@@ -149,7 +156,6 @@ def build_routes() -> List[VesselRoute]:
                 (-73.86031, 40.62345),
             ],
         ),
-        # TARGET 3 (T-103): Northeastern patrol
         VesselRoute(
             mmsi="366000004",
             sog_kn=5.0,
@@ -161,7 +167,6 @@ def build_routes() -> List[VesselRoute]:
                 (-73.83943, 40.64130),
             ],
         ),
-        # TARGET 4 (T-104): Far eastern patrol
         VesselRoute(
             mmsi="366000005",
             sog_kn=6.5,
@@ -173,7 +178,6 @@ def build_routes() -> List[VesselRoute]:
                 (-73.80799, 40.61088),
             ],
         ),
-        # TARGET 5 (T-105): Southern patrol
         VesselRoute(
             mmsi="366000006",
             sog_kn=5.5,
@@ -200,18 +204,6 @@ def to_payload(msg_time: datetime, route: VesselRoute, lon: float, lat: float, h
     return json.dumps(data, ensure_ascii=False)
 
 
-def publish_tick(client, routes, topic, delta_seconds, speed_scale=1.0):
-    msg_time = datetime.now()
-    for route in routes:
-        original_sog = route.sog_kn
-        route.sog_kn *= speed_scale
-        (lon, lat), heading = route.step(delta_seconds)
-        route.sog_kn = original_sog          # 还原，不污染状态
-        payload = to_payload(msg_time, route, lon, lat, heading)
-        client.publish(topic, payload)
-        print(payload)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Publish Jamaica Bay AIS demo routes to MQTT")
     parser.add_argument("--host", default="localhost", help="MQTT broker host")
@@ -220,37 +212,20 @@ def main() -> None:
     parser.add_argument("--interval", type=float, default=1.0, help="Publish interval in seconds")
     parser.add_argument("--ticks", type=int, default=0, help="Number of publish ticks, 0 means run forever")
     parser.add_argument("--speed-scale", type=float, default=1.0, help="Speed multiplier for demo")
+    parser.add_argument("--username", default=None, help="MQTT username")
+    parser.add_argument("--password", default=None, help="MQTT password")
     args = parser.parse_args()
 
-    client = mqtt.Client()
-    client.connect(args.host, args.port, 60)
-    client.loop_start()
-
-    routes = build_routes()
-    running = True
-
-    def stop_handler(signum, frame):
-        nonlocal running
-        running = False
-
-    signal.signal(signal.SIGINT, stop_handler)
-    signal.signal(signal.SIGTERM, stop_handler)
-
-    tick = 0
-    print(f"Publishing Jamaica Bay routes to {args.topic} every {args.interval:.1f}s")
-    print("Routes: own ship (eastbound) + 3 targets -- head-on / crossing / southbound scenarios")
-
-    try:
-        while running and (args.ticks == 0 or tick < args.ticks):
-            publish_tick(client, routes, args.topic, args.interval, args.speed_scale)
-            tick += 1
-            time.sleep(args.interval)
-    finally:
-        client.loop_stop()
-        client.disconnect()
-        print("Simulator stopped.")
+    config = MqttConfig(
+        host=args.host,
+        port=args.port,
+        topic=args.topic,
+        username=args.username,
+        password=args.password,
+    )
+    publisher = JamaicaBayAisPublisher(config, build_routes(), args.interval, args.speed_scale)
+    publisher.run(interval=args.interval, ticks=args.ticks)
 
 
-        
 if __name__ == "__main__":
     main()

@@ -6,10 +6,12 @@ import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.whut.map.map_service.config.LlmProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "llm.provider", havingValue = "gemini")
 public class GeminiLlmClient implements LlmClient {
 
     private final Client geminiClient;
@@ -18,10 +20,20 @@ public class GeminiLlmClient implements LlmClient {
     @Override
     public String generateText(String prompt) {
         GenerateContentResponse response = geminiClient.models.generateContent(
-                llmProperties.getModel(),
+                llmProperties.getGemini().getModel(),
                 Content.fromParts(Part.fromText(prompt)),
                 null
         );
-        return response.text();
+
+        if(response == null) {
+            throw new IllegalStateException("Gemini response is null");
+        }
+
+        String text = response.text();
+        if(text == null || text.isBlank()) {
+            throw new IllegalStateException("Gemini response contains no text");
+        }
+
+        return text;
     }
 }

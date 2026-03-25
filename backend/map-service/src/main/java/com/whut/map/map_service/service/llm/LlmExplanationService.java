@@ -8,13 +8,17 @@ import com.whut.map.map_service.dto.llm.LlmRiskTargetContext;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -24,6 +28,7 @@ import java.util.concurrent.TimeoutException;
 public class LlmExplanationService {
     private final LlmProperties llmProperties;
     private final LlmClient llmClient;
+    private final ExecutorService llmExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public Map<String, LlmExplanation> generateTargetExplanations(
             LlmRiskOwnShipContext ownShip,
@@ -36,21 +41,21 @@ public class LlmExplanationService {
             return Collections.emptyMap();
         }
 
-        log.info("LLM v1 scaffold triggered for ownShip={}, riskyTargets={}, model={}",
-                ownShip == null ? null : ownShip.getId(),
+        log.info("LLM v1 scaffold triggered for ownShip={}, riskyTargets={}, provider={}",
+                ownShip.getId(),
                 triggeredTargets.size(),
-                llmProperties.getModel());
+                llmProperties.getProvider());
 
         Map<String, LlmExplanation> explanations = new LinkedHashMap<>();
 
         for(LlmRiskTargetContext target : triggeredTargets) {
             String prompt = buildPrompt(ownShip, target);
             log.debug("Built LLM prompt for target {}: {}", target.getTargetId(), prompt);
+            Future<String> future = llmExecutor.submit(() -> llmClient.generateText(prompt));
             try {
-                // 使用CompletableFuture实现超时降级
-                String text = CompletableFuture
-                        .supplyAsync(() -> llmClient.generateText(prompt))
-                        .get(llmProperties.getTimeoutMs(), TimeUnit.MILLISECONDS);
+                String text = future.get(llmProperties.getTimeoutMs(), TimeUnit.MILLISECONDS);
+
+                log.debug("LLM response for target {}: {}", target.getTargetId(), text);
 
                 explanations.put(target.getTargetId(), LlmExplanation.builder()
                         .source(RiskConstants.EXPLANATION_SOURCE_LLM)
@@ -58,7 +63,8 @@ public class LlmExplanationService {
                         .build()
                 );
             } catch (TimeoutException e) {
-                log.warn("LLM client timeout for target {} after {} ms. Falling back to template explanation.",
+                future.cancel(true);
+                log.warn("LLM call timed out for target {} after {} ms. Check DNS/proxy/network reachability.",
                         target.getTargetId(), llmProperties.getTimeoutMs());
                 if (llmProperties.isFallbackTemplateEnabled()) {
                     explanations.put(target.getTargetId(), LlmExplanation.builder()
@@ -67,7 +73,8 @@ public class LlmExplanationService {
                             .build());
                 }
             } catch (Exception e) {
-                log.warn("LLM client failed for target {}, error: {}. Falling back to template explanation.", target.getTargetId(), e.getMessage());
+                log.warn("LLM client failed for target {}, type={}, error={}. Falling back to template explanation.",
+                        target.getTargetId(), e.getClass().getSimpleName(), e.getMessage());
                 if (llmProperties.isFallbackTemplateEnabled()) {
                     explanations.put(target.getTargetId(), LlmExplanation.builder()
                             .source(RiskConstants.EXPLANATION_SOURCE_FALLBACK)
@@ -127,5 +134,10 @@ public class LlmExplanationService {
                 target.getTcpaSec(),
                 confidenceSuffix
         );
+    }
+
+    @PreDestroy
+    public void shutdownExecutor() {
+        llmExecutor.shutdownNow();
     }
 }

@@ -9,10 +9,18 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "llm")
 public class LlmProperties {
     private boolean enabled = false;
-    private String model;
-    private long timeoutMs = 1500L;
-    private int maxTargetsPerCall = 3;
-    private boolean fallbackTemplateEnabled = true;
-    private String apiKey;
+    private String provider;
+    private long timeoutMs = 5000L;
+    private int maxTargetsPerCall = 1;
     private int cooldownSeconds = 5;
+    private boolean fallbackTemplateEnabled = true;
+
+    private ProviderProperties gemini = new ProviderProperties();
+    private ProviderProperties zhipu = new ProviderProperties();
+
+    @Data
+    public static class ProviderProperties {
+        private String apiKey;
+        private String model;
+    }
 }

@@ -104,6 +104,13 @@
 			<artifactId>google-genai</artifactId>
 			<version>1.0.0</version>
 		</dependency>
+
+		<!-- Zai Java SDK -->
+		<dependency>
+			<groupId>ai.z.openapi</groupId>
+			<artifactId>zai-sdk</artifactId>
+			<version>0.3.3</version>
+		</dependency>
 	</dependencies>
 
 	<build>

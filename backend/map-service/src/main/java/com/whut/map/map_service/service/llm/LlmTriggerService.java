@@ -2,6 +2,7 @@ package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.dto.llm.LlmExplanation;
 import com.whut.map.map_service.dto.llm.LlmRiskContext;
+import com.whut.map.map_service.dto.llm.LlmRiskOwnShipContext;
 import com.whut.map.map_service.dto.llm.LlmRiskTargetContext;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.config.LlmProperties;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,16 +31,21 @@ public class LlmTriggerService {
         // 如果LLM功能未启用，直接返回空解释
         if (!llmProperties.isEnabled()) {
             log.debug("Skipping LLM explanation because llm.enabled=false");
-            return null;
+            return Collections.emptyMap();
+        }
+
+        // 如果没有本船，返回空解释
+        LlmRiskOwnShipContext ownShip = context.getOwnShip();
+        if(ownShip == null) {
+            log.debug("Skipping LLM explanation because ownShip is null");
+            return Collections.emptyMap();
         }
 
         // 如果没有有效的目标上下文，直接返回空解释
         if (context == null || context.getTargets() == null || context.getTargets().isEmpty()) {
             log.debug("Skipping LLM explanation because no target context is available");
-            return null;
+            return Collections.emptyMap();
         }
-
-
 
         // 过滤得到最终目标船只列表：满足冷却时间要求、风险等级可解释、且在每次调用的最大目标数量限制内
         List<LlmRiskTargetContext> triggeredTargets = context.getTargets().stream()
@@ -46,7 +53,10 @@ public class LlmTriggerService {
                 .filter(this::tryAcquireTrigger)
                 .limit(llmProperties.getMaxTargetsPerCall())
                 .toList();
-        return llmExplanationService.generateTargetExplanations(context.getOwnShip() , triggeredTargets);
+        return llmExplanationService.generateTargetExplanations(
+                ownShip,
+                triggeredTargets
+        );
     }
 
     private boolean tryAcquireTrigger(LlmRiskTargetContext target) {
