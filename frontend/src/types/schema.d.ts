@@ -160,6 +160,14 @@ export interface OZTSector {
   is_active?: boolean;
 }
 
+/** Human-readable explanation for target risk */
+export interface RiskExplanation {
+  /** Explanation source, e.g. llm/rule/hybrid */
+  source?: string;
+  /** Explanation text rendered in UI */
+  text?: string;
+}
+
 /** Risk assessment for a target */
 export interface RiskAssessment {
   /** Risk level - determines color (green/yellow/orange/red) */
@@ -170,6 +178,8 @@ export interface RiskAssessment {
   graphic_cpa_line?: GraphicCPALine;
   /** OZT sector visualization */
   ozt_sector?: OZTSector;
+  /** Human-readable explanation */
+  explanation?: RiskExplanation;
 }
 
 /** Target vessel vector */

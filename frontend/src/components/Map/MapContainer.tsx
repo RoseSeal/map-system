@@ -1,46 +1,45 @@
-/**
+﻿/**
  * MapContainer Component
  * Main map visualization with MapLibre GL JS and Deck.gl overlay
  */
-/**
- * 负责初始化地图，并把 store 里的船舶/目标/环境数据，转换成地图上的图层
- * 1.地图容器
- * 2.地图初始化入口
- * 3.数据到图层的转化中心
- */
 import { useRef, useEffect, useCallback, useState } from 'react';
-import maplibregl from 'maplibre-gl'; // 地图库
-import 'maplibre-gl/dist/maplibre-gl.css'; // 地图样式
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { Layer, Position } from '@deck.gl/core';
-import { IconLayer, PathLayer, PolygonLayer, LineLayer } from '@deck.gl/layers';
+import { IconLayer, PathLayer, PolygonLayer, LineLayer, ScatterplotLayer } from '@deck.gl/layers';
 
-import { useRiskStore, selectOwnShip, selectTargets, selectAllTargets, selectEnvironment } from '../../store'; // 全局状态
-import { 
-  DEFAULT_VIEW_STATE, 
-  MAP_CONSTRAINTS, 
-  MVT_CONFIG,
+import {
+  useRiskStore,
+  selectOwnShip,
+  selectTargets,
+  selectAllTargets,
+  selectEnvironment,
+  selectLlmExplainedHighRiskTargets,
+} from '../../store';
+import {
+  DEFAULT_VIEW_STATE,
+  MAP_CONSTRAINTS,
   COLORS_RGB,
   COLORS_RGBA,
   getRiskColor,
   VISUALIZATION,
-} from '../../config'; // 配置
+} from '../../config';
 import { s57Sources, s57Layers, updateWaterDepthStyle } from '../../config/layerStyles';
-import { 
-  generateEllipsePolygon, 
-  generateCurvedHeadline, 
+import {
+  generateEllipsePolygon,
+  generateCurvedHeadline,
   generateLinearTrajectory,
-  generateOZTSector,
-} from '../../utils'; // 工具函数
-import { WAYPOINTS, getRemainingWaypoints, TARGET_WAYPOINTS, getTargetRemainingWaypoints, isTargetInTrackingRange } from '../../services/mockDataGenerator';
-import type { LonLat, Target, OwnShip, RGBAColor } from '../../types/schema';
+} from '../../utils';
+import { getTargetRemainingWaypoints, isTargetInTrackingRange } from '../../services/mockDataGenerator';
+import type { LonLat, Target, OwnShip, RGBAColor, RiskLevel } from '../../types/schema';
 
-type PathDatum = {
-  path: Position[];
-  color?: RGBAColor;
+type ExplanationMarkerDatum = {
+  id: string;
+  position: LonLat;
+  riskLevel: RiskLevel;
 };
 
-// Enhanced Vessel icon SVG with 3D effect (gradient + shadow)
 const VESSEL_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
   <defs>
@@ -58,7 +57,6 @@ const VESSEL_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 </svg>
 `)}`;
 
-// Enhanced Target icon SVG with 3D effect
 const TARGET_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
   <defs>
@@ -75,24 +73,38 @@ const TARGET_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 </svg>
 `)}`;
 
+const EXPLANATION_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <defs>
+    <filter id="bubbleShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#020617" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <g filter="url(#bubbleShadow)">
+    <path d="M20 4C11.2 4 4 10.7 4 19c0 3.3 1.2 6.4 3.4 9L6 35l7.5-3c2 0.7 4.2 1 6.5 1 8.8 0 16-6.7 16-15S28.8 4 20 4z" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+    <circle cx="20" cy="14" r="2.2" fill="#38bdf8"/>
+    <rect x="18.6" y="18" width="2.8" height="8.5" rx="1.4" fill="#e0f2fe"/>
+  </g>
+</svg>
+`)}`;
+
 export function MapContainer() {
-  // 运行时状态，非业务数据
-  const mapContainer = useRef<HTMLDivElement>(null); // 页面上的div容器，用于挂载地图实例
-  const map = useRef<maplibregl.Map | null>(null); // 地图实例，生命周期由组件控制
-  const deckOverlay = useRef<MapboxOverlay | null>(null); // Deck.gl覆盖层实例，用于渲染船舶/目标图层
-  const [mapLoaded, setMapLoaded] = useState(false); // 地图加载状态，控制何时添加图层和更新样式
-  
-  // Subscribe to store
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<maplibregl.Map | null>(null);
+  const deckOverlay = useRef<MapboxOverlay | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+
   const ownShip = useRiskStore(selectOwnShip);
-  const targets = useRiskStore(selectTargets);        // For tracking panel (nearby)
-  const allTargets = useRiskStore(selectAllTargets);  // For map rendering (all ships)
+  const targets = useRiskStore(selectTargets);
+  const allTargets = useRiskStore(selectAllTargets);
   const environment = useRiskStore(selectEnvironment);
-  
-  // Initialize map
-  // MapContainer 的启动阶段
+  const llmExplainedHighRiskTargets = useRiskStore(selectLlmExplainedHighRiskTargets);
+  const selectedTargetId = useRiskStore((state) => state.selectedTargetId);
+  const selectTarget = useRiskStore((state) => state.selectTarget);
+
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
-    
+
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: {
@@ -115,71 +127,54 @@ export function MapContainer() {
       minPitch: MAP_CONSTRAINTS.minPitch,
       maxPitch: MAP_CONSTRAINTS.maxPitch,
     });
-    
-    // Add navigation controls
-    // 负责底图、视角、底图容器、瓦片图层
+
     map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
-    
-    // Initialize Deck.gl overlay
-    // 负责船图标、轨迹线、风险区域、多边形等可视化图层
+
     deckOverlay.current = new MapboxOverlay({
       interleaved: true,
       layers: [],
     });
     map.current.addControl(deckOverlay.current as unknown as maplibregl.IControl);
-    
+
     map.current.on('load', () => {
       if (!map.current) return;
-      
 
-      // Add S-57 MVT sources (one per layer for compatibility)
       Object.entries(s57Sources).forEach(([sourceId, sourceSpec]) => {
         map.current!.addSource(sourceId, sourceSpec);
       });
-      
-      // Add S-57 layers
-      s57Layers.forEach(layer => {
+
+      s57Layers.forEach((layer) => {
         map.current!.addLayer(layer);
       });
 
       setMapLoaded(true);
     });
-    
+
     return () => {
       map.current?.remove();
       map.current = null;
     };
   }, []);
-  
-  // Update water depth style when safety contour changes
+
   useEffect(() => {
     if (!mapLoaded || !map.current || !environment) return;
     updateWaterDepthStyle(map.current, environment.safety_contour_val);
-    }, [mapLoaded, environment?.safety_contour_val]);
-    
+  }, [environment, mapLoaded]);
 
-  // Build Deck.gl layers
-  // 将store里的业务数据翻译为Deck.gl图层数组
   const buildDeckLayers = useCallback(() => {
     const layers: Layer[] = [];
-    
+
     if (!ownShip) return layers;
-    
+
     const ownPos: LonLat = [ownShip.position.lon, ownShip.position.lat];
-    
-    // --- LAYER GROUP 1: POLYGONS (Bottom) ---
-    /**
-     * 1. Safety Domain Layer
-     * 2. OZT 风险扇区（现在注释掉了）
-     */
-    // 1. Safety Domain Layer (Z=0, Sea Level)
+
     if (ownShip.safety_domain.shape_type === 'ellipse' && ownShip.safety_domain.dimensions) {
       const domainPolygon = generateEllipsePolygon(
         ownPos,
         ownShip.safety_domain.dimensions,
-        ownShip.dynamics.hdg
+        ownShip.dynamics.hdg,
       );
-      
+
       layers.push(
         new PolygonLayer({
           id: 'safety-domain',
@@ -190,67 +185,28 @@ export function MapContainer() {
           getLineWidth: 2,
           lineWidthUnits: 'pixels',
           pickable: false,
-          // Critical: Transparent background layer must NOT write to depth buffer
-          // This prevents depth precision artifacts at low zoom (far distance)
           parameters: {
             depthMask: false,
           },
-        })
+        }),
       );
     }
 
-    // 2. OZT Sectors (Risk Polygons) - REMOVED per user request
-    // OZT扇区（风险区域） - 根据用户反馈暂时移除，后续可以考虑作为可选图层
-    // Rendered before icons/lines so they appear underneath
-    /* 
-    if (targets.length > 0) {
-      const oztData = buildOZTData(targets, ownPos);
-      if (oztData.length > 0) {
-        layers.push(
-          new PolygonLayer({
-            id: 'ozt-sectors',
-            data: oztData,
-            getPolygon: (d: { polygon: LonLat[] }) => d.polygon,
-            getFillColor: COLORS_RGBA.OZT_SECTOR,
-            getLineColor: COLORS_RGB.ALARM,
-            getLineWidth: 1,
-            lineWidthUnits: 'pixels',
-          })
-        );
-      }
-    }
-    */
-
-    // --- LAYER GROUP 2: TRAJECTORIES (Middle) ---
-    /**
-     * 3. 本船轨迹
-     * 4. 目标轨迹（只显示跟踪范围内的目标，且只显示未来2个航路点，且有淡出效果）
-     * 5. CPA线（只显示ALARM级别目标的CPA线）
-     */
-    // 3. Own Ship Trajectory - HARDCODED WAYPOINT ROUTE with fade effect
-    // Shows planned route from current position to next 3 waypoints
-    const upcomingWaypoints: LonLat[] = [];
-    const trajectoryPath: LonLat[] = [ownPos, ...upcomingWaypoints];
-    
-    if (trajectoryPath.length > 1) {
-      // Create multiple path segments with decreasing opacity for fade effect
+    const trajectoryPoints = buildTrajectoryPoints(ownShip);
+    if (trajectoryPoints.length > 1) {
       const fadeSegments: { path: Position[]; color: RGBAColor }[] = [];
-      
-      for (let i = 0; i < trajectoryPath.length - 1; i++) {
-        const startPoint = trajectoryPath[i];
-        const endPoint = trajectoryPath[i + 1];
-        // Opacity decreases: 220 -> 150 -> 80 -> 40
-        const opacity = Math.max(40, 220 - i * 70);
-        
+
+      for (let i = 0; i < trajectoryPoints.length - 1; i += 1) {
+        const opacity = Math.max(40, 220 - i * 50);
         fadeSegments.push({
           path: [
-            [startPoint[0], startPoint[1], 10],
-            [endPoint[0], endPoint[1], 10]
+            [trajectoryPoints[i][0], trajectoryPoints[i][1], 10],
+            [trajectoryPoints[i + 1][0], trajectoryPoints[i + 1][1], 10],
           ],
-          color: [0, 255, 255, opacity] as RGBAColor, // Cyan with fade
+          color: [0, 255, 255, opacity] as RGBAColor,
         });
       }
-      
+
       layers.push(
         new PathLayer<{ path: Position[]; color: RGBAColor }>({
           id: 'trajectory-fade',
@@ -262,61 +218,29 @@ export function MapContainer() {
           pickable: false,
           capRounded: true,
           jointRounded: true,
-        })
-      );
-      
-      // Add waypoint markers
-      layers.push(
-        new IconLayer({
-          id: 'waypoint-markers',
-          data: upcomingWaypoints.map((wp, idx) => ({
-            position: wp,
-            index: idx,
-          })),
-          getPosition: (d: { position: LonLat }) => [d.position[0], d.position[1], 15],
-          getIcon: () => ({
-            url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                <circle cx="12" cy="12" r="8" fill="none" stroke="#00FFFF" stroke-width="2" opacity="0.8"/>
-                <circle cx="12" cy="12" r="3" fill="#00FFFF" opacity="0.9"/>
-              </svg>
-            `)}`,
-            width: 24,
-            height: 24,
-            anchorY: 12,
-          }),
-          getSize: (d: { index: number }) => 20 - d.index * 4, // Decreasing size
-          billboard: true,
-        })
+        }),
       );
     }
 
-    // 4. Target Trajectories - Short prediction with fade effect (2 waypoints)
-    // Only render for targets within tracking range (1.5 NM)
     if (allTargets.length > 0) {
       const targetRouteSegments: { path: Position[]; color: RGBAColor }[] = [];
-      
-      allTargets.forEach(t => {
-        // Only draw route for targets in tracking range
-        if (!isTargetInTrackingRange(t.id)) return;
-        
-        // Get remaining waypoints for this target (use only next 2 waypoints)
-        const waypoints = getTargetRemainingWaypoints(t.id);
+
+      allTargets.forEach((target) => {
+        if (!isTargetInTrackingRange(target.id)) return;
+
+        const waypoints = getTargetRemainingWaypoints(target.id);
         if (!waypoints || waypoints.length < 2) return;
-        
-        const nextTwoWaypoints = waypoints.slice(0, 2);
-        const currentPos: LonLat = [t.position.lon, t.position.lat];
-        const fullPath: LonLat[] = [currentPos, ...nextTwoWaypoints];
-        
-        for (let i = 0; i < fullPath.length - 1; i++) {
-          // Fade: first segment bright, second segment dimmer
+
+        const fullPath: LonLat[] = [[target.position.lon, target.position.lat], ...waypoints.slice(0, 2)];
+
+        for (let i = 0; i < fullPath.length - 1; i += 1) {
           const opacity = i === 0 ? 160 : 90;
           targetRouteSegments.push({
             path: [
               [fullPath[i][0], fullPath[i][1], 8],
-              [fullPath[i + 1][0], fullPath[i + 1][1], 8]
+              [fullPath[i + 1][0], fullPath[i + 1][1], 8],
             ],
-            color: [255, 165, 0, opacity] as RGBAColor,  // Orange with fade
+            color: [255, 165, 0, opacity] as RGBAColor,
           });
         }
       });
@@ -333,12 +257,11 @@ export function MapContainer() {
             pickable: false,
             capRounded: true,
             jointRounded: true,
-          })
+          }),
         );
       }
     }
 
-    // 5. CPA Lines (Z=12, above trajectories)
     if (targets.length > 0) {
       const cpaLineData = buildCPALineData(targets);
       if (cpaLineData.length > 0) {
@@ -351,25 +274,15 @@ export function MapContainer() {
             getColor: COLORS_RGB.ALARM,
             getWidth: VISUALIZATION.CPA_LINE_WIDTH,
             widthUnits: 'pixels',
-          })
+          }),
         );
       }
     }
 
-    // --- LAYER GROUP 3: ICONS (Top) ---
-    /**
-     * 6. 本船图标（根据平台状态变色）
-     * 7. 目标图标（根据风险等级变色）
-     * 8. 其他可以考虑的图层：特殊目标标记（如AIS SART）、环境要素图标（如风向箭头）等
-    */
-  
-    // 6. Own Ship Icon Layer (Z=50, Top Layer)
-    const ownShipColor = getOwnShipColor(ownShip);
     layers.push(
       new IconLayer({
         id: 'own-ship',
         data: [{ position: ownPos, heading: ownShip.dynamics.hdg }],
-        // Lift ship icon 50 meters above sea level
         getPosition: (d: { position: LonLat }) => [d.position[0], d.position[1], 50],
         getIcon: () => ({
           url: VESSEL_ICON,
@@ -379,25 +292,42 @@ export function MapContainer() {
         }),
         getSize: VISUALIZATION.VESSEL_ICON_SIZE,
         getAngle: (d: { heading: number }) => -d.heading,
-        getColor: ownShipColor,
+        getColor: getOwnShipColor(ownShip),
         pickable: true,
         billboard: true,
-      })
+      }),
     );
-    
-    // 7. Target Icons (Z=50, Top Layer) - Render ALL ships, color by risk level
+
     if (allTargets.length > 0) {
-      // Target icons - color changes based on risk: SAFE=green, CAUTION=yellow, WARNING=orange, ALARM=red
+      const selectedTarget = allTargets.find((target) => target.id === selectedTargetId);
+      if (selectedTarget) {
+        layers.push(
+          new ScatterplotLayer({
+            id: 'selected-target-highlight',
+            data: [{ position: [selectedTarget.position.lon, selectedTarget.position.lat] as LonLat }],
+            getPosition: (d: { position: LonLat }) => [d.position[0], d.position[1], 32],
+            getRadius: 95,
+            radiusUnits: 'meters',
+            getFillColor: [0, 0, 0, 0],
+            getLineColor: [56, 189, 248, 220],
+            getLineWidth: 3,
+            lineWidthUnits: 'pixels',
+            filled: false,
+            stroked: true,
+            pickable: false,
+          }),
+        );
+      }
+
       layers.push(
         new IconLayer({
           id: 'targets',
-          data: allTargets.map(t => ({
-            position: [t.position.lon, t.position.lat] as LonLat,
-            heading: t.vector.course_deg,
-            riskLevel: t.risk_assessment.risk_level,
-            id: t.id,
+          data: allTargets.map((target) => ({
+            position: [target.position.lon, target.position.lat] as LonLat,
+            heading: target.vector.course_deg,
+            riskLevel: target.risk_assessment.risk_level,
+            id: target.id,
           })),
-          // Lift target icons 50 meters above sea level
           getPosition: (d) => [d.position[0], d.position[1], 50],
           getIcon: () => ({
             url: TARGET_ICON,
@@ -407,109 +337,116 @@ export function MapContainer() {
           }),
           getSize: VISUALIZATION.VESSEL_ICON_SIZE * 0.8,
           getAngle: (d) => -d.heading,
-          getColor: (d) => getRiskColor(d.riskLevel),  // Dynamic color: ALARM=red, WARNING=orange, etc.
+          getColor: (d) => getRiskColor(d.riskLevel),
           pickable: true,
           billboard: true,
-        })
+          onClick: ({ object }) => {
+            if (object?.id) {
+              selectTarget(object.id);
+            }
+          },
+        }),
       );
     }
-    
+
+    if (llmExplainedHighRiskTargets.length > 0) {
+      const explanationMarkers: ExplanationMarkerDatum[] = llmExplainedHighRiskTargets.map((target) => ({
+        id: target.id,
+        position: [target.position.lon, target.position.lat],
+        riskLevel: target.risk_assessment.risk_level,
+      }));
+
+      layers.push(
+        new IconLayer<ExplanationMarkerDatum>({
+          id: 'target-explanation-markers',
+          data: explanationMarkers,
+          getPosition: (d) => [d.position[0], d.position[1], 68],
+          getIcon: () => ({
+            url: EXPLANATION_ICON,
+            width: 40,
+            height: 40,
+            anchorY: 34,
+          }),
+          getSize: 28,
+          getColor: (d) => [...getRiskColor(d.riskLevel), 255],
+          pickable: true,
+          billboard: true,
+          onClick: ({ object }) => {
+            if (object?.id) {
+              selectTarget(object.id);
+            }
+          },
+        }),
+      );
+    }
+
     return layers;
-  }, [ownShip, targets, allTargets]);
-  
-  // Update Deck.gl layers when data changes
+  }, [allTargets, llmExplainedHighRiskTargets, ownShip, selectedTargetId, selectTarget, targets]);
+
   useEffect(() => {
     if (!deckOverlay.current) return;
-    const layers = buildDeckLayers();
-    deckOverlay.current.setProps({ layers });
+    deckOverlay.current.setProps({ layers: buildDeckLayers() });
   }, [buildDeckLayers]);
-  
-  // Center map on own ship position
-  // 视角跟随本船位置
+
   useEffect(() => {
     if (!map.current || !ownShip) return;
-    
-    // Only fly to position on first load
+
     const currentCenter = map.current.getCenter();
     const distance = Math.sqrt(
       (currentCenter.lng - ownShip.position.lon) ** 2 +
-      (currentCenter.lat - ownShip.position.lat) ** 2
+      (currentCenter.lat - ownShip.position.lat) ** 2,
     );
-    
+
     if (distance > 0.1) {
       map.current.flyTo({
         center: [ownShip.position.lon, ownShip.position.lat],
         duration: 1000,
       });
     }
-  }, [ownShip?.position.lon, ownShip?.position.lat]);
-  
-  // 最后返回一个div容器，地图实例会挂载在这个div上
+  }, [ownShip]);
+
   return (
-    <div 
-      ref={mapContainer} 
+    <div
+      ref={mapContainer}
       className="w-full h-full"
       style={{ minHeight: '100vh' }}
     />
   );
 }
 
-// Helper functions
-
 function buildTrajectoryPoints(ownShip: OwnShip): LonLat[] {
   const pos: LonLat = [ownShip.position.lon, ownShip.position.lat];
-  
-  if (ownShip.future_trajectory.prediction_type === 'curved_headline' &&
-      ownShip.future_trajectory.curved_headline) {
+
+  if (ownShip.future_trajectory.prediction_type === 'curved_headline' && ownShip.future_trajectory.curved_headline) {
     const chl = ownShip.future_trajectory.curved_headline;
     return generateCurvedHeadline(
       pos,
       ownShip.dynamics.hdg,
       chl.turn_radius_nm,
       ownShip.dynamics.rot,
-      chl.projected_time_min
+      chl.projected_time_min,
     );
   }
-  
+
   return generateLinearTrajectory(pos, ownShip.dynamics.cog, ownShip.dynamics.sog, 6);
 }
 
 function getOwnShipColor(ownShip: OwnShip): [number, number, number, number] {
   switch (ownShip.platform_health.status) {
     case 'NUC':
-      return [124, 58, 237, 255]; // Purple
+      return [124, 58, 237, 255];
     case 'DEGRADED':
-      return [245, 158, 11, 255]; // Yellow
+      return [245, 158, 11, 255];
     default:
-      return [16, 185, 129, 255]; // Green
+      return [16, 185, 129, 255];
   }
 }
 
 function buildCPALineData(targets: Target[]): { source: LonLat; target: LonLat }[] {
   return targets
-    .filter(t => 
-      t.risk_assessment.risk_level === 'ALARM' && 
-      t.risk_assessment.graphic_cpa_line
-    )
-    .map(t => ({
-      source: t.risk_assessment.graphic_cpa_line!.own_pos,
-      target: t.risk_assessment.graphic_cpa_line!.target_pos,
-    }));
-}
-
-function buildOZTData(targets: Target[], ownPos: LonLat): { polygon: LonLat[]; id: string }[] {
-  return targets
-    .filter(t => 
-      t.risk_assessment.ozt_sector?.is_active &&
-      (t.risk_assessment.risk_level === 'WARNING' || t.risk_assessment.risk_level === 'ALARM')
-    )
-    .map(t => ({
-      polygon: generateOZTSector(
-        ownPos,
-        t.risk_assessment.ozt_sector!.start_angle_deg,
-        t.risk_assessment.ozt_sector!.end_angle_deg,
-        0.5 // OZT radius in nm
-      ),
-      id: t.id,
+    .filter((target) => target.risk_assessment.risk_level === 'ALARM' && target.risk_assessment.graphic_cpa_line)
+    .map((target) => ({
+      source: target.risk_assessment.graphic_cpa_line!.own_pos,
+      target: target.risk_assessment.graphic_cpa_line!.target_pos,
     }));
 }

@@ -78,28 +78,28 @@ def build_messages(target_mmsi: str) -> List[TimedAisMessage]:
                 270.0,
             )
         ),
-        # TimedAisMessage(
-        #     payload=to_payload(
-        #         base_time + timedelta(seconds=2),
-        #         OWN_MMSI,
-        #         114.201000,
-        #         30.578000,
-        #         12.0,
-        #         90.0,
-        #         90.0,
-        #     )
-        # ),
-        # TimedAisMessage(
-        #     payload=to_payload(
-        #         base_time + timedelta(seconds=3),
-        #         target_mmsi,
-        #         114.205000,
-        #         30.578000,
-        #         12.0,
-        #         270.0,
-        #         270.0,
-        #     )
-        # ),
+        TimedAisMessage(
+            payload=to_payload(
+                base_time + timedelta(seconds=2),
+                OWN_MMSI,
+                114.201000,
+                30.578000,
+                12.0,
+                90.0,
+                90.0,
+            )
+        ),
+        TimedAisMessage(
+            payload=to_payload(
+                base_time + timedelta(seconds=3),
+                target_mmsi,
+                114.205000,
+                30.578000,
+                12.0,
+                270.0,
+                270.0,
+            )
+        ),
     ]
 
 

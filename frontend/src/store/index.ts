@@ -1,1 +1,13 @@
-export { useRiskStore, selectOwnShip, selectTargets, selectAllTargets, selectGovernance, selectEnvironment, selectIsLowTrust, selectIsConnected, selectSelectedTarget } from './useRiskStore';
+﻿export {
+  useRiskStore,
+  selectOwnShip,
+  selectTargets,
+  selectAllTargets,
+  selectGovernance,
+  selectEnvironment,
+  selectIsLowTrust,
+  selectIsConnected,
+  selectSelectedTarget,
+  selectLlmExplainedHighRiskTargets,
+  selectSelectedTargetLlmExplanation,
+} from './useRiskStore';
