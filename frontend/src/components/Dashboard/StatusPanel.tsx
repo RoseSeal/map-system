@@ -1,16 +1,46 @@
 ﻿/**
  * Status Panel Component (Compact HUD Mode)
- * Displays own ship status, trust factor, and connection state
+ * Displays own ship status, trust factor, connection state, and speech controls
  */
 
-import { useRiskStore, selectOwnShip, selectGovernance, selectIsConnected, selectIsLowTrust } from '../../store';
+import {
+  useRiskStore,
+  useAiCenterStore,
+  selectOwnShip,
+  selectGovernance,
+  selectIsConnected,
+  selectIsLowTrust,
+  selectSpeechEnabled,
+  selectSpeechSupported,
+} from '../../store';
 import { COLORS } from '../../config';
+import { speechService } from '../../services/speechService';
 
 export function StatusPanel() {
   const ownShip = useRiskStore(selectOwnShip);
   const governance = useRiskStore(selectGovernance);
   const isConnected = useRiskStore(selectIsConnected);
   const isLowTrust = useRiskStore(selectIsLowTrust);
+  const speechEnabled = useAiCenterStore(selectSpeechEnabled);
+  const speechSupported = useAiCenterStore(selectSpeechSupported);
+  const setSpeechEnabled = useAiCenterStore((state) => state.setSpeechEnabled);
+  const setSpeechUnlocked = useAiCenterStore((state) => state.setSpeechUnlocked);
+
+  const handleSpeechToggle = () => {
+    if (!speechSupported) {
+      return;
+    }
+
+    if (speechEnabled) {
+      setSpeechEnabled(false);
+      speechService.stop();
+      return;
+    }
+
+    const unlocked = speechService.unlock();
+    setSpeechUnlocked(unlocked);
+    setSpeechEnabled(unlocked);
+  };
 
   if (!ownShip || !governance) {
     return (
@@ -81,6 +111,30 @@ export function StatusPanel() {
             </span>
           </div>
         </div>
+      </div>
+
+      <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] text-slate-400">语音播报</div>
+          <div className="text-[10px] text-slate-500">
+            {speechSupported ? '开启后自动播报风险评估与聊天回复' : '当前浏览器不支持语音播报'}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleSpeechToggle}
+          disabled={!speechSupported}
+          className={[
+            'px-2.5 py-1 rounded text-[10px] font-medium border transition-colors',
+            speechSupported
+              ? speechEnabled
+                ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25'
+                : 'border-white/10 bg-slate-900/70 text-slate-300 hover:border-slate-500'
+              : 'border-white/5 bg-slate-900/40 text-slate-600 cursor-not-allowed',
+          ].join(' ')}
+        >
+          {speechEnabled ? '已开启' : '开启播报'}
+        </button>
       </div>
     </div>
   );

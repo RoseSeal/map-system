@@ -1,7 +1,8 @@
-export { socketService } from './socketService';
-export { 
-  startMockDataGenerator, 
-  stopMockDataGenerator, 
+﻿export { socketService } from './socketService';
+export { speechService } from './speechService';
+export {
+  startMockDataGenerator,
+  stopMockDataGenerator,
   isMockGeneratorRunning,
   WAYPOINTS,
   getCurrentWaypointIndex,

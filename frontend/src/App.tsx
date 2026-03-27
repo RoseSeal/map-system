@@ -6,8 +6,11 @@
 import { useEffect } from 'react';
 import { MapContainer, StatusPanel, TargetsPanel, CompassOverlay, RiskExplanationPanel } from './components';
 import { socketService } from './services';
+import { useAiSpeechBroadcast } from './hooks/useAiSpeechBroadcast';
 
 function App() {
+  useAiSpeechBroadcast();
+
   useEffect(() => {
     socketService.connect();
 
@@ -29,9 +32,7 @@ function App() {
           <CompassOverlay />
         </div>
 
-        <div className="absolute top-52 right-4 pointer-events-auto">
-          <RiskExplanationPanel />
-        </div>
+        <RiskExplanationPanel />
 
         <div className="absolute bottom-4 left-4 pointer-events-auto">
           <TargetsPanel />

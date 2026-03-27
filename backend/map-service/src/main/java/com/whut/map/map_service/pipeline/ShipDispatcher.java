@@ -17,6 +17,7 @@ import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.service.llm.LlmExplanationService;
 import com.whut.map.map_service.service.llm.LlmTriggerService;
 import com.whut.map.map_service.store.ShipStateStore;
+import com.whut.map.map_service.websocket.BackendMessageFactory;
 import com.whut.map.map_service.websocket.WebSocketService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,6 +33,7 @@ public class ShipDispatcher {
     private final CvPredictionEngine cvPredictionEngine;
     private final CpaTcpaEngine cpaTcpaEngine;
     private final WebSocketService aisWebSocketService;
+    private final BackendMessageFactory backendMessageFactory;
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
     private final LlmRiskContextAssembler llmRiskContextAssembler;
@@ -43,6 +45,7 @@ public class ShipDispatcher {
             CvPredictionEngine cvPredictionEngine,
             CpaTcpaEngine cpaTcpaEngine,
             WebSocketService aisWebSocketService,
+            BackendMessageFactory backendMessageFactory,
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
             LlmRiskContextAssembler llmRiskContextAssembler,
@@ -54,6 +57,7 @@ public class ShipDispatcher {
         this.cvPredictionEngine = cvPredictionEngine;
         this.cpaTcpaEngine = cpaTcpaEngine;
         this.aisWebSocketService = aisWebSocketService;
+        this.backendMessageFactory = backendMessageFactory;
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
         this.llmRiskContextAssembler = llmRiskContextAssembler;
@@ -130,7 +134,7 @@ public class ShipDispatcher {
                 cvPredictionResult
         );
         if (dto != null) {
-            aisWebSocketService.sendAisMessage(dto);
+            aisWebSocketService.broadcast(backendMessageFactory.buildRiskUpdateMessage(dto));
         }
 
         // 9) Emit concise per-target CPA/TCPA log for observability.
@@ -145,4 +149,5 @@ public class ShipDispatcher {
         }
     }
 }
+
 

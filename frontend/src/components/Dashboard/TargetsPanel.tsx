@@ -3,23 +3,30 @@
  * Added unread pulse animation and read-state management
  */
 
-import { useRiskStore, selectTargets, selectSelectedTarget, selectSelectedTargetLlmExplanation } from '../../store';
+import {
+  useRiskStore,
+  useAiCenterStore,
+  selectTargets,
+  selectSelectedTarget,
+  selectLatestLlmExplanations,
+  selectReadLlmExplanations,
+} from '../../store';
 import { getRiskColor } from '../../config';
 
 export function TargetsPanel() {
   const targets = useRiskStore(selectTargets);
   const selectTarget = useRiskStore((state) => state.selectTarget);
-  const markLlmRead = useRiskStore((state) => state.markLlmRead);
-  const readLlmExplanations = useRiskStore((state) => state.readLlmExplanations);
-  const latestLlmExplanations = useRiskStore((state) => state.latestLlmExplanations);
-
   const selectedTarget = useRiskStore(selectSelectedTarget);
-  const selectedTargetLlmExplanation = useRiskStore(selectSelectedTargetLlmExplanation);
+
+  const markLlmRead = useAiCenterStore((state) => state.markLlmRead);
+  const readLlmExplanations = useAiCenterStore(selectReadLlmExplanations);
+  const latestLlmExplanations = useAiCenterStore(selectLatestLlmExplanations);
 
   if (targets.length === 0) {
     return null;
   }
 
+  const selectedTargetLlmExplanation = selectedTarget ? latestLlmExplanations[selectedTarget.id] : null;
   const sortedTargets = [...targets].sort((a, b) => {
     const riskScore = { ALARM: 4, WARNING: 3, CAUTION: 2, SAFE: 1 };
     return (riskScore[b.risk_assessment.risk_level] || 0) - (riskScore[a.risk_assessment.risk_level] || 0);
@@ -135,6 +142,6 @@ function isLlmExplanation(explanation?: { source?: string; text?: string } | nul
       || source.includes('ai')
       || source.includes('model')
       || source.includes('gpt')
-    ),
+    )
   );
 }

@@ -11,11 +11,12 @@ import { IconLayer, PathLayer, PolygonLayer, LineLayer, ScatterplotLayer } from 
 
 import {
   useRiskStore,
+  useAiCenterStore,
   selectOwnShip,
   selectTargets,
   selectAllTargets,
   selectEnvironment,
-  selectLlmExplainedHighRiskTargets,
+  selectLatestLlmExplanations,
 } from '../../store';
 import {
   DEFAULT_VIEW_STATE,
@@ -98,9 +99,12 @@ export function MapContainer() {
   const targets = useRiskStore(selectTargets);
   const allTargets = useRiskStore(selectAllTargets);
   const environment = useRiskStore(selectEnvironment);
-  const llmExplainedHighRiskTargets = useRiskStore(selectLlmExplainedHighRiskTargets);
+  const latestLlmExplanations = useAiCenterStore(selectLatestLlmExplanations);
   const selectedTargetId = useRiskStore((state) => state.selectedTargetId);
   const selectTarget = useRiskStore((state) => state.selectTarget);
+  const llmExplainedHighRiskTargets = allTargets.filter(
+    (target) => isHighRisk(target.risk_assessment.risk_level) && Boolean(latestLlmExplanations[target.id]?.text),
+  );
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -442,6 +446,10 @@ function getOwnShipColor(ownShip: OwnShip): [number, number, number, number] {
   }
 }
 
+function isHighRisk(level: RiskLevel): boolean {
+  return level === 'WARNING' || level === 'ALARM';
+}
+
 function buildCPALineData(targets: Target[]): { source: LonLat; target: LonLat }[] {
   return targets
     .filter((target) => target.risk_assessment.risk_level === 'ALARM' && target.risk_assessment.graphic_cpa_line)
@@ -450,3 +458,4 @@ function buildCPALineData(targets: Target[]): { source: LonLat; target: LonLat }
       target: target.risk_assessment.graphic_cpa_line!.target_pos,
     }));
 }
+

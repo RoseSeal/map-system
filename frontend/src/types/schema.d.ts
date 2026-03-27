@@ -1,7 +1,7 @@
-/**
+﻿/**
  * Type Definitions for Unmanned Fleet Risk Warning System
  * Generated from: System Interface Specification v2.1
- * 
+ *
  * This file defines the complete RiskObject schema used for
  * real-time WebSocket communication between backend and frontend.
  */
@@ -17,7 +17,7 @@ export type GovernanceMode = 'normative' | 'coercive' | 'adaptive';
 export interface Governance {
   /** System governance mode indicator */
   mode: GovernanceMode;
-  /** 
+  /**
    * System trust factor (0.0 - 1.0)
    * Frontend should display "Low Confidence" warning if < 0.4
    */
@@ -247,7 +247,7 @@ export interface EnvironmentContext {
 // Core RiskObject
 // ============================================================
 
-/** 
+/**
  * RiskObject - Core data unit for each render frame
  * Backend pushes at 1Hz (AIS) or 10Hz (interpolated)
  */
@@ -271,20 +271,69 @@ export interface RiskObject {
 }
 
 // ============================================================
+// Chat Protocol
+// ============================================================
+
+export type ChatInputType = 'TEXT' | 'SPEECH';
+export type ChatRole = 'user' | 'assistant' | 'system';
+
+export interface ChatRequestMessage {
+  sequence_id: string;
+  message_id: string;
+  role: 'user';
+  input_type?: ChatInputType;
+  content: string;
+}
+
+export interface ChatRequestEnvelope {
+  type: 'CHAT';
+  message: ChatRequestMessage;
+}
+
+export interface ChatReplyPayload {
+  sequence_id: string;
+  message_id: string;
+  reply_to_message_id: string;
+  role: 'assistant';
+  content: string;
+  source?: string;
+  timestamp?: string;
+}
+
+export interface ChatErrorPayload {
+  sequence_id: string;
+  message_id: string;
+  reply_to_message_id?: string;
+  error_code: string;
+  error_message: string;
+  timestamp?: string;
+}
+
+// ============================================================
 // WebSocket Envelope
 // ============================================================
 
 /** WebSocket message types */
-export type MessageType = 'RISK_UPDATE' | 'SNAPSHOT' | 'ALERT' | 'PING' | 'PONG';
+export type MessageType =
+  | 'RISK_UPDATE'
+  | 'SNAPSHOT'
+  | 'ALERT'
+  | 'PING'
+  | 'PONG'
+  | 'CHAT'
+  | 'CHAT_REPLY'
+  | 'CHAT_ERROR';
 
 /** WebSocket message envelope */
 export interface WebSocketMessage {
   /** Message type */
   type: MessageType;
-  /** Sequence ID for ordering */
-  sequence_id?: number;
-  /** Payload (RiskObject for RISK_UPDATE/SNAPSHOT) */
-  payload?: RiskObject;
+  /** Sequence ID for ordering or chat session binding */
+  sequence_id?: number | string;
+  /** Payload for backend -> frontend messages */
+  payload?: RiskObject | ChatReplyPayload | ChatErrorPayload;
+  /** Message for frontend -> backend chat requests */
+  message?: ChatRequestMessage;
 }
 
 // ============================================================

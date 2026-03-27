@@ -1,45 +1,38 @@
 package com.whut.map.map_service.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.whut.map.map_service.dto.RiskObjectDto;
+import com.whut.map.map_service.dto.websocket.BackendMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.web.socket.WebSocketSession;
 
 @Slf4j
 @Component
 public class WebSocketService {
 
-    private final StreamWebSocketHandler webSocketHandler;
+    private final WebSocketSessionRegistry sessionRegistry;
     private final ObjectMapper objectMapper;
 
-    // 使用当前毫秒级时间戳作为初始序列号，保证即使服务重启，序列号也绝对单调递增 (Monotonically Increasing)
-    private final AtomicLong sequenceGenerator = new AtomicLong(System.currentTimeMillis());
-
-    public WebSocketService(StreamWebSocketHandler webSocketHandler, ObjectMapper objectMapper) {
-        this.webSocketHandler = webSocketHandler;
+    public WebSocketService(WebSocketSessionRegistry sessionRegistry, ObjectMapper objectMapper) {
+        this.sessionRegistry = sessionRegistry;
         this.objectMapper = objectMapper;
     }
 
-    public void sendAisMessage(RiskObjectDto message) {
+    public void sendToSession(WebSocketSession session, BackendMessage message) {
         try {
-            // 组装符合前端需求的信封
-            Map<String, Object> envelope = new HashMap<>();
-            envelope.put("type", "RISK_UPDATE");
-            envelope.put("sequence_id", sequenceGenerator.getAndIncrement());
-            envelope.put("payload", message);
-
-            // 将信封对象序列化为 JSON 字符串
-            String jsonMessage = objectMapper.writeValueAsString(envelope);
-
-            // 发送 JSON 字符串到 WebSocket 客户端
-            webSocketHandler.broadcastMessage(jsonMessage);
-
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            sessionRegistry.sendToSession(session, jsonMessage);
         } catch (Exception e) {
-            log.error("Error serializing AIS message: {}", e.getMessage());
+            log.error("Error serializing WebSocket message of type {}: {}", message.getType(), e.getMessage());
+        }
+    }
+
+    public void broadcast(BackendMessage message) {
+        try {
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            sessionRegistry.broadcast(jsonMessage);
+        } catch (Exception e) {
+            log.error("Error serializing WebSocket message of type {}: {}", message.getType(), e.getMessage());
         }
     }
 }

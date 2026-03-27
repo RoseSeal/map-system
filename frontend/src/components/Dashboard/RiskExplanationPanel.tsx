@@ -1,147 +1,309 @@
 ﻿/**
- * Risk Explanation Panel (Magnetic Event Log Feed)
- * - Removed early return to keep the magnetic handle visible.
- * - Added Empty State for no-risk scenarios.
- * - Extracted PANEL_WIDTH for easy visual tweaking.
+ * AI Center Panel
+ * Keeps the existing magnetic drawer behavior while combining risk logs and chat.
+ * Adds lock state when typing and a draggable resizer.
  */
-import { useState, useRef, useEffect } from 'react';
-import { useRiskStore, selectLlmExplainedHighRiskTargets, selectSelectedTarget } from '../../store';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import {
+  useRiskStore,
+  useAiCenterStore,
+  selectSelectedTarget,
+  selectLatestLlmExplanations,
+  selectReadLlmExplanations,
+  selectChatMessages,
+  selectChatInput,
+  selectChatSessionId,
+  selectIsChatSending,
+} from '../../store';
 import { getRiskColor } from '../../config';
+import { socketService } from '../../services';
+import type { AiCenterChatMessage } from '../../types/aiCenter';
+import type { RiskLevel } from '../../types/schema';
+import { ChatComposer } from './ChatComposer';
+import { ChatMessageList } from './ChatMessageList';
 
-// --------------------------------------------------------
-// 🎨 在这里调整面板大小！
-// 建议区间：280 (紧凑) ~ 400 (宽大，适合长文本)
-const PANEL_WIDTH = 280; 
-// 建议区间：60vh (紧凑) ~ 85vh (高屏沉浸)
-const PANEL_HEIGHT = '62vh';
-// --------------------------------------------------------
+const PANEL_WIDTH = 360;
+const PANEL_HEIGHT = '72vh';
 
 export function RiskExplanationPanel() {
-  const explainedTargets = useRiskStore(selectLlmExplainedHighRiskTargets);
+  const targets = useRiskStore((state) => state.targets);
   const selectedTarget = useRiskStore(selectSelectedTarget);
   const selectTarget = useRiskStore((state) => state.selectTarget);
-  const markLlmRead = useRiskStore((state) => state.markLlmRead);
+
+  const latestLlmExplanations = useAiCenterStore(selectLatestLlmExplanations);
+  const readLlmExplanations = useAiCenterStore(selectReadLlmExplanations);
+  const chatMessages = useAiCenterStore(selectChatMessages);
+  const chatInput = useAiCenterStore(selectChatInput);
+  const chatSessionId = useAiCenterStore(selectChatSessionId);
+  const isChatSending = useAiCenterStore(selectIsChatSending);
   
-  // 磁吸状态控制
+  // 修复点：直接使用内联 selector，绕过 store/index.ts 的导出问题
+  const isChatFocused = useAiCenterStore((state) => state.isChatFocused);
+  
+  const setChatInput = useAiCenterStore((state) => state.setChatInput);
+  const appendUserChatMessage = useAiCenterStore((state) => state.appendUserChatMessage);
+  const createPendingUserChatMessage = useAiCenterStore((state) => state.createPendingUserChatMessage);
+  const markLlmRead = useAiCenterStore((state) => state.markLlmRead);
+  const resetChatSession = useAiCenterStore((state) => state.resetChatSession);
+  const setIsChatFocused = useAiCenterStore((state) => state.setIsChatFocused);
+
   const [isHovered, setIsHovered] = useState(false);
+  // 控制上下区域的高度比例 (0 到 100)
+  const [topSectionHeight, setTopSectionHeight] = useState(60); 
+  const isDragging = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
+  const explainedTargets = [...targets]
+    .filter((target) => isHighRisk(target.risk_assessment.risk_level) && Boolean(latestLlmExplanations[target.id]?.text))
+    .sort((left, right) => getRiskPriority(right.risk_assessment.risk_level) - getRiskPriority(left.risk_assessment.risk_level));
+
   const handleMouseEnter = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
     setIsHovered(true);
   };
 
   const handleMouseLeave = () => {
+    // 如果正在输入，或者正在拖拽，则锁定不收起
+    if (isChatFocused || isDragging.current) return;
+    
     timeoutRef.current = setTimeout(() => {
       setIsHovered(false);
     }, 300);
   };
 
-  // 自动展开逻辑：如果当前选中的目标有 AI 解释，自动弹出抽屉
+  // 监听锁定状态，如果锁定解除了且鼠标不在面板上，需要恢复收起逻辑
   useEffect(() => {
-    if (selectedTarget && explainedTargets.some(t => t.id === selectedTarget.id)) {
+      if (!isChatFocused && !isHovered) {
+          handleMouseLeave();
+      }
+  }, [isChatFocused]);
+
+  useEffect(() => {
+    if (selectedTarget && latestLlmExplanations[selectedTarget.id]) {
       handleMouseEnter();
     }
-  }, [selectedTarget, explainedTargets]);
+  }, [selectedTarget, latestLlmExplanations]);
+
+  const handleSendChat = () => {
+    const content = chatInput.trim();
+    if (!content) {
+      return;
+    }
+
+    const message = createPendingUserChatMessage(content, 'TEXT');
+    appendUserChatMessage(message);
+    setChatInput('');
+    socketService.sendChatMessage({
+      sequenceId: chatSessionId,
+      messageId: message.message_id,
+      inputType: message.input_type || 'TEXT',
+      content: message.content,
+    });
+  };
+
+  const handleRetry = (message: AiCenterChatMessage) => {
+    if (message.role !== 'user') {
+      return;
+    }
+
+    const retryMessage = createPendingUserChatMessage(message.content, message.input_type || 'TEXT');
+    appendUserChatMessage(retryMessage);
+    socketService.sendChatMessage({
+      sequenceId: chatSessionId,
+      messageId: retryMessage.message_id,
+      inputType: retryMessage.input_type || 'TEXT',
+      content: retryMessage.content,
+    });
+  };
+
+  // 拖拽逻辑
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging.current) return;
+    
+    // 获取面板的包围盒，为了计算相对高度
+    const panelRect = document.getElementById('ai-center-panel')?.getBoundingClientRect();
+    if (!panelRect) return;
+
+    // 计算鼠标在面板内的相对 Y 坐标
+    const relativeY = e.clientY - panelRect.top;
+    
+    // 计算百分比，限制在 20% 到 80% 之间
+    let newPercentage = (relativeY / panelRect.height) * 100;
+    newPercentage = Math.max(20, Math.min(80, newPercentage));
+    
+    setTopSectionHeight(newPercentage);
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    
+    // 拖拽结束后，如果鼠标不在面板上且没焦点，则收起
+    if (!isChatFocused && !isHovered) {
+         handleMouseLeave();
+    }
+  }, [isChatFocused, isHovered, handleMouseMove]); // Added dependencies to avoid stale state
 
   return (
     <div
-      // 把平移动画提升到最外层容器，并去掉 tailwind 里的 -translate-y-1/2，交由 style 统一接管 transform
       className="fixed right-0 top-1/2 flex pointer-events-none z-50 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-      style={{ 
+      style={{
         height: PANEL_HEIGHT,
-        transform: isHovered 
-          ? 'translateY(-50%) translateX(0)' 
-          : `translateY(-50%) translateX(${PANEL_WIDTH}px)`
+        transform: isHovered || isChatFocused
+          ? 'translateY(-50%) translateX(0)'
+          : `translateY(-50%) translateX(${PANEL_WIDTH}px)`,
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* 磁吸感应区 (隐形/半透明把手) - 永远渲染 */}
       <div className="w-8 h-full pointer-events-auto flex items-center justify-end pr-1 cursor-w-resize group">
-        <div 
+        <div
           className={`w-1 h-20 rounded-full transition-all duration-300 ${
-            isHovered 
-              ? 'bg-cyan-500/60 shadow-[0_0_8px_rgba(6,182,212,0.4)]' 
+            isHovered || isChatFocused
+              ? 'bg-cyan-500/60 shadow-[0_0_8px_rgba(6,182,212,0.4)]'
               : 'bg-white/10 group-hover:bg-cyan-400/80 group-hover:h-24'
-          }`} 
+          }`}
         />
       </div>
 
-      {/* 主抽屉面板 */}
-      <div 
-        // 内部面板不再负责平移，剥离 transform 逻辑
-        className="h-full bg-slate-950/80 backdrop-blur-xl border-l border-white/10 shadow-2xl rounded-l-2xl flex flex-col pointer-events-auto"
+      <div
+        id="ai-center-panel"
+        className="h-full bg-slate-950/85 backdrop-blur-xl border-l border-white/10 shadow-2xl rounded-l-2xl flex flex-col pointer-events-auto overflow-hidden relative"
         style={{ width: `${PANEL_WIDTH}px` }}
       >
         <div className="px-4 py-3 border-b border-white/10 shrink-0 bg-gradient-to-r from-transparent to-cyan-950/20">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-bold tracking-wide text-slate-100 flex items-center gap-2">
-              {explainedTargets.length > 0 && (
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-              )}
-              AI 态势监控日志
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+              AI 助理中心
             </h2>
             <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">
-              {explainedTargets.length} 个警告
+              {explainedTargets.length} / {chatMessages.length}
             </span>
           </div>
         </div>
 
-        {/* 日志流列表区 */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin relative">
-          {/* 空状态 (Empty State) 兜底渲染 */}
-          {explainedTargets.length === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 opacity-60">
-              <span className="text-3xl mb-3">🛡️</span>
-              <span className="text-xs tracking-wider">当前航区暂无高危 AI 评估</span>
+        <div className="flex-1 min-h-0 flex flex-col">
+          <section 
+            style={{ height: `${topSectionHeight}%` }} 
+            className="min-h-0 border-b border-white/10 flex flex-col"
+          >
+            <div className="px-4 py-2.5 shrink-0 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-400">
+              <span>态势监控日志</span>
+              <span>{explainedTargets.length} 个高危目标</span>
             </div>
-          ) : (
-            explainedTargets.map((target) => {
-              const isSelected = selectedTarget?.id === target.id;
-              const riskColor = getRiskColor(target.risk_assessment.risk_level);
-              const riskHex = `rgb(${riskColor.join(',')})`;
-              const llmText = useRiskStore.getState().latestLlmExplanations[target.id]?.text;
 
-              return (
-                <div 
-                  key={target.id}
-                  onClick={() => {
-                    selectTarget(target.id);
-                    markLlmRead(target.id);
-                  }}
-                  className={`p-3 rounded-lg border transition-all duration-200 cursor-pointer ${
-                    isSelected 
-                      ? 'border-cyan-500/50 bg-cyan-950/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.05)]' 
-                      : 'border-white/5 bg-slate-900/50 hover:bg-slate-800/80'
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-slate-200">ID: {target.id}</span>
-                    </div>
-                    <span
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
-                      style={{ color: riskHex, backgroundColor: `rgba(${riskColor.join(',')}, 0.15)` }}
-                    >
-                      {target.risk_assessment.risk_level}
-                    </span>
-                  </div>
-                  
-                  <div className="text-[12px] leading-relaxed text-slate-300 whitespace-pre-wrap font-medium">
-                    {llmText}
-                  </div>
-                  
-                  <div className="mt-2 pt-2 border-t border-white/5 flex justify-between items-center">
-                    <span className="text-[9px] text-slate-500">Source: LLM Agent</span>
-                    {isSelected && <span className="text-[9px] text-cyan-400">正在追踪</span>}
-                  </div>
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-thin relative">
+              {explainedTargets.length === 0 ? (
+                <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs text-slate-500">
+                  当前航区暂无高危 AI 评估
                 </div>
-              );
-            })
-          )}
+              ) : (
+                explainedTargets.map((target) => {
+                  const isSelected = selectedTarget?.id === target.id;
+                  const riskColor = getRiskColor(target.risk_assessment.risk_level);
+                  const riskHex = `rgb(${riskColor.join(',')})`;
+                  const explanation = latestLlmExplanations[target.id];
+                  const isRead = readLlmExplanations[target.id];
+
+                  return (
+                    <div
+                      key={target.id}
+                      onClick={() => {
+                        selectTarget(target.id);
+                        markLlmRead(target.id);
+                      }}
+                      className={`p-3 rounded-lg border transition-all duration-200 cursor-pointer ${
+                        isSelected
+                          ? 'border-cyan-500/50 bg-cyan-950/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.05)]'
+                          : 'border-white/5 bg-slate-900/50 hover:bg-slate-800/80'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-2 gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-mono text-xs text-slate-200 truncate">ID: {target.id}</span>
+                          {!isRead && <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></span>}
+                        </div>
+                        <span
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
+                          style={{ color: riskHex, backgroundColor: `rgba(${riskColor.join(',')}, 0.15)` }}
+                        >
+                          {target.risk_assessment.risk_level}
+                        </span>
+                      </div>
+
+                      <div className="text-[12px] leading-relaxed text-slate-300 whitespace-pre-wrap font-medium">
+                        {explanation?.text}
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t border-white/5 flex justify-between items-center text-[9px] text-slate-500">
+                        <span>{explanation?.source || 'LLM'}</span>
+                        {isSelected ? <span className="text-cyan-400">正在追踪</span> : <span>{isRead ? '已读' : '未读'}</span>}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+          
+          {/* Draggable Resizer */}
+          <div 
+             className="h-1 bg-white/5 hover:bg-cyan-500/50 cursor-row-resize transition-colors"
+             onMouseDown={handleMouseDown}
+          />
+
+          <section 
+            style={{ height: `${100 - topSectionHeight}%` }} 
+            className="min-h-0 flex flex-col"
+          >
+            <div className="px-4 py-2.5 shrink-0 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-400">
+              <span>对话助理</span>
+              <button
+                type="button"
+                onClick={resetChatSession}
+                className="rounded border border-white/10 px-2 py-0.5 text-[10px] tracking-normal text-slate-400 hover:border-slate-500 hover:text-slate-200"
+              >
+                清空会话
+              </button>
+            </div>
+
+            <ChatMessageList messages={chatMessages} onRetry={handleRetry} />
+            <ChatComposer
+              value={chatInput}
+              isSending={isChatSending}
+              onChange={setChatInput}
+              onSend={handleSendChat}
+              onFocus={() => setIsChatFocused(true)}
+              onBlur={() => setIsChatFocused(false)}
+            />
+          </section>
         </div>
       </div>
     </div>
   );
+}
+
+function isHighRisk(level: RiskLevel): boolean {
+  return level === 'WARNING' || level === 'ALARM';
+}
+
+function getRiskPriority(level: RiskLevel): number {
+  switch (level) {
+    case 'ALARM':
+      return 2;
+    case 'WARNING':
+      return 1;
+    default:
+      return 0;
+  }
 }

@@ -1,83 +1,107 @@
 package com.whut.map.map_service.websocket;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.whut.map.map_service.dto.websocket.ChatErrorCode;
+import com.whut.map.map_service.dto.websocket.FrontendChatPayload;
+import com.whut.map.map_service.dto.websocket.FrontendMessage;
+import com.whut.map.map_service.dto.websocket.WebSocketMessageTypes;
+import com.whut.map.map_service.service.llm.LlmChatService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
-
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class StreamWebSocketHandler extends TextWebSocketHandler {
 
-    // 不使用static, 因为Spring会管理这个组件的生命周期，确保它是单例的
-    private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
+    private final WebSocketSessionRegistry sessionRegistry;
+    private final ObjectMapper objectMapper;
+    private final WebSocketService webSocketService;
+    private final LlmChatService llmChatService;
+    private final BackendMessageFactory backendMessageFactory;
+    private final ChatMessageFactory chatMessageFactory;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        // 连接建立后，在这里进行一些初始化操作
-        // 将新建立的连接加入到会话列表中
-        sessions.add(session);
+        sessionRegistry.register(session);
         log.debug("WebSocket connected: {}", session.getId());
     }
 
     @Override
     public void handleTextMessage(WebSocketSession session, TextMessage message) {
-        // 处理接收到的消息
         String payload = message.getPayload();
         log.debug("Received message from session {}: {}", session.getId(), payload);
 
-        // 发送 PONG 响应以保持连接活跃
-        // 直接用字符串匹配来检测 PING 消息，避免 JSON 解析的开销
-        if(payload.contains("\"type\":\"PING\"") || payload.contains("\"type\": \"PING\"")) {
-            try {
-                session.sendMessage(new TextMessage("{\"type\":\"PONG\"}"));
-                log.debug("Sent PONG response to session {}", session.getId());
-            } catch (Exception e) {
-                log.error("Error sending PONG response to session {}: {}", session.getId(), e.getMessage());
-            }
+        try {
+            FrontendMessage frontendMessage = objectMapper.readValue(payload, FrontendMessage.class);
+            routeMessage(session, frontendMessage);
+        } catch (Exception e) {
+            log.warn("Ignoring invalid WebSocket message from session {}: {}", session.getId(), e.getMessage());
         }
+    }
+
+    private void routeMessage(WebSocketSession session, FrontendMessage frontendMessage) {
+        String type = frontendMessage.getType();
+        if (WebSocketMessageTypes.PING.equals(type)) {
+            webSocketService.sendToSession(session, backendMessageFactory.buildPongMessage());
+            return;
+        }
+        if (WebSocketMessageTypes.CHAT.equals(type)) {
+            handleChatMessage(session, frontendMessage.getMessage());
+            return;
+        }
+
+        log.warn("Ignoring unsupported WebSocket message type '{}' from session {}.", type, session.getId());
+    }
+
+    private void handleChatMessage(WebSocketSession session, JsonNode messageNode) {
+        if (messageNode == null || messageNode.isNull()) {
+            webSocketService.sendToSession(session, chatMessageFactory.buildErrorMessage(
+                    null,
+                    null,
+                    ChatErrorCode.INVALID_CHAT_REQUEST,
+                    "Chat payload is required."
+            ));
+            return;
+        }
+
+        try {
+            FrontendChatPayload chatPayload = objectMapper.treeToValue(messageNode, FrontendChatPayload.class);
+            llmChatService.handleChat(session, chatPayload);
+        } catch (Exception e) {
+            webSocketService.sendToSession(session, chatMessageFactory.buildErrorMessage(
+                    readText(messageNode, "sequence_id"),
+                    readText(messageNode, "message_id"),
+                    ChatErrorCode.INVALID_CHAT_REQUEST,
+                    "Chat payload format is invalid."
+            ));
+            log.warn("Failed to parse chat payload from session {}: {}", session.getId(), e.getMessage());
+        }
+    }
+
+    private String readText(JsonNode node, String fieldName) {
+        JsonNode field = node.get(fieldName);
+        if (field != null && !field.isNull()) {
+            return field.asText();
+        }
+        return null;
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
-        // 处理传输错误
-        // 移除发生错误的连接，避免内存泄漏
-        sessions.remove(session);
+        sessionRegistry.unregister(session);
         log.error("WebSocket transport error in session {}: {}", session.getId(), exception.getMessage());
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        // 连接关闭后，可以在这里进行一些清理操作
-        // 清理掉已经关闭的连接，避免内存泄漏
-        sessions.remove(session);
+        sessionRegistry.unregister(session);
         log.debug("WebSocket connection closed: {}, status: {}", session.getId(), status);
-    }
-
-    public void broadcastMessage(String messagePayload) {
-        if(sessions.isEmpty()) {
-            log.debug("No active WebSocket sessions to broadcast message.");
-            return; // 无人连接时直接返回，避免不必要的日志输出
-        }
-
-        // 将数据发送到WebSocket客户端
-        log.debug("Broadcasting message to WebSocket, payload: {}", messagePayload);
-        TextMessage message = new TextMessage(messagePayload);
-        sessions.forEach(session -> {
-            if (session.isOpen()) {
-                try {
-                    session.sendMessage(message);
-                } catch (Exception e) {
-                    log.error("Error broadcasting message to session {}: {}", session.getId(), e.getMessage());
-                }
-            }
-        });
     }
 }

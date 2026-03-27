@@ -8,6 +8,19 @@
   selectIsLowTrust,
   selectIsConnected,
   selectSelectedTarget,
-  selectLlmExplainedHighRiskTargets,
-  selectSelectedTargetLlmExplanation,
 } from './useRiskStore';
+
+export {
+  useAiCenterStore,
+  selectLatestLlmExplanations,
+  selectReadLlmExplanations,
+  selectSpeechEnabled,
+  selectSpeechSupported,
+  selectSpeechUnlocked,
+  selectChatMessages,
+  selectChatInput,
+  selectChatSessionId,
+  selectPendingChatMessageIds,
+  selectChatErrorByMessageId,
+  selectIsChatSending,
+} from './useAiCenterStore';
