@@ -1,0 +1,35 @@
+services:
+  mqtt:
+    image: eclipse-mosquitto
+    container_name: map-mqtt
+    ports:
+      - "1883:1883"
+    restart: unless-stopped
+
+  postgis:
+    image: postgis/postgis:17-3.4
+    container_name: my_postgis
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  whisper:
+    image: ghcr.io/ggml-org/whisper.cpp:main
+    container_name: whisper-service
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./runtime/whisper-models:/models
+    command: >
+      whisper-server --host 0.0.0.0 -m /models/ggml-base.bin
+    restart: unless-stopped
+
+
+volumes:
+  postgis_data:
+    external: true
+    name: 86b470be81bc7487178c3fa534c78563431e2b38c31c58d08109377575b2fa43

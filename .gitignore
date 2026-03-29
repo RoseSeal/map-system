@@ -4,6 +4,7 @@ Thumbs.db
 Desktop.ini
 .vscode/
 *.swp
+runtime/
 
 # IntelliJ
 .idea/
@@ -42,3 +43,6 @@ backend/map-service/src/main/resources/application-local.properties
 # python
 __pycache__/
 *.pyc
+
+# Other
+.codex
