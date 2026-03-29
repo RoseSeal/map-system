@@ -2,6 +2,7 @@ package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.client.LlmClient;
 import com.whut.map.map_service.config.LlmProperties;
+import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.BackendMessage;
 import com.whut.map.map_service.dto.websocket.BackendChatErrorPayload;
 import com.whut.map.map_service.dto.websocket.BackendChatReplyPayload;
@@ -12,6 +13,7 @@ import com.whut.map.map_service.dto.websocket.MessageRole;
 import com.whut.map.map_service.websocket.BackendMessageFactory;
 import com.whut.map.map_service.websocket.ChatMessageFactory;
 import com.whut.map.map_service.websocket.WebSocketService;
+import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,11 +42,13 @@ class LlmChatServiceTest {
 
     private final BackendMessageFactory backendMessageFactory = new BackendMessageFactory();
     private final ChatMessageFactory chatMessageFactory = new ChatMessageFactory(backendMessageFactory);
+    private final WhisperProperties whisperProperties = new WhisperProperties();
+    private final ChatRequestValidator chatRequestValidator = new ChatRequestValidator(chatMessageFactory, whisperProperties);
 
     @Test
     void validChatRequestsProduceChatReply() {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
-        LlmChatService service = new LlmChatService(llmClient, properties, webSocketService, chatMessageFactory);
+        LlmChatService service = new LlmChatService(llmClient, properties, webSocketService, chatMessageFactory, chatRequestValidator);
         FrontendChatPayload request = buildRequest();
         when(llmClient.generateText(anyString())).thenReturn("assistant reply");
 
@@ -64,7 +68,7 @@ class LlmChatServiceTest {
     @Test
     void invalidChatRequestsReturnChatError() {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
-        LlmChatService service = new LlmChatService(llmClient, properties, webSocketService, chatMessageFactory);
+        LlmChatService service = new LlmChatService(llmClient, properties, webSocketService, chatMessageFactory, chatRequestValidator);
         FrontendChatPayload request = buildRequest();
         request.setContent(" ");
 
@@ -82,7 +86,7 @@ class LlmChatServiceTest {
     @Test
     void llmFailuresReturnChatError() {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
-        LlmChatService service = new LlmChatService(llmClient, properties, webSocketService, chatMessageFactory);
+        LlmChatService service = new LlmChatService(llmClient, properties, webSocketService, chatMessageFactory, chatRequestValidator);
         FrontendChatPayload request = buildRequest();
         when(llmClient.generateText(anyString())).thenThrow(new IllegalStateException("boom"));
 

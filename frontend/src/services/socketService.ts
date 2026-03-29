@@ -3,10 +3,11 @@
  * Handles connection, heartbeat, and reconnection with exponential backoff.
  */
 import type {
-  ChatInputType,
-  ChatRequestEnvelope,
-  ChatReplyPayload,
   ChatErrorPayload,
+  ChatMode,
+  ChatReplyPayload,
+  ChatRequestEnvelope,
+  ChatTranscriptPayload,
   RiskObject,
   Target,
   WebSocketMessage,
@@ -17,11 +18,18 @@ import { useAiCenterStore } from '../store/useAiCenterStore';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
-interface SendChatMessageParams {
+interface SendTextChatMessageParams {
   sequenceId: string;
   messageId: string;
-  inputType?: ChatInputType;
   content: string;
+}
+
+interface SendSpeechChatMessageParams {
+  sequenceId: string;
+  messageId: string;
+  audioData: string;
+  audioFormat: string;
+  mode: ChatMode;
 }
 
 class SocketService {
@@ -76,13 +84,67 @@ class SocketService {
     return true;
   }
 
-  sendChatMessage({ sequenceId, messageId, inputType = 'TEXT', content }: SendChatMessageParams): boolean {
+  sendChatMessage({ sequenceId, messageId, content }: SendTextChatMessageParams): boolean {
     const text = content.trim();
     if (!text) {
       useAiCenterStore.getState().markChatMessageError(messageId, 'EMPTY_MESSAGE', '消息内容不能为空');
       return false;
     }
 
+    if (!this.validateBeforeSend(messageId)) {
+      return false;
+    }
+
+    const message: ChatRequestEnvelope = {
+      type: 'CHAT',
+      message: {
+        role: 'user',
+        sequence_id: sequenceId,
+        message_id: messageId,
+        input_type: 'TEXT',
+        content: text,
+      },
+    };
+
+    return this.sendTrackedChatMessage(messageId, message);
+  }
+
+  sendSpeechChatMessage({ sequenceId, messageId, audioData, audioFormat, mode }: SendSpeechChatMessageParams): boolean {
+    if (!audioData.trim()) {
+      useAiCenterStore.getState().markChatMessageError(messageId, 'EMPTY_AUDIO', '语音数据不能为空');
+      return false;
+    }
+
+    if (!audioFormat.trim()) {
+      useAiCenterStore.getState().markChatMessageError(messageId, 'INVALID_AUDIO_FORMAT', '音频格式无效');
+      return false;
+    }
+
+    if (!this.validateBeforeSend(messageId)) {
+      return false;
+    }
+
+    const message: ChatRequestEnvelope = {
+      type: 'CHAT',
+      message: {
+        role: 'user',
+        sequence_id: sequenceId,
+        message_id: messageId,
+        input_type: 'SPEECH',
+        audio_data: audioData,
+        audio_format: audioFormat,
+        mode,
+      },
+    };
+
+    return this.sendTrackedChatMessage(messageId, message);
+  }
+
+  getState(): ConnectionState {
+    return this.state;
+  }
+
+  private validateBeforeSend(messageId: string): boolean {
     if (this.inFlightChatMessageIds.has(messageId)) {
       useAiCenterStore.getState().markChatMessageError(messageId, 'DUPLICATE_MESSAGE', '该消息正在发送，请勿重复提交');
       return false;
@@ -93,17 +155,10 @@ class SocketService {
       return false;
     }
 
-    const message: ChatRequestEnvelope = {
-      type: 'CHAT',
-      message: {
-        role: 'user',
-        sequence_id: sequenceId,
-        message_id: messageId,
-        input_type: inputType,
-        content: text,
-      },
-    };
+    return true;
+  }
 
+  private sendTrackedChatMessage(messageId: string, message: ChatRequestEnvelope): boolean {
     this.inFlightChatMessageIds.add(messageId);
     const didSend = this.send(message);
     if (!didSend) {
@@ -113,10 +168,6 @@ class SocketService {
     }
 
     return true;
-  }
-
-  getState(): ConnectionState {
-    return this.state;
   }
 
   private setupEventHandlers(): void {
@@ -172,6 +223,11 @@ class SocketService {
             this.processRiskObject(message.payload);
           }
           return;
+        case 'CHAT_TRANSCRIPT':
+          if (isChatTranscriptPayload(message.payload)) {
+            this.processChatTranscript(message.payload);
+          }
+          return;
         case 'CHAT_REPLY':
           if (isChatReplyPayload(message.payload)) {
             this.processChatReply(message.payload);
@@ -217,34 +273,55 @@ class SocketService {
     useAiCenterStore.getState().ingestRiskObjectForAi(data, mergeTargets(data.targets, data.all_targets));
   }
 
-  private processChatReply(payload: ChatReplyPayload): void {
-    if (payload.reply_to_message_id) {
-      this.inFlightChatMessageIds.delete(payload.reply_to_message_id);
-    }
-
-    if (payload.sequence_id !== useAiCenterStore.getState().chatSessionId) {
+  private processChatTranscript(payload: ChatTranscriptPayload): void {
+    const store = useAiCenterStore.getState();
+    if (payload.sequence_id !== store.chatSessionId) {
       return;
     }
 
-    useAiCenterStore.getState().appendChatReply(payload);
+    store.applyChatTranscript(payload);
+    store.setVoiceCaptureSent(payload.reply_to_message_id);
+  }
+
+  private processChatReply(payload: ChatReplyPayload): void {
+    const store = useAiCenterStore.getState();
+    if (payload.reply_to_message_id) {
+      this.inFlightChatMessageIds.delete(payload.reply_to_message_id);
+      if (store.activeVoiceMessageId === payload.reply_to_message_id) {
+        store.setVoiceCaptureSent(payload.reply_to_message_id);
+      }
+    }
+
+    if (payload.sequence_id !== store.chatSessionId) {
+      return;
+    }
+
+    store.appendChatReply(payload);
   }
 
   private processChatError(payload: ChatErrorPayload): void {
+    const store = useAiCenterStore.getState();
     if (payload.reply_to_message_id) {
       this.inFlightChatMessageIds.delete(payload.reply_to_message_id);
+      if (store.activeVoiceMessageId === payload.reply_to_message_id) {
+        store.setVoiceCaptureError(payload.error_message, payload.reply_to_message_id);
+      }
     }
 
-    if (payload.sequence_id !== useAiCenterStore.getState().chatSessionId) {
+    if (payload.sequence_id !== store.chatSessionId) {
       return;
     }
 
-    useAiCenterStore.getState().appendChatError(payload);
+    store.appendChatError(payload);
   }
 
   private failAllPendingChats(errorCode: string, errorMessage: string): void {
     const store = useAiCenterStore.getState();
     this.inFlightChatMessageIds.forEach((messageId) => {
       store.markChatMessageError(messageId, errorCode, errorMessage);
+      if (store.activeVoiceMessageId === messageId) {
+        store.setVoiceCaptureError(errorMessage, messageId);
+      }
     });
     this.inFlightChatMessageIds.clear();
   }
@@ -316,6 +393,10 @@ function mergeTargets(targets: Target[], allTargets?: Target[]): Target[] {
 
 function isRiskObjectPayload(payload: WebSocketMessage['payload']): payload is RiskObject {
   return Boolean(payload && typeof payload === 'object' && 'risk_object_id' in payload && 'own_ship' in payload);
+}
+
+function isChatTranscriptPayload(payload: WebSocketMessage['payload']): payload is ChatTranscriptPayload {
+  return Boolean(payload && typeof payload === 'object' && 'reply_to_message_id' in payload && 'transcript' in payload);
 }
 
 function isChatReplyPayload(payload: WebSocketMessage['payload']): payload is ChatReplyPayload {

@@ -6,7 +6,11 @@ import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.FrontendChatPayload;
 import com.whut.map.map_service.dto.websocket.FrontendMessage;
 import com.whut.map.map_service.dto.websocket.WebSocketMessageTypes;
+import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.service.llm.LlmChatService;
+import com.whut.map.map_service.service.llm.VoiceChatService;
+import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
+import com.whut.map.map_service.websocket.validation.ValidationResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,11 +28,16 @@ public class StreamWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final WebSocketService webSocketService;
     private final LlmChatService llmChatService;
+    private final VoiceChatService voiceChatService;
+    private final ChatRequestValidator chatRequestValidator;
+    private final WhisperProperties whisperProperties;
     private final BackendMessageFactory backendMessageFactory;
     private final ChatMessageFactory chatMessageFactory;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+        session.setTextMessageSizeLimit(whisperProperties.getWebSocketTextMessageSizeLimitBytes());
+        session.setBinaryMessageSizeLimit(whisperProperties.getWebSocketBinaryMessageSizeLimitBytes());
         sessionRegistry.register(session);
         log.debug("WebSocket connected: {}", session.getId());
     }
@@ -47,6 +56,13 @@ public class StreamWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void routeMessage(WebSocketSession session, FrontendMessage frontendMessage) {
+        ValidationResult typeValidationResult = chatRequestValidator.validateFrontendMessageType(frontendMessage);
+        if (typeValidationResult.hasError()) {
+            webSocketService.sendToSession(session, typeValidationResult.errorMessage());
+            log.warn("Ignoring invalid WebSocket message type from session {}.", session.getId());
+            return;
+        }
+
         String type = frontendMessage.getType();
         if (WebSocketMessageTypes.PING.equals(type)) {
             webSocketService.sendToSession(session, backendMessageFactory.buildPongMessage());
@@ -61,19 +77,21 @@ public class StreamWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void handleChatMessage(WebSocketSession session, JsonNode messageNode) {
-        if (messageNode == null || messageNode.isNull()) {
-            webSocketService.sendToSession(session, chatMessageFactory.buildErrorMessage(
-                    null,
-                    null,
-                    ChatErrorCode.INVALID_CHAT_REQUEST,
-                    "Chat payload is required."
-            ));
-            return;
-        }
-
         try {
-            FrontendChatPayload chatPayload = objectMapper.treeToValue(messageNode, FrontendChatPayload.class);
-            llmChatService.handleChat(session, chatPayload);
+            FrontendChatPayload chatPayload = messageNode == null || messageNode.isNull()
+                    ? null
+                    : objectMapper.treeToValue(messageNode, FrontendChatPayload.class);
+
+            ValidationResult validationResult = chatRequestValidator.validateRouteableChatRequest(chatPayload);
+            if (validationResult.hasError()) {
+                webSocketService.sendToSession(session, validationResult.errorMessage());
+                return;
+            }
+
+            switch (chatPayload.getInputType()) {
+                case SPEECH -> voiceChatService.handleVoice(session, chatPayload);
+                case TEXT -> llmChatService.handleChat(session, chatPayload);
+            }
         } catch (Exception e) {
             webSocketService.sendToSession(session, chatMessageFactory.buildErrorMessage(
                     readText(messageNode, "sequence_id"),

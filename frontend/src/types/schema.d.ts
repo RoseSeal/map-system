@@ -275,15 +275,29 @@ export interface RiskObject {
 // ============================================================
 
 export type ChatInputType = 'TEXT' | 'SPEECH';
+export type ChatMode = 'direct' | 'preview';
 export type ChatRole = 'user' | 'assistant' | 'system';
 
-export interface ChatRequestMessage {
+export interface BaseChatRequestMessage {
   sequence_id: string;
   message_id: string;
   role: 'user';
   input_type?: ChatInputType;
+}
+
+export interface TextChatRequestMessage extends BaseChatRequestMessage {
+  input_type?: 'TEXT';
   content: string;
 }
+
+export interface SpeechChatRequestMessage extends BaseChatRequestMessage {
+  input_type: 'SPEECH';
+  audio_data: string;
+  audio_format: string;
+  mode: ChatMode;
+}
+
+export type ChatRequestMessage = TextChatRequestMessage | SpeechChatRequestMessage;
 
 export interface ChatRequestEnvelope {
   type: 'CHAT';
@@ -309,6 +323,15 @@ export interface ChatErrorPayload {
   timestamp?: string;
 }
 
+export interface ChatTranscriptPayload {
+  sequence_id: string;
+  message_id: string;
+  reply_to_message_id: string;
+  transcript: string;
+  language?: string;
+  timestamp?: string;
+}
+
 // ============================================================
 // WebSocket Envelope
 // ============================================================
@@ -321,6 +344,7 @@ export type MessageType =
   | 'PING'
   | 'PONG'
   | 'CHAT'
+  | 'CHAT_TRANSCRIPT'
   | 'CHAT_REPLY'
   | 'CHAT_ERROR';
 
@@ -331,7 +355,7 @@ export interface WebSocketMessage {
   /** Sequence ID for ordering or chat session binding */
   sequence_id?: number | string;
   /** Payload for backend -> frontend messages */
-  payload?: RiskObject | ChatReplyPayload | ChatErrorPayload;
+  payload?: RiskObject | ChatTranscriptPayload | ChatReplyPayload | ChatErrorPayload;
   /** Message for frontend -> backend chat requests */
   message?: ChatRequestMessage;
 }

@@ -1,4 +1,4 @@
-﻿import type { ChatInputType, ChatReplyPayload, ChatRole, RiskExplanation, RiskLevel } from './schema';
+﻿import type { ChatInputType, ChatMode, ChatReplyPayload, ChatRole, RiskExplanation, RiskLevel } from './schema';
 
 export type AiCenterMessageStatus = 'pending' | 'sent' | 'replied' | 'error';
 export type AiCenterMessageType = 'chat_user' | 'chat_reply';
@@ -16,6 +16,9 @@ export interface AiCenterChatMessage {
   sequence_id: string;
   role: ChatRole;
   input_type?: ChatInputType;
+  chat_mode?: ChatMode;
+  audio_format?: string;
+  transcript_language?: string;
   content: string;
   status: AiCenterMessageStatus;
   reply_to_message_id?: string;

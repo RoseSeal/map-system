@@ -18,4 +18,12 @@ public class FrontendChatPayload {
     private InputType inputType;
 
     private String content;
+
+    @JsonProperty("audio_data")
+    private String audioData;
+
+    @JsonProperty("audio_format")
+    private String audioFormat;
+
+    private String mode;
 }

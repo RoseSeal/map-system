@@ -1,6 +1,14 @@
 ﻿import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { RiskObject, Target, ChatErrorPayload, ChatInputType, ChatReplyPayload } from '../types/schema';
+import type {
+  ChatErrorPayload,
+  ChatInputType,
+  ChatMode,
+  ChatReplyPayload,
+  ChatTranscriptPayload,
+  RiskObject,
+  Target,
+} from '../types/schema';
 import type { AiCenterChatMessage, StoredLlmExplanation } from '../types/aiCenter';
 import {
   createChatSessionId,
@@ -8,6 +16,8 @@ import {
   normalizeChatReply,
   normalizeLlmExplanation,
 } from '../utils/llmEventNormalizer';
+
+export type VoiceCaptureState = 'idle' | 'recording' | 'transcribing' | 'sent' | 'error';
 
 interface AiCenterState {
   chatSessionId: string;
@@ -24,7 +34,11 @@ interface AiCenterState {
   spokenMessages: Record<string, string>;
   lastSpokenAt: Record<string, number>;
 
-  // 新增：追踪聊天输入框是否处于焦点状态
+  voiceCaptureSupported: boolean;
+  voiceCaptureState: VoiceCaptureState;
+  voiceCaptureError: string | null;
+  activeVoiceMessageId: string | null;
+
   isChatFocused: boolean;
 
   ingestRiskObjectForAi: (riskObject: RiskObject, targets: Target[]) => void;
@@ -32,6 +46,7 @@ interface AiCenterState {
   appendUserChatMessage: (message: AiCenterChatMessage) => void;
   appendChatReply: (payload: ChatReplyPayload) => void;
   appendChatError: (payload: ChatErrorPayload) => void;
+  applyChatTranscript: (payload: ChatTranscriptPayload) => void;
   markChatPending: (messageId: string, pending: boolean) => void;
   markChatMessageError: (messageId: string, errorCode: string, errorMessage: string) => void;
   markLlmRead: (targetId: string) => void;
@@ -41,8 +56,18 @@ interface AiCenterState {
   markMessageSpoken: (messageKey: string, text: string) => void;
   clearSpokenState: (conversationId?: string) => void;
   resetChatSession: () => void;
-  createPendingUserChatMessage: (content: string, inputType?: ChatInputType) => AiCenterChatMessage;
-  // 新增：设置焦点状态的方法
+  createPendingUserChatMessage: (options: {
+    content: string;
+    inputType?: ChatInputType;
+    chatMode?: ChatMode;
+    audioFormat?: string;
+  }) => AiCenterChatMessage;
+  setVoiceCaptureSupported: (supported: boolean) => void;
+  setVoiceCaptureRecording: () => void;
+  setVoiceCaptureTranscribing: (messageId: string) => void;
+  setVoiceCaptureSent: (messageId?: string) => void;
+  setVoiceCaptureError: (error: string, messageId?: string | null) => void;
+  resetVoiceCapture: () => void;
   setIsChatFocused: (isFocused: boolean) => void;
 }
 
@@ -59,7 +84,11 @@ const initialState = () => ({
   speechSupported: false,
   spokenMessages: {} as Record<string, string>,
   lastSpokenAt: {} as Record<string, number>,
-  isChatFocused: false, // 初始化
+  voiceCaptureSupported: false,
+  voiceCaptureState: 'idle' as VoiceCaptureState,
+  voiceCaptureError: null as string | null,
+  activeVoiceMessageId: null as string | null,
+  isChatFocused: false,
 });
 
 export const useAiCenterStore = create<AiCenterState>()(
@@ -182,6 +211,27 @@ export const useAiCenterStore = create<AiCenterState>()(
       }));
     },
 
+    applyChatTranscript: (payload: ChatTranscriptPayload) => {
+      const transcript = payload.transcript.trim();
+      if (!transcript) {
+        return;
+      }
+
+      set((state) => ({
+        chatMessages: state.chatMessages.map((message) => (
+          message.message_id === payload.reply_to_message_id
+            ? {
+                ...message,
+                content: transcript,
+                transcript_language: payload.language,
+                error_code: undefined,
+                error_message: undefined,
+              }
+            : message
+        )),
+      }));
+    },
+
     markChatPending: (messageId: string, pending: boolean) => {
       set((state) => ({
         pendingChatMessageIds: {
@@ -292,17 +342,70 @@ export const useAiCenterStore = create<AiCenterState>()(
         lastSpokenAt: Object.fromEntries(
           Object.entries(state.lastSpokenAt).filter(([key]) => key.startsWith('llm-explanation::')),
         ),
+        voiceCaptureState: 'idle',
+        voiceCaptureError: null,
+        activeVoiceMessageId: null,
       }));
     },
 
-    createPendingUserChatMessage: (content: string, inputType: ChatInputType = 'TEXT') => {
-      return createUserChatMessage(get().chatSessionId, content, inputType);
+    createPendingUserChatMessage: (options) => {
+      return createUserChatMessage(get().chatSessionId, options);
+    },
+
+    setVoiceCaptureSupported: (supported: boolean) => {
+      set({ voiceCaptureSupported: supported });
+    },
+
+    setVoiceCaptureRecording: () => {
+      set({
+        voiceCaptureState: 'recording',
+        voiceCaptureError: null,
+        activeVoiceMessageId: null,
+      });
+    },
+
+    setVoiceCaptureTranscribing: (messageId: string) => {
+      set({
+        voiceCaptureState: 'transcribing',
+        voiceCaptureError: null,
+        activeVoiceMessageId: messageId,
+      });
+    },
+
+    setVoiceCaptureSent: (messageId?: string) => {
+      set((state) => {
+        if (messageId && state.activeVoiceMessageId && state.activeVoiceMessageId !== messageId) {
+          return state;
+        }
+
+        return {
+          voiceCaptureState: 'sent' as VoiceCaptureState,
+          voiceCaptureError: null,
+          activeVoiceMessageId: messageId || state.activeVoiceMessageId,
+        };
+      });
+    },
+
+    setVoiceCaptureError: (error: string, messageId?: string | null) => {
+      set({
+        voiceCaptureState: 'error',
+        voiceCaptureError: error,
+        activeVoiceMessageId: messageId === undefined ? get().activeVoiceMessageId : messageId,
+      });
+    },
+
+    resetVoiceCapture: () => {
+      set({
+        voiceCaptureState: 'idle',
+        voiceCaptureError: null,
+        activeVoiceMessageId: null,
+      });
     },
 
     setIsChatFocused: (isFocused: boolean) => {
       set({ isChatFocused: isFocused });
     },
-  }))
+  })),
 );
 
 export const selectLatestLlmExplanations = (state: AiCenterState) => state.latestLlmExplanations;
@@ -315,7 +418,13 @@ export const selectChatInput = (state: AiCenterState) => state.chatInput;
 export const selectChatSessionId = (state: AiCenterState) => state.chatSessionId;
 export const selectPendingChatMessageIds = (state: AiCenterState) => state.pendingChatMessageIds;
 export const selectChatErrorByMessageId = (state: AiCenterState) => state.chatErrorByMessageId;
-export const selectIsChatSending = (state: AiCenterState) => Object.values(state.pendingChatMessageIds).some(Boolean);
+export const selectIsChatSending = (state: AiCenterState) => state.chatMessages.some(
+  (message) => message.role === 'user' && message.input_type !== 'SPEECH' && state.pendingChatMessageIds[message.message_id],
+);
 export const selectSpokenMessages = (state: AiCenterState) => state.spokenMessages;
 export const selectLastSpokenAt = (state: AiCenterState) => state.lastSpokenAt;
 export const selectIsChatFocused = (state: AiCenterState) => state.isChatFocused;
+export const selectVoiceCaptureSupported = (state: AiCenterState) => state.voiceCaptureSupported;
+export const selectVoiceCaptureState = (state: AiCenterState) => state.voiceCaptureState;
+export const selectVoiceCaptureError = (state: AiCenterState) => state.voiceCaptureError;
+export const selectActiveVoiceMessageId = (state: AiCenterState) => state.activeVoiceMessageId;

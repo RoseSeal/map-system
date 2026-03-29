@@ -1,6 +1,7 @@
 ﻿import type {
   ChatErrorPayload,
   ChatInputType,
+  ChatMode,
   ChatReplyPayload,
   RiskExplanation,
   RiskLevel,
@@ -109,15 +110,21 @@ export function normalizeChatReply(payload: ChatReplyPayload): NormalizedChatRep
 
 export function createUserChatMessage(
   sequenceId: string,
-  content: string,
-  inputType: ChatInputType = 'TEXT',
+  options: {
+    content: string;
+    inputType?: ChatInputType;
+    chatMode?: ChatMode;
+    audioFormat?: string;
+  },
 ): AiCenterChatMessage {
-  const text = content.trim();
+  const text = options.content.trim();
   return {
     message_id: createChatMessageId('user'),
     sequence_id: sequenceId,
     role: 'user',
-    input_type: inputType,
+    input_type: options.inputType || 'TEXT',
+    chat_mode: options.chatMode,
+    audio_format: options.audioFormat,
     content: text,
     status: 'pending',
     timestamp: new Date().toISOString(),

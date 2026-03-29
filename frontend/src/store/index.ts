@@ -12,6 +12,7 @@
 
 export {
   useAiCenterStore,
+  selectActiveVoiceMessageId,
   selectLatestLlmExplanations,
   selectReadLlmExplanations,
   selectSpeechEnabled,
@@ -23,4 +24,7 @@ export {
   selectPendingChatMessageIds,
   selectChatErrorByMessageId,
   selectIsChatSending,
+  selectVoiceCaptureError,
+  selectVoiceCaptureState,
+  selectVoiceCaptureSupported,
 } from './useAiCenterStore';

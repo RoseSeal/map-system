@@ -19,6 +19,10 @@ public class WebSocketService {
     }
 
     public void sendToSession(WebSocketSession session, BackendMessage message) {
+        if (message == null) {
+            log.warn("Skipping send because BackendMessage is null.");
+            return;
+        }
         try {
             String jsonMessage = objectMapper.writeValueAsString(message);
             sessionRegistry.sendToSession(session, jsonMessage);
@@ -28,11 +32,15 @@ public class WebSocketService {
     }
 
     public void broadcast(BackendMessage message) {
+        if (message == null) {
+            log.warn("Skipping broadcast because BackendMessage is null.");
+            return;
+        }
         try {
             String jsonMessage = objectMapper.writeValueAsString(message);
             sessionRegistry.broadcast(jsonMessage);
         } catch (Exception e) {
-            log.error("Error serializing WebSocket message of type {}: {}", message.getType(), e.getMessage());
+            log.error("Error serializing WebSocket message of type {}: {} when broadcast", message.getType(), e.getMessage());
         }
     }
 }

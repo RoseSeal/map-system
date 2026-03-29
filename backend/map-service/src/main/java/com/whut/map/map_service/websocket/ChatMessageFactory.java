@@ -2,6 +2,7 @@ package com.whut.map.map_service.websocket;
 
 import com.whut.map.map_service.dto.websocket.BackendChatErrorPayload;
 import com.whut.map.map_service.dto.websocket.BackendChatReplyPayload;
+import com.whut.map.map_service.dto.websocket.BackendChatTranscriptPayload;
 import com.whut.map.map_service.dto.websocket.BackendMessage;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.FrontendChatPayload;
@@ -29,6 +30,17 @@ public class ChatMessageFactory {
         payload.setSource(source);
         payload.setTimestamp(Instant.now().toString());
         return backendMessageFactory.buildMessage(WebSocketMessageTypes.CHAT_REPLY, request.getSequenceId(), payload);
+    }
+
+    public BackendMessage buildTranscriptMessage(FrontendChatPayload request, String transcript, String language) {
+        BackendChatTranscriptPayload payload = new BackendChatTranscriptPayload();
+        payload.setSequenceId(request.getSequenceId());
+        payload.setMessageId(UUID.randomUUID().toString());
+        payload.setReplyToMessageId(request.getMessageId());
+        payload.setTranscript(transcript);
+        payload.setLanguage(language);
+        payload.setTimestamp(Instant.now().toString());
+        return backendMessageFactory.buildMessage(WebSocketMessageTypes.CHAT_TRANSCRIPT, request.getSequenceId(), payload);
     }
 
     public BackendMessage buildErrorMessage(

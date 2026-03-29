@@ -21,11 +21,17 @@ services:
     image: ghcr.io/ggml-org/whisper.cpp:main
     container_name: whisper-service
     ports:
-      - "8080:8080"
+      - "8081:8080"
     volumes:
       - ./runtime/whisper-models:/models
-    command: >
-      whisper-server --host 0.0.0.0 -m /models/ggml-base.bin
+    entrypoint:
+      - whisper-server
+    command:
+      - --host
+      - 0.0.0.0
+      - -m
+      - /models/ggml-base.bin
+      - --convert
     restart: unless-stopped
 
 

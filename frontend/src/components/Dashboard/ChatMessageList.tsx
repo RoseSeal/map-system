@@ -30,7 +30,10 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
     <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin">
       {messages.map((message) => {
         const isUser = message.role === 'user';
+        const isSpeechMessage = message.input_type === 'SPEECH';
         const showError = isUser && message.status === 'error' && message.error_message;
+        const showRetry = showError && message.input_type !== 'SPEECH';
+        const showInterruptPlaceholder = isUser && (message.status === 'pending' || message.status === 'sent');
 
         return (
           <div
@@ -48,6 +51,12 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
                     : 'bg-slate-900/80 border-white/10 text-slate-100',
                 ].join(' ')}
               >
+                {isSpeechMessage && (
+                  <div className="mb-1 flex items-center justify-end gap-1.5 text-[10px] uppercase tracking-[0.14em] text-cyan-200/70">
+                    <span>VOICE</span>
+                    {message.chat_mode && <span>{message.chat_mode}</span>}
+                  </div>
+                )}
                 <div className="whitespace-pre-wrap break-words">{message.content}</div>
               </div>
 
@@ -56,16 +65,32 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
                 <span>{formatStatus(message)}</span>
               </div>
 
+              {showInterruptPlaceholder && (
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center gap-2 rounded-full border border-cyan-500/15 bg-slate-900/70 px-2.5 py-1 text-[10px] text-slate-400 cursor-not-allowed"
+                  title="主动中断能力预留，待后端协议支持"
+                >
+                  <span className="h-3 w-3 rounded-full border-2 border-cyan-400/60 border-t-transparent animate-spin" />
+                  <span>处理中</span>
+                </button>
+              )}
+
               {showError && (
                 <div className="flex items-center gap-2 text-[11px] text-red-300">
                   <span>{message.error_message}</span>
-                  <button
-                    type="button"
-                    onClick={() => onRetry(message)}
-                    className="rounded border border-red-500/30 px-2 py-0.5 text-red-200 hover:bg-red-500/10"
-                  >
-                    重试
-                  </button>
+                  {showRetry ? (
+                    <button
+                      type="button"
+                      onClick={() => onRetry(message)}
+                      className="rounded border border-red-500/30 px-2 py-0.5 text-red-200 hover:bg-red-500/10"
+                    >
+                      重试
+                    </button>
+                  ) : (
+                    <span className="text-red-200/80">请重新录音</span>
+                  )}
                 </div>
               )}
             </div>
@@ -79,6 +104,19 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
 function formatStatus(message: AiCenterChatMessage): string {
   if (message.role === 'assistant') {
     return message.source || '回复完成';
+  }
+
+  if (message.input_type === 'SPEECH') {
+    switch (message.status) {
+      case 'pending':
+        return '语音处理中';
+      case 'error':
+        return '发送失败';
+      case 'replied':
+        return '已回复';
+      default:
+        return '已发送';
+    }
   }
 
   switch (message.status) {

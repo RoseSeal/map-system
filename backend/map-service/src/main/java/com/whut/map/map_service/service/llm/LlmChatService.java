@@ -5,9 +5,10 @@ import com.whut.map.map_service.config.LlmProperties;
 import com.whut.map.map_service.dto.websocket.BackendMessage;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.FrontendChatPayload;
-import com.whut.map.map_service.dto.websocket.MessageRole;
 import com.whut.map.map_service.websocket.ChatMessageFactory;
 import com.whut.map.map_service.websocket.WebSocketService;
+import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
+import com.whut.map.map_service.websocket.validation.ValidationResult;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,12 +32,13 @@ public class LlmChatService {
     private final LlmProperties llmProperties;
     private final WebSocketService webSocketService;
     private final ChatMessageFactory chatMessageFactory;
+    private final ChatRequestValidator chatRequestValidator;
     private final ExecutorService llmExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public void handleChat(WebSocketSession session, FrontendChatPayload request) {
-        BackendMessage validationError = validateRequest(request);
-        if (validationError != null) {
-            webSocketService.sendToSession(session, validationError);
+        ValidationResult validationResult = chatRequestValidator.validateTextRequest(request);
+        if (validationResult.hasError()) {
+            webSocketService.sendToSession(session, validationResult.errorMessage());
             return;
         }
 
@@ -84,30 +86,6 @@ public class LlmChatService {
                             errorMessage
                     ));
                 });
-    }
-
-    private BackendMessage validateRequest(FrontendChatPayload request) {
-        if (request == null) {
-            return chatMessageFactory.buildErrorMessage(
-                    null,
-                    null,
-                    ChatErrorCode.INVALID_CHAT_REQUEST,
-                    "Chat payload is required."
-            );
-        }
-        if (!StringUtils.hasText(request.getMessageId())) {
-            return chatMessageFactory.buildErrorMessage(request.getSequenceId(), null, ChatErrorCode.INVALID_CHAT_REQUEST,
-                    "message_id is required.");
-        }
-        if (!StringUtils.hasText(request.getContent())) {
-            return chatMessageFactory.buildErrorMessage(request.getSequenceId(), request.getMessageId(), ChatErrorCode.INVALID_CHAT_REQUEST,
-                    "content must not be blank.");
-        }
-        if (request.getRole() != MessageRole.USER) {
-            return chatMessageFactory.buildErrorMessage(request.getSequenceId(), request.getMessageId(), ChatErrorCode.INVALID_CHAT_REQUEST,
-                    "role must be user.");
-        }
-        return null;
     }
 
     private String buildPrompt(FrontendChatPayload request) {

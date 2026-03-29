@@ -152,6 +152,11 @@ export const WS_CONFIG = {
   RECONNECT_MULTIPLIER: 2,
 } as const;
 
+export const CHAT_CONFIG = {
+  MAX_AUDIO_SIZE_BYTES: 10 * 1024 * 1024,
+  VOICE_SENT_RESET_DELAY_MS: 2000,
+} as const;
+
 // ============================================================
 // Performance & Rendering
 // ============================================================
