@@ -45,13 +45,16 @@ public class StreamWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
-        log.debug("Received message from session {}: {}", session.getId(), payload);
+        int payloadLength = payload.length();
 
         try {
             FrontendMessage frontendMessage = objectMapper.readValue(payload, FrontendMessage.class);
+            log.debug("Received message from session {}: type={}, payloadLength={}",
+                    session.getId(), frontendMessage.getType(), payloadLength);
             routeMessage(session, frontendMessage);
         } catch (Exception e) {
-            log.warn("Ignoring invalid WebSocket message from session {}: {}", session.getId(), e.getMessage());
+            log.warn("Ignoring invalid WebSocket message from session {} (payloadLength={}): {}",
+                    session.getId(), payloadLength, e.getMessage());
         }
     }
 

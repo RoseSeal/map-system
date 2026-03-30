@@ -25,5 +25,5 @@ public class FrontendChatPayload {
     @JsonProperty("audio_format")
     private String audioFormat;
 
-    private String mode;
+    private SpeechMode mode;
 }

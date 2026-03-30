@@ -17,6 +17,7 @@ import {
   selectVoiceCaptureError,
   selectVoiceCaptureState,
   selectVoiceCaptureSupported,
+  selectActiveVoiceMode,
 } from '../../store';
 import { CHAT_CONFIG, getRiskColor } from '../../config';
 import { socketService, voiceRecorderService } from '../../services';
@@ -42,6 +43,7 @@ export function RiskExplanationPanel() {
   const voiceCaptureSupported = useAiCenterStore(selectVoiceCaptureSupported);
   const voiceCaptureState = useAiCenterStore(selectVoiceCaptureState);
   const voiceCaptureError = useAiCenterStore(selectVoiceCaptureError);
+  const activeVoiceMode = useAiCenterStore(selectActiveVoiceMode);
 
   const isChatFocused = useAiCenterStore((state) => state.isChatFocused);
 
@@ -172,10 +174,6 @@ export function RiskExplanationPanel() {
   };
 
   const handleStopVoiceRecording = async (mode: ChatMode) => {
-    if (mode !== 'direct') {
-      return;
-    }
-
     try {
       const { blob, audioFormat } = await voiceRecorderService.stopRecording();
 
@@ -195,8 +193,11 @@ export function RiskExplanationPanel() {
         audioFormat,
       });
 
-      appendUserChatMessage(message);
-      setVoiceCaptureTranscribing(message.message_id);
+      if (mode === 'direct') {
+        appendUserChatMessage(message);
+      }
+
+      setVoiceCaptureTranscribing(message.message_id, mode);
 
       const didSend = socketService.sendSpeechChatMessage({
         sequenceId: chatSessionId,
@@ -382,6 +383,7 @@ export function RiskExplanationPanel() {
               isSending={isChatSending}
               voiceSupported={voiceCaptureSupported}
               voiceState={voiceCaptureState}
+              voiceMode={activeVoiceMode}
               voiceError={voiceCaptureError}
               onChange={setChatInput}
               onSend={handleSendChat}

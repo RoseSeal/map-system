@@ -6,6 +6,7 @@ import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.FrontendChatPayload;
 import com.whut.map.map_service.dto.websocket.InputType;
+import com.whut.map.map_service.dto.websocket.SpeechMode;
 import com.whut.map.map_service.websocket.ChatMessageFactory;
 import com.whut.map.map_service.websocket.WebSocketService;
 import com.whut.map.map_service.websocket.validation.AudioPayloadUtils;
@@ -62,7 +63,7 @@ public class VoiceChatService {
                 .orTimeout(whisperProperties.getTimeoutMs(), TimeUnit.MILLISECONDS)
                 .whenComplete((response, throwable) -> {
                     if (throwable == null) {
-                        handleTranscriptionSuccess(session, request, response, language);
+                        handlePostTranscription(session, request, response, language);
                         return;
                     }
 
@@ -83,7 +84,7 @@ public class VoiceChatService {
                 });
     }
 
-    private void handleTranscriptionSuccess(
+    private void handlePostTranscription(
             WebSocketSession session,
             FrontendChatPayload request,
             WhisperResponse response,
@@ -102,13 +103,34 @@ public class VoiceChatService {
                 language
         ));
 
+        if (isPreviewMode(request)) {
+            return;
+        }
+
+        forwardTranscriptToLlm(session, request, normalizedTranscript);
+    }
+
+    private void forwardTranscriptToLlm(
+            WebSocketSession session,
+            FrontendChatPayload request,
+            String transcript
+    ) {
+        FrontendChatPayload textRequest = buildTextRequestFromTranscript(request, transcript);
+        llmChatService.handleChat(session, textRequest);
+    }
+
+    private FrontendChatPayload buildTextRequestFromTranscript(FrontendChatPayload request, String content) {
         FrontendChatPayload textRequest = new FrontendChatPayload();
         textRequest.setSequenceId(request.getSequenceId());
         textRequest.setMessageId(request.getMessageId());
         textRequest.setRole(request.getRole());
         textRequest.setInputType(InputType.TEXT);
-        textRequest.setContent(normalizedTranscript);
-        llmChatService.handleChat(session, textRequest);
+        textRequest.setContent(content);
+        return textRequest;
+    }
+
+    private boolean isPreviewMode(FrontendChatPayload request) {
+        return request != null && request.getMode() == SpeechMode.PREVIEW;
     }
 
     private void sendError(

@@ -38,6 +38,7 @@ interface AiCenterState {
   voiceCaptureState: VoiceCaptureState;
   voiceCaptureError: string | null;
   activeVoiceMessageId: string | null;
+  activeVoiceMode: ChatMode | null;
 
   isChatFocused: boolean;
 
@@ -64,7 +65,7 @@ interface AiCenterState {
   }) => AiCenterChatMessage;
   setVoiceCaptureSupported: (supported: boolean) => void;
   setVoiceCaptureRecording: () => void;
-  setVoiceCaptureTranscribing: (messageId: string) => void;
+  setVoiceCaptureTranscribing: (messageId: string, mode: ChatMode) => void;
   setVoiceCaptureSent: (messageId?: string) => void;
   setVoiceCaptureError: (error: string, messageId?: string | null) => void;
   resetVoiceCapture: () => void;
@@ -88,6 +89,7 @@ const initialState = () => ({
   voiceCaptureState: 'idle' as VoiceCaptureState,
   voiceCaptureError: null as string | null,
   activeVoiceMessageId: null as string | null,
+  activeVoiceMode: null as ChatMode | null,
   isChatFocused: false,
 });
 
@@ -217,19 +219,36 @@ export const useAiCenterStore = create<AiCenterState>()(
         return;
       }
 
-      set((state) => ({
-        chatMessages: state.chatMessages.map((message) => (
-          message.message_id === payload.reply_to_message_id
+      set((state) => {
+        const isPreview = state.activeVoiceMessageId === payload.reply_to_message_id && state.activeVoiceMode === 'preview';
+
+        return {
+          chatMessages: isPreview
+            ? state.chatMessages
+            : state.chatMessages.map((message) => (
+                message.message_id === payload.reply_to_message_id
+                  ? {
+                      ...message,
+                      content: transcript,
+                      transcript_language: payload.language,
+                      error_code: undefined,
+                      error_message: undefined,
+                    }
+                  : message
+              )),
+          pendingChatMessageIds: isPreview
             ? {
-                ...message,
-                content: transcript,
-                transcript_language: payload.language,
-                error_code: undefined,
-                error_message: undefined,
+                ...state.pendingChatMessageIds,
+                [payload.reply_to_message_id]: false,
               }
-            : message
-        )),
-      }));
+            : state.pendingChatMessageIds,
+          chatErrorByMessageId: {
+            ...state.chatErrorByMessageId,
+            [payload.reply_to_message_id]: null,
+          },
+          chatInput: isPreview ? transcript : state.chatInput,
+        };
+      });
     },
 
     markChatPending: (messageId: string, pending: boolean) => {
@@ -345,6 +364,7 @@ export const useAiCenterStore = create<AiCenterState>()(
         voiceCaptureState: 'idle',
         voiceCaptureError: null,
         activeVoiceMessageId: null,
+        activeVoiceMode: null,
       }));
     },
 
@@ -361,14 +381,16 @@ export const useAiCenterStore = create<AiCenterState>()(
         voiceCaptureState: 'recording',
         voiceCaptureError: null,
         activeVoiceMessageId: null,
+        activeVoiceMode: null,
       });
     },
 
-    setVoiceCaptureTranscribing: (messageId: string) => {
+    setVoiceCaptureTranscribing: (messageId: string, mode: ChatMode) => {
       set({
         voiceCaptureState: 'transcribing',
         voiceCaptureError: null,
         activeVoiceMessageId: messageId,
+        activeVoiceMode: mode,
       });
     },
 
@@ -382,6 +404,7 @@ export const useAiCenterStore = create<AiCenterState>()(
           voiceCaptureState: 'sent' as VoiceCaptureState,
           voiceCaptureError: null,
           activeVoiceMessageId: messageId || state.activeVoiceMessageId,
+          activeVoiceMode: state.activeVoiceMode,
         };
       });
     },
@@ -391,6 +414,7 @@ export const useAiCenterStore = create<AiCenterState>()(
         voiceCaptureState: 'error',
         voiceCaptureError: error,
         activeVoiceMessageId: messageId === undefined ? get().activeVoiceMessageId : messageId,
+        activeVoiceMode: get().activeVoiceMode,
       });
     },
 
@@ -399,6 +423,7 @@ export const useAiCenterStore = create<AiCenterState>()(
         voiceCaptureState: 'idle',
         voiceCaptureError: null,
         activeVoiceMessageId: null,
+        activeVoiceMode: null,
       });
     },
 
@@ -428,3 +453,4 @@ export const selectVoiceCaptureSupported = (state: AiCenterState) => state.voice
 export const selectVoiceCaptureState = (state: AiCenterState) => state.voiceCaptureState;
 export const selectVoiceCaptureError = (state: AiCenterState) => state.voiceCaptureError;
 export const selectActiveVoiceMessageId = (state: AiCenterState) => state.activeVoiceMessageId;
+export const selectActiveVoiceMode = (state: AiCenterState) => state.activeVoiceMode;

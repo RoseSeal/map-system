@@ -33,7 +33,10 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
         const isSpeechMessage = message.input_type === 'SPEECH';
         const showError = isUser && message.status === 'error' && message.error_message;
         const showRetry = showError && message.input_type !== 'SPEECH';
-        const showInterruptPlaceholder = isUser && (message.status === 'pending' || message.status === 'sent');
+        const showInterruptPlaceholder = isUser && (
+          message.status === 'pending'
+          || (message.status === 'sent' && message.input_type !== 'SPEECH')
+        );
 
         return (
           <div
@@ -110,6 +113,8 @@ function formatStatus(message: AiCenterChatMessage): string {
     switch (message.status) {
       case 'pending':
         return '语音处理中';
+      case 'sent':
+        return message.chat_mode === 'preview' ? '转录待确认' : '已发送';
       case 'error':
         return '发送失败';
       case 'replied':

@@ -32,6 +32,8 @@ services:
       - -m
       - /models/ggml-base.bin
       - --convert
+      - --language
+      - zh
     restart: unless-stopped
 
 
