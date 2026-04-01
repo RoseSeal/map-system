@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   useRiskStore,
   useAiCenterStore,
+  selectAiCenterOpenRequestVersion,
   selectSelectedTarget,
   selectLatestLlmExplanations,
   selectReadLlmExplanations,
@@ -30,12 +31,13 @@ const PANEL_WIDTH = 360;
 const PANEL_HEIGHT = '72vh';
 
 export function RiskExplanationPanel() {
-  const targets = useRiskStore((state) => state.targets);
+  const allTargets = useRiskStore((state) => state.allTargets);
   const selectedTarget = useRiskStore(selectSelectedTarget);
   const selectTarget = useRiskStore((state) => state.selectTarget);
 
   const latestLlmExplanations = useAiCenterStore(selectLatestLlmExplanations);
   const readLlmExplanations = useAiCenterStore(selectReadLlmExplanations);
+  const aiCenterOpenRequestVersion = useAiCenterStore(selectAiCenterOpenRequestVersion);
   const chatMessages = useAiCenterStore(selectChatMessages);
   const chatInput = useAiCenterStore(selectChatInput);
   const chatSessionId = useAiCenterStore(selectChatSessionId);
@@ -95,9 +97,14 @@ export function RiskExplanationPanel() {
     };
   }, [resetVoiceCapture, voiceCaptureState]);
 
-  const explainedTargets = [...targets]
-    .filter((target) => isHighRisk(target.risk_assessment.risk_level) && Boolean(latestLlmExplanations[target.id]?.text))
-    .sort((left, right) => getRiskPriority(right.risk_assessment.risk_level) - getRiskPriority(left.risk_assessment.risk_level));
+  const explainedTargets = Object.values(latestLlmExplanations)
+    .filter((explanation) => shouldShowRiskCard(explanation.risk_level))
+    .map((explanation) => {
+      const target = allTargets.find((item) => item.id === explanation.target_id);
+      return target ? { target, explanation } : null;
+    })
+    .filter((item): item is { target: typeof allTargets[number]; explanation: typeof latestLlmExplanations[string] } => Boolean(item))
+    .sort((left, right) => getRiskPriority(right.explanation.risk_level) - getRiskPriority(left.explanation.risk_level));
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) {
@@ -123,10 +130,10 @@ export function RiskExplanationPanel() {
   }, [isChatFocused, isHovered]);
 
   useEffect(() => {
-    if (selectedTarget && latestLlmExplanations[selectedTarget.id]) {
+    if (aiCenterOpenRequestVersion > 0) {
       handleMouseEnter();
     }
-  }, [selectedTarget, latestLlmExplanations]);
+  }, [aiCenterOpenRequestVersion]);
 
   const handleSendChat = () => {
     const content = chatInput.trim();
@@ -300,20 +307,19 @@ export function RiskExplanationPanel() {
           >
             <div className="px-4 py-2.5 shrink-0 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-400">
               <span>态势监控日志</span>
-              <span>{explainedTargets.length} 个高危目标</span>
+              <span>{explainedTargets.length} 个风险目标</span>
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-thin relative">
               {explainedTargets.length === 0 ? (
                 <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs text-slate-500">
-                  当前航区暂无高危 AI 评估
+                  当前航区暂无 AI 风险评估
                 </div>
               ) : (
-                explainedTargets.map((target) => {
+                explainedTargets.map(({ target, explanation }) => {
                   const isSelected = selectedTarget?.id === target.id;
-                  const riskColor = getRiskColor(target.risk_assessment.risk_level);
+                  const riskColor = getRiskColor(explanation.risk_level);
                   const riskHex = `rgb(${riskColor.join(',')})`;
-                  const explanation = latestLlmExplanations[target.id];
                   const isRead = readLlmExplanations[target.id];
 
                   return (
@@ -338,7 +344,7 @@ export function RiskExplanationPanel() {
                           className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
                           style={{ color: riskHex, backgroundColor: `rgba(${riskColor.join(',')}, 0.15)` }}
                         >
-                          {target.risk_assessment.risk_level}
+                          {explanation.risk_level}
                         </span>
                       </div>
 
@@ -399,15 +405,17 @@ export function RiskExplanationPanel() {
   );
 }
 
-function isHighRisk(level: RiskLevel): boolean {
-  return level === 'WARNING' || level === 'ALARM';
+function shouldShowRiskCard(level: RiskLevel): boolean {
+  return level === 'CAUTION' || level === 'WARNING' || level === 'ALARM';
 }
 
 function getRiskPriority(level: RiskLevel): number {
   switch (level) {
     case 'ALARM':
-      return 2;
+      return 3;
     case 'WARNING':
+      return 2;
+    case 'CAUTION':
       return 1;
     default:
       return 0;

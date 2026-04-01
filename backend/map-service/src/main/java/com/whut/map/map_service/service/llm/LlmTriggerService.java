@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Component
 @RequiredArgsConstructor
 public class LlmTriggerService {
-
     private final LlmProperties llmProperties;
     private final ConcurrentHashMap<String, Instant> nextAllowedTimeMap = new ConcurrentHashMap<>();
     private final LlmExplanationService llmExplanationService;

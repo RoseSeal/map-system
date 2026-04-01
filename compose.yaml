@@ -27,13 +27,23 @@ services:
     entrypoint:
       - whisper-server
     command:
-      - --host
-      - 0.0.0.0
-      - -m
-      - /models/ggml-base.bin
-      - --convert
-      - --language
-      - zh
+       - --host
+       - 0.0.0.0
+       - -m
+       - /models/ggml-base.bin
+       - --convert
+       - --language
+       - zh
+       - --prompt
+       - |-
+          以下为简体中文语音转录任务。
+
+          请使用简体中文输出，保持专业、准确。
+
+          语境为航海与内河航行场景，内容可能涉及：
+          船舶、航速、航道、会遇关系、碰撞风险（CPA/TCPA）、避让决策等术语。
+
+          请优先识别并正确转录上述航海相关专业词汇。
     restart: unless-stopped
 
 

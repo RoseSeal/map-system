@@ -12,6 +12,7 @@
 
 export {
   useAiCenterStore,
+  selectAiCenterOpenRequestVersion,
   selectActiveVoiceMode,
   selectActiveVoiceMessageId,
   selectLatestLlmExplanations,

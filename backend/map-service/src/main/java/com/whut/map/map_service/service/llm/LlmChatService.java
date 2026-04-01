@@ -89,7 +89,7 @@ public class LlmChatService {
     }
 
     private String buildPrompt(FrontendChatPayload request) {
-        StringBuilder prompt = new StringBuilder("You are a maritime assistant. Answer the user's current message directly.\n");
+        StringBuilder prompt = new StringBuilder("You are a maritime assistant. Answer the user's current message directly and concisely in 2-3 sentences.\n");
         if (request.getInputType() != null) {
             prompt.append("Input type: ").append(request.getInputType().name()).append('\n');
         }

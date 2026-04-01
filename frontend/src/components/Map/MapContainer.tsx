@@ -11,12 +11,10 @@ import { IconLayer, PathLayer, PolygonLayer, LineLayer, ScatterplotLayer } from 
 
 import {
   useRiskStore,
-  useAiCenterStore,
   selectOwnShip,
   selectTargets,
   selectAllTargets,
   selectEnvironment,
-  selectLatestLlmExplanations,
 } from '../../store';
 import {
   DEFAULT_VIEW_STATE,
@@ -33,13 +31,7 @@ import {
   generateLinearTrajectory,
 } from '../../utils';
 import { getTargetRemainingWaypoints, isTargetInTrackingRange } from '../../services/mockDataGenerator';
-import type { LonLat, Target, OwnShip, RGBAColor, RiskLevel } from '../../types/schema';
-
-type ExplanationMarkerDatum = {
-  id: string;
-  position: LonLat;
-  riskLevel: RiskLevel;
-};
+import type { LonLat, Target, OwnShip, RGBAColor } from '../../types/schema';
 
 const VESSEL_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
@@ -74,21 +66,6 @@ const TARGET_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 </svg>
 `)}`;
 
-const EXPLANATION_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-  <defs>
-    <filter id="bubbleShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#020617" flood-opacity="0.45"/>
-    </filter>
-  </defs>
-  <g filter="url(#bubbleShadow)">
-    <path d="M20 4C11.2 4 4 10.7 4 19c0 3.3 1.2 6.4 3.4 9L6 35l7.5-3c2 0.7 4.2 1 6.5 1 8.8 0 16-6.7 16-15S28.8 4 20 4z" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
-    <circle cx="20" cy="14" r="2.2" fill="#38bdf8"/>
-    <rect x="18.6" y="18" width="2.8" height="8.5" rx="1.4" fill="#e0f2fe"/>
-  </g>
-</svg>
-`)}`;
-
 export function MapContainer() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -99,12 +76,8 @@ export function MapContainer() {
   const targets = useRiskStore(selectTargets);
   const allTargets = useRiskStore(selectAllTargets);
   const environment = useRiskStore(selectEnvironment);
-  const latestLlmExplanations = useAiCenterStore(selectLatestLlmExplanations);
   const selectedTargetId = useRiskStore((state) => state.selectedTargetId);
   const selectTarget = useRiskStore((state) => state.selectTarget);
-  const llmExplainedHighRiskTargets = allTargets.filter(
-    (target) => isHighRisk(target.risk_assessment.risk_level) && Boolean(latestLlmExplanations[target.id]?.text),
-  );
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -353,39 +326,8 @@ export function MapContainer() {
       );
     }
 
-    if (llmExplainedHighRiskTargets.length > 0) {
-      const explanationMarkers: ExplanationMarkerDatum[] = llmExplainedHighRiskTargets.map((target) => ({
-        id: target.id,
-        position: [target.position.lon, target.position.lat],
-        riskLevel: target.risk_assessment.risk_level,
-      }));
-
-      layers.push(
-        new IconLayer<ExplanationMarkerDatum>({
-          id: 'target-explanation-markers',
-          data: explanationMarkers,
-          getPosition: (d) => [d.position[0], d.position[1], 68],
-          getIcon: () => ({
-            url: EXPLANATION_ICON,
-            width: 40,
-            height: 40,
-            anchorY: 34,
-          }),
-          getSize: 28,
-          getColor: (d) => [...getRiskColor(d.riskLevel), 255],
-          pickable: true,
-          billboard: true,
-          onClick: ({ object }) => {
-            if (object?.id) {
-              selectTarget(object.id);
-            }
-          },
-        }),
-      );
-    }
-
     return layers;
-  }, [allTargets, llmExplainedHighRiskTargets, ownShip, selectedTargetId, selectTarget, targets]);
+  }, [allTargets, ownShip, selectedTargetId, selectTarget, targets]);
 
   useEffect(() => {
     if (!deckOverlay.current) return;
@@ -444,10 +386,6 @@ function getOwnShipColor(ownShip: OwnShip): [number, number, number, number] {
     default:
       return [16, 185, 129, 255];
   }
-}
-
-function isHighRisk(level: RiskLevel): boolean {
-  return level === 'WARNING' || level === 'ALARM';
 }
 
 function buildCPALineData(targets: Target[]): { source: LonLat; target: LonLat }[] {

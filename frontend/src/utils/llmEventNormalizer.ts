@@ -20,6 +20,7 @@ export function isLlmSource(source?: string | null): boolean {
   const normalized = (source || '').toLowerCase();
   return Boolean(
     normalized === 'llm'
+    || normalized === 'hybrid'
     || normalized.includes('llm')
     || normalized.includes('ai')
     || normalized.includes('model')

@@ -12,6 +12,7 @@ import {
   selectReadLlmExplanations,
 } from '../../store';
 import { getRiskColor } from '../../config';
+import { isLlmSource } from '../../utils/llmEventNormalizer';
 
 export function TargetsPanel() {
   const targets = useRiskStore(selectTargets);
@@ -19,6 +20,7 @@ export function TargetsPanel() {
   const selectedTarget = useRiskStore(selectSelectedTarget);
 
   const markLlmRead = useAiCenterStore((state) => state.markLlmRead);
+  const requestAiCenterOpen = useAiCenterStore((state) => state.requestAiCenterOpen);
   const readLlmExplanations = useAiCenterStore(selectReadLlmExplanations);
   const latestLlmExplanations = useAiCenterStore(selectLatestLlmExplanations);
 
@@ -58,6 +60,7 @@ export function TargetsPanel() {
               onClick={() => {
                 selectTarget(target.id);
                 if (hasLlmExplanation && !isRead) {
+                  requestAiCenterOpen();
                   markLlmRead(target.id);
                 }
               }}
@@ -133,15 +136,8 @@ function translateRisk(level: string): string {
 }
 
 function isLlmExplanation(explanation?: { source?: string; text?: string } | null): boolean {
-  const source = (explanation?.source || '').toLowerCase();
   return Boolean(
     explanation?.text?.trim()
-    && (
-      source === 'llm'
-      || source.includes('llm')
-      || source.includes('ai')
-      || source.includes('model')
-      || source.includes('gpt')
-    )
+    && isLlmSource(explanation?.source)
   );
 }

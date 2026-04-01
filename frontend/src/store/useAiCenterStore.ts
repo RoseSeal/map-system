@@ -20,6 +20,7 @@ import {
 export type VoiceCaptureState = 'idle' | 'recording' | 'transcribing' | 'sent' | 'error';
 
 interface AiCenterState {
+  aiCenterOpenRequestVersion: number;
   chatSessionId: string;
   chatMessages: AiCenterChatMessage[];
   chatInput: string;
@@ -70,9 +71,11 @@ interface AiCenterState {
   setVoiceCaptureError: (error: string, messageId?: string | null) => void;
   resetVoiceCapture: () => void;
   setIsChatFocused: (isFocused: boolean) => void;
+  requestAiCenterOpen: () => void;
 }
 
 const initialState = () => ({
+  aiCenterOpenRequestVersion: 0,
   chatSessionId: createChatSessionId(),
   chatMessages: [] as AiCenterChatMessage[],
   chatInput: '',
@@ -99,6 +102,7 @@ export const useAiCenterStore = create<AiCenterState>()(
 
     ingestRiskObjectForAi: (riskObject: RiskObject, targets: Target[]) => {
       set((state) => {
+        const currentTargetIds = new Set(targets.map((target) => target.id));
         const nextLatestLlmExplanations: Record<string, StoredLlmExplanation> = {};
         const nextReadLlmExplanations: Record<string, boolean> = { ...state.readLlmExplanations };
 
@@ -111,8 +115,12 @@ export const useAiCenterStore = create<AiCenterState>()(
               : false;
             return;
           }
+        });
 
-          delete nextReadLlmExplanations[target.id];
+        Object.keys(nextReadLlmExplanations).forEach((targetId) => {
+          if (!currentTargetIds.has(targetId)) {
+            delete nextReadLlmExplanations[targetId];
+          }
         });
 
         return {
@@ -430,9 +438,16 @@ export const useAiCenterStore = create<AiCenterState>()(
     setIsChatFocused: (isFocused: boolean) => {
       set({ isChatFocused: isFocused });
     },
+
+    requestAiCenterOpen: () => {
+      set((state) => ({
+        aiCenterOpenRequestVersion: state.aiCenterOpenRequestVersion + 1,
+      }));
+    },
   })),
 );
 
+export const selectAiCenterOpenRequestVersion = (state: AiCenterState) => state.aiCenterOpenRequestVersion;
 export const selectLatestLlmExplanations = (state: AiCenterState) => state.latestLlmExplanations;
 export const selectReadLlmExplanations = (state: AiCenterState) => state.readLlmExplanations;
 export const selectSpeechEnabled = (state: AiCenterState) => state.speechEnabled;
