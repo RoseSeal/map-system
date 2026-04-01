@@ -1,8 +1,9 @@
 package com.whut.map.map_service.websocket.validation;
 
 import com.whut.map.map_service.config.WhisperProperties;
-import com.whut.map.map_service.dto.websocket.*;
-import com.whut.map.map_service.websocket.ChatMessageFactory;
+import com.whut.map.map_service.dto.websocket.ChatErrorCode;
+import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
+import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -11,136 +12,53 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class ChatRequestValidator {
 
-    private final ChatMessageFactory chatMessageFactory;
     private final WhisperProperties whisperProperties;
 
-    public ValidationResult validateFrontendMessageType(FrontendMessage frontendMessage) {
-        if (frontendMessage == null || !StringUtils.hasText(frontendMessage.getType())) {
-            return ValidationResult.fail(buildInvalidChatRequest(null, null, "type is required."));
-        }
-        if (!WebSocketMessageTypes.PING.equals(frontendMessage.getType())
-                && !WebSocketMessageTypes.CHAT.equals(frontendMessage.getType())) {
-            return ValidationResult.fail(buildInvalidChatRequest(null, null, "Unsupported message type."));
-        }
-        return ValidationResult.ok();
-    }
-
-    public ValidationResult validateRequestEnvelope(FrontendChatPayload request) {
+    public ValidationResult validateTextRequest(ChatRequestPayload request) {
         if (request == null) {
-            return ValidationResult.fail(buildInvalidChatRequest(null, null, "Chat payload is required."));
+            return ValidationResult.fail(ChatErrorCode.INVALID_CHAT_REQUEST, "CHAT payload is required.");
         }
-        if (!StringUtils.hasText(request.getMessageId())) {
-            return ValidationResult.fail(buildInvalidChatRequest(request.getSequenceId(), null, "message_id is required."));
+        if (!StringUtils.hasText(request.getConversationId())) {
+            return ValidationResult.fail(ChatErrorCode.INVALID_CHAT_REQUEST, "conversation_id is required.");
         }
-        if (request.getRole() != MessageRole.USER) {
-            return ValidationResult.fail(buildInvalidChatRequest(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    "role must be user."
-            ));
-        }
-        return ValidationResult.ok();
-    }
-
-    public ValidationResult validateRouteableChatRequest(FrontendChatPayload request) {
-        ValidationResult envelopeResult = validateRequestEnvelope(request);
-        if (envelopeResult.hasError()) {
-            return envelopeResult;
-        }
-        if (request.getInputType() == null) {
-            return ValidationResult.fail(buildInvalidChatRequest(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    "input_type is required."
-            ));
-        }
-        return ValidationResult.ok();
-    }
-
-    public ValidationResult validateTextRequest(FrontendChatPayload request) {
-        ValidationResult routingResult = validateRouteableChatRequest(request);
-        if (routingResult.hasError()) {
-            return routingResult;
-        }
-        if (request.getInputType() != InputType.TEXT) {
-            return ValidationResult.fail(buildInvalidChatRequest(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    "input_type must be TEXT."
-            ));
+        if (!StringUtils.hasText(request.getEventId())) {
+            return ValidationResult.fail(ChatErrorCode.INVALID_CHAT_REQUEST, "event_id is required.");
         }
         if (!StringUtils.hasText(request.getContent())) {
-            return ValidationResult.fail(buildInvalidChatRequest(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    "content must not be blank."
-            ));
+            return ValidationResult.fail(ChatErrorCode.INVALID_CHAT_REQUEST, "content must not be blank.");
         }
         return ValidationResult.ok();
     }
 
-    public ValidationResult validateSpeechRequest(FrontendChatPayload request) {
-        ValidationResult routingResult = validateRouteableChatRequest(request);
-        if (routingResult.hasError()) {
-            return routingResult;
+    public ValidationResult validateSpeechRequest(SpeechRequestPayload request) {
+        if (request == null) {
+            return ValidationResult.fail(ChatErrorCode.INVALID_SPEECH_REQUEST, "SPEECH payload is required.");
         }
-        if (request.getInputType() != InputType.SPEECH) {
-            return ValidationResult.fail(buildInvalidChatRequest(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    "input_type must be SPEECH."
-            ));
+        if (!StringUtils.hasText(request.getConversationId())) {
+            return ValidationResult.fail(ChatErrorCode.INVALID_SPEECH_REQUEST, "conversation_id is required.");
         }
-
+        if (!StringUtils.hasText(request.getEventId())) {
+            return ValidationResult.fail(ChatErrorCode.INVALID_SPEECH_REQUEST, "event_id is required.");
+        }
         String normalizedAudioData = AudioPayloadUtils.normalizeAudioData(request.getAudioData());
         if (!StringUtils.hasText(normalizedAudioData)) {
-            return ValidationResult.fail(chatMessageFactory.buildErrorMessage(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    ChatErrorCode.INVALID_AUDIO_FORMAT,
-                    "audio_data must not be blank."
-            ));
+            return ValidationResult.fail(ChatErrorCode.INVALID_SPEECH_REQUEST, "audio_data is required.");
         }
         if (!StringUtils.hasText(request.getAudioFormat())) {
-            return ValidationResult.fail(chatMessageFactory.buildErrorMessage(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    ChatErrorCode.INVALID_AUDIO_FORMAT,
-                    "audio_format is required."
-            ));
+            return ValidationResult.fail(ChatErrorCode.INVALID_SPEECH_REQUEST, "audio_format is required.");
+        }
+        if (request.getMode() == null) {
+            return ValidationResult.fail(ChatErrorCode.INVALID_SPEECH_REQUEST, "mode is required.");
         }
         if (!isValidBase64(normalizedAudioData)) {
-            return ValidationResult.fail(chatMessageFactory.buildErrorMessage(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    ChatErrorCode.INVALID_AUDIO_FORMAT,
-                    "audio_data is not valid Base64 audio."
-            ));
+            return ValidationResult.fail(ChatErrorCode.INVALID_AUDIO_FORMAT, "audio_data is not valid Base64 audio.");
         }
 
         long estimatedSize = estimateDecodedSize(normalizedAudioData);
         if (estimatedSize > whisperProperties.getMaxAudioSizeBytes()) {
-            return ValidationResult.fail(chatMessageFactory.buildErrorMessage(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    ChatErrorCode.AUDIO_TOO_LARGE,
-                    "Audio payload exceeds the maximum size."
-            ));
+            return ValidationResult.fail(ChatErrorCode.AUDIO_TOO_LARGE, "Audio payload exceeds the maximum size.");
         }
         return ValidationResult.ok();
-    }
-
-    private BackendMessage buildInvalidChatRequest(
-            String sequenceId,
-            String replyToMessageId,
-            String errorMessage
-    ) {
-        return chatMessageFactory.buildErrorMessage(
-                sequenceId,
-                replyToMessageId,
-                ChatErrorCode.INVALID_CHAT_REQUEST,
-                errorMessage
-        );
     }
 
     private boolean isValidBase64(String audioData) {

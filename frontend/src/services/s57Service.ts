@@ -8,21 +8,36 @@ import { MVT_CONFIG } from '../config';
 export interface LayerMetadata {
   id: string;
   type: 'fill' | 'line' | 'symbol' | 'fill-extrusion';
-  sourceLayer: string;
   minzoom?: number;
   maxzoom?: number;
-  properties: Record<string, string>;
+  description: string;
+  geometryType: string;
+  attributes?: Record<string, unknown>;
 }
 
-export interface SafetyContour {
-  depth: number;
+export interface LayerMetadataResponse {
+  version: string;
+  layers: LayerMetadata[];
+  crs: string;
+  bounds: {
+    minLon: number;
+    minLat: number;
+    maxLon: number;
+    maxLat: number;
+  };
+}
+
+export interface SafetyContourResponse {
+  safetyContourDepth: number;
   unit: string;
+  description: string;
+  tileUrl: string;
 }
 
 /**
  * Fetch layer metadata from backend
  */
-export async function fetchLayerMetadata(): Promise<LayerMetadata[]> {
+export async function fetchLayerMetadata(): Promise<LayerMetadataResponse | null> {
   try {
     const response = await fetch(MVT_CONFIG.LAYERS_URL);
     if (!response.ok) {
@@ -31,7 +46,7 @@ export async function fetchLayerMetadata(): Promise<LayerMetadata[]> {
     return await response.json();
   } catch (error) {
     console.error('Error fetching layer metadata:', error);
-    return [];
+    return null;
   }
 }
 
@@ -55,7 +70,7 @@ export async function fetchStyleConfig(): Promise<any> {
  * Get safety contour configuration
  * @param depth Optional safety depth in meters (default: 10.0)
  */
-export async function getSafetyContour(depth?: number): Promise<SafetyContour | null> {
+export async function getSafetyContour(depth?: number): Promise<SafetyContourResponse | null> {
   try {
     const url = depth !== undefined
       ? `${MVT_CONFIG.SAFETY_CONTOUR_URL}?depth=${depth}`

@@ -5,20 +5,21 @@ import com.whut.map.map_service.config.LlmProperties;
 import com.whut.map.map_service.dto.llm.LlmExplanation;
 import com.whut.map.map_service.dto.llm.LlmRiskOwnShipContext;
 import com.whut.map.map_service.dto.llm.LlmRiskTargetContext;
+import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.time.Instant;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -30,63 +31,67 @@ public class LlmExplanationService {
     private final LlmClient llmClient;
     private final ExecutorService llmExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-    public Map<String, LlmExplanation> generateTargetExplanations(
+    public record LlmExplanationError(ChatErrorCode errorCode, String errorMessage) {
+    }
+
+    public void generateTargetExplanationsAsync(
             LlmRiskOwnShipContext ownShip,
-            List<LlmRiskTargetContext> triggeredTargets
+            List<LlmRiskTargetContext> triggeredTargets,
+            Consumer<LlmExplanation> onSuccess,
+            BiConsumer<LlmRiskTargetContext, LlmExplanationError> onError
     ) {
 
-        // 如果没有风险状态目标船，直接返回空解释
-        if (triggeredTargets.isEmpty()) {
+        if (triggeredTargets == null || triggeredTargets.isEmpty()) {
             log.debug("Skipping LLM explanation because no risky targets require semantic explanation");
-            return Collections.emptyMap();
+            return;
         }
 
-        log.info("LLM v1 scaffold triggered for ownShip={}, riskyTargets={}, provider={}",
+        log.info("LLM explanation triggered asynchronously for ownShip={}, riskyTargets={}, provider={}",
                 ownShip.getId(),
                 triggeredTargets.size(),
                 llmProperties.getProvider());
 
-        Map<String, LlmExplanation> explanations = new LinkedHashMap<>();
-
-        for(LlmRiskTargetContext target : triggeredTargets) {
+        for (LlmRiskTargetContext target : triggeredTargets) {
             String prompt = buildPrompt(ownShip, target);
             log.debug("Built LLM prompt for target {}: {}", target.getTargetId(), prompt);
-            Future<String> future = llmExecutor.submit(() -> llmClient.generateText(prompt));
-            try {
-                String text = future.get(llmProperties.getTimeoutMs(), TimeUnit.MILLISECONDS);
+            CompletableFuture<String> future = CompletableFuture
+                    .supplyAsync(() -> llmClient.generateText(prompt), llmExecutor);
+            future
+                    .orTimeout(llmProperties.getTimeoutMs(), TimeUnit.MILLISECONDS)
+                    .whenComplete((text, throwable) -> {
+                        if (throwable == null) {
+                            log.debug("LLM response for target {}: {}", target.getTargetId(), text);
+                            onSuccess.accept(LlmExplanation.builder()
+                                    .source(RiskConstants.EXPLANATION_SOURCE_LLM)
+                                    .provider(resolveProviderName())
+                                    .targetId(target.getTargetId())
+                                    .riskLevel(target.getRiskLevel())
+                                    .text(text)
+                                    .timestamp(Instant.now().toString())
+                                    .build());
+                            return;
+                        }
 
-                log.debug("LLM response for target {}: {}", target.getTargetId(), text);
+                        Throwable cause = unwrap(throwable);
+                        if (cause instanceof TimeoutException) {
+                            future.cancel(true);
+                            log.warn("LLM call timed out for target {} after {} ms. Check DNS/proxy/network reachability.",
+                                    target.getTargetId(), llmProperties.getTimeoutMs());
+                            onError.accept(target, new LlmExplanationError(
+                                    ChatErrorCode.LLM_TIMEOUT,
+                                    "LLM explanation request timed out."
+                            ));
+                            return;
+                        }
 
-                explanations.put(target.getTargetId(), LlmExplanation.builder()
-                        .source(RiskConstants.EXPLANATION_SOURCE_LLM)
-                        .text(text)
-                        .build()
-                );
-            } catch (TimeoutException e) {
-                future.cancel(true);
-                log.warn("LLM call timed out for target {} after {} ms. Check DNS/proxy/network reachability.",
-                        target.getTargetId(), llmProperties.getTimeoutMs());
-                if (llmProperties.isFallbackTemplateEnabled()) {
-                    explanations.put(target.getTargetId(), LlmExplanation.builder()
-                            .source(RiskConstants.EXPLANATION_SOURCE_FALLBACK)
-                            .text(buildFallbackText(target))
-                            .build());
-                }
-            } catch (Exception e) {
-                log.warn("LLM client failed for target {}, type={}, error={}. Falling back to template explanation.",
-                        target.getTargetId(), e.getClass().getSimpleName(), e.getMessage());
-                if (llmProperties.isFallbackTemplateEnabled()) {
-                    explanations.put(target.getTargetId(), LlmExplanation.builder()
-                            .source(RiskConstants.EXPLANATION_SOURCE_FALLBACK)
-                            .text(buildFallbackText(target))
-                            .build());
-                }
-            }
+                        log.warn("LLM client failed for target {}, type={}, error={}",
+                                target.getTargetId(), cause.getClass().getSimpleName(), cause.getMessage());
+                        onError.accept(target, new LlmExplanationError(
+                                ChatErrorCode.LLM_REQUEST_FAILED,
+                                "LLM explanation request failed."
+                        ));
+                    });
         }
-        // TODO(v1): Parse the raw model response into targetId -> explanation.text.
-        // TODO(v1): Log raw response, parsed result, and final outward explanation under desensitization rules.
-
-        return explanations;
     }
 
     private String buildPrompt(LlmRiskOwnShipContext ownShip, LlmRiskTargetContext target) {
@@ -122,18 +127,15 @@ public class LlmExplanationService {
         );
     }
 
-    private String buildFallbackText(LlmRiskTargetContext target) {
-        String confidenceSuffix = target.getConfidence() == null
-                ? ""
-                : String.format(" Data confidence %.2f.", target.getConfidence());
-        return String.format(
-                "Target %s is assessed as %s with DCPA %.2f nm and TCPA %.0f sec.%s",
-                target.getTargetId(),
-                target.getRiskLevel(),
-                target.getDcpaNm(),
-                target.getTcpaSec(),
-                confidenceSuffix
-        );
+    private Throwable unwrap(Throwable throwable) {
+        if (throwable instanceof java.util.concurrent.CompletionException && throwable.getCause() != null) {
+            return throwable.getCause();
+        }
+        return throwable;
+    }
+
+    private String resolveProviderName() {
+        return StringUtils.hasText(llmProperties.getProvider()) ? llmProperties.getProvider() : "llm";
     }
 
     @PreDestroy

@@ -1,69 +1,120 @@
-﻿/**
- * Risk Store
- * High-frequency physical snapshot state only.
- */
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { RiskObject, OwnShip, Target, EnvironmentContext, Governance } from '../types/schema';
+import type {
+  EnvironmentContext,
+  ExplanationPayload,
+  Governance,
+  OwnShip,
+  RiskTarget,
+  RiskUpdatePayload,
+  SseErrorPayload,
+} from '../types/schema';
 import { PERFORMANCE } from '../config/constants';
+import { riskSseService } from '../services/riskSseService';
 
 interface RiskState {
-  riskObject: RiskObject | null;
+  latestRiskUpdate: RiskUpdatePayload | null;
+  currentRiskObjectId: string | null;
   lastUpdateTime: number;
 
   ownShip: OwnShip | null;
-  targets: Target[];
-  allTargets: Target[];
+  targets: RiskTarget[];
   governance: Governance | null;
   environment: EnvironmentContext | null;
+  explanationsByTargetId: Record<string, ExplanationPayload>;
 
   isConnected: boolean;
   connectionError: string | null;
+  lastError: SseErrorPayload | null;
 
   isLowTrust: boolean;
   selectedTargetId: string | null;
 
-  setRiskObject: (data: RiskObject) => void;
+  setRiskUpdate: (payload: RiskUpdatePayload) => void;
+  upsertExplanation: (payload: ExplanationPayload) => void;
   setConnectionStatus: (connected: boolean, error?: string | null) => void;
+  setRiskError: (payload: SseErrorPayload) => void;
+  clearRiskError: () => void;
   selectTarget: (targetId: string | null) => void;
   reset: () => void;
 }
 
 const initialState = {
-  riskObject: null,
+  latestRiskUpdate: null,
+  currentRiskObjectId: null,
   lastUpdateTime: 0,
   ownShip: null,
-  targets: [],
-  allTargets: [],
+  targets: [] as RiskTarget[],
   governance: null,
   environment: null,
+  explanationsByTargetId: {} as Record<string, ExplanationPayload>,
   isConnected: false,
   connectionError: null,
+  lastError: null as SseErrorPayload | null,
   isLowTrust: false,
-  selectedTargetId: null,
+  selectedTargetId: null as string | null,
 };
 
 export const useRiskStore = create<RiskState>()(
   subscribeWithSelector((set) => ({
     ...initialState,
 
-    setRiskObject: (data: RiskObject) => {
-      set({
-        riskObject: data,
-        lastUpdateTime: Date.now(),
-        ownShip: data.own_ship,
-        targets: data.targets,
-        allTargets: data.all_targets || data.targets,
-        governance: data.governance,
-        environment: data.environment_context,
-        isLowTrust: data.governance.trust_factor < PERFORMANCE.LOW_TRUST_THRESHOLD,
+    setRiskUpdate: (payload: RiskUpdatePayload) => {
+      set((state) => {
+        const targetIds = new Set(payload.targets.map((target) => target.id));
+        const explanationsByTargetId = Object.fromEntries(
+          Object.entries(state.explanationsByTargetId).filter(([targetId]) => targetIds.has(targetId)),
+        );
+
+        return {
+          latestRiskUpdate: payload,
+          currentRiskObjectId: payload.risk_object_id,
+          lastUpdateTime: Date.now(),
+          ownShip: payload.own_ship,
+          targets: payload.targets,
+          governance: payload.governance,
+          environment: payload.environment_context,
+          explanationsByTargetId,
+          isConnected: true,
+          connectionError: null,
+          lastError: null,
+          isLowTrust: payload.governance.trust_factor < PERFORMANCE.LOW_TRUST_THRESHOLD,
+        };
+      });
+    },
+
+    upsertExplanation: (payload: ExplanationPayload) => {
+      set((state) => {
+        if (!state.targets.some((target) => target.id === payload.target_id)) {
+          return state;
+        }
+
+        return {
+          explanationsByTargetId: {
+            ...state.explanationsByTargetId,
+            [payload.target_id]: payload,
+          },
+        };
       });
     },
 
     setConnectionStatus: (connected: boolean, error: string | null = null) => {
       set({
         isConnected: connected,
-        connectionError: error,
+        connectionError: connected ? null : error,
+      });
+    },
+
+    setRiskError: (payload: SseErrorPayload) => {
+      set({
+        lastError: payload,
+      });
+    },
+
+    clearRiskError: () => {
+      set({
+        connectionError: null,
+        lastError: null,
       });
     },
 
@@ -74,19 +125,67 @@ export const useRiskStore = create<RiskState>()(
     reset: () => {
       set(initialState);
     },
-  }))
+  })),
 );
 
 export const selectOwnShip = (state: RiskState) => state.ownShip;
 export const selectTargets = (state: RiskState) => state.targets;
-export const selectAllTargets = (state: RiskState) => state.allTargets;
 export const selectGovernance = (state: RiskState) => state.governance;
 export const selectEnvironment = (state: RiskState) => state.environment;
 export const selectIsLowTrust = (state: RiskState) => state.isLowTrust;
 export const selectIsConnected = (state: RiskState) => state.isConnected;
+export const selectRiskConnectionError = (state: RiskState) => state.connectionError;
+export const selectExplanationsByTargetId = (state: RiskState) => state.explanationsByTargetId;
+export const selectSelectedTargetId = (state: RiskState) => state.selectedTargetId;
 export const selectSelectedTarget = (state: RiskState) => {
-  if (!state.selectedTargetId) return null;
-  return state.targets.find((target) => target.id === state.selectedTargetId)
-    || state.allTargets.find((target) => target.id === state.selectedTargetId)
-    || null;
+  if (!state.selectedTargetId) {
+    return null;
+  }
+
+  return state.targets.find((target) => target.id === state.selectedTargetId) || null;
 };
+export const selectSelectedTargetExplanation = (state: RiskState) => {
+  if (!state.selectedTargetId) {
+    return null;
+  }
+
+  return state.explanationsByTargetId[state.selectedTargetId] || null;
+};
+export const selectExplainedTargets = (state: RiskState) => state.targets
+  .map((target) => {
+    const explanation = state.explanationsByTargetId[target.id];
+    if (!explanation) {
+      return null;
+    }
+
+    return { target, explanation };
+  })
+  .filter((item): item is { target: RiskTarget; explanation: ExplanationPayload } => Boolean(item));
+
+let hasInitializedRiskStoreSubscriptions = false;
+
+function initializeRiskStoreSubscriptions(): void {
+  if (hasInitializedRiskStoreSubscriptions) {
+    return;
+  }
+
+  hasInitializedRiskStoreSubscriptions = true;
+
+  riskSseService.onRiskUpdate((payload) => {
+    useRiskStore.getState().setRiskUpdate(payload);
+  });
+
+  riskSseService.onExplanation((payload) => {
+    useRiskStore.getState().upsertExplanation(payload);
+  });
+
+  riskSseService.onError((payload) => {
+    useRiskStore.getState().setRiskError(payload);
+  });
+
+  riskSseService.onConnectionStatusChange((connected, error) => {
+    useRiskStore.getState().setConnectionStatus(connected, error);
+  });
+}
+
+initializeRiskStoreSubscriptions();

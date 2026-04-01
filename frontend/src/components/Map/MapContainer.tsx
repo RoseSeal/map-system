@@ -13,7 +13,6 @@ import {
   useRiskStore,
   selectOwnShip,
   selectTargets,
-  selectAllTargets,
   selectEnvironment,
 } from '../../store';
 import {
@@ -27,11 +26,10 @@ import {
 import { s57Sources, s57Layers, updateWaterDepthStyle } from '../../config/layerStyles';
 import {
   generateEllipsePolygon,
-  generateCurvedHeadline,
   generateLinearTrajectory,
 } from '../../utils';
 import { getTargetRemainingWaypoints, isTargetInTrackingRange } from '../../services/mockDataGenerator';
-import type { LonLat, Target, OwnShip, RGBAColor } from '../../types/schema';
+import type { LonLat, RiskTarget, OwnShip, RGBAColor } from '../../types/schema';
 
 const VESSEL_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
@@ -74,7 +72,7 @@ export function MapContainer() {
 
   const ownShip = useRiskStore(selectOwnShip);
   const targets = useRiskStore(selectTargets);
-  const allTargets = useRiskStore(selectAllTargets);
+  const allTargets = targets;
   const environment = useRiskStore(selectEnvironment);
   const selectedTargetId = useRiskStore((state) => state.selectedTargetId);
   const selectTarget = useRiskStore((state) => state.selectTarget);
@@ -363,17 +361,6 @@ export function MapContainer() {
 function buildTrajectoryPoints(ownShip: OwnShip): LonLat[] {
   const pos: LonLat = [ownShip.position.lon, ownShip.position.lat];
 
-  if (ownShip.future_trajectory.prediction_type === 'curved_headline' && ownShip.future_trajectory.curved_headline) {
-    const chl = ownShip.future_trajectory.curved_headline;
-    return generateCurvedHeadline(
-      pos,
-      ownShip.dynamics.hdg,
-      chl.turn_radius_nm,
-      ownShip.dynamics.rot,
-      chl.projected_time_min,
-    );
-  }
-
   return generateLinearTrajectory(pos, ownShip.dynamics.cog, ownShip.dynamics.sog, 6);
 }
 
@@ -388,7 +375,7 @@ function getOwnShipColor(ownShip: OwnShip): [number, number, number, number] {
   }
 }
 
-function buildCPALineData(targets: Target[]): { source: LonLat; target: LonLat }[] {
+function buildCPALineData(targets: RiskTarget[]): { source: LonLat; target: LonLat }[] {
   return targets
     .filter((target) => target.risk_assessment.risk_level === 'ALARM' && target.risk_assessment.graphic_cpa_line)
     .map((target) => ({

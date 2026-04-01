@@ -1,6 +1,7 @@
 package com.whut.map.map_service.config;
 
-import com.whut.map.map_service.websocket.StreamWebSocketHandler;
+import com.whut.map.map_service.websocket.ChatWebSocketHandler;
+import com.whut.map.map_service.websocket.ProtocolPaths;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,14 +15,13 @@ import org.springframework.web.socket.server.standard.ServletServerContainerFact
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketConfigurer {
 
-    private final StreamWebSocketHandler streamWebSocketHandler;
+    private final ChatWebSocketHandler chatWebSocketHandler;
     private final WhisperProperties whisperProperties;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(streamWebSocketHandler, "/api/v1/stream")
-                // 将 setAllowedOrigins("*") 改为 setAllowedOriginPatterns("*")
-                .setAllowedOriginPatterns("*"); // 开发阶段允许跨域
+        registry.addHandler(chatWebSocketHandler, ProtocolPaths.CHAT_SOCKET)
+                .setAllowedOriginPatterns("*");
     }
 
     @Bean

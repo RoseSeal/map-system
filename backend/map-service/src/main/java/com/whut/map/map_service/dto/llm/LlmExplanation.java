@@ -7,5 +7,9 @@ import lombok.Data;
 @Builder
 public class LlmExplanation {
     private String source;
+    private String provider;
+    private String targetId;
+    private String riskLevel;
     private String text;
+    private String timestamp;
 }

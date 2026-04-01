@@ -1,4 +1,5 @@
-﻿export { socketService } from './socketService';
+﻿export { riskSseService } from './riskSseService';
+export { chatWsService } from './chatWsService';
 export { speechService } from './speechService';
 export { voiceRecorderService } from './voiceRecorderService';
 export {

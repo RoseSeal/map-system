@@ -1,34 +1,23 @@
-﻿/**
- * Targets Panel Component (Compact HUD Mode)
- * Added unread pulse animation and read-state management
- */
-
 import {
   useRiskStore,
   useAiCenterStore,
   selectTargets,
   selectSelectedTarget,
-  selectLatestLlmExplanations,
-  selectReadLlmExplanations,
+  selectExplanationsByTargetId,
 } from '../../store';
 import { getRiskColor } from '../../config';
-import { isLlmSource } from '../../utils/llmEventNormalizer';
 
 export function TargetsPanel() {
   const targets = useRiskStore(selectTargets);
+  const explanationsByTargetId = useRiskStore(selectExplanationsByTargetId);
   const selectTarget = useRiskStore((state) => state.selectTarget);
   const selectedTarget = useRiskStore(selectSelectedTarget);
-
-  const markLlmRead = useAiCenterStore((state) => state.markLlmRead);
   const requestAiCenterOpen = useAiCenterStore((state) => state.requestAiCenterOpen);
-  const readLlmExplanations = useAiCenterStore(selectReadLlmExplanations);
-  const latestLlmExplanations = useAiCenterStore(selectLatestLlmExplanations);
 
   if (targets.length === 0) {
     return null;
   }
 
-  const selectedTargetLlmExplanation = selectedTarget ? latestLlmExplanations[selectedTarget.id] : null;
   const sortedTargets = [...targets].sort((a, b) => {
     const riskScore = { ALARM: 4, WARNING: 3, CAUTION: 2, SAFE: 1 };
     return (riskScore[b.risk_assessment.risk_level] || 0) - (riskScore[a.risk_assessment.risk_level] || 0);
@@ -48,20 +37,15 @@ export function TargetsPanel() {
           const riskColor = getRiskColor(target.risk_assessment.risk_level);
           const riskHex = `rgb(${riskColor.join(',')})`;
           const isSelected = selectedTarget?.id === target.id;
-          const cachedLlmExplanation = latestLlmExplanations[target.id];
-          const hasLlmExplanation = isSelected
-            ? isLlmExplanation(selectedTargetLlmExplanation)
-            : isLlmExplanation(cachedLlmExplanation);
-          const isRead = readLlmExplanations[target.id];
+          const explanation = explanationsByTargetId[target.id];
 
           return (
             <div
               key={target.id}
               onClick={() => {
                 selectTarget(target.id);
-                if (hasLlmExplanation && !isRead) {
+                if (explanation) {
                   requestAiCenterOpen();
-                  markLlmRead(target.id);
                 }
               }}
               className={[
@@ -99,22 +83,15 @@ export function TargetsPanel() {
                 </div>
               </div>
 
-              {hasLlmExplanation && (
+              {explanation && (
                 <div className="mt-2.5 flex items-center">
-                  {!isRead ? (
-                    <span className="flex items-center gap-1.5 rounded-sm bg-cyan-500/10 px-1.5 py-0.5 border border-cyan-500/30">
-                      <span className="relative flex h-1.5 w-1.5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500 shadow-[0_0_5px_#06b6d4]"></span>
-                      </span>
-                      <span className="text-[10px] text-cyan-300 font-medium">新 AI 评估</span>
+                  <span className="flex items-center gap-1.5 rounded-sm bg-cyan-500/10 px-1.5 py-0.5 border border-cyan-500/30">
+                    <span className="relative flex h-1.5 w-1.5 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500 shadow-[0_0_5px_#06b6d4]"></span>
                     </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 rounded-sm bg-slate-800/50 px-1.5 py-0.5 border border-white/5">
-                      <span className="h-1 w-1 rounded-full bg-slate-500"></span>
-                      <span className="text-[10px] text-slate-500">AI 评估已读</span>
-                    </span>
-                  )}
+                    <span className="text-[10px] text-cyan-300 font-medium">{explanation.provider}</span>
+                  </span>
                 </div>
               )}
             </div>
@@ -133,11 +110,4 @@ function translateRisk(level: string): string {
     case 'ALARM': return '警报';
     default: return level;
   }
-}
-
-function isLlmExplanation(explanation?: { source?: string; text?: string } | null): boolean {
-  return Boolean(
-    explanation?.text?.trim()
-    && isLlmSource(explanation?.source)
-  );
 }

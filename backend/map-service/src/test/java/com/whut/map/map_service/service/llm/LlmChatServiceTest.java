@@ -3,29 +3,16 @@ package com.whut.map.map_service.service.llm;
 import com.whut.map.map_service.client.LlmClient;
 import com.whut.map.map_service.config.LlmProperties;
 import com.whut.map.map_service.config.WhisperProperties;
-import com.whut.map.map_service.dto.websocket.BackendMessage;
-import com.whut.map.map_service.dto.websocket.BackendChatErrorPayload;
-import com.whut.map.map_service.dto.websocket.BackendChatReplyPayload;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.dto.websocket.FrontendChatPayload;
-import com.whut.map.map_service.dto.websocket.InputType;
-import com.whut.map.map_service.dto.websocket.MessageRole;
-import com.whut.map.map_service.websocket.BackendMessageFactory;
-import com.whut.map.map_service.websocket.ChatMessageFactory;
-import com.whut.map.map_service.websocket.WebSocketService;
+import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
 import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.socket.WebSocketSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,71 +21,55 @@ class LlmChatServiceTest {
     @Mock
     private LlmClient llmClient;
 
-    @Mock
-    private WebSocketService webSocketService;
-
-    @Mock
-    private WebSocketSession session;
-
-    private final BackendMessageFactory backendMessageFactory = new BackendMessageFactory();
-    private final ChatMessageFactory chatMessageFactory = new ChatMessageFactory(backendMessageFactory);
     private final WhisperProperties whisperProperties = new WhisperProperties();
-    private final ChatRequestValidator chatRequestValidator = new ChatRequestValidator(chatMessageFactory, whisperProperties);
+    private final ChatRequestValidator chatRequestValidator = new ChatRequestValidator(whisperProperties);
 
     @Test
-    void validChatRequestsProduceChatReply() {
+    void validChatRequestsProduceChatReply() throws Exception {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
-        LlmChatService service = new LlmChatService(llmClient, properties, webSocketService, chatMessageFactory, chatRequestValidator);
-        FrontendChatPayload request = buildRequest();
+        LlmChatService service = new LlmChatService(llmClient, properties, chatRequestValidator);
+        ChatRequestPayload request = buildRequest();
         when(llmClient.generateText(anyString())).thenReturn("assistant reply");
 
-        service.handleChat(session, request);
+        CapturingChatCallback callback = new CapturingChatCallback();
+        service.handleChat(request, callback::captureReply, callback::captureError);
 
-        ArgumentCaptor<BackendMessage> captor = ArgumentCaptor.forClass(BackendMessage.class);
-        verify(webSocketService, timeout(1000)).sendToSession(eq(session), captor.capture());
-        assertThat(captor.getValue().getType()).isEqualTo("CHAT_REPLY");
-        assertThat(captor.getValue().getSequenceId()).isEqualTo("conversation-1");
-        BackendChatReplyPayload payload = (BackendChatReplyPayload) captor.getValue().getPayload();
-        assertThat(payload.getReplyToMessageId()).isEqualTo("user-1");
-        assertThat(payload.getRole()).isEqualTo(MessageRole.ASSISTANT);
-        assertThat(payload.getSource()).isEqualTo("zhipu");
-        assertThat(payload.getContent()).isEqualTo("assistant reply");
+        callback.await();
+        assertThat(callback.reply()).isNotNull();
+        assertThat(callback.reply().provider()).isEqualTo("zhipu");
+        assertThat(callback.reply().content()).isEqualTo("assistant reply");
+        assertThat(callback.errorCode()).isNull();
     }
 
     @Test
     void invalidChatRequestsReturnChatError() {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
-        LlmChatService service = new LlmChatService(llmClient, properties, webSocketService, chatMessageFactory, chatRequestValidator);
-        FrontendChatPayload request = buildRequest();
+        LlmChatService service = new LlmChatService(llmClient, properties, chatRequestValidator);
+        ChatRequestPayload request = buildRequest();
         request.setContent(" ");
 
-        service.handleChat(session, request);
+        CapturingChatCallback callback = new CapturingChatCallback();
+        service.handleChat(request, callback::captureReply, callback::captureError);
 
-        ArgumentCaptor<BackendMessage> captor = ArgumentCaptor.forClass(BackendMessage.class);
-        verify(webSocketService).sendToSession(eq(session), captor.capture());
-        assertThat(captor.getValue().getType()).isEqualTo("CHAT_ERROR");
-        assertThat(captor.getValue().getSequenceId()).isEqualTo("conversation-1");
-        BackendChatErrorPayload payload = (BackendChatErrorPayload) captor.getValue().getPayload();
-        assertThat(payload.getErrorCode()).isEqualTo(ChatErrorCode.INVALID_CHAT_REQUEST);
-        assertThat(payload.getReplyToMessageId()).isEqualTo("user-1");
+        assertThat(callback.reply()).isNull();
+        assertThat(callback.errorCode()).isEqualTo(ChatErrorCode.INVALID_CHAT_REQUEST);
+        assertThat(callback.errorMessage()).isEqualTo("content must not be blank.");
     }
 
     @Test
-    void llmFailuresReturnChatError() {
+    void llmFailuresReturnChatError() throws Exception {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
-        LlmChatService service = new LlmChatService(llmClient, properties, webSocketService, chatMessageFactory, chatRequestValidator);
-        FrontendChatPayload request = buildRequest();
+        LlmChatService service = new LlmChatService(llmClient, properties, chatRequestValidator);
+        ChatRequestPayload request = buildRequest();
         when(llmClient.generateText(anyString())).thenThrow(new IllegalStateException("boom"));
 
-        service.handleChat(session, request);
+        CapturingChatCallback callback = new CapturingChatCallback();
+        service.handleChat(request, callback::captureReply, callback::captureError);
 
-        ArgumentCaptor<BackendMessage> captor = ArgumentCaptor.forClass(BackendMessage.class);
-        verify(webSocketService, timeout(1000)).sendToSession(eq(session), captor.capture());
-        assertThat(captor.getValue().getType()).isEqualTo("CHAT_ERROR");
-        assertThat(captor.getValue().getSequenceId()).isEqualTo("conversation-1");
-        BackendChatErrorPayload payload = (BackendChatErrorPayload) captor.getValue().getPayload();
-        assertThat(payload.getErrorCode()).isEqualTo(ChatErrorCode.LLM_REQUEST_FAILED);
-        assertThat(payload.getReplyToMessageId()).isEqualTo("user-1");
+        callback.await();
+        assertThat(callback.reply()).isNull();
+        assertThat(callback.errorCode()).isEqualTo(ChatErrorCode.LLM_REQUEST_FAILED);
+        assertThat(callback.errorMessage()).isEqualTo("LLM request failed.");
     }
 
     private LlmProperties buildProperties(boolean enabled, long timeoutMs, String provider) {
@@ -109,13 +80,42 @@ class LlmChatServiceTest {
         return properties;
     }
 
-    private FrontendChatPayload buildRequest() {
-        FrontendChatPayload request = new FrontendChatPayload();
-        request.setSequenceId("conversation-1");
-        request.setMessageId("user-1");
-        request.setRole(MessageRole.USER);
-        request.setInputType(InputType.TEXT);
-        request.setContent("hello");
-        return request;
+    private ChatRequestPayload buildRequest() {
+        return ChatRequestPayload.builder()
+                .conversationId("conversation-1")
+                .eventId("user-1")
+                .content("hello")
+                .build();
+    }
+
+    private static final class CapturingChatCallback {
+        private LlmChatService.ChatReplyResult reply;
+        private ChatErrorCode errorCode;
+        private String errorMessage;
+
+        void captureReply(LlmChatService.ChatReplyResult reply) {
+            this.reply = reply;
+        }
+
+        void captureError(ChatErrorCode errorCode, String errorMessage) {
+            this.errorCode = errorCode;
+            this.errorMessage = errorMessage;
+        }
+
+        void await() throws InterruptedException {
+            Thread.sleep(200);
+        }
+
+        LlmChatService.ChatReplyResult reply() {
+            return reply;
+        }
+
+        ChatErrorCode errorCode() {
+            return errorCode;
+        }
+
+        String errorMessage() {
+            return errorMessage;
+        }
     }
 }

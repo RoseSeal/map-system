@@ -5,17 +5,19 @@
 
 import { useEffect } from 'react';
 import { MapContainer, StatusPanel, TargetsPanel, CompassOverlay, RiskExplanationPanel } from './components';
-import { socketService } from './services';
+import { chatWsService, riskSseService } from './services';
 import { useAiSpeechBroadcast } from './hooks/useAiSpeechBroadcast';
 
 function App() {
   useAiSpeechBroadcast();
 
   useEffect(() => {
-    socketService.connect();
+    riskSseService.connect();
+    chatWsService.connect();
 
     return () => {
-      socketService.disconnect();
+      riskSseService.disconnect();
+      chatWsService.disconnect();
     };
   }, []);
 

@@ -1,12 +1,8 @@
-﻿import type {
+import type {
   ChatErrorPayload,
-  ChatInputType,
-  ChatMode,
   ChatReplyPayload,
-  RiskExplanation,
+  ExplanationPayload,
   RiskLevel,
-  RiskObject,
-  Target,
 } from '../types/schema';
 import type {
   AiAssistantMessageEvent,
@@ -16,45 +12,30 @@ import type {
   StoredLlmExplanation,
 } from '../types/aiCenter';
 
-export function isLlmSource(source?: string | null): boolean {
-  const normalized = (source || '').toLowerCase();
-  return Boolean(
-    normalized === 'llm'
-    || normalized === 'hybrid'
-    || normalized.includes('llm')
-    || normalized.includes('ai')
-    || normalized.includes('model')
-    || normalized.includes('gpt'),
-  );
+export function isLlmProvider(provider?: string | null): boolean {
+  return Boolean(provider && provider.trim());
 }
 
-export function normalizeLlmExplanation(
-  riskObject: RiskObject,
-  target: Target,
-  explanation?: RiskExplanation | null,
-): StoredLlmExplanation | null {
-  const text = explanation?.text?.trim();
-  if (!text || !isLlmSource(explanation?.source)) {
+export function normalizeLlmExplanation(explanation: ExplanationPayload): StoredLlmExplanation | null {
+  const text = explanation.text.trim();
+  if (!text || !isLlmProvider(explanation.provider)) {
     return null;
   }
 
-  const targetId = target.id;
-  const conversationId = buildLlmConversationKey(targetId);
-  const messageId = buildLlmMessageKey(conversationId, targetId, text);
-
   return {
-    ...explanation,
+    event_id: explanation.event_id,
+    conversation_id: buildLlmConversationKey(explanation.target_id),
+    message_id: buildLlmMessageKey(explanation.target_id, explanation.event_id),
+    target_id: explanation.target_id,
+    risk_level: explanation.risk_level,
+    provider: explanation.provider,
     text,
-    conversation_id: conversationId,
-    message_id: messageId,
-    target_id: targetId,
-    risk_level: target.risk_assessment.risk_level,
-    timestamp: riskObject.timestamp,
+    timestamp: explanation.timestamp,
   };
 }
 
-export function buildLlmMessageKey(conversationId: string, targetId: string, text: string): string {
-  return `${conversationId}::${targetId}::${text}`;
+export function buildLlmMessageKey(targetId: string, eventId: string): string {
+  return `llm-explanation::${targetId}::${eventId}`;
 }
 
 export function buildLlmConversationKey(targetId: string): string {
@@ -71,7 +52,7 @@ export function toLlmExplanationEvent(explanation: StoredLlmExplanation): LlmExp
     conversation_id: explanation.conversation_id,
     message_id: explanation.message_id,
     target_id: explanation.target_id,
-    source: explanation.source || 'llm',
+    provider: explanation.provider || 'fallback',
     text: explanation.text,
     risk_level: explanation.risk_level,
     timestamp: explanation.timestamp,
@@ -79,71 +60,39 @@ export function toLlmExplanationEvent(explanation: StoredLlmExplanation): LlmExp
 }
 
 export function normalizeChatReply(payload: ChatReplyPayload): NormalizedChatReply | null {
-  const content = payload.content?.trim();
+  const content = payload.content.trim();
   if (!content) {
     return null;
   }
 
   const message: AiCenterChatMessage = {
-    message_id: payload.message_id,
-    sequence_id: payload.sequence_id,
+    event_id: payload.event_id,
+    conversation_id: payload.conversation_id,
     role: 'assistant',
     content,
     status: 'replied',
-    reply_to_message_id: payload.reply_to_message_id,
-    source: payload.source,
+    reply_to_event_id: payload.reply_to_event_id,
+    provider: payload.provider,
     timestamp: payload.timestamp,
     message_type: 'chat_reply',
   };
 
   const speechEvent: AiAssistantMessageEvent = {
     kind: 'chat_reply',
-    conversation_id: payload.sequence_id,
-    message_id: payload.message_id,
+    conversation_id: payload.conversation_id,
+    message_id: payload.event_id,
     role: 'assistant',
     content,
-    source: payload.source || 'assistant',
+    provider: payload.provider || 'assistant',
     timestamp: payload.timestamp,
   };
 
   return { message, speechEvent };
 }
 
-export function createUserChatMessage(
-  sequenceId: string,
-  options: {
-    content: string;
-    inputType?: ChatInputType;
-    chatMode?: ChatMode;
-    audioFormat?: string;
-  },
-): AiCenterChatMessage {
-  const text = options.content.trim();
+export function normalizeChatErrorMessage(error: ChatErrorPayload): { eventId?: string | null; errorText: string } {
   return {
-    message_id: createChatMessageId('user'),
-    sequence_id: sequenceId,
-    role: 'user',
-    input_type: options.inputType || 'TEXT',
-    chat_mode: options.chatMode,
-    audio_format: options.audioFormat,
-    content: text,
-    status: 'pending',
-    timestamp: new Date().toISOString(),
-    message_type: 'chat_user',
-  };
-}
-
-export function createChatSessionId(): string {
-  return `conversation-${createCompactId()}`;
-}
-
-export function createChatMessageId(prefix: string = 'message'): string {
-  return `${prefix}-${createCompactId()}`;
-}
-
-export function normalizeChatErrorMessage(error: ChatErrorPayload): { messageId?: string; errorText: string } {
-  return {
-    messageId: error.reply_to_message_id,
+    eventId: error.reply_to_event_id,
     errorText: error.error_message,
   };
 }
@@ -184,12 +133,4 @@ export function translateRiskLevel(level: RiskLevel): string {
     default:
       return level;
   }
-}
-
-function createCompactId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 }

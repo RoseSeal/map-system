@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { AiCenterChatMessage } from '../../types/aiCenter';
 
 interface ChatMessageListProps {
@@ -30,17 +30,14 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
     <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin">
       {messages.map((message) => {
         const isUser = message.role === 'user';
-        const isSpeechMessage = message.input_type === 'SPEECH';
+        const isSpeechMessage = message.request_type === 'SPEECH' || message.message_type === 'speech_transcript';
         const showError = isUser && message.status === 'error' && message.error_message;
-        const showRetry = showError && message.input_type !== 'SPEECH';
-        const showInterruptPlaceholder = isUser && (
-          message.status === 'pending'
-          || (message.status === 'sent' && message.input_type !== 'SPEECH')
-        );
+        const showRetry = showError && message.request_type !== 'SPEECH';
+        const showInterruptPlaceholder = isUser && message.status === 'pending';
 
         return (
           <div
-            key={message.message_id}
+            key={message.event_id}
             className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
           >
             <div className={`max-w-[88%] space-y-1 ${isUser ? 'items-end' : 'items-start'}`}>
@@ -57,7 +54,7 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
                 {isSpeechMessage && (
                   <div className="mb-1 flex items-center justify-end gap-1.5 text-[10px] uppercase tracking-[0.14em] text-cyan-200/70">
                     <span>VOICE</span>
-                    {message.chat_mode && <span>{message.chat_mode}</span>}
+                    {message.speech_mode && <span>{message.speech_mode}</span>}
                   </div>
                 )}
                 <div className="whitespace-pre-wrap break-words">{message.content}</div>
@@ -106,15 +103,15 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
 
 function formatStatus(message: AiCenterChatMessage): string {
   if (message.role === 'assistant') {
-    return message.source || '回复完成';
+    return message.provider || '回复完成';
   }
 
-  if (message.input_type === 'SPEECH') {
+  if (message.request_type === 'SPEECH' || message.message_type === 'speech_transcript') {
     switch (message.status) {
       case 'pending':
         return '语音处理中';
       case 'sent':
-        return message.chat_mode === 'preview' ? '转录待确认' : '已发送';
+        return message.speech_mode === 'preview' ? '转录待确认' : '已发送';
       case 'error':
         return '发送失败';
       case 'replied':

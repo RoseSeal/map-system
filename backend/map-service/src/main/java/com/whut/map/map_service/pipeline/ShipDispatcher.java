@@ -5,7 +5,8 @@ import com.whut.map.map_service.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
-import com.whut.map.map_service.dto.llm.LlmExplanation;
+import com.whut.map.map_service.dto.llm.LlmRiskContext;
+import com.whut.map.map_service.dto.sse.RiskUpdatePayload;
 import com.whut.map.map_service.engine.collision.CpaTcpaEngine;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
@@ -14,14 +15,15 @@ import com.whut.map.map_service.engine.safety.ShipDomainEngine;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
-import com.whut.map.map_service.service.llm.LlmExplanationService;
 import com.whut.map.map_service.service.llm.LlmTriggerService;
 import com.whut.map.map_service.store.ShipStateStore;
-import com.whut.map.map_service.websocket.BackendMessageFactory;
-import com.whut.map.map_service.websocket.WebSocketService;
+import com.whut.map.map_service.websocket.SseEmitterRegistry;
+import com.whut.map.map_service.websocket.SseEventFactory;
+import com.whut.map.map_service.websocket.SseEventType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -32,8 +34,8 @@ public class ShipDispatcher {
     private final ShipDomainEngine shipDomainEngine;
     private final CvPredictionEngine cvPredictionEngine;
     private final CpaTcpaEngine cpaTcpaEngine;
-    private final WebSocketService aisWebSocketService;
-    private final BackendMessageFactory backendMessageFactory;
+    private final SseEmitterRegistry sseEmitterRegistry;
+    private final SseEventFactory sseEventFactory;
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
     private final LlmRiskContextAssembler llmRiskContextAssembler;
@@ -44,8 +46,8 @@ public class ShipDispatcher {
             ShipDomainEngine shipDomainEngine,
             CvPredictionEngine cvPredictionEngine,
             CpaTcpaEngine cpaTcpaEngine,
-            WebSocketService aisWebSocketService,
-            BackendMessageFactory backendMessageFactory,
+            SseEmitterRegistry sseEmitterRegistry,
+            SseEventFactory sseEventFactory,
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
             LlmRiskContextAssembler llmRiskContextAssembler,
@@ -56,8 +58,8 @@ public class ShipDispatcher {
         this.shipDomainEngine = shipDomainEngine;
         this.cvPredictionEngine = cvPredictionEngine;
         this.cpaTcpaEngine = cpaTcpaEngine;
-        this.aisWebSocketService = aisWebSocketService;
-        this.backendMessageFactory = backendMessageFactory;
+        this.sseEmitterRegistry = sseEmitterRegistry;
+        this.sseEventFactory = sseEventFactory;
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
         this.llmRiskContextAssembler = llmRiskContextAssembler;
@@ -114,27 +116,29 @@ public class ShipDispatcher {
                 cvPredictionResult
         );
 
-        // 8) Build LLM explanations and assemble the websocket payload.
-        Map<String, LlmExplanation> llmExplanations = llmTriggerService.triggerExplanationsIfNeeded(
-                llmRiskContextAssembler.assemble(
-                        ownShip,
-                        shipStateStore.getAll().values(),
-                        cpaResults,
-                        riskResult
-                )
-        );
-
+        // 8) Assemble the current risk snapshot without waiting for LLM slow-path completion.
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
                 ownShip,
                 shipStateStore.getAll().values(),
                 cpaResults,
                 riskResult,
-                llmExplanations,
+                Collections.emptyMap(),
                 shipDomainResult,
                 cvPredictionResult
         );
         if (dto != null) {
-            aisWebSocketService.broadcast(backendMessageFactory.buildRiskUpdateMessage(dto));
+            RiskUpdatePayload riskUpdatePayload = sseEventFactory.buildRiskUpdate(dto);
+            if (riskUpdatePayload != null) {
+                sseEmitterRegistry.broadcast(SseEventType.RISK_UPDATE, riskUpdatePayload.getEventId(), riskUpdatePayload);
+            }
+
+            LlmRiskContext llmContext = llmRiskContextAssembler.assemble(
+                    ownShip,
+                    shipStateStore.getAll().values(),
+                    cpaResults,
+                    riskResult
+            );
+            llmTriggerService.triggerExplanationsIfNeeded(llmContext, dto.getRiskObjectId());
         }
 
         // 9) Emit concise per-target CPA/TCPA log for observability.

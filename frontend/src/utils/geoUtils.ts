@@ -6,7 +6,7 @@
  * This is an improvement over the flat-earth approximation in the original spec.
  */
 
-import type { Position, EllipseDimensions, LonLat } from '../types/schema';
+import type { Position, SafetyDomainDimensions, LonLat } from '../types/schema';
 
 // ============================================================
 // Constants
@@ -237,7 +237,7 @@ export function generateLinearTrajectory(
  */
 export function generateEllipsePolygon(
   center: LonLat,
-  dimensions: EllipseDimensions,
+  dimensions: SafetyDomainDimensions,
   headingDeg: number,
   numPoints: number = 64
 ): LonLat[] {

@@ -6,7 +6,7 @@
  * to ensure ship stays in Jamaica Bay safe waters
  */
 
-import type { RiskObject, Target, RiskLevel, HealthStatus, RiskExplanation } from '../types/schema';
+import type { PlatformHealthStatus, RiskLevel, RiskTarget, RiskUpdatePayload } from '../types/schema';
 import { deadReckon } from '../utils/geoUtils';
 import type { LonLat } from '../types/schema';
 import { useRiskStore } from '../store/useRiskStore';
@@ -155,7 +155,7 @@ function updatePositions(deltaSeconds: number): void {
   });
 }
 
-function getHealthStatus(): { status: HealthStatus; description: string } {
+function getHealthStatus(): { status: PlatformHealthStatus; description: string } {
   const cycle = Math.floor(frameCount / 100) % 10;
 
   if (cycle === 9) {
@@ -168,7 +168,7 @@ function getHealthStatus(): { status: HealthStatus; description: string } {
   return { status: 'NORMAL', description: 'All systems nominal' };
 }
 
-function generateRiskObject(): RiskObject {
+function generateRiskObject(): RiskUpdatePayload {
   frameCount += 1;
 
   const healthStatus = getHealthStatus();
@@ -176,7 +176,7 @@ function generateRiskObject(): RiskObject {
   const trackingRangeNm = 1.5;
   const nearbyTargets = targets.filter((target) => calculateDistance(ownShipPosition, target.position) <= trackingRangeNm);
 
-  const convertToTarget = (target: MockTarget): Target => {
+  const convertToTarget = (target: MockTarget): RiskTarget => {
     const dist = calculateDistance(ownShipPosition, target.position);
     const dcpa = dist * 0.3 + Math.random() * 0.1;
     const tcpa = 60 + Math.random() * 300;
@@ -202,15 +202,14 @@ function generateRiskObject(): RiskObject {
               is_active: true,
             }
           : undefined,
-        explanation: buildRiskExplanation(target.riskLevel, dcpa, tcpa),
       },
     };
   };
 
-  const trackedTargets: Target[] = nearbyTargets.map(convertToTarget);
-  const allTargetsForMap: Target[] = targets.map(convertToTarget);
+  const trackedTargets: RiskTarget[] = nearbyTargets.map(convertToTarget);
 
   return {
+    event_id: `mock-event-${frameCount.toString().padStart(6, '0')}`,
     risk_object_id: `mock_${frameCount.toString().padStart(6, '0')}`,
     timestamp: new Date().toISOString(),
     governance: {
@@ -229,7 +228,6 @@ function generateRiskObject(): RiskObject {
       platform_health: healthStatus,
       future_trajectory: {
         prediction_type: 'linear',
-        curved_headline: undefined,
       },
       safety_domain: {
         shape_type: 'ellipse',
@@ -242,36 +240,10 @@ function generateRiskObject(): RiskObject {
       },
     },
     targets: trackedTargets,
-    all_targets: allTargetsForMap,
-    simulation_layer: {
-      is_active: false,
-      ghost_ships: [],
-    },
     environment_context: {
       safety_contour_val: 10.0,
       active_alerts: [],
     },
-  };
-}
-
-function buildRiskExplanation(riskLevel: RiskLevel, dcpa: number, tcpa: number): RiskExplanation | undefined {
-  if (riskLevel !== 'WARNING' && riskLevel !== 'ALARM') {
-    return undefined;
-  }
-
-  const tcpaMinutes = (tcpa / 60).toFixed(1);
-  const dcpaValue = dcpa.toFixed(2);
-
-  if (riskLevel === 'ALARM') {
-    return {
-      source: 'hybrid',
-      text: `目标与本船接近趋势明显，预计最近会遇时间约 ${tcpaMinutes} 分钟，最近会遇距离约 ${dcpaValue} 海里，建议立即重点关注避碰动作。`,
-    };
-  }
-
-  return {
-    source: 'llm',
-    text: `目标存在持续接近态势，预计最近会遇时间约 ${tcpaMinutes} 分钟，最近会遇距离约 ${dcpaValue} 海里，建议提前评估减速或调整航向。`,
   };
 }
 
@@ -289,12 +261,11 @@ export function startMockDataGenerator(intervalMs: number = 1000): void {
   frameCount = 0;
   initTargets();
 
-  useRiskStore.getState().setConnectionStatus(true);
-  useRiskStore.getState().setRiskObject(generateRiskObject());
+  useRiskStore.getState().setRiskUpdate(generateRiskObject());
 
   updateInterval = setInterval(() => {
     updatePositions(intervalMs / 1000);
-    useRiskStore.getState().setRiskObject(generateRiskObject());
+    useRiskStore.getState().setRiskUpdate(generateRiskObject());
   }, intervalMs);
 }
 
@@ -304,7 +275,7 @@ export function stopMockDataGenerator(): void {
     updateInterval = null;
     console.log('[Mock] Stopped mock data generator');
   }
-  useRiskStore.getState().setConnectionStatus(false);
+  useRiskStore.getState().reset();
 }
 
 export function isMockGeneratorRunning(): boolean {

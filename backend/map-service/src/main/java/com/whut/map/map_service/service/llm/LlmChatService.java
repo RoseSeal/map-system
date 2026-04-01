@@ -2,11 +2,8 @@ package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.client.LlmClient;
 import com.whut.map.map_service.config.LlmProperties;
-import com.whut.map.map_service.dto.websocket.BackendMessage;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.dto.websocket.FrontendChatPayload;
-import com.whut.map.map_service.websocket.ChatMessageFactory;
-import com.whut.map.map_service.websocket.WebSocketService;
+import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
 import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
 import com.whut.map.map_service.websocket.validation.ValidationResult;
 import jakarta.annotation.PreDestroy;
@@ -14,8 +11,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.socket.WebSocketSession;
 
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
@@ -30,25 +28,25 @@ public class LlmChatService {
 
     private final LlmClient llmClient;
     private final LlmProperties llmProperties;
-    private final WebSocketService webSocketService;
-    private final ChatMessageFactory chatMessageFactory;
     private final ChatRequestValidator chatRequestValidator;
     private final ExecutorService llmExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-    public void handleChat(WebSocketSession session, FrontendChatPayload request) {
+    public record ChatReplyResult(String content, String provider) {
+    }
+
+    public void handleChat(
+            ChatRequestPayload request,
+            Consumer<ChatReplyResult> onSuccess,
+            BiConsumer<ChatErrorCode, String> onError
+    ) {
         ValidationResult validationResult = chatRequestValidator.validateTextRequest(request);
         if (validationResult.hasError()) {
-            webSocketService.sendToSession(session, validationResult.errorMessage());
+            onError.accept(validationResult.errorCode(), validationResult.errorMessage());
             return;
         }
 
         if (!llmProperties.isEnabled()) {
-            webSocketService.sendToSession(session, chatMessageFactory.buildErrorMessage(
-                    request.getSequenceId(),
-                    request.getMessageId(),
-                    ChatErrorCode.LLM_DISABLED,
-                    "LLM chat is disabled."
-            ));
+            onError.accept(ChatErrorCode.LLM_DISABLED, "LLM chat is disabled.");
             return;
         }
 
@@ -58,11 +56,7 @@ public class LlmChatService {
                 .orTimeout(llmProperties.getTimeoutMs(), TimeUnit.MILLISECONDS)
                 .whenComplete((responseText, throwable) -> {
                     if (throwable == null) {
-                        webSocketService.sendToSession(session, chatMessageFactory.buildReplyMessage(
-                                request,
-                                responseText,
-                                resolveProviderName()
-                        ));
+                        onSuccess.accept(new ChatReplyResult(responseText, resolveProviderName()));
                         return;
                     }
 
@@ -74,25 +68,16 @@ public class LlmChatService {
                             ? "LLM request timed out."
                             : "LLM request failed.";
 
-                    log.warn("LLM chat request failed for session {}, type={}, message={}",
-                            session.getId(),
+                    log.warn("LLM chat request failed, type={}, message={}",
                             cause.getClass().getSimpleName(),
                             cause.getMessage());
 
-                    webSocketService.sendToSession(session, chatMessageFactory.buildErrorMessage(
-                            request.getSequenceId(),
-                            request.getMessageId(),
-                            errorCode,
-                            errorMessage
-                    ));
+                    onError.accept(errorCode, errorMessage);
                 });
     }
 
-    private String buildPrompt(FrontendChatPayload request) {
+    private String buildPrompt(ChatRequestPayload request) {
         StringBuilder prompt = new StringBuilder("You are a maritime assistant. Answer the user's current message directly and concisely in 2-3 sentences.\n");
-        if (request.getInputType() != null) {
-            prompt.append("Input type: ").append(request.getInputType().name()).append('\n');
-        }
         prompt.append("User message:\n").append(request.getContent());
         return prompt.toString();
     }

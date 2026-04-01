@@ -96,9 +96,14 @@ export const MAP_CONSTRAINTS = {
 
 /** Backend origins */
 export const BACKEND_CONFIG = {
+  API_HOST: 'localhost:8080',
   HTTP_ORIGIN: 'http://localhost:8080',
   WS_ORIGIN: 'ws://localhost:8080',
   S57_API_PATH: '/api/s57',
+  RISK_SSE_PATH: '/api/v2/risk',
+  CHAT_WS_PATH: '/api/v2/chat',
+  RISK_SSE_URL: 'http://localhost:8080/api/v2/risk',
+  CHAT_WS_URL: 'ws://localhost:8080/api/v2/chat',
 } as const;
 
 /** S-57 MVT tile source */
@@ -144,7 +149,7 @@ export const EXTRUSION = {
 // ============================================================
 
 export const WS_CONFIG = {
-  URL: `${BACKEND_CONFIG.WS_ORIGIN}/api/v1/stream`,
+  URL: BACKEND_CONFIG.CHAT_WS_URL,
   HEARTBEAT_INTERVAL_MS: 30000,
   HEARTBEAT_TIMEOUT_MS: 10000,
   RECONNECT_BASE_DELAY_MS: 1000,

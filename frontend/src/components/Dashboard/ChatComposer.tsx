@@ -1,6 +1,6 @@
 ﻿import type { KeyboardEvent, MouseEvent } from 'react';
 import type { VoiceCaptureState } from '../../store/useAiCenterStore';
-import type { ChatMode } from '../../types/schema';
+import type { SpeechMode } from '../../types/schema';
 
 interface ChatComposerProps {
   value: string;
@@ -8,12 +8,12 @@ interface ChatComposerProps {
   isSending?: boolean;
   voiceSupported: boolean;
   voiceState: VoiceCaptureState;
-  voiceMode?: ChatMode | null;
+  voiceMode?: SpeechMode | null;
   voiceError?: string | null;
   onChange: (value: string) => void;
   onSend: () => void;
   onStartVoiceRecording: () => void;
-  onStopVoiceRecording: (mode: ChatMode) => void;
+  onStopVoiceRecording: (mode: SpeechMode) => void;
   onFocus?: () => void;
   onBlur?: () => void;
 }
@@ -160,7 +160,7 @@ function getVoiceStatusText(
   voiceSupported: boolean,
   voiceState: VoiceCaptureState,
   hasText: boolean,
-  voiceMode: ChatMode | null,
+  voiceMode: SpeechMode | null,
 ): string {
   if (!voiceSupported) {
     return '当前浏览器不支持录音';

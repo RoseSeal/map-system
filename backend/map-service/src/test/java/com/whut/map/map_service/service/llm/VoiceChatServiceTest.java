@@ -2,25 +2,16 @@ package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.client.WhisperClient;
 import com.whut.map.map_service.config.WhisperProperties;
-import com.whut.map.map_service.dto.websocket.BackendChatErrorPayload;
-import com.whut.map.map_service.dto.websocket.BackendMessage;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.dto.websocket.FrontendChatPayload;
-import com.whut.map.map_service.dto.websocket.InputType;
-import com.whut.map.map_service.dto.websocket.MessageRole;
-import com.whut.map.map_service.websocket.BackendMessageFactory;
-import com.whut.map.map_service.websocket.ChatMessageFactory;
-import com.whut.map.map_service.websocket.WebSocketService;
+import com.whut.map.map_service.dto.websocket.SpeechMode;
+import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
 import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.socket.WebSocketSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -33,16 +24,8 @@ class VoiceChatServiceTest {
     @Mock
     private LlmChatService llmChatService;
 
-    @Mock
-    private WebSocketService webSocketService;
-
-    @Mock
-    private WebSocketSession session;
-
-    private final BackendMessageFactory backendMessageFactory = new BackendMessageFactory();
-    private final ChatMessageFactory chatMessageFactory = new ChatMessageFactory(backendMessageFactory);
     private final WhisperProperties whisperProperties = new WhisperProperties();
-    private final ChatRequestValidator chatRequestValidator = new ChatRequestValidator(chatMessageFactory, whisperProperties);
+    private final ChatRequestValidator chatRequestValidator = new ChatRequestValidator(whisperProperties);
 
     @Test
     void invalidChatEnvelopeReturnsErrorBeforeTranscription() {
@@ -50,31 +33,68 @@ class VoiceChatServiceTest {
                 whisperClient,
                 whisperProperties,
                 llmChatService,
-                webSocketService,
-                chatMessageFactory,
                 chatRequestValidator
         );
 
-        FrontendChatPayload request = new FrontendChatPayload();
-        request.setSequenceId("conversation-1");
-        request.setRole(MessageRole.USER);
-        request.setInputType(InputType.SPEECH);
-        request.setAudioData("dGVzdA==");
-        request.setAudioFormat("webm");
+        SpeechRequestPayload request = SpeechRequestPayload.builder()
+                .conversationId("conversation-1")
+                .audioData("dGVzdA==")
+                .audioFormat("webm")
+                .mode(SpeechMode.DIRECT)
+                .build();
 
-        service.handleVoice(session, request);
+        CapturingSpeechCallback callback = new CapturingSpeechCallback();
+        service.handleVoice(request, callback::captureTranscript, callback::captureReply, callback::captureError);
 
-        ArgumentCaptor<BackendMessage> captor = ArgumentCaptor.forClass(BackendMessage.class);
-        verify(webSocketService).sendToSession(eq(session), captor.capture());
-        assertThat(captor.getValue().getType()).isEqualTo("CHAT_ERROR");
-        BackendChatErrorPayload payload = (BackendChatErrorPayload) captor.getValue().getPayload();
-        assertThat(payload.getErrorCode()).isEqualTo(ChatErrorCode.INVALID_CHAT_REQUEST);
-        assertThat(payload.getReplyToMessageId()).isNull();
+        assertThat(callback.errorCode()).isEqualTo(ChatErrorCode.INVALID_SPEECH_REQUEST);
+        assertThat(callback.errorMessage()).isEqualTo("event_id is required.");
+        assertThat(callback.reply()).isNull();
+        assertThat(callback.transcript()).isNull();
         verify(whisperClient, never()).transcribe(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()
         );
-        verify(llmChatService, never()).handleChat(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(llmChatService, never()).handleChat(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        );
+    }
+
+    private static final class CapturingSpeechCallback {
+        private VoiceChatService.SpeechTranscriptResult transcript;
+        private LlmChatService.ChatReplyResult reply;
+        private ChatErrorCode errorCode;
+        private String errorMessage;
+
+        void captureTranscript(VoiceChatService.SpeechTranscriptResult transcript) {
+            this.transcript = transcript;
+        }
+
+        void captureReply(LlmChatService.ChatReplyResult reply) {
+            this.reply = reply;
+        }
+
+        void captureError(ChatErrorCode errorCode, String errorMessage) {
+            this.errorCode = errorCode;
+            this.errorMessage = errorMessage;
+        }
+
+        VoiceChatService.SpeechTranscriptResult transcript() {
+            return transcript;
+        }
+
+        LlmChatService.ChatReplyResult reply() {
+            return reply;
+        }
+
+        ChatErrorCode errorCode() {
+            return errorCode;
+        }
+
+        String errorMessage() {
+            return errorMessage;
+        }
     }
 }
