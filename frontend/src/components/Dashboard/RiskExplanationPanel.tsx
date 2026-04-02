@@ -229,16 +229,16 @@ export function RiskExplanationPanel() {
 
       <div
         id="ai-center-panel"
-        className="h-full bg-slate-950/85 backdrop-blur-xl border-l border-white/10 shadow-2xl rounded-l-2xl flex flex-col pointer-events-auto overflow-hidden relative"
+        className="h-full bg-white/95 dark:bg-slate-950/85 backdrop-blur-xl border-l border-slate-200 dark:border-white/10 shadow-lg rounded-l-2xl flex flex-col pointer-events-auto overflow-hidden relative transition-colors duration-300"
         style={{ width: `${PANEL_WIDTH}px` }}
       >
-        <div className="px-4 py-3 border-b border-white/10 shrink-0 bg-gradient-to-r from-transparent to-cyan-950/20">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10 shrink-0 bg-gradient-to-r from-transparent to-cyan-50 dark:to-cyan-950/20 transition-colors duration-300">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold tracking-wide text-slate-100 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <h2 className="text-sm font-bold tracking-wide text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse"></span>
               AI 助理中心
             </h2>
-            <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">
+            <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono">
               {sortedExplainedTargets.length} / {chatMessages.length}
             </span>
           </div>
@@ -247,14 +247,14 @@ export function RiskExplanationPanel() {
         <div className="flex-1 min-h-0 flex flex-col">
           <section
             style={{ height: `${topSectionHeight}%` }}
-            className="min-h-0 border-b border-white/10 flex flex-col"
+            className="min-h-0 border-b border-slate-300 dark:border-white/10 flex flex-col"
           >
-            <div className="px-4 py-2.5 shrink-0 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-400">
+            <div className="px-4 py-2.5 shrink-0 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               <span>态势监控日志</span>
               <span>{sortedExplainedTargets.length} 个风险目标</span>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-thin relative">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-thin relative transition-colors duration-300">
               {sortedExplainedTargets.length === 0 ? (
                 <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs text-slate-500">
                   当前航区暂无 AI 风险评估
@@ -273,14 +273,14 @@ export function RiskExplanationPanel() {
                       }}
                       className={`p-3 rounded-lg border transition-all duration-200 cursor-pointer ${
                         isSelected
-                          ? 'border-cyan-500/50 bg-cyan-950/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.05)]'
-                          : 'border-white/5 bg-slate-900/50 hover:bg-slate-800/80'
+                          ? 'border-cyan-500/50 bg-cyan-50 dark:bg-cyan-950/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.05)]'
+                          : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/80'
                       }`}
                     >
                       <div className="flex justify-between items-center mb-2 gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-mono text-xs text-slate-200 truncate">ID: {target.id}</span>
-                          <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></span>
+                          <span className="font-mono text-xs text-slate-700 dark:text-slate-200 truncate">ID: {target.id}</span>
+                          <span className="h-2 w-2 rounded-full bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></span>
                         </div>
                         <span
                           className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
@@ -290,13 +290,13 @@ export function RiskExplanationPanel() {
                         </span>
                       </div>
 
-                      <div className="text-[12px] leading-relaxed text-slate-300 whitespace-pre-wrap font-medium">
+                      <div className="text-[12px] leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-medium">
                         {explanation.text}
                       </div>
 
-                      <div className="mt-2 pt-2 border-t border-white/5 flex justify-between items-center text-[9px] text-slate-500">
+                      <div className="mt-2 pt-2 border-t border-slate-200 dark:border-white/5 flex justify-between items-center text-[9px] text-slate-500">
                         <span>{explanation.provider}</span>
-                        {isSelected ? <span className="text-cyan-400">正在追踪</span> : <span>{explanation.timestamp}</span>}
+                        {isSelected ? <span className="text-cyan-600 dark:text-cyan-400">正在追踪</span> : <span>{explanation.timestamp}</span>}
                       </div>
                     </div>
                   );

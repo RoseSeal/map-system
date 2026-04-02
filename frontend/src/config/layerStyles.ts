@@ -5,6 +5,63 @@
 
 import { COLORS, LAYER_IDS, LAYER_ZOOM, EXTRUSION, MVT_CONFIG } from './constants';
 import type { LayerSpecification, SourceSpecification } from 'maplibre-gl';
+import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
+
+type MapThemeMode = 'dark' | 'light';
+type ThemePaintUpdate = {
+  layerId: string;
+  paintProperty: string;
+  value: string | boolean;
+};
+
+const LIGHT_THEME_LAND = '#EAE6DF';
+const LIGHT_THEME_LAND_3D = '#D8D0C2';
+
+function createDepthValueExpression(): ExpressionSpecification {
+  return ['coalesce', ['get', 'drval1'], ['get', 'DRVAL1'], 50];
+}
+
+const MAP_THEME_PAINTS: Record<MapThemeMode, ThemePaintUpdate[]> = {
+  dark: [
+    { layerId: 'background', paintProperty: 'background-color', value: '#111827' },
+    { layerId: LAYER_IDS.LAND_BASE, paintProperty: 'fill-color', value: COLORS.LAND },
+    { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-color', value: '#2D3748' },
+    { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-vertical-gradient', value: true },
+    { layerId: 'depth-contour', paintProperty: 'line-color', value: '#4A90A4' },
+    { layerId: 'coastline', paintProperty: 'line-color', value: '#F5F0E6' },
+    { layerId: 'soundings', paintProperty: 'circle-color', value: '#60A5FA' },
+    { layerId: 'soundings', paintProperty: 'circle-stroke-color', value: '#ffffff' },
+    { layerId: 'sounding-labels', paintProperty: 'text-color', value: '#ffffff' },
+    { layerId: 'sounding-labels', paintProperty: 'text-halo-color', value: '#000000' },
+  ],
+  light: [
+    { layerId: 'background', paintProperty: 'background-color', value: '#EBF4FA' },
+    { layerId: LAYER_IDS.LAND_BASE, paintProperty: 'fill-color', value: LIGHT_THEME_LAND },
+    { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-color', value: LIGHT_THEME_LAND_3D },
+    { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-vertical-gradient', value: false },
+    { layerId: 'depth-contour', paintProperty: 'line-color', value: '#A2C4DD' },
+    { layerId: 'coastline', paintProperty: 'line-color', value: '#6A6F73' },
+    { layerId: 'soundings', paintProperty: 'circle-color', value: '#2B579A' },
+    { layerId: 'soundings', paintProperty: 'circle-stroke-color', value: '#ffffff' },
+    { layerId: 'sounding-labels', paintProperty: 'text-color', value: '#333333' },
+    { layerId: 'sounding-labels', paintProperty: 'text-halo-color', value: '#ffffff' },
+  ],
+};
+
+const MAP_THEME_LIGHTS = {
+  dark: {
+    anchor: 'viewport' as const,
+    color: '#dbeafe',
+    intensity: 0.32,
+    position: [1.15, 210, 38] as [number, number, number],
+  },
+  light: {
+    anchor: 'viewport' as const,
+    color: '#f4efe6',
+    intensity: 0.16,
+    position: [1.1, 180, 50] as [number, number, number],
+  },
+};
 
 /** Individual source for each layer (workaround for composite tile issues) */
 export const s57Sources: Record<string, SourceSpecification> = {
@@ -38,14 +95,6 @@ export const s57Sources: Record<string, SourceSpecification> = {
     minzoom: 0,
     maxzoom: 14,
   },
-};
-
-/** MVT Source specification (legacy - for composite tile) */
-export const s57Source: SourceSpecification = {
-  type: 'vector',
-  tiles: [MVT_CONFIG.SOURCE_URL],
-  minzoom: 0,
-  maxzoom: 14,
 };
 
 /** Land base fill layer (2D fallback) */
@@ -92,7 +141,7 @@ export const waterDepthLayer: LayerSpecification = {
     'fill-color': [
       'interpolate',
       ['linear'],
-      ['coalesce', ['get', 'drval1'], 50],
+      createDepthValueExpression(),
       0, '#1E3A5F',
       5, '#1E3A8A',
       10, '#172554',
@@ -200,20 +249,42 @@ export const s57Layers: LayerSpecification[] = [
 ];
 
 /**
- * Update water depth layer based on dynamic safety contour value
+ * Update water depth layer based on dynamic safety contour value and theme
  * @param map MapLibre map instance
  * @param safetyContourVal Safety contour depth in meters
+ * @param isDarkMode Current theme mode
  */
 export function updateWaterDepthStyle(
   map: maplibregl.Map,
-  safetyContourVal: number
+  safetyContourVal: number,
+  isDarkMode: boolean
 ): void {
   if (!map.getLayer(LAYER_IDS.WATER_DEPTH)) return;
 
+  const shallowColor = isDarkMode ? COLORS.WATER_SHALLOW : '#8BC8F5';
+  const deepColor = isDarkMode ? COLORS.WATER_DEEP : '#EBF4FA';
+
   map.setPaintProperty(LAYER_IDS.WATER_DEPTH, 'fill-color', [
     'case',
-    ['<', ['get', 'DRVAL1'], safetyContourVal],
-    COLORS.WATER_SHALLOW,
-    COLORS.WATER_DEEP,
+    ['<', createDepthValueExpression(), safetyContourVal],
+    shallowColor,
+    deepColor,
   ]);
+}
+
+export function applyMapTheme(
+  map: maplibregl.Map,
+  safetyContourVal: number,
+  isDarkMode: boolean
+): void {
+  const theme = isDarkMode ? 'dark' : 'light';
+
+  MAP_THEME_PAINTS[theme].forEach(({ layerId, paintProperty, value }) => {
+    if (map.getLayer(layerId)) {
+      map.setPaintProperty(layerId, paintProperty, value);
+    }
+  });
+
+  map.setLight(MAP_THEME_LIGHTS[theme]);
+  updateWaterDepthStyle(map, safetyContourVal, isDarkMode);
 }

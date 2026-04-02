@@ -35,7 +35,7 @@ export function CompassOverlay() {
   const heading = ownShip.dynamics.hdg;
   
   return (
-    <div className="bg-gray-900/80 backdrop-blur-sm rounded-full p-2">
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-full p-2 transition-colors duration-300">
       <svg 
         width={COMPASS_SIZE} 
         height={COMPASS_SIZE}
@@ -46,8 +46,7 @@ export function CompassOverlay() {
           cx={CENTER}
           cy={CENTER}
           r={RADIUS + 10}
-          fill="rgba(17, 24, 39, 0.8)"
-          stroke="rgba(75, 85, 99, 0.5)"
+          className="fill-slate-100/80 stroke-slate-300 dark:fill-gray-900/80 dark:stroke-gray-600/50 transition-colors duration-300"
           strokeWidth={1}
         />
         
@@ -68,7 +67,7 @@ export function CompassOverlay() {
           cy={CENTER}
           r={RADIUS}
           fill="none"
-          stroke="rgba(156, 163, 175, 0.3)"
+          className="stroke-slate-400/50 dark:stroke-gray-400/30 transition-colors duration-300"
           strokeWidth={2}
         />
         
@@ -84,7 +83,8 @@ export function CompassOverlay() {
               key={dir}
               x={x}
               y={y}
-              fill={dir === 'N' ? COLORS.ALARM : '#9CA3AF'}
+              fill={dir === 'N' ? COLORS.ALARM : 'currentColor'}
+              className="text-slate-500 dark:text-gray-400 transition-colors duration-300"
               fontSize={dir === 'N' ? 14 : 12}
               fontWeight={dir === 'N' ? 'bold' : 'normal'}
               textAnchor="middle"
@@ -109,8 +109,9 @@ export function CompassOverlay() {
               y1={CENTER + innerR * Math.sin(rad)}
               x2={CENTER + RADIUS * Math.cos(rad)}
               y2={CENTER + RADIUS * Math.sin(rad)}
-              stroke={isMajor ? '#9CA3AF' : '#4B5563'}
+              className="stroke-slate-400 dark:stroke-gray-500 transition-colors duration-300"
               strokeWidth={isMajor ? 2 : 1}
+              style={{ strokeOpacity: isMajor ? 1 : 0.6 }}
             />
           );
         })}
@@ -128,7 +129,7 @@ export function CompassOverlay() {
           cx={CENTER}
           cy={CENTER}
           r={5}
-          fill="#1F2937"
+          className="fill-slate-200 dark:fill-gray-800 transition-colors duration-300"
           stroke={COLORS.SAFE}
           strokeWidth={2}
         />
@@ -137,7 +138,8 @@ export function CompassOverlay() {
         <text
           x={CENTER}
           y={CENTER + 45}
-          fill="white"
+          fill="currentColor"
+          className="text-slate-800 dark:text-white transition-colors duration-300"
           fontSize={14}
           fontWeight="bold"
           textAnchor="middle"

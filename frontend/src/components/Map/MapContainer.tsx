@@ -15,6 +15,7 @@ import {
   selectTargets,
   selectEnvironment,
 } from '../../store';
+import { useThemeStore } from '../../store/useThemeStore';
 import {
   DEFAULT_VIEW_STATE,
   MAP_CONSTRAINTS,
@@ -23,7 +24,7 @@ import {
   getRiskColor,
   VISUALIZATION,
 } from '../../config';
-import { s57Sources, s57Layers, updateWaterDepthStyle } from '../../config/layerStyles';
+import { applyMapTheme, s57Sources, s57Layers } from '../../config/layerStyles';
 import {
   generateEllipsePolygon,
   generateLinearTrajectory,
@@ -76,6 +77,8 @@ export function MapContainer() {
   const environment = useRiskStore(selectEnvironment);
   const selectedTargetId = useRiskStore((state) => state.selectedTargetId);
   const selectTarget = useRiskStore((state) => state.selectTarget);
+  const { isDarkMode } = useThemeStore();
+  const safetyContourVal = environment?.safety_contour_val ?? 10;
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -122,6 +125,8 @@ export function MapContainer() {
         map.current!.addLayer(layer);
       });
 
+      applyMapTheme(map.current!, safetyContourVal, isDarkMode);
+
       setMapLoaded(true);
     });
 
@@ -132,9 +137,10 @@ export function MapContainer() {
   }, []);
 
   useEffect(() => {
-    if (!mapLoaded || !map.current || !environment) return;
-    updateWaterDepthStyle(map.current, environment.safety_contour_val);
-  }, [environment, mapLoaded]);
+    if (!mapLoaded || !map.current) return;
+
+    applyMapTheme(map.current, safetyContourVal, isDarkMode);
+  }, [isDarkMode, mapLoaded, safetyContourVal]);
 
   const buildDeckLayers = useCallback(() => {
     const layers: Layer[] = [];
@@ -284,8 +290,8 @@ export function MapContainer() {
             getRadius: 95,
             radiusUnits: 'meters',
             getFillColor: [0, 0, 0, 0],
-            getLineColor: [56, 189, 248, 220],
-            getLineWidth: 3,
+            getLineColor: isDarkMode ? [56, 189, 248, 255] : [245, 158, 11, 255],
+            getLineWidth: 4,
             lineWidthUnits: 'pixels',
             filled: false,
             stroked: true,
@@ -325,7 +331,7 @@ export function MapContainer() {
     }
 
     return layers;
-  }, [allTargets, ownShip, selectedTargetId, selectTarget, targets]);
+  }, [allTargets, ownShip, selectedTargetId, selectTarget, targets, isDarkMode]);
 
   useEffect(() => {
     if (!deckOverlay.current) return;
@@ -383,4 +389,3 @@ function buildCPALineData(targets: RiskTarget[]): { source: LonLat; target: LonL
       target: target.risk_assessment.graphic_cpa_line!.target_pos,
     }));
 }
-

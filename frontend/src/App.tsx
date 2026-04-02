@@ -22,7 +22,7 @@ function App() {
   }, []);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-gray-900">
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-300 dark:bg-gray-900 transition-colors duration-300">
       <MapContainer />
 
       <div className="absolute inset-0 pointer-events-none z-50">
@@ -57,8 +57,8 @@ function Legend() {
   ];
 
   return (
-    <div className="bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 text-white text-xs">
-      <div className="text-gray-400 tracking-wider mb-2">风险等级</div>
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 text-slate-800 dark:text-white text-xs transition-colors duration-300">
+      <div className="text-slate-500 dark:text-gray-400 tracking-wider mb-2">风险等级</div>
       <div className="space-y-1">
         {items.map((item) => (
           <div key={item.label} className="flex items-center gap-2">

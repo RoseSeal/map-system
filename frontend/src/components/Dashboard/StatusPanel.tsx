@@ -13,6 +13,7 @@ import {
   selectSpeechEnabled,
   selectSpeechSupported,
 } from '../../store';
+import { useThemeStore } from '../../store/useThemeStore';
 import { COLORS } from '../../config';
 import { speechService } from '../../services/speechService';
 
@@ -25,6 +26,8 @@ export function StatusPanel() {
   const speechSupported = useAiCenterStore(selectSpeechSupported);
   const setSpeechEnabled = useAiCenterStore((state) => state.setSpeechEnabled);
   const setSpeechUnlocked = useAiCenterStore((state) => state.setSpeechUnlocked);
+
+  const { isDarkMode, toggleTheme } = useThemeStore();
 
   const handleSpeechToggle = () => {
     if (!speechSupported) {
@@ -44,8 +47,8 @@ export function StatusPanel() {
 
   if (!ownShip || !governance) {
     return (
-      <div className="bg-slate-950/60 backdrop-blur-md rounded-md p-3 text-white w-[280px] border border-white/10 shadow-xl pointer-events-auto">
-        <div className="text-slate-400 text-center text-sm font-mono">
+      <div className="bg-white/90 dark:bg-slate-950/60 backdrop-blur-md rounded-md p-3 text-slate-800 dark:text-white w-[280px] border border-slate-200 dark:border-white/10 shadow-lg pointer-events-auto transition-colors duration-300">
+        <div className="text-slate-500 dark:text-slate-400 text-center text-sm font-mono">
           {isConnected ? '等待数据...' : '离线'}
         </div>
       </div>
@@ -55,15 +58,15 @@ export function StatusPanel() {
   const healthColor = getHealthColor(ownShip.platform_health.status);
 
   return (
-    <div className="bg-slate-950/60 backdrop-blur-md rounded-md p-3 text-white w-[280px] border border-white/10 shadow-xl pointer-events-auto space-y-2">
-      <div className="flex items-center justify-between border-b border-white/10 pb-2">
-        <h2 className="text-sm font-bold tracking-wide text-slate-100">本船状态</h2>
+    <div className="bg-white/90 dark:bg-slate-950/60 backdrop-blur-md rounded-md p-3 text-slate-800 dark:text-white w-[280px] border border-slate-200 dark:border-white/10 shadow-lg pointer-events-auto space-y-2 transition-colors duration-300">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2">
+        <h2 className="text-sm font-bold tracking-wide text-slate-800 dark:text-slate-100">本船状态</h2>
         <div className="flex items-center gap-1.5">
           <span
             className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,255,0,0.5)] animate-pulse"
             style={{ backgroundColor: isConnected ? COLORS.SAFE : COLORS.ALARM }}
           />
-          <span className="text-[10px] uppercase font-mono text-slate-400">
+          <span className="text-[10px] uppercase font-mono text-slate-500 dark:text-slate-400">
             {isConnected ? '在线' : '离线'}
           </span>
         </div>
@@ -81,31 +84,31 @@ export function StatusPanel() {
         <div className="space-y-1">
           <label className="text-[10px] text-slate-500 uppercase font-bold">航行</label>
           <div className="flex justify-between items-baseline">
-            <span className="text-[10px] text-slate-400">航速</span>
-            <span className="text-sm font-mono text-cyan-400">{ownShip.dynamics.sog.toFixed(1)} <span className="text-[9px]">kn</span></span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">航速</span>
+            <span className="text-sm font-mono text-cyan-600 dark:text-cyan-400">{ownShip.dynamics.sog.toFixed(1)} <span className="text-[9px]">kn</span></span>
           </div>
           <div className="flex justify-between items-baseline">
-            <span className="text-[10px] text-slate-400">COG</span>
-            <span className="text-sm font-mono text-cyan-400">{ownShip.dynamics.cog.toFixed(1)}</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">COG</span>
+            <span className="text-sm font-mono text-cyan-600 dark:text-cyan-400">{ownShip.dynamics.cog.toFixed(1)}</span>
           </div>
           <div className="flex justify-between items-baseline">
-            <span className="text-[10px] text-slate-400">HDG</span>
-            <span className="text-sm font-mono text-slate-300">{ownShip.dynamics.hdg.toFixed(1)}</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">HDG</span>
+            <span className="text-sm font-mono text-slate-700 dark:text-slate-300">{ownShip.dynamics.hdg.toFixed(1)}</span>
           </div>
         </div>
 
-        <div className="space-y-1 pl-2 border-l border-white/10">
+        <div className="space-y-1 pl-2 border-l border-slate-300 dark:border-white/10">
           <label className="text-[10px] text-slate-500 uppercase font-bold">系统</label>
           <div className="flex justify-between items-baseline">
-            <span className="text-[10px] text-slate-400">经度</span>
-            <span className="text-[10px] font-mono text-slate-300">E {ownShip.position.lon.toFixed(3)}</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">经度</span>
+            <span className="text-[10px] font-mono text-slate-700 dark:text-slate-300">E {ownShip.position.lon.toFixed(3)}</span>
           </div>
           <div className="flex justify-between items-baseline">
-            <span className="text-[10px] text-slate-400">纬度</span>
-            <span className="text-[10px] font-mono text-slate-300">N {ownShip.position.lat.toFixed(3)}</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">纬度</span>
+            <span className="text-[10px] font-mono text-slate-700 dark:text-slate-300">N {ownShip.position.lat.toFixed(3)}</span>
           </div>
-          <div className="mt-1 pt-1 border-t border-white/10 flex justify-between items-center">
-            <span className="text-[10px] text-slate-400">健康状态</span>
+          <div className="mt-1 pt-1 border-t border-slate-300 dark:border-white/10 flex justify-between items-center">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">健康状态</span>
             <span className="text-[10px] font-bold" style={{ color: healthColor }}>
               {mapHealthStatus(ownShip.platform_health.status)}
             </span>
@@ -113,28 +116,48 @@ export function StatusPanel() {
         </div>
       </div>
 
-      <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
-        <div>
-          <div className="text-[10px] text-slate-400">语音播报</div>
-          <div className="text-[10px] text-slate-500">
-            {speechSupported ? '开启后自动播报风险评估与聊天回复' : '当前浏览器不支持语音播报'}
+      <div className="pt-2 border-t border-slate-300 dark:border-white/10 space-y-2">
+        {/* 系统主题切换 */}
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400">系统主题</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+              切换亮色与深色模式
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="px-2.5 py-1 rounded text-[10px] font-medium border transition-colors border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-slate-900/70 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500"
+          >
+            {isDarkMode ? '深色' : '亮色'}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleSpeechToggle}
-          disabled={!speechSupported}
-          className={[
-            'px-2.5 py-1 rounded text-[10px] font-medium border transition-colors',
-            speechSupported
-              ? speechEnabled
-                ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25'
-                : 'border-white/10 bg-slate-900/70 text-slate-300 hover:border-slate-500'
-              : 'border-white/5 bg-slate-900/40 text-slate-600 cursor-not-allowed',
-          ].join(' ')}
-        >
-          {speechEnabled ? '已开启' : '开启播报'}
-        </button>
+
+        {/* 语音播报切换 */}
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400">语音播报</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+              {speechSupported ? '开启后自动播报风险评估' : '当前不支持语音播报'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSpeechToggle}
+            disabled={!speechSupported}
+            className={[
+              'px-2.5 py-1 rounded text-[10px] font-medium border transition-colors',
+              speechSupported
+                ? speechEnabled
+                  ? 'border-cyan-600/40 dark:border-cyan-500/40 bg-cyan-50 dark:bg-cyan-500/15 text-cyan-700 dark:text-cyan-200 hover:bg-cyan-100 dark:hover:bg-cyan-500/25'
+                  : 'border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-slate-900/70 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500'
+                : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-900/40 text-slate-400 dark:text-slate-600 cursor-not-allowed',
+            ].join(' ')}
+          >
+            {speechEnabled ? '已开启' : '开启播报'}
+          </button>
+        </div>
       </div>
     </div>
   );
