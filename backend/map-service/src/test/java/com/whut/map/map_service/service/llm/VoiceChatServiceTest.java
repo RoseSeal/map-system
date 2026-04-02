@@ -5,7 +5,7 @@ import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.SpeechMode;
 import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
-import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
+import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,7 +25,7 @@ class VoiceChatServiceTest {
     private LlmChatService llmChatService;
 
     private final WhisperProperties whisperProperties = new WhisperProperties();
-    private final ChatRequestValidator chatRequestValidator = new ChatRequestValidator(whisperProperties);
+    private final ChatPayloadValidator chatPayloadValidator = new ChatPayloadValidator(whisperProperties);
 
     @Test
     void invalidChatEnvelopeReturnsErrorBeforeTranscription() {
@@ -33,7 +33,7 @@ class VoiceChatServiceTest {
                 whisperClient,
                 whisperProperties,
                 llmChatService,
-                chatRequestValidator
+                chatPayloadValidator
         );
 
         SpeechRequestPayload request = SpeechRequestPayload.builder()

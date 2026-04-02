@@ -1,4 +1,4 @@
-package com.whut.map.map_service.websocket;
+package com.whut.map.map_service.transport.protocol;
 
 public final class ProtocolConnections {
 

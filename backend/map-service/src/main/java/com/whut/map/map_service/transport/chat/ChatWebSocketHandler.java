@@ -1,4 +1,4 @@
-package com.whut.map.map_service.websocket;
+package com.whut.map.map_service.transport.chat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,6 +6,8 @@ import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.*;
 import com.whut.map.map_service.service.llm.LlmChatService;
 import com.whut.map.map_service.service.llm.VoiceChatService;
+import com.whut.map.map_service.transport.protocol.ProtocolConnections;
+import com.whut.map.map_service.transport.protocol.ProtocolFields;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

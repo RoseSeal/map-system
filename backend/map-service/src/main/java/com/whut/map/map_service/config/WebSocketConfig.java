@@ -1,7 +1,7 @@
 package com.whut.map.map_service.config;
 
-import com.whut.map.map_service.websocket.ChatWebSocketHandler;
-import com.whut.map.map_service.websocket.ProtocolPaths;
+import com.whut.map.map_service.transport.chat.ChatWebSocketHandler;
+import com.whut.map.map_service.transport.protocol.ProtocolPaths;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

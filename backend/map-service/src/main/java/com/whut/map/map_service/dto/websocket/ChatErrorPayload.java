@@ -1,7 +1,7 @@
 package com.whut.map.map_service.dto.websocket;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.whut.map.map_service.websocket.ProtocolConnections;
+import com.whut.map.map_service.transport.protocol.ProtocolConnections;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

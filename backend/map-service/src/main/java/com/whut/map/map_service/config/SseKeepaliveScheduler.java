@@ -1,6 +1,6 @@
 package com.whut.map.map_service.config;
 
-import com.whut.map.map_service.websocket.SseEmitterRegistry;
+import com.whut.map.map_service.transport.risk.SseEmitterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;

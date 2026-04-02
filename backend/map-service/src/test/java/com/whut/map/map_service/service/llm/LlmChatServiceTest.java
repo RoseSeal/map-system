@@ -5,7 +5,7 @@ import com.whut.map.map_service.config.LlmProperties;
 import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
-import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
+import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -22,12 +22,12 @@ class LlmChatServiceTest {
     private LlmClient llmClient;
 
     private final WhisperProperties whisperProperties = new WhisperProperties();
-    private final ChatRequestValidator chatRequestValidator = new ChatRequestValidator(whisperProperties);
+    private final ChatPayloadValidator chatPayloadValidator = new ChatPayloadValidator(whisperProperties);
 
     @Test
     void validChatRequestsProduceChatReply() throws Exception {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
-        LlmChatService service = new LlmChatService(llmClient, properties, chatRequestValidator);
+        LlmChatService service = new LlmChatService(llmClient, properties, chatPayloadValidator);
         ChatRequestPayload request = buildRequest();
         when(llmClient.generateText(anyString())).thenReturn("assistant reply");
 
@@ -44,7 +44,7 @@ class LlmChatServiceTest {
     @Test
     void invalidChatRequestsReturnChatError() {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
-        LlmChatService service = new LlmChatService(llmClient, properties, chatRequestValidator);
+        LlmChatService service = new LlmChatService(llmClient, properties, chatPayloadValidator);
         ChatRequestPayload request = buildRequest();
         request.setContent(" ");
 
@@ -59,7 +59,7 @@ class LlmChatServiceTest {
     @Test
     void llmFailuresReturnChatError() throws Exception {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
-        LlmChatService service = new LlmChatService(llmClient, properties, chatRequestValidator);
+        LlmChatService service = new LlmChatService(llmClient, properties, chatPayloadValidator);
         ChatRequestPayload request = buildRequest();
         when(llmClient.generateText(anyString())).thenThrow(new IllegalStateException("boom"));
 

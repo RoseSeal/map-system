@@ -1,4 +1,4 @@
-package com.whut.map.map_service.websocket;
+package com.whut.map.map_service.transport.risk;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

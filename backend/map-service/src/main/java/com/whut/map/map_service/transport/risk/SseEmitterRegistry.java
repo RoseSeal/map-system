@@ -1,4 +1,4 @@
-package com.whut.map.map_service.websocket;
+package com.whut.map.map_service.transport.risk;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -24,31 +24,45 @@ public class SseEmitterRegistry {
         emitter.onError(throwable -> emitters.remove(emitter));
     }
 
-    public void broadcast(SseEventType eventType, String eventId, Object payload) {
+    public void broadcast(SseEventType eventType, String sequenceId, Object payload) {
         if (payload == null) {
             log.warn("Skipping SSE broadcast because payload is null, eventType={}", eventType);
             return;
         }
 
-        final String jsonPayload;
-        try {
-            jsonPayload = objectMapper.writeValueAsString(payload);
-        } catch (Exception e) {
-            log.error("Failed to serialize SSE payload for eventType={}: {}", eventType, e.getMessage());
+        String jsonPayload = serialize(payload, eventType);
+        if (jsonPayload == null) {
+            return;
+        }
+
+        broadcastJson(eventType, sequenceId, jsonPayload);
+    }
+
+    public void broadcastJson(SseEventType eventType, String sequenceId, String jsonPayload) {
+        if (jsonPayload == null) {
+            log.warn("Skipping SSE broadcast because json payload is null, eventType={}", eventType);
             return;
         }
 
         emitters.forEach(emitter -> {
-            try {
-                emitter.send(SseEmitter.event()
-                        .id(eventId)
-                        .name(eventType.getValue())
-                        .data(jsonPayload));
-            } catch (Exception e) {
-                log.debug("Removing failed SSE emitter after {} send failure: {}", eventType, e.getMessage());
-                removeEmitter(emitter);
-            }
+            sendJson(emitter, eventType, sequenceId, jsonPayload);
         });
+    }
+
+    public void sendJson(SseEmitter emitter, SseEventType eventType, String sequenceId, String jsonPayload) {
+        if (emitter == null || jsonPayload == null) {
+            return;
+        }
+
+        try {
+            emitter.send(SseEmitter.event()
+                    .id(sequenceId)
+                    .name(eventType.getValue())
+                    .data(jsonPayload));
+        } catch (Exception e) {
+            log.debug("Removing failed SSE emitter after {} send failure: {}", eventType, e.getMessage());
+            removeEmitter(emitter);
+        }
     }
 
     public void sendKeepalive() {
@@ -68,6 +82,15 @@ public class SseEmitterRegistry {
             emitter.complete();
         } catch (Exception e) {
             log.trace("Ignoring SSE emitter completion error: {}", e.getMessage());
+        }
+    }
+
+    public String serialize(Object payload, SseEventType eventType) {
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (Exception e) {
+            log.error("Failed to serialize SSE payload for eventType={}: {}", eventType, e.getMessage());
+            return null;
         }
     }
 }

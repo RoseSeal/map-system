@@ -1,4 +1,4 @@
-package com.whut.map.map_service.websocket.validation;
+package com.whut.map.map_service.service.llm.validation;
 
 import org.springframework.util.StringUtils;
 

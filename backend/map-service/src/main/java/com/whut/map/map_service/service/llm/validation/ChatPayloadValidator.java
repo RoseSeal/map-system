@@ -1,4 +1,4 @@
-package com.whut.map.map_service.websocket.validation;
+package com.whut.map.map_service.service.llm.validation;
 
 import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
@@ -10,7 +10,7 @@ import org.springframework.util.StringUtils;
 
 @Component
 @RequiredArgsConstructor
-public class ChatRequestValidator {
+public class ChatPayloadValidator {
 
     private final WhisperProperties whisperProperties;
 

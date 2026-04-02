@@ -6,7 +6,6 @@ import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
 import com.whut.map.map_service.dto.llm.LlmRiskContext;
-import com.whut.map.map_service.dto.sse.RiskUpdatePayload;
 import com.whut.map.map_service.engine.collision.CpaTcpaEngine;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
@@ -17,9 +16,7 @@ import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.service.llm.LlmTriggerService;
 import com.whut.map.map_service.store.ShipStateStore;
-import com.whut.map.map_service.websocket.SseEmitterRegistry;
-import com.whut.map.map_service.websocket.SseEventFactory;
-import com.whut.map.map_service.websocket.SseEventType;
+import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -34,37 +31,34 @@ public class ShipDispatcher {
     private final ShipDomainEngine shipDomainEngine;
     private final CvPredictionEngine cvPredictionEngine;
     private final CpaTcpaEngine cpaTcpaEngine;
-    private final SseEmitterRegistry sseEmitterRegistry;
-    private final SseEventFactory sseEventFactory;
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
     private final LlmRiskContextAssembler llmRiskContextAssembler;
     private final LlmTriggerService llmTriggerService;
     private final ShipStateStore shipStateStore;
+    private final RiskStreamPublisher riskStreamPublisher;
 
     public ShipDispatcher(
             ShipDomainEngine shipDomainEngine,
             CvPredictionEngine cvPredictionEngine,
             CpaTcpaEngine cpaTcpaEngine,
-            SseEmitterRegistry sseEmitterRegistry,
-            SseEventFactory sseEventFactory,
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
             LlmRiskContextAssembler llmRiskContextAssembler,
             LlmTriggerService llmTriggerService,
-            ShipStateStore shipStateStore
+            ShipStateStore shipStateStore,
+            RiskStreamPublisher riskStreamPublisher
 
     ) {
         this.shipDomainEngine = shipDomainEngine;
         this.cvPredictionEngine = cvPredictionEngine;
         this.cpaTcpaEngine = cpaTcpaEngine;
-        this.sseEmitterRegistry = sseEmitterRegistry;
-        this.sseEventFactory = sseEventFactory;
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
         this.llmRiskContextAssembler = llmRiskContextAssembler;
         this.llmTriggerService = llmTriggerService;
         this.shipStateStore = shipStateStore;
+        this.riskStreamPublisher = riskStreamPublisher;
     }
 
     public void dispatch(ShipStatus message) {
@@ -127,10 +121,7 @@ public class ShipDispatcher {
                 cvPredictionResult
         );
         if (dto != null) {
-            RiskUpdatePayload riskUpdatePayload = sseEventFactory.buildRiskUpdate(dto);
-            if (riskUpdatePayload != null) {
-                sseEmitterRegistry.broadcast(SseEventType.RISK_UPDATE, riskUpdatePayload.getEventId(), riskUpdatePayload);
-            }
+            riskStreamPublisher.publishRiskUpdate(dto);
 
             LlmRiskContext llmContext = llmRiskContextAssembler.assemble(
                     ownShip,
@@ -144,12 +135,10 @@ public class ShipDispatcher {
         // 9) Emit concise per-target CPA/TCPA log for observability.
         if (message.getRole() == ShipRole.TARGET_SHIP && cpaResults.containsKey(message.getId())) {
             CpaTcpaResult cpaResult = cpaResults.get(message.getId());
-            log.info("CPA={}m, TCPA={}s, target={}",
+            log.debug("CPA={}m, TCPA={}s, target={}",
                     String.format("%.1f", cpaResult.getCpaDistance()),
                     String.format("%.1f", cpaResult.getTcpaTime()),
                     cpaResult.getTargetMmsi());
-        } else {
-            log.info("CPA/TCPA calculation skipped for id: {}", message.getId());
         }
     }
 }

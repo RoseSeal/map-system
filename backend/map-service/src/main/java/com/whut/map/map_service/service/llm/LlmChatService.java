@@ -4,8 +4,8 @@ import com.whut.map.map_service.client.LlmClient;
 import com.whut.map.map_service.config.LlmProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
-import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
-import com.whut.map.map_service.websocket.validation.ValidationResult;
+import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
+import com.whut.map.map_service.service.llm.validation.ValidationResult;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,7 @@ public class LlmChatService {
 
     private final LlmClient llmClient;
     private final LlmProperties llmProperties;
-    private final ChatRequestValidator chatRequestValidator;
+    private final ChatPayloadValidator chatPayloadValidator;
     private final ExecutorService llmExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public record ChatReplyResult(String content, String provider) {
@@ -39,7 +39,7 @@ public class LlmChatService {
             Consumer<ChatReplyResult> onSuccess,
             BiConsumer<ChatErrorCode, String> onError
     ) {
-        ValidationResult validationResult = chatRequestValidator.validateTextRequest(request);
+        ValidationResult validationResult = chatPayloadValidator.validateTextRequest(request);
         if (validationResult.hasError()) {
             onError.accept(validationResult.errorCode(), validationResult.errorMessage());
             return;

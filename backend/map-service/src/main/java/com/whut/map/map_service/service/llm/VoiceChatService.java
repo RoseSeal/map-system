@@ -7,9 +7,9 @@ import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
 import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
 import com.whut.map.map_service.dto.websocket.SpeechMode;
-import com.whut.map.map_service.websocket.validation.AudioPayloadUtils;
-import com.whut.map.map_service.websocket.validation.ChatRequestValidator;
-import com.whut.map.map_service.websocket.validation.ValidationResult;
+import com.whut.map.map_service.service.llm.validation.AudioPayloadUtils;
+import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
+import com.whut.map.map_service.service.llm.validation.ValidationResult;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +34,7 @@ public class VoiceChatService {
     private final WhisperClient whisperClient;
     private final WhisperProperties whisperProperties;
     private final LlmChatService llmChatService;
-    private final ChatRequestValidator chatRequestValidator;
+    private final ChatPayloadValidator chatPayloadValidator;
     private final ExecutorService voiceExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public record SpeechTranscriptResult(String transcript, String language) {
@@ -46,7 +46,7 @@ public class VoiceChatService {
             Consumer<LlmChatService.ChatReplyResult> onReply,
             BiConsumer<ChatErrorCode, String> onError
     ) {
-        ValidationResult validation = chatRequestValidator.validateSpeechRequest(request);
+        ValidationResult validation = chatPayloadValidator.validateSpeechRequest(request);
         if (validation.hasError()) {
             emitValidationError(validation, onError);
             return;
