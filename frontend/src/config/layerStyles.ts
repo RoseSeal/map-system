@@ -14,8 +14,15 @@ type ThemePaintUpdate = {
   value: string | boolean;
 };
 
-const LIGHT_THEME_LAND = '#EAE6DF';
-const LIGHT_THEME_LAND_3D = '#D8D0C2';
+const LIGHT_THEME_BACKGROUND = '#DCE7EE';
+const LIGHT_THEME_WATER_DEEP = '#D7E6F0';
+const LIGHT_THEME_WATER_SHALLOW = '#96C9E6';
+const LIGHT_THEME_LAND = '#DDD8CD';
+const LIGHT_THEME_LAND_3D = '#C8C0B1';
+const LIGHT_THEME_COASTLINE = '#737A76';
+const LIGHT_THEME_DEPTH_CONTOUR = '#6F8FA3';
+const LIGHT_THEME_SOUNDING = '#4B6B86';
+const LIGHT_THEME_SOUNDING_HALO = '#F7F9FB';
 
 function createDepthValueExpression(): ExpressionSpecification {
   return ['coalesce', ['get', 'drval1'], ['get', 'DRVAL1'], 50];
@@ -35,16 +42,16 @@ const MAP_THEME_PAINTS: Record<MapThemeMode, ThemePaintUpdate[]> = {
     { layerId: 'sounding-labels', paintProperty: 'text-halo-color', value: '#000000' },
   ],
   light: [
-    { layerId: 'background', paintProperty: 'background-color', value: '#EBF4FA' },
+    { layerId: 'background', paintProperty: 'background-color', value: LIGHT_THEME_BACKGROUND },
     { layerId: LAYER_IDS.LAND_BASE, paintProperty: 'fill-color', value: LIGHT_THEME_LAND },
     { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-color', value: LIGHT_THEME_LAND_3D },
     { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-vertical-gradient', value: false },
-    { layerId: 'depth-contour', paintProperty: 'line-color', value: '#A2C4DD' },
-    { layerId: 'coastline', paintProperty: 'line-color', value: '#6A6F73' },
-    { layerId: 'soundings', paintProperty: 'circle-color', value: '#2B579A' },
+    { layerId: 'depth-contour', paintProperty: 'line-color', value: LIGHT_THEME_DEPTH_CONTOUR },
+    { layerId: 'coastline', paintProperty: 'line-color', value: LIGHT_THEME_COASTLINE },
+    { layerId: 'soundings', paintProperty: 'circle-color', value: LIGHT_THEME_SOUNDING },
     { layerId: 'soundings', paintProperty: 'circle-stroke-color', value: '#ffffff' },
-    { layerId: 'sounding-labels', paintProperty: 'text-color', value: '#333333' },
-    { layerId: 'sounding-labels', paintProperty: 'text-halo-color', value: '#ffffff' },
+    { layerId: 'sounding-labels', paintProperty: 'text-color', value: LIGHT_THEME_SOUNDING },
+    { layerId: 'sounding-labels', paintProperty: 'text-halo-color', value: LIGHT_THEME_SOUNDING_HALO },
   ],
 };
 
@@ -57,9 +64,9 @@ const MAP_THEME_LIGHTS = {
   },
   light: {
     anchor: 'viewport' as const,
-    color: '#f4efe6',
-    intensity: 0.16,
-    position: [1.1, 180, 50] as [number, number, number],
+    color: '#ebe3d4',
+    intensity: 0.09,
+    position: [1.05, 165, 42] as [number, number, number],
   },
 };
 
@@ -161,8 +168,8 @@ export const depthContourLayer: LayerSpecification = {
   minzoom: 11,
   paint: {
     'line-color': '#4A90A4',
-    'line-width': 0.8,
-    'line-opacity': 0.4,
+    'line-width': 0.9,
+    'line-opacity': 0.58,
   },
 };
 
@@ -261,8 +268,8 @@ export function updateWaterDepthStyle(
 ): void {
   if (!map.getLayer(LAYER_IDS.WATER_DEPTH)) return;
 
-  const shallowColor = isDarkMode ? COLORS.WATER_SHALLOW : '#8BC8F5';
-  const deepColor = isDarkMode ? COLORS.WATER_DEEP : '#EBF4FA';
+  const shallowColor = isDarkMode ? COLORS.WATER_SHALLOW : LIGHT_THEME_WATER_SHALLOW;
+  const deepColor = isDarkMode ? COLORS.WATER_DEEP : LIGHT_THEME_WATER_DEEP;
 
   map.setPaintProperty(LAYER_IDS.WATER_DEPTH, 'fill-color', [
     'case',

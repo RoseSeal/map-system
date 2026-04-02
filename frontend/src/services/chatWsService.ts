@@ -50,20 +50,37 @@ class ChatWsService {
     this.socket = socket;
 
     socket.onopen = () => {
+      if (this.socket !== socket) {
+        socket.close(1000, 'Superseded connection');
+        return;
+      }
+
       this.state = 'connected';
       this.reconnectAttempts = 0;
       this.startHeartbeat();
     };
 
     socket.onmessage = (event) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
       this.handleMessage(event.data);
     };
 
     socket.onerror = (event) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
       console.error('[chatWsService] WebSocket error', event);
     };
 
     socket.onclose = () => {
+      if (this.socket !== socket) {
+        return;
+      }
+
       this.stopHeartbeat();
       this.socket = null;
 
@@ -82,12 +99,14 @@ class ChatWsService {
     this.clearReconnectTimer();
     this.stopHeartbeat();
 
-    if (!this.socket) {
+    const socket = this.socket;
+    this.socket = null;
+
+    if (!socket) {
       return;
     }
 
-    this.socket.close(1000, 'Client disconnect');
-    this.socket = null;
+    socket.close(1000, 'Client disconnect');
   }
 
   send(type: 'PING', payload: null): boolean;

@@ -5,6 +5,29 @@
 
 import type { RGBColor, RGBAColor } from '../types/schema';
 
+function readEnvValue(key: 'VITE_API_ORIGIN' | 'VITE_WS_ORIGIN'): string | null {
+  const value = import.meta.env[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function buildBrowserOrigin(port: number, protocol: 'http' | 'ws'): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const { hostname, protocol: pageProtocol } = window.location;
+  const resolvedProtocol = protocol === 'ws'
+    ? (pageProtocol === 'https:' ? 'wss' : 'ws')
+    : (pageProtocol === 'https:' ? 'https' : 'http');
+
+  return `${resolvedProtocol}://${hostname}:${port}`;
+}
+
+const DEFAULT_HTTP_ORIGIN = buildBrowserOrigin(8080, 'http') ?? 'http://localhost:8080';
+const DEFAULT_WS_ORIGIN = buildBrowserOrigin(8080, 'ws') ?? 'ws://localhost:8080';
+const HTTP_ORIGIN = readEnvValue('VITE_API_ORIGIN') ?? DEFAULT_HTTP_ORIGIN;
+const WS_ORIGIN = readEnvValue('VITE_WS_ORIGIN') ?? DEFAULT_WS_ORIGIN;
+
 // ============================================================
 // Color System (Design Tokens)
 // ============================================================
@@ -96,14 +119,14 @@ export const MAP_CONSTRAINTS = {
 
 /** Backend origins */
 export const BACKEND_CONFIG = {
-  API_HOST: 'localhost:8080',
-  HTTP_ORIGIN: 'http://localhost:8080',
-  WS_ORIGIN: 'ws://localhost:8080',
+  API_HOST: HTTP_ORIGIN.replace(/^https?:\/\//, ''),
+  HTTP_ORIGIN,
+  WS_ORIGIN,
   S57_API_PATH: '/api/s57',
   RISK_SSE_PATH: '/api/v2/risk',
   CHAT_WS_PATH: '/api/v2/chat',
-  RISK_SSE_URL: 'http://localhost:8080/api/v2/risk',
-  CHAT_WS_URL: 'ws://localhost:8080/api/v2/chat',
+  RISK_SSE_URL: `${HTTP_ORIGIN}/api/v2/risk`,
+  CHAT_WS_URL: `${WS_ORIGIN}/api/v2/chat`,
 } as const;
 
 /** S-57 MVT tile source */
