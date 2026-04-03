@@ -1,4 +1,8 @@
-# LLM 模块 v2（后续优化方向）设计
+# LLM 模块 v2（归档）
+
+> 文档状态：archived / planning snapshot
+> 归档日期：2026-04-03
+> 说明：本文档保留一版较早的 LLM 增强方案草案，其中不少内容仍有参考价值，但不代表当前已实施设计。当前实现真值以 `docs/ARCHITECTURE.md`、`docs/EVENT_SCHEMA.md` 为准；吸收后的规划整理见 `docs/LLM_ROADMAP.md`。
 
 ## 1. 文档边界
 

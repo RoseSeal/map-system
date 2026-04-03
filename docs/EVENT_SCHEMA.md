@@ -14,10 +14,10 @@
 
 ## 1. 文档定位
 
-本文档定义目标中的 v2 协议，不代表当前已实现协议。
+本文档定义当前已实施并生效的 v2 协议。
 
 - 当前生效协议即本文档
-- 本文档用于后续前后端改造实施
+- 本文档用于前后端实现、联调与后续变更控制
 - v2 仅重构实时事件协议
 - `/api/s57/*` HTTP 海图接口暂不纳入本次 v2 变更范围
 
@@ -454,5 +454,5 @@ SSE 与 WebSocket chat 下行共用：
 
 - 当前生效协议即本文档
 - v1 已归档到 [docs/event-schema-history/SCHEMA_V1.md](/home/xin/workspace/map-system/docs/event-schema-history/SCHEMA_V1.md)
-- 在 v2 切换前，前后端不得混用 v1/v2 字段名
+- v2 已切换完成，前后端不得回退或混用 v1/v2 字段名
 - 若后续引入“解释卡片作为 chat 补充上下文”，应通过新的显式 payload 字段建模，不应把 `EXPLANATION` 事件本身重新并入 chat 会话流

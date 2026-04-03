@@ -1,339 +1,473 @@
-﻿# Map-System 系统设计文档
+# Map-System 系统设计文档
 
-> **版本 (Version)**：v0.5 -> v2.0 Roadmap
-> **目标 (Objective)**：面向内河窄航道运货船的轻量级外挂式态势感知与风险预警系统
-> **当前里程碑 (Current Milestone)**：v0.5 - 跑通实时预警主链路，实现最小可用系统
-> **作者 (Author)**：xin
-
----
-
-## 一、项目概述 (Project Overview)
-
-### 1.1 项目背景
-
-本项目面向一艘在中国内陆固定 A-B 点之间航行的运货船，航行区域为内河窄航道场景。受项目预算与工程周期约束，系统定位为外挂式、轻量级辅助预警系统，而非完整替代船载航行系统的重型平台。
-
-系统目标是在不预设最终传感器组合的前提下，先建立一条稳定的实时预警链路：接收外部感知数据，统一转换为系统内部目标对象，完成碰撞风险与态势计算，并将结果同步提供给前端和大模型模块。
-
-### 1.2 输入与数据策略
-
-系统采用多源输入、统一语义、后续按需补 mapper 的策略。
-
-- **动态输入源**：可能包括 AIS、雷达、计算机视觉等一种或多种外部感知源；现阶段不写死最终输入组合。
-- **接入方式**：各输入源统一通过 MQTT 接入系统。
-- **适配方式**：每类输入源单独实现对应 mapper，将外部消息转换为系统内部统一目标对象。
-- **核心原则**：系统核心计算逻辑不直接依赖某一种传感器字段，而是依赖统一内部对象；待输入源最终确定后，再补充对应 mapper。
-- **静态数据**：电子海图、岸线、港口、预规划航线等静态地理信息，存储于 PostgreSQL + PostGIS。
-- **历史数据**：已申请约 1400 万条 AIS 历史数据，用于危险场景案例提取、后续评估、知识增强与检索增强，不作为当前版本实时主链路前提。
-
-### 1.3 当前工程状态
-
-| 组件 | 状态 | 说明 |
-|------|------|------|
-| **backend/listener-service** | ✅ 已完成 | 订阅 MQTT 并落库 PostgreSQL |
-| **frontend/** | ✅ 可运行 | 基于 MapLibre + Deck.gl 的 2.5D WebGL 前端，当前由 Mock 数据驱动 |
-| **simulator/** | ✅ 可运行 | 可用于模拟 AIS 数据输入 |
-| **backend/map-service** | 🔨 开发中 | 核心后端服务，承载 mapper、实时计算、WebSocket 推送与 LLM 对接 |
-| **docs/** | ✅ 已有 | 本设计文档 |
+> 文档版本：v1.0
+> 最后更新：2026-04-03
+> 文档状态：current
+> 基线来源：`docs/ARCHITECTURE.md`、`docs/EVENT_SCHEMA.md`
 
 ---
 
-## 二、系统架构 (System Architecture)
+## 一、文档目的
 
-### 2.1 整体架构
+本文档用于描述 Map-System 的当前系统设计，包括：
 
-当前系统围绕一条轻量实时主链路组织：
+- 系统目标与边界
+- 领域建模与核心处理链路
+- 实时事件设计
+- LLM 与语音交互集成方式
+- 数据留存与工程结构
+
+本文档不重复维护协议细节与 ADR 全量内容：
+
+- 架构概览与 ADR 以 `docs/ARCHITECTURE.md` 为准
+- 实时事件字段与示例以 `docs/EVENT_SCHEMA.md` 为准
+
+---
+
+## 二、系统定位
+
+Map-System 是面向船舶态势感知与碰撞风险评估的实时系统，目标是在多源输入条件下，形成一条从消息接入、统一建模、风险计算、前端展示，到 LLM 解读与语音交互的完整链路。
+
+当前系统定位有三个关键点：
+
+- 面向实时风险评估，而不是离线分析平台
+- 以统一内部实体 `ShipStatus` 解耦 AIS、CV、Radar 等异构输入
+- 以演示可运行和后续扩展兼顾为原则，优先收敛主链路
+
+---
+
+## 三、设计目标与边界
+
+### 3.1 设计目标
+
+- 稳定接入外部船舶动态消息
+- 将异构输入标准化为统一内部状态对象
+- 实时输出 CPA/TCPA 驱动的风险快照
+- 将风险快照通过 SSE 持续推送到 2.5D 前端
+- 将风险解释与用户对话能力接入 LLM
+- 支持文本与语音两种交互入口
+
+### 3.2 当前边界
+
+当前明确纳入主设计的能力：
+
+- MQTT 消息接入
+- `ShipStatus` 统一建模
+- CPA/TCPA 风险计算
+- 风险流 SSE 推送
+- Chat WebSocket 双向交互
+- LLM 风险解释
+- `whisper.cpp` 非流式语音转写
+
+当前明确不作为主链路前提的能力：
+
+- `listener-service` 离线分析链路
+- 多轮对话上下文管理
+- 法规 RAG
+- 多智能体编排
+- 规则引擎与动画指令
+
+这些能力可以继续扩展，但不应反向污染当前主设计的职责边界。
+
+---
+
+## 四、总体架构
+
+### 4.1 架构总览
 
 ```text
-外部输入源
-  ├─ AIS
-  ├─ Radar
-  └─ CV
-      ↓
- MQTT Broker
-      ↓
- map-service
-  ├─ mqtt/           订阅外部消息
-  ├─ mapper/         各输入源 -> 内部统一目标对象
-  ├─ domain/         内部确信类 / 预警对象 / 航迹对象
-  ├─ engine/         CPA/TCPA、航迹预测、本船安全领域
-  ├─ llm/            结构化事实封装、大模型调用、多智能体编排（后续）
-  ├─ websocket/      动态结果推送前端
-  └─ api/            静态海图与辅助查询接口
-      ↓
-  Frontend (目标、置信度、预测航迹、安全领域、危险预警)
-      ↓
-  LLM Agent (基于结构化事实给出解释与建议)
+Python Simulator / 外部输入源
+  │
+  ▼
+MQTT
+  │
+  ▼
+map-service
+  ├─ mqtt / mapper          输入接入与 normalize
+  ├─ domain                 统一领域对象（ShipStatus 等）
+  ├─ store / pipeline       状态维护与处理编排
+  ├─ engine                 CPA/TCPA、风险评估、安全域、预测
+  ├─ assembler              风险 DTO 与 LLM 上下文组装
+  ├─ service/llm            风险解释、聊天、语音编排
+  ├─ transport/risk         SSE 风险流
+  ├─ transport/chat         WebSocket 聊天流
+  └─ api                    风险 SSE 与海图接口
+       │
+       ├──→ Frontend 2.5D 海图与控制面板
+       └──→ LLM Provider（Gemini / 智谱）
+                │
+                └──→ whisper.cpp（语音输入时）
 ```
 
-### 2.2 模块职责
+### 4.2 服务划分
 
-#### Module A - Data Ingestion / Source Access
+#### `map-service`
 
-**服务名**：`listener-service` / 或由 `map-service` 直接订阅
+系统核心服务，承担主运行链路中的全部关键职责：
 
-职责是接入 MQTT 消息并完成基础转发或落库，不承担核心业务判断。若某类输入源最终不再单独经过 `listener-service`，也可直接由 `map-service` 订阅，不影响总体架构。
+- 订阅 MQTT 输入
+- 将外部消息转换为 `ShipStatus`
+- 维护目标状态集合
+- 执行风险计算与对象组装
+- 通过 SSE 推送风险快照与解释
+- 通过 WebSocket 处理聊天与语音交互
+- 编排 LLM 与 ASR 调用
 
-#### Module B - Core Real-time Service
+#### `listener-service`
 
-**服务名**：`map-service`
-
-核心职责如下：
-
-- 订阅 MQTT 输入消息。
-- 调用不同输入源对应的 mapper。
-- 将外部消息转换为系统内部统一目标对象，并记录 `confidence`。
-- 基于内部对象完成 CPA/TCPA、航迹预测、本船安全领域等实时计算。
-- 将结构化结果推送给前端渲染。
-- 将结构化事实封装给大模型，降低幻觉并增强可解释性。
-
-#### Extension - LLM Risk Warning
-
-LLM 模块不直接做底层数学计算，而是消费系统已经算出的结构化事实，输出风险解释与辅助决策建议。
-
-当前方向为：
-
-- 通过 API 调用大模型。
-- 先将 CPA/TCPA、目标船预测航迹、本船安全领域、目标置信度、必要环境上下文封装给大模型。
-- 后续参考论文复现多智能体设计，初步考虑 5 个智能体，分别承担感知理解、调度、文本交互等任务。
-- 接入海事法律法规做 RAG。
-- 基于历史 AIS 数据提取危险场景案例，用于案例库构建、知识增强与评估，不在当前文档中承诺具体训练方案。
-
-### 2.3 关于 Module C 的取舍
-
-原设计中的 `Module C - Offline Analytics` 及其位置密度模型、行为网格模型、禁航区模型，依赖稳定且广域的历史轨迹数据。当前项目已转向单船外挂式轻量预警系统，实时输入也不再限定为 AIS，因此该模块不再作为当前主方案的一部分。
-
-现阶段不保留 `Module C` 作为正式架构模块；若后续获得稳定多源历史数据，再单独评估是否恢复离线分析能力。
+副服务，定位为外部消息入库与离线分析支撑。当前暂挂起，不在主运行链路内。
 
 ---
 
-## 三、核心设计 (Core Design)
+## 五、核心设计
 
-### 3.1 内部统一对象
+### 5.1 统一领域实体：`ShipStatus`
 
-系统内部不直接围绕 AIS 字段建模，而是围绕“本船周边目标”的统一内部对象建模。该对象用于承接不同来源的外部观测结果，并作为实时计算、前端渲染与 LLM 输入的共同基础。
+系统核心设计决策是使用 `ShipStatus` 作为统一可信实体，而不是直接围绕 AIS 原始字段编程。
 
-内部对象遵循以下原则：
+当前 `ShipStatus` 至少包含以下稳定语义：
 
-- 表达目标的统一时空状态与运动状态。
-- 区分本船与目标船。
-- 记录来源类型与时间戳。
-- 增加 `confidence` 字段表示当前观测或融合结果的确信度。
-- 允许保留来源特有原始信息作为扩展字段。
+- `id`：目标标识；无法解析时允许为空
+- `role`：本船或目标船角色
+- `longitude` / `latitude`：位置
+- `sog` / `cog` / `heading`：动态信息
+- `msgTime`：消息时间
+- `confidence`：观测可信度
 
-文档当前不再固化具体字段列表；字段以代码实现为准，待接口与对象基本稳定后再回填文档。
+这样做的目的：
 
-### 3.2 实时预警引擎
+- 解耦 AIS、CV、Radar 等输入差异
+- 让风险引擎只依赖统一语义，不依赖某个传感器字段
+- 为后续多源融合保留空间
 
-实时预警引擎基于内部统一对象运行，当前确定的核心能力包括：
+### 5.2 接入与标准化
 
-- **CPA/TCPA 计算**：作为第一优先级能力，用于计算本船与目标之间的最近会遇距离与时间。
-- **航迹预测**：先实现轻量级预测方案，为危险趋势判断和前端渲染提供依据。
-- **本船安全领域**：计算本船安全领域，用于判断目标是否侵入危险区域。
-- **危险分级**：综合 CPA/TCPA、安全领域侵入、目标置信度等因素形成预警等级。
+接入层通过 MQTT 监听外部消息，再由具体 mapper 负责 normalize。当前实现以 AIS 为主，其他输入源沿用相同模式扩展。
 
-大模型只消费这些结果，不替代这些计算。
+设计要求：
 
-### 3.3 前端渲染目标
+- 输入源差异应被限制在 mapper 层
+- 进入 pipeline 后只处理统一领域对象
+- 原始输入异常应在接入层尽早隔离，不向核心引擎传播协议噪声
 
-前端需要围绕“事实可视化 + 风险可解释”两个方向配合后端演进，重点渲染：
+### 5.3 状态维护与调度
 
-- 本船与目标位置
-- 目标 `confidence`
-- CPA/TCPA 结果与危险等级
-- 目标预测航迹
-- 本船安全领域
-- 大模型生成的预警说明与建议
+`ShipDispatcher` 是风险主链路的调度核心，负责：
 
-前端优化会穿插在后端计算能力实现过程中持续进行，而不是等所有后端能力完成后再统一处理。
+- 基于 `ShipRole` 识别本船与目标船
+- 结合 `ShipStateStore` 维护当前跟踪集合
+- 在上下文准备完成后调用引擎与 assembler
+- 将风险快照交给 `RiskStreamPublisher`
+- 触发异步 LLM 风险解释
 
-### 3.4 LLM 集成原则
+该设计使业务 pipeline 与具体 transport 解耦，避免领域层直接操作 SSE 或 WebSocket 细节。
 
-为降低幻觉并提高可解释性，LLM 输入应优先采用结构化事实，而不是直接输入原始传感器消息。
+### 5.4 风险计算
 
-建议的大模型输入事实包括：
+当前风险设计以 CPA/TCPA 为核心，并在结果层叠加图形化与风险分级信息。
 
-- 当前目标列表及其 `confidence`
-- 本船与各目标之间的 CPA/TCPA
-- 目标未来短时航迹预测结果
-- 本船安全领域参数与侵入情况
-- 必要的环境信息与规则上下文
-- 来自法规 RAG 与历史危险场景案例库的补充信息
+已纳入主链路的核心能力：
 
-LLM 输出聚焦于：
+- `CpaTcpaEngine`：两船 CPA / TCPA 计算，包含坐标投影修正
+- `RiskAssessmentEngine`：生成风险等级与评估结果
+- `RiskObjectAssembler`：组装风险快照 DTO
 
-- 风险解释
-- 危险等级总结
-- 建议动作或注意事项
-- 面向人的自然语言表述
+当前已具备实现但仍属于增强项的能力：
+
+- `ShipDomainEngine`：本船安全领域
+- `CvPredictionEngine`：短时轨迹预测
+
+这些能力已经进入代码结构与风险对象语义，但其产品化程度仍以实际启用状态为准。
+
+### 5.5 风险对象
+
+风险主链路对前端输出的核心对象是风险快照，其稳定结构包括：
+
+- `risk_object_id`
+- `timestamp`
+- `governance`
+- `own_ship`
+- `targets`
+- `environment_context`
+
+其中：
+
+- `own_ship` 表示本船态势、健康状态、预测与安全域信息
+- `targets` 表示目标船列表及其 `risk_assessment`
+- `environment_context` 表示环境与附加预警上下文
+
+具体字段以 `docs/EVENT_SCHEMA.md` 中 `RISK_UPDATE` payload 为准。
 
 ---
 
-## 四、数据库与数据留存 (Database & Persistence)
+## 六、实时链路设计
 
-当前数据库设计以支撑实时链路、静态海图和必要的数据留存为主。
+### 6.1 风险主链路
 
-保留方向：
+```text
+外部输入 / 模拟器
+  │
+  ▼
+MQTT Listener
+  │
+  ▼
+Mapper
+  │
+  ▼
+ShipStatus
+  │
+  ▼
+ShipDispatcher
+  │
+  ├──→ CpaTcpaEngine / RiskAssessmentEngine / 其他引擎
+  │         │
+  │         ▼
+  │     RiskObjectAssembler
+  │         │
+  │         ▼
+  └──→ RiskStreamPublisher
+            │
+            ├──→ `/api/v2/risk` SSE：`RISK_UPDATE`
+            └──→ 异步触发 LLM 解释后继续发布 `EXPLANATION`
+```
 
-- 输入消息留存或回放所需的原始/标准化数据表
-- 静态海图与预规划航线
-- 前端初始化所需空间数据
-- 后续可扩展的危险场景案例表、法规检索索引、LLM 相关辅助数据
+该链路的核心原则：
 
-删除方向：
+- 风险快照优先，解释异步下发
+- 主链路不等待 LLM 才返回风险帧
+- 风险发布统一经过 `RiskStreamPublisher`
 
-- 原文档中专门服务于 `Module C` 的位置密度模型、行为网格模型、禁航区模型等离线分析表，现阶段不纳入主文档。
+### 6.2 Chat / Speech 链路
 
-文档当前不展开具体字段说明；待表结构稳定后再补充 DDL 细节。
+```text
+Frontend
+  │
+  ▼
+`/api/v2/chat` WebSocket
+  │
+  ▼
+ChatWebSocketHandler
+  ├──→ 文本：LlmChatService
+  └──→ 语音：VoiceChatService
+            │
+            ├──→ whisper.cpp 转写
+            └──→ LLM 回复
+```
+
+设计原则：
+
+- chat 只承载会话交互
+- speech 是独立消息类型，不再混入 `CHAT`
+- `mode=preview` 时仅返回转写，不触发 LLM
+- `mode=direct` 时转写后继续触发问答
 
 ---
 
-## 五、目录结构 (Project Structure)
+## 七、事件与传输设计
+
+### 7.1 连接拆分
+
+系统采用双连接模型：
+
+| 连接 | 路径 | 协议 | 方向 | 职责 |
+| --- | --- | --- | --- | --- |
+| risk | `/api/v2/risk` | SSE | 单向下行 | 风险快照、风险解释、风险错误 |
+| chat | `/api/v2/chat` | WebSocket | 双向 | 文本问答、语音输入、聊天错误 |
+
+这是当前系统最重要的传输层设计决策之一。
+
+### 7.2 采用双连接的原因
+
+- 风险流本质是无会话、单向广播，更适合 SSE
+- chat 是带会话语义的双向交互，更适合 WebSocket
+- 风险快照与解释解耦后，可以避免 LLM 阻塞主链路
+- SSE 原生支持自动重连与 `Last-Event-ID`
+
+### 7.3 关键语义约定
+
+- `sequence_id`：
+  - risk 连接中由 SSE 原生 `id:` 字段承担
+  - chat 连接中存在于 server -> client WebSocket envelope
+- `event_id`：
+  - 统一作为业务事件标识
+  - server -> client 与 client -> server 都保留
+- `conversation_id`：
+  - 仅属于 chat payload
+  - 不属于 `EXPLANATION`
+
+### 7.4 事件类型
+
+#### risk SSE
+
+- `RISK_UPDATE`
+- `EXPLANATION`
+- `ERROR`
+
+#### chat WebSocket
+
+client -> server:
+
+- `PING`
+- `CHAT`
+- `SPEECH`
+
+server -> client:
+
+- `PONG`
+- `CHAT_REPLY`
+- `SPEECH_TRANSCRIPT`
+- `ERROR`
+
+事件字段、payload 示例与错误码枚举统一以 `docs/EVENT_SCHEMA.md` 为准。
+
+---
+
+## 八、LLM 与语音集成设计
+
+### 8.1 LLM 集成原则
+
+LLM 只消费系统已经结构化好的风险事实，不承担底层数值计算。
+
+这样做的原因：
+
+- 降低幻觉风险
+- 提高风险解释可追踪性
+- 将计算责任稳定留在领域引擎
+
+### 8.2 Provider 抽象
+
+系统通过 `LlmClient` 接口抽象具体模型供应商，当前已有：
+
+- `GeminiLlmClient`
+- `ZhipuLlmClient`
+
+服务装配通过配置切换，并带有超时降级策略。
+
+### 8.3 风险解释
+
+风险解释链路设计为异步 fan-out：
+
+- `RISK_UPDATE` 先发
+- 解释生成完成后单独发 `EXPLANATION`
+- 异常通过 `ERROR` 事件表达，而不是阻塞风险帧
+
+解释事件与 chat 会话解耦，不携带 `conversation_id`。
+
+### 8.4 语音输入
+
+当前语音输入采用 Backend-orchestrated 方案：
+
+- 前端采集音频并通过 WebSocket 发送
+- `map-service` 调用 `whisper.cpp`
+- 后端拿到 transcript 后决定是否继续调用 LLM
+- 再由同一条 chat 连接把结果推回前端
+
+当前为非流式方案，优先保证链路清晰与工程可控；后续如需 partial transcript 或边说边回，再评估流式 speech session。
+
+---
+
+## 九、前端协同设计
+
+前端围绕两类实时数据源协同：
+
+- risk SSE：态势、风险、解释
+- chat WebSocket：文本问答、语音问答
+
+前端当前的主要职责：
+
+- 渲染 2.5D 海图与目标态势
+- 展示目标风险等级与解释卡片
+- 管理聊天面板与语音交互
+- 在 `light / dark` 主题之间切换
+- 使用浏览器原生 `SpeechSynthesis` 执行 TTS 播报
+
+前端不负责风险计算，也不负责 ASR/LLM 编排。
+
+---
+
+## 十、数据与持久化设计
+
+### 10.1 在线主链路
+
+当前主链路是内存态 + 实时推送为主：
+
+- 当前跟踪目标集合由 `ShipStateStore` 维护
+- 风险帧通过 SSE 推送
+- chat 事件通过 WebSocket 推送
+
+### 10.2 持久化与副服务
+
+静态空间数据与海图服务仍使用 PostgreSQL / PostGIS 方向；`listener-service` 则用于外部消息入库与离线分析衔接。
+
+当前设计判断：
+
+- 主运行链路不依赖 `listener-service`
+- 离线分析恢复前，不将其写入主架构依赖
+- 静态海图接口与动态风险协议分开维护
+
+---
+
+## 十一、工程结构
 
 ```text
 map-system/
 ├── backend/
-│   ├── listener-service/        # 可选接入与落库服务
-│   └── map-service/             # 核心后端服务
-│       └── src/main/java/com/xin/map/
-│           ├── config/
-│           ├── mqtt/
-│           ├── mapper/
-│           ├── engine/
-│           ├── llm/
-│           ├── websocket/
-│           ├── api/
-│           └── domain/
+│   ├── map-service/
+│   │   └── src/main/java/com/whut/map/map_service/
+│   │       ├── api/
+│   │       ├── mqtt/
+│   │       ├── domain/
+│   │       ├── store/
+│   │       ├── pipeline/
+│   │       ├── engine/
+│   │       ├── assembler/
+│   │       ├── service/llm/
+│   │       ├── client/
+│   │       ├── transport/
+│   │       │   ├── protocol/
+│   │       │   ├── risk/
+│   │       │   └── chat/
+│   │       └── dto/
+│   └── listener-service/
 ├── frontend/
 ├── simulator/
-├── database/
-├── docs/
-│   └── design.md
-└── README.md
+└── docs/
+    ├── design.md
+    ├── ARCHITECTURE.md
+    └── EVENT_SCHEMA.md
 ```
 
----
-
-## 六、技术选型 (Tech Stack)
-
-| 组件 | 选型 | 理由 |
-|------|------|------|
-| 后端框架 | Spring Boot 3.x | 已有基础，便于快速实现单体式轻量服务 |
-| MQTT Client | Eclipse Paho / Spring Integration MQTT | 适合多源消息统一接入 |
-| 实时推送 | Spring WebSocket | 当前前端已适配，便于实时渲染 |
-| 数据库 | PostgreSQL 16 + PostGIS 3.x | 支撑空间数据存储与查询 |
-| ORM | MyBatis | 灵活控制 SQL，适合空间与时序查询 |
-| 前端 | MapLibre GL JS + Deck.gl | 已有基础，适合 2.5D 航运场景渲染 |
-| 大模型接入 | API 调用 | 先以工程可落地为目标，后续再扩展多智能体 |
-| 检索增强 | PostgreSQL / pgvector（后续） | 用于法规与危险场景案例检索 |
+其中 `transport` 包是协议拆分后的关键结构调整，明确替代旧的混合式 `websocket` 语义。
 
 ---
 
-## 七、旧服务复用策略 (Legacy Service Strategy)
+## 十二、当前状态与后续扩展
 
-旧服务只保留“有助于当前轻量主链路”的复用价值，不再围绕离线大数据分析组织当前方案。
+### 12.1 已稳定纳入设计的能力
 
-| 旧服务 | 决策 | 理由 |
-|--------|------|------|
-| **Anomaly Detection Service** | 参考后重写 | 与当前 `map-service/engine` 目标接近，可参考其实时预警思路 |
-| **Geointel Dashboard** | 部分提取 | 可择机提取海图服务或可视化相关能力 |
-| **Path Safety Service** | 视需求吸收 | 若其中有静态规则或接口能力可直接复用，可并入当前服务 |
-| **Geointel Processor** | 暂不纳入主方案 | 与已删除的离线分析主线绑定过深，现阶段不优先投入 |
+- MQTT 接入与 AIS normalize
+- `ShipStatus` 统一建模
+- CPA/TCPA 风险计算
+- `risk = SSE`、`chat = WebSocket`
+- LLM 风险解释异步下发
+- Gemini / 智谱双 Provider 抽象
+- `whisper.cpp` 非流式语音输入
 
----
+### 12.2 下一阶段扩展方向
 
-## 八、版本路线图 (Version Roadmap)
+- 向 LLM 注入当前风险上下文，提升“评估当前状况”类问答质量
+- 建立稳定的多轮上下文管理
+- 完善本船安全领域与目标短时轨迹预测
+- 接入法律法规 RAG
+- 评估流式语音交互与更强 ASR 模型
 
-### v0.5 - 最小可用系统
-
-目标是先跑通“输入 -> mapper -> 计算 -> 前端/LLM”的最短闭环。
-
-- [x] MQTT 输入链路可用
-- [x] 统一内部对象与 `confidence` 机制
-- [x] 至少一种输入源 mapper 可用
-- [x] CPA/TCPA 实时计算
-- [x] WebSocket 推送前端
-- [ ] 前端渲染目标位置、危险等级与基础预警
-
-### v0.6 - LLM 初始预警解释
-
-- [ ] 定义结构化风险事实对象
-- [ ] 接入单一大模型 API
-- [ ] 基于 CPA/TCPA 等事实生成预警解释
-- [ ] 输出固定结构：风险摘要 / 原因 / 建议 / 置信提示
-- [ ] 前端展示 LLM 解释结果
-- [ ] 加入基础响应校验与降级模板
-
-### v0.7 - 规则增强版
-
-- [ ] 接入海事法规 RAG
-- [ ] 增加 query routing
-- [ ] 区分法规问答与风险解释
-- [ ] 为后续多 agent 预留接口
-
-### v1.0 - 多智能体雏形
-
-- [ ] router
-- [ ] reasoner
-- [ ] summary
-- [ ] grader 可选
-- [ ] 不做 captioner，除非后续真接视频
-
-### v1.5 - 预警能力补全
-
-- [ ] 接入或完善第二类输入源 mapper
-- [ ] 实现目标短时航迹预测
-- [ ] 实现本船安全领域
-- [ ] 前端渲染 `confidence`、预测航迹与安全领域
-- [ ] 优化预警分级与展示效果
-
-### v2 - 性能与工程完善
-
-- [ ] 完善回放、评估与调试工具链
-- [ ] 优化缓存、推送与部署方案
-- [ ] 视输入规模决定是否引入 Kafka 等削峰组件
-- [ ] 完整整理数据库字段与接口文档
+这些扩展应继续遵循当前设计原则：领域计算前置、协议边界清晰、主链路与解释链路解耦。
 
 ---
 
-## 九、实现步骤 (Implementation Plan)
+## 十三、维护约定
 
-当前实现步骤暂定为：
-
-1. 实现 CPA/TCPA 计算。
-2. 复现并接入大模型方案的基础版本。
-3. 实现目标航迹预测与本船安全领域。
-4. 在上述过程中穿插前端渲染效果优化。
-
-其中第 2 步的大模型实现，当前先以“结构化事实输入 + API 调用”落地，再逐步推进论文中的多智能体设计。
-
----
-
-## 十、风险与应对 (Risks & Mitigations)
-
-| 风险 | 概率 | 应对 |
-|------|------|------|
-| 最终输入源迟迟未定 | 高 | 先稳定内部统一对象与 mapper 接口，避免核心逻辑绑死在单一输入源上 |
-| 不同输入源质量差异大 | 高 | 通过 `confidence` 明确表达确信度，避免后续模块误用低可信观测 |
-| CPA/TCPA 或安全领域实现有误 | 中 | 优先补公式校验、样例验证与单元测试 |
-| 大模型输出幻觉或建议不稳定 | 中 | 强化结构化事实输入，限制 LLM 仅做解释与建议，不做底层数值计算 |
-| 多智能体方案过于超前 | 中 | 先做单模型 API 版本，论文复现作为后续迭代 |
-| 工期不足 | 高 | 优先保证 CPA/TCPA、基础前端渲染和最小 LLM 接入，延后复杂知识增强与多智能体 |
-
-### 时间不够时的优先级
-
-```text
-P0（必须完成）
-  MQTT -> mapper -> 内部对象 -> CPA/TCPA -> WebSocket -> 前端
-
-P1（尽量完成）
-  LLM 基础接入
-  航迹预测
-  本船安全领域
-
-P2（可延后）
-  多输入源同时接入
-  法规 RAG
-  多智能体复现
-  历史 AIS 案例库深化
-```
+- 当系统职责边界发生变化时，同时更新本文档与 `docs/ARCHITECTURE.md`
+- 当实时事件字段或语义变化时，只在 `docs/EVENT_SCHEMA.md` 维护协议真值
+- 当新增关键取舍时，在 `docs/ARCHITECTURE.md` 中补充 ADR
+- 当本文档与协议文档冲突时，以 `docs/EVENT_SCHEMA.md` 为准；当本文档与架构职责描述冲突时，以 `docs/ARCHITECTURE.md` 为准
