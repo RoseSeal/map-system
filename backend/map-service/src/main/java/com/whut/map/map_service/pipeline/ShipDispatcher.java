@@ -72,11 +72,13 @@ public class ShipDispatcher {
         if (!shipStateStore.update(message)) {
             return;
         }
+        shipStateStore.triggerCleanupIfNeeded();
 
         // 3) Initialize optional engine outputs used later in risk object assembly.
         ShipDomainResult shipDomainResult = null;
         CvPredictionResult cvPredictionResult = null;
         ShipStatus ownShip = shipStateStore.getOwnShip();
+        Map<String, ShipStatus> trackedShips = shipStateStore.getAll();
 
         // 4) Run role-specific engines for the incoming message.
         if (message.getRole() == ShipRole.OWN_SHIP) {
@@ -94,7 +96,7 @@ public class ShipDispatcher {
 
         // 6) Compute CPA/TCPA between own ship and every tracked target ship.
         Map<String, CpaTcpaResult> cpaResults = new LinkedHashMap<>();
-        shipStateStore.getAll().values().forEach(ship -> {
+        trackedShips.values().forEach(ship -> {
             if (ship == null || ship.getId() == null || ship.getId().equals(ownShip.getId())) {
                 return;
             }
@@ -104,7 +106,7 @@ public class ShipDispatcher {
         // 7) Evaluate risk with current state, CPA/TCPA results, and engine outputs.
         RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
                 ownShip,
-                shipStateStore.getAll().values(),
+                trackedShips.values(),
                 cpaResults,
                 shipDomainResult,
                 cvPredictionResult
@@ -113,7 +115,7 @@ public class ShipDispatcher {
         // 8) Assemble the current risk snapshot without waiting for LLM slow-path completion.
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
                 ownShip,
-                shipStateStore.getAll().values(),
+                trackedShips.values(),
                 cpaResults,
                 riskResult,
                 Collections.emptyMap(),
@@ -125,7 +127,7 @@ public class ShipDispatcher {
 
             LlmRiskContext llmContext = llmRiskContextAssembler.assemble(
                     ownShip,
-                    shipStateStore.getAll().values(),
+                    trackedShips.values(),
                     cpaResults,
                     riskResult
             );
@@ -142,5 +144,3 @@ public class ShipDispatcher {
         }
     }
 }
-
-
