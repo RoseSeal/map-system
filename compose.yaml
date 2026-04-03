@@ -49,5 +49,4 @@ services:
 
 volumes:
   postgis_data:
-    external: true
-    name: 86b470be81bc7487178c3fa534c78563431e2b38c31c58d08109377575b2fa43
+    name: ${POSTGIS_VOLUME_NAME:-postgis_data}
