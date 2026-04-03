@@ -6,7 +6,7 @@ import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
 import com.whut.map.map_service.dto.llm.LlmRiskContext;
-import com.whut.map.map_service.engine.collision.CpaTcpaEngine;
+import com.whut.map.map_service.engine.collision.CpaTcpaBatchCalculator;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
@@ -21,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Slf4j
@@ -30,7 +29,7 @@ public class ShipDispatcher {
 
     private final ShipDomainEngine shipDomainEngine;
     private final CvPredictionEngine cvPredictionEngine;
-    private final CpaTcpaEngine cpaTcpaEngine;
+    private final CpaTcpaBatchCalculator cpaTcpaBatchCalculator;
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
     private final LlmRiskContextAssembler llmRiskContextAssembler;
@@ -41,7 +40,7 @@ public class ShipDispatcher {
     public ShipDispatcher(
             ShipDomainEngine shipDomainEngine,
             CvPredictionEngine cvPredictionEngine,
-            CpaTcpaEngine cpaTcpaEngine,
+            CpaTcpaBatchCalculator cpaTcpaBatchCalculator,
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
             LlmRiskContextAssembler llmRiskContextAssembler,
@@ -52,7 +51,7 @@ public class ShipDispatcher {
     ) {
         this.shipDomainEngine = shipDomainEngine;
         this.cvPredictionEngine = cvPredictionEngine;
-        this.cpaTcpaEngine = cpaTcpaEngine;
+        this.cpaTcpaBatchCalculator = cpaTcpaBatchCalculator;
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
         this.llmRiskContextAssembler = llmRiskContextAssembler;
@@ -62,85 +61,106 @@ public class ShipDispatcher {
     }
 
     public void dispatch(ShipStatus message) {
-        // 1) Ignore messages with unknown role because they are not processable in this pipeline.
+        ShipDispatchContext context = prepareContext(message);
+        if (context == null) {
+            return;
+        }
+
+        ShipDerivedOutputs outputs = runDerivations(context);
+        RiskDispatchSnapshot snapshot = buildRiskSnapshot(context, outputs);
+        if (snapshot == null) {
+            return;
+        }
+
+        publishRiskSnapshot(snapshot);
+        logTargetCpa(context, outputs.cpaResults());
+    }
+
+    private ShipDispatchContext prepareContext(ShipStatus message) {
         if (message.getRole() == ShipRole.UNKNOWN) {
             log.debug("Received AIS message with unknown ship role, id: {}", message.getId());
-            return;
+            return null;
         }
 
-        // 2) Update state with the latest message; discard outdated messages.
         if (!shipStateStore.update(message)) {
-            return;
+            return null;
         }
-        shipStateStore.triggerCleanupIfNeeded();
 
-        // 3) Initialize optional engine outputs used later in risk object assembly.
+        return new ShipDispatchContext(message, shipStateStore.getOwnShip(), shipStateStore.getAll());
+    }
+
+    private ShipDerivedOutputs runDerivations(ShipDispatchContext context) {
         ShipDomainResult shipDomainResult = null;
         CvPredictionResult cvPredictionResult = null;
-        ShipStatus ownShip = shipStateStore.getOwnShip();
-        Map<String, ShipStatus> trackedShips = shipStateStore.getAll();
 
-        // 4) Run role-specific engines for the incoming message.
-        if (message.getRole() == ShipRole.OWN_SHIP) {
-            shipDomainResult = shipDomainEngine.consume(message);
+        if (context.message().getRole() == ShipRole.OWN_SHIP) {
+            shipDomainResult = shipDomainEngine.consume(context.message());
         }
-        if (message.getRole() == ShipRole.TARGET_SHIP) {
-            cvPredictionResult = cvPredictionEngine.consume(message);
+        if (context.message().getRole() == ShipRole.TARGET_SHIP) {
+            cvPredictionResult = cvPredictionEngine.consume(context.message());
         }
 
-        // 5) Skip downstream risk/CPA processing until own ship is available.
-        if (ownShip == null) {
-            log.debug("Skipping RiskObject broadcast until ownShip is available, incoming id={}", message.getId());
+        Map<String, CpaTcpaResult> cpaResults = cpaTcpaBatchCalculator.calculateAll(
+                context.ownShip(),
+                context.allShips()
+        );
+
+        return new ShipDerivedOutputs(shipDomainResult, cvPredictionResult, cpaResults);
+    }
+
+    private RiskDispatchSnapshot buildRiskSnapshot(ShipDispatchContext context, ShipDerivedOutputs outputs) {
+        if (!context.hasOwnShip()) {
+            log.debug("Skipping RiskObject broadcast until ownShip is available, incoming id={}", context.message().getId());
+            return null;
+        }
+
+        RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
+                context.ownShip(),
+                context.allShips(),
+                outputs.cpaResults(),
+                outputs.shipDomainResult(),
+                outputs.cvPredictionResult()
+        );
+
+        RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
+                context.ownShip(),
+                context.allShips(),
+                outputs.cpaResults(),
+                riskResult,
+                Collections.emptyMap(),
+                outputs.shipDomainResult(),
+                outputs.cvPredictionResult()
+        );
+        if (dto == null) {
+            return null;
+        }
+
+        LlmRiskContext llmContext = llmRiskContextAssembler.assemble(
+                context.ownShip(),
+                context.allShips(),
+                outputs.cpaResults(),
+                riskResult
+        );
+        return new RiskDispatchSnapshot(riskResult, dto, llmContext);
+    }
+
+    private void publishRiskSnapshot(RiskDispatchSnapshot snapshot) {
+        riskStreamPublisher.publishRiskUpdate(snapshot.riskObject());
+        llmTriggerService.triggerExplanationsIfNeeded(
+                snapshot.llmContext(),
+                snapshot.riskObject().getRiskObjectId()
+        );
+    }
+
+    private void logTargetCpa(ShipDispatchContext context, Map<String, CpaTcpaResult> cpaResults) {
+        if (context.message().getRole() != ShipRole.TARGET_SHIP || !cpaResults.containsKey(context.message().getId())) {
             return;
         }
 
-        // 6) Compute CPA/TCPA between own ship and every tracked target ship.
-        Map<String, CpaTcpaResult> cpaResults = new LinkedHashMap<>();
-        trackedShips.values().forEach(ship -> {
-            if (ship == null || ship.getId() == null || ship.getId().equals(ownShip.getId())) {
-                return;
-            }
-            cpaResults.put(ship.getId(), cpaTcpaEngine.calculate(ownShip, ship));
-        });
-
-        // 7) Evaluate risk with current state, CPA/TCPA results, and engine outputs.
-        RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
-                ownShip,
-                trackedShips.values(),
-                cpaResults,
-                shipDomainResult,
-                cvPredictionResult
-        );
-
-        // 8) Assemble the current risk snapshot without waiting for LLM slow-path completion.
-        RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
-                ownShip,
-                trackedShips.values(),
-                cpaResults,
-                riskResult,
-                Collections.emptyMap(),
-                shipDomainResult,
-                cvPredictionResult
-        );
-        if (dto != null) {
-            riskStreamPublisher.publishRiskUpdate(dto);
-
-            LlmRiskContext llmContext = llmRiskContextAssembler.assemble(
-                    ownShip,
-                    trackedShips.values(),
-                    cpaResults,
-                    riskResult
-            );
-            llmTriggerService.triggerExplanationsIfNeeded(llmContext, dto.getRiskObjectId());
-        }
-
-        // 9) Emit concise per-target CPA/TCPA log for observability.
-        if (message.getRole() == ShipRole.TARGET_SHIP && cpaResults.containsKey(message.getId())) {
-            CpaTcpaResult cpaResult = cpaResults.get(message.getId());
-            log.debug("CPA={}m, TCPA={}s, target={}",
-                    String.format("%.1f", cpaResult.getCpaDistance()),
-                    String.format("%.1f", cpaResult.getTcpaTime()),
-                    cpaResult.getTargetMmsi());
-        }
+        CpaTcpaResult cpaResult = cpaResults.get(context.message().getId());
+        log.debug("CPA={}m, TCPA={}s, target={}",
+                String.format("%.1f", cpaResult.getCpaDistance()),
+                String.format("%.1f", cpaResult.getTcpaTime()),
+                cpaResult.getTargetMmsi());
     }
 }
