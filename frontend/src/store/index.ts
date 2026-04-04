@@ -5,7 +5,6 @@
   selectGovernance,
   selectEnvironment,
   selectExplanationsByTargetId,
-  selectExplainedTargets,
   selectIsLowTrust,
   selectIsConnected,
   selectRiskConnectionError,

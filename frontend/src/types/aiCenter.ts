@@ -1,4 +1,4 @@
-﻿import type { ChatReplyPayload, ExplanationPayload, RiskLevel, SpeechMode } from './schema';
+﻿import type { ExplanationPayload, RiskLevel, SpeechMode } from './schema';
 
 export type AiCenterMessageStatus = 'pending' | 'sent' | 'replied' | 'error';
 export type AiCenterMessageType = 'chat_user' | 'chat_reply' | 'speech_request' | 'speech_transcript';
@@ -51,18 +51,4 @@ export interface AiAssistantMessageEvent {
 
 export type AiSpeechEvent = LlmExplanationEvent | AiAssistantMessageEvent;
 
-export interface NormalizedChatReply {
-  message: AiCenterChatMessage;
-  speechEvent: AiAssistantMessageEvent;
-}
 
-export interface RetryableChatMessage {
-  conversation_id: string;
-  request_type: AiCenterRequestType;
-  content: string;
-}
-
-export type ChatReplyLike = Pick<
-  ChatReplyPayload,
-  'conversation_id' | 'event_id' | 'role' | 'content' | 'provider' | 'timestamp'
->;

@@ -1,14 +1,10 @@
 import type {
-  ChatErrorPayload,
-  ChatReplyPayload,
   ExplanationPayload,
   RiskLevel,
 } from '../types/schema';
 import type {
   AiAssistantMessageEvent,
-  AiCenterChatMessage,
   LlmExplanationEvent,
-  NormalizedChatReply,
   StoredLlmExplanation,
 } from '../types/aiCenter';
 
@@ -56,44 +52,6 @@ export function toLlmExplanationEvent(explanation: StoredLlmExplanation): LlmExp
     text: explanation.text,
     risk_level: explanation.risk_level,
     timestamp: explanation.timestamp,
-  };
-}
-
-export function normalizeChatReply(payload: ChatReplyPayload): NormalizedChatReply | null {
-  const content = payload.content.trim();
-  if (!content) {
-    return null;
-  }
-
-  const message: AiCenterChatMessage = {
-    event_id: payload.event_id,
-    conversation_id: payload.conversation_id,
-    role: 'assistant',
-    content,
-    status: 'replied',
-    reply_to_event_id: payload.reply_to_event_id,
-    provider: payload.provider,
-    timestamp: payload.timestamp,
-    message_type: 'chat_reply',
-  };
-
-  const speechEvent: AiAssistantMessageEvent = {
-    kind: 'chat_reply',
-    conversation_id: payload.conversation_id,
-    message_id: payload.event_id,
-    role: 'assistant',
-    content,
-    provider: payload.provider || 'assistant',
-    timestamp: payload.timestamp,
-  };
-
-  return { message, speechEvent };
-}
-
-export function normalizeChatErrorMessage(error: ChatErrorPayload): { eventId?: string | null; errorText: string } {
-  return {
-    eventId: error.reply_to_event_id,
-    errorText: error.error_message,
   };
 }
 

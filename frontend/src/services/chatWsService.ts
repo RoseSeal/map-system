@@ -1,6 +1,5 @@
 import type {
   ChatDownlinkEnvelope,
-  ChatDownlinkType,
   ChatErrorPayload,
   ChatReplyPayload,
   ChatRequestPayload,
@@ -9,7 +8,7 @@ import type {
   SpeechRequestPayload,
   SpeechTranscriptPayload,
 } from '../types/schema';
-import { BACKEND_CONFIG } from '../config/constants';
+import { BACKEND_CONFIG, WS_CONFIG } from '../config/constants';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 type ChatReplyCallback = (payload: ChatReplyPayload) => void;
@@ -18,9 +17,7 @@ type ErrorCallback = (payload: ChatErrorPayload) => void;
 type PongCallback = () => void;
 
 const DEFAULT_CHAT_WS_URL: string = BACKEND_CONFIG.CHAT_WS_URL;
-const HEARTBEAT_INTERVAL_MS = 30000;
-const RECONNECT_BASE_DELAY_MS = 1000;
-const RECONNECT_MAX_DELAY_MS = 30000;
+const { HEARTBEAT_INTERVAL_MS, RECONNECT_BASE_DELAY_MS, RECONNECT_MAX_DELAY_MS } = WS_CONFIG;
 
 class ChatWsService {
   private socket: WebSocket | null = null;
@@ -219,7 +216,8 @@ class ChatWsService {
         }
         return;
       default:
-        assertNever(message.type);
+        console.warn('[chatWsService] Received unknown message type', message.type);
+        return;
     }
   }
 
@@ -288,10 +286,6 @@ function isChatErrorPayload(payload: ChatDownlinkEnvelope['payload']): payload i
     && 'error_code' in payload
     && 'error_message' in payload,
   );
-}
-
-function assertNever(value: ChatDownlinkType): never {
-  throw new Error(`Unsupported chat downlink type: ${value}`);
 }
 
 export const chatWsService = new ChatWsService();

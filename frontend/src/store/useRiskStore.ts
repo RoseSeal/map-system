@@ -77,7 +77,6 @@ export const useRiskStore = create<RiskState>()(
           explanationsByTargetId,
           isConnected: true,
           connectionError: null,
-          lastError: null,
           isLowTrust: payload.governance.trust_factor < PERFORMANCE.LOW_TRUST_THRESHOLD,
         };
       });
@@ -151,17 +150,6 @@ export const selectSelectedTargetExplanation = (state: RiskState) => {
 
   return state.explanationsByTargetId[state.selectedTargetId] || null;
 };
-export const selectExplainedTargets = (state: RiskState) => state.targets
-  .map((target) => {
-    const explanation = state.explanationsByTargetId[target.id];
-    if (!explanation) {
-      return null;
-    }
-
-    return { target, explanation };
-  })
-  .filter((item): item is { target: RiskTarget; explanation: ExplanationPayload } => Boolean(item));
-
 let hasInitializedRiskStoreSubscriptions = false;
 
 function initializeRiskStoreSubscriptions(): void {

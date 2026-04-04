@@ -46,8 +46,6 @@ interface AiCenterState {
   appendChatReply: (payload: ChatReplyPayload) => void;
   appendSpeechTranscript: (payload: SpeechTranscriptPayload) => void;
   appendChatError: (payload: ChatErrorPayload) => void;
-  markChatPending: (eventId: string, pending: boolean) => void;
-  markChatMessageError: (eventId: string, errorCode: string, errorMessage: string) => void;
   setSpeechEnabled: (enabled: boolean) => void;
   setSpeechUnlocked: (unlocked: boolean) => void;
   setSpeechSupported: (supported: boolean) => void;
@@ -298,46 +296,6 @@ export const useAiCenterStore = create<AiCenterState>()(
               [targetEventId]: payload.error_message,
             }
           : state.chatErrorByEventId,
-      }));
-    },
-
-    markChatPending: (eventId: string, pending: boolean) => {
-      set((state) => ({
-        pendingChatEventIds: {
-          ...state.pendingChatEventIds,
-          [eventId]: pending,
-        },
-        chatMessages: state.chatMessages.map((message) => (
-          message.event_id === eventId
-            ? {
-                ...message,
-                status: pending ? 'pending' : 'sent',
-              }
-            : message
-        )),
-      }));
-    },
-
-    markChatMessageError: (eventId: string, errorCode: string, errorMessage: string) => {
-      set((state) => ({
-        chatMessages: state.chatMessages.map((message) => (
-          message.event_id === eventId
-            ? {
-                ...message,
-                status: 'error',
-                error_code: errorCode,
-                error_message: errorMessage,
-              }
-            : message
-        )),
-        pendingChatEventIds: {
-          ...state.pendingChatEventIds,
-          [eventId]: false,
-        },
-        chatErrorByEventId: {
-          ...state.chatErrorByEventId,
-          [eventId]: errorMessage,
-        },
       }));
     },
 

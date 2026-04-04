@@ -1,6 +1,6 @@
 /**
  * Schema V2 type definitions.
- * Authority: docs/SCHEMA_V2.md
+ * Authority: docs/EVENT_SCHEMA.md
  */
 
 // ============================================================
