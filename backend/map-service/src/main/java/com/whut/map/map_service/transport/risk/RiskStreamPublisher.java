@@ -1,11 +1,11 @@
 package com.whut.map.map_service.transport.risk;
 
 import com.whut.map.map_service.dto.RiskObjectDto;
-import com.whut.map.map_service.dto.llm.LlmExplanation;
 import com.whut.map.map_service.dto.sse.ExplanationPayload;
 import com.whut.map.map_service.dto.sse.RiskUpdatePayload;
 import com.whut.map.map_service.dto.sse.SseErrorPayload;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
+import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.transport.protocol.ProtocolConnections;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;

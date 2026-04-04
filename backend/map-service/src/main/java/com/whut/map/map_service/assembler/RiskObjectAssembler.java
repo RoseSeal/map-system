@@ -5,11 +5,11 @@ import com.whut.map.map_service.assembler.riskobject.RiskObjectMetaAssembler;
 import com.whut.map.map_service.assembler.riskobject.TargetAssembler;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
-import com.whut.map.map_service.dto.llm.LlmExplanation;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.llm.dto.LlmExplanation;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;

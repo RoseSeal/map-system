@@ -1,18 +1,22 @@
 package com.whut.map.map_service.service.llm;
 
-import com.whut.map.map_service.client.LlmClient;
 import com.whut.map.map_service.config.LlmProperties;
 import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
+import com.whut.map.map_service.llm.client.LlmClient;
+import com.whut.map.map_service.llm.dto.ChatRole;
+import com.whut.map.map_service.llm.dto.LlmChatMessage;
 import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,7 +33,7 @@ class LlmChatServiceTest {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
         LlmChatService service = new LlmChatService(llmClient, properties, chatPayloadValidator);
         ChatRequestPayload request = buildRequest();
-        when(llmClient.generateText(anyString())).thenReturn("assistant reply");
+        when(llmClient.chat(anyList())).thenReturn("assistant reply");
 
         CapturingChatCallback callback = new CapturingChatCallback();
         service.handleChat(request, callback::captureReply, callback::captureError);
@@ -61,7 +65,7 @@ class LlmChatServiceTest {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
         LlmChatService service = new LlmChatService(llmClient, properties, chatPayloadValidator);
         ChatRequestPayload request = buildRequest();
-        when(llmClient.generateText(anyString())).thenThrow(new IllegalStateException("boom"));
+        when(llmClient.chat(anyList())).thenThrow(new IllegalStateException("boom"));
 
         CapturingChatCallback callback = new CapturingChatCallback();
         service.handleChat(request, callback::captureReply, callback::captureError);
@@ -70,6 +74,16 @@ class LlmChatServiceTest {
         assertThat(callback.reply()).isNull();
         assertThat(callback.errorCode()).isEqualTo(ChatErrorCode.LLM_REQUEST_FAILED);
         assertThat(callback.errorMessage()).isEqualTo("LLM request failed.");
+    }
+
+    @Test
+    void generateTextDelegatesToSingleUserMessage() {
+        RecordingLlmClient client = new RecordingLlmClient();
+
+        String response = client.generateText("hello");
+
+        assertThat(response).isEqualTo("delegated");
+        assertThat(client.lastMessages()).containsExactly(new LlmChatMessage(ChatRole.USER, "hello"));
     }
 
     private LlmProperties buildProperties(boolean enabled, long timeoutMs, String provider) {
@@ -116,6 +130,20 @@ class LlmChatServiceTest {
 
         String errorMessage() {
             return errorMessage;
+        }
+    }
+
+    private static final class RecordingLlmClient implements LlmClient {
+        private List<LlmChatMessage> lastMessages;
+
+        @Override
+        public String chat(List<LlmChatMessage> messages) {
+            this.lastMessages = messages;
+            return "delegated";
+        }
+
+        List<LlmChatMessage> lastMessages() {
+            return lastMessages;
         }
     }
 }

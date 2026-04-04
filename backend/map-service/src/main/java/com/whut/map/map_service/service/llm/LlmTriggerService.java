@@ -1,11 +1,11 @@
 package com.whut.map.map_service.service.llm;
 
-import com.whut.map.map_service.dto.llm.LlmRiskContext;
-import com.whut.map.map_service.dto.llm.LlmRiskOwnShipContext;
-import com.whut.map.map_service.dto.llm.LlmRiskTargetContext;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.config.LlmProperties;
+import com.whut.map.map_service.engine.risk.RiskConstants;
+import com.whut.map.map_service.llm.dto.LlmRiskContext;
+import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
+import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

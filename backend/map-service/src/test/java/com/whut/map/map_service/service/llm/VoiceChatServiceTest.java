@@ -1,10 +1,10 @@
 package com.whut.map.map_service.service.llm;
 
-import com.whut.map.map_service.client.WhisperClient;
 import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.SpeechMode;
 import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
+import com.whut.map.map_service.llm.client.WhisperClient;
 import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

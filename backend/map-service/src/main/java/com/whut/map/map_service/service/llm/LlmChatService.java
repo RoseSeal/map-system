@@ -1,9 +1,11 @@
 package com.whut.map.map_service.service.llm;
 
-import com.whut.map.map_service.client.LlmClient;
 import com.whut.map.map_service.config.LlmProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
+import com.whut.map.map_service.llm.client.LlmClient;
+import com.whut.map.map_service.llm.dto.ChatRole;
+import com.whut.map.map_service.llm.dto.LlmChatMessage;
 import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import com.whut.map.map_service.service.llm.validation.ValidationResult;
 import jakarta.annotation.PreDestroy;
@@ -12,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
@@ -50,9 +53,9 @@ public class LlmChatService {
             return;
         }
 
-        String prompt = buildPrompt(request);
+        List<LlmChatMessage> messages = buildMessages(request);
         CompletableFuture
-                .supplyAsync(() -> llmClient.generateText(prompt), llmExecutor)
+                .supplyAsync(() -> llmClient.chat(messages), llmExecutor)
                 .orTimeout(llmProperties.getTimeoutMs(), TimeUnit.MILLISECONDS)
                 .whenComplete((responseText, throwable) -> {
                     if (throwable == null) {
@@ -76,10 +79,14 @@ public class LlmChatService {
                 });
     }
 
-    private String buildPrompt(ChatRequestPayload request) {
-        StringBuilder prompt = new StringBuilder("You are a maritime assistant. Answer the user's current message directly and concisely in 2-3 sentences.\n");
-        prompt.append("User message:\n").append(request.getContent());
-        return prompt.toString();
+    private List<LlmChatMessage> buildMessages(ChatRequestPayload request) {
+        return List.of(
+                new LlmChatMessage(
+                        ChatRole.SYSTEM,
+                        "You are a maritime assistant. Answer the user's current message directly and concisely in 2-3 sentences."
+                ),
+                new LlmChatMessage(ChatRole.USER, request.getContent())
+        );
     }
 
     private String resolveProviderName() {

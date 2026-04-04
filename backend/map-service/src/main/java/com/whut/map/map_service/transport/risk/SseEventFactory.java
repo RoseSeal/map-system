@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.whut.map.map_service.dto.RiskObjectDto;
-import com.whut.map.map_service.dto.llm.LlmExplanation;
 import com.whut.map.map_service.dto.sse.ExplanationPayload;
 import com.whut.map.map_service.dto.sse.RiskUpdatePayload;
+import com.whut.map.map_service.llm.dto.LlmExplanation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

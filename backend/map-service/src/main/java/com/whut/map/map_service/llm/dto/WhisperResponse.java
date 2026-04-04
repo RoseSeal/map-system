@@ -1,4 +1,4 @@
-package com.whut.map.map_service.client;
+package com.whut.map.map_service.llm.dto;
 
 import lombok.Data;
 

@@ -1,11 +1,11 @@
 package com.whut.map.map_service.assembler.riskobject;
 
 import com.whut.map.map_service.domain.ShipStatus;
-import com.whut.map.map_service.dto.llm.LlmExplanation;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
+import com.whut.map.map_service.llm.dto.LlmExplanation;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

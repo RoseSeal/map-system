@@ -1,12 +1,12 @@
 package com.whut.map.map_service.service.llm;
 
-import com.whut.map.map_service.client.WhisperClient;
-import com.whut.map.map_service.client.WhisperResponse;
 import com.whut.map.map_service.config.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
 import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
 import com.whut.map.map_service.dto.websocket.SpeechMode;
+import com.whut.map.map_service.llm.client.WhisperClient;
+import com.whut.map.map_service.llm.dto.WhisperResponse;
 import com.whut.map.map_service.service.llm.validation.AudioPayloadUtils;
 import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import com.whut.map.map_service.service.llm.validation.ValidationResult;

@@ -1,12 +1,14 @@
 package com.whut.map.map_service.service.llm;
 
-import com.whut.map.map_service.client.LlmClient;
 import com.whut.map.map_service.config.LlmProperties;
-import com.whut.map.map_service.dto.llm.LlmExplanation;
-import com.whut.map.map_service.dto.llm.LlmRiskOwnShipContext;
-import com.whut.map.map_service.dto.llm.LlmRiskTargetContext;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.engine.risk.RiskConstants;
+import com.whut.map.map_service.llm.client.LlmClient;
+import com.whut.map.map_service.llm.dto.ChatRole;
+import com.whut.map.map_service.llm.dto.LlmChatMessage;
+import com.whut.map.map_service.llm.dto.LlmExplanation;
+import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
+import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.annotation.PreDestroy;
@@ -52,10 +54,10 @@ public class LlmExplanationService {
                 llmProperties.getProvider());
 
         for (LlmRiskTargetContext target : triggeredTargets) {
-            String prompt = buildPrompt(ownShip, target);
-            log.debug("Built LLM prompt for target {}: {}", target.getTargetId(), prompt);
+            List<LlmChatMessage> messages = buildMessages(ownShip, target);
+            log.debug("Built LLM messages for target {}: {}", target.getTargetId(), messages);
             CompletableFuture<String> future = CompletableFuture
-                    .supplyAsync(() -> llmClient.generateText(prompt), llmExecutor);
+                    .supplyAsync(() -> llmClient.chat(messages), llmExecutor);
             future
                     .orTimeout(llmProperties.getTimeoutMs(), TimeUnit.MILLISECONDS)
                     .whenComplete((text, throwable) -> {
@@ -94,36 +96,43 @@ public class LlmExplanationService {
         }
     }
 
-    private String buildPrompt(LlmRiskOwnShipContext ownShip, LlmRiskTargetContext target) {
-        return """
-            你是一名航行安全助手，请根据以下态势信息，用1-2句简洁中文描述当前风险并给出建议。
-            
-            【本船】
-            ID: %s
-            位置: (%.4f, %.4f)
-            航速: %.1f 节，航向: %.1f°
-            
-            【目标船】
-            ID: %s
-            位置: (%.4f, %.4f)
-            航速: %.1f 节，航向: %.1f°
-            风险等级: %s
-            DCPA: %.2f 海里，TCPA: %.0f 秒
-            接近中: %s
-            规则说明: %s
-            
-            请输出风险描述。
-            """.formatted(
-                ownShip.getId(),
-                ownShip.getLongitude(), ownShip.getLatitude(),
-                ownShip.getSog(), ownShip.getCog(),
-                target.getTargetId(),
-                target.getLongitude(), target.getLatitude(),
-                target.getSpeedKn(), target.getCourseDeg(),
-                target.getRiskLevel(),
-                target.getDcpaNm(), target.getTcpaSec(),
-                target.isApproaching() ? "是" : "否",
-                target.getRuleExplanation() != null ? target.getRuleExplanation() : "无"
+    private List<LlmChatMessage> buildMessages(LlmRiskOwnShipContext ownShip, LlmRiskTargetContext target) {
+        return List.of(
+                new LlmChatMessage(
+                        ChatRole.SYSTEM,
+                        "你是一名航行安全助手，请根据态势信息，用1-2句简洁中文描述当前风险并给出建议。"
+                ),
+                new LlmChatMessage(
+                        ChatRole.USER,
+                        """
+                        【本船】
+                        ID: %s
+                        位置: (%.4f, %.4f)
+                        航速: %.1f 节，航向: %.1f°
+
+                        【目标船】
+                        ID: %s
+                        位置: (%.4f, %.4f)
+                        航速: %.1f 节，航向: %.1f°
+                        风险等级: %s
+                        DCPA: %.2f 海里，TCPA: %.0f 秒
+                        接近中: %s
+                        规则说明: %s
+
+                        请输出风险描述。
+                        """.formatted(
+                                ownShip.getId(),
+                                ownShip.getLongitude(), ownShip.getLatitude(),
+                                ownShip.getSog(), ownShip.getCog(),
+                                target.getTargetId(),
+                                target.getLongitude(), target.getLatitude(),
+                                target.getSpeedKn(), target.getCourseDeg(),
+                                target.getRiskLevel(),
+                                target.getDcpaNm(), target.getTcpaSec(),
+                                target.isApproaching() ? "是" : "否",
+                                target.getRuleExplanation() != null ? target.getRuleExplanation() : "无"
+                        )
+                )
         );
     }
 
