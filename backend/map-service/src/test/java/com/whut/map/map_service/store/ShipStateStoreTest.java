@@ -1,6 +1,6 @@
 package com.whut.map.map_service.store;
 
-import com.whut.map.map_service.config.ShipStateProperties;
+import com.whut.map.map_service.config.properties.ShipStateProperties;
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
 import org.junit.jupiter.api.Test;

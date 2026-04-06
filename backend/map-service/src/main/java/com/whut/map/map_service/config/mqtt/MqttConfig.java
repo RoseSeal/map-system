@@ -1,5 +1,6 @@
-package com.whut.map.map_service.config;
+package com.whut.map.map_service.config.mqtt;
 
+import com.whut.map.map_service.config.properties.MqttProperties;
 import com.whut.map.map_service.mqtt.AisMessageListener;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -61,3 +62,4 @@ public class MqttConfig {
         }
     }
 }
+

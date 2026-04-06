@@ -22,11 +22,13 @@ public class PromptTemplateService {
         this(DEFAULT_PROMPTS_PATH);
     }
 
+    // 启动时一次性加载所有prompt模板
     PromptTemplateService(String promptsPath) {
         EnumMap<PromptScene, String> templates = new EnumMap<>(PromptScene.class);
         for (PromptScene scene : PromptScene.values()) {
             templates.put(scene, loadTemplate(promptsPath, scene));
         }
+        // 使用copyOf防止外部修改
         this.systemPrompts = Map.copyOf(templates);
     }
 

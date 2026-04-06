@@ -7,6 +7,7 @@ import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
+import com.whut.map.map_service.util.GeoUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,8 +17,6 @@ import java.util.Map;
 
 @Component
 public class LlmRiskContextAssembler {
-    private static final double METERS_PER_NAUTICAL_MILE = 1852.0;
-
     public LlmRiskContext assemble(
             ShipStatus ownShip,
             Collection<ShipStatus> allShips,
@@ -67,7 +66,7 @@ public class LlmRiskContextAssembler {
             targets.add(LlmRiskTargetContext.builder()
                     .targetId(ship.getId())
                     .riskLevel(assessment == null ? null : assessment.getRiskLevel())
-                    .dcpaNm(toNm(assessment == null ? 0.0 : assessment.getCpaDistanceMeters()))
+                    .dcpaNm(GeoUtils.metersToNm(assessment == null ? 0.0 : assessment.getCpaDistanceMeters()))
                     .tcpaSec(assessment == null ? 0.0 : assessment.getTcpaSeconds())
                     .approaching(cpaResult != null && cpaResult.isApproaching())
                     .longitude(ship.getLongitude())
@@ -80,9 +79,5 @@ public class LlmRiskContextAssembler {
         }
 
         return targets;
-    }
-
-    private double toNm(double meters) {
-        return meters / METERS_PER_NAUTICAL_MILE;
     }
 }

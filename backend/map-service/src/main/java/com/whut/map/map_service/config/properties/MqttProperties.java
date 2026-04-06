@@ -1,4 +1,4 @@
-package com.whut.map.map_service.config;
+package com.whut.map.map_service.config.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -16,3 +16,4 @@ public class MqttProperties {
 
     private String topic;
 }
+

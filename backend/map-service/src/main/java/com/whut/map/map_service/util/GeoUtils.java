@@ -2,6 +2,9 @@ package com.whut.map.map_service.util;
 
 public class GeoUtils {
 
+    public static final double METERS_PER_NAUTICAL_MILE = 1852.0;
+    public static final double METERS_PER_KNOT = 0.514444;
+
     private GeoUtils() {
         // 私有构造函数，防止外部实例化
     }
@@ -16,12 +19,28 @@ public class GeoUtils {
 
     public static double[] toVelocity(double sogKnots, double cogDeg) {
         // 1. 将速度和航向转换为速度矢量
-        double sogMs = sogKnots * 0.514444; // 将节转换为米/秒
+        double sogMs = sogKnots * METERS_PER_KNOT; // 将节转换为米/秒
         double rad   = Math.toRadians(cogDeg);
         double vx    = Math.sin(rad) * sogMs;
         double vy    = Math.cos(rad) * sogMs;
         // 2. 返回速度矢量
         return new double[]{vx, vy};
+    }
+
+    public static double metersToNm(double meters) {
+        return meters / METERS_PER_NAUTICAL_MILE;
+    }
+
+    public static double nmToMeters(double nm) {
+        return nm * METERS_PER_NAUTICAL_MILE;
+    }
+
+    public static double distanceMetersByXY(double lat1, double lon1, double lat2, double lon2) {
+        double[] p1 = toXY(lat1, lon1);
+        double[] p2 = toXY(lat2, lon2);
+        double dx = p2[0] - p1[0];
+        double dy = p2[1] - p1[1];
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
 }

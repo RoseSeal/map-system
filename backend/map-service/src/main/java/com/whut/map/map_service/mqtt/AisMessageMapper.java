@@ -1,6 +1,6 @@
 package com.whut.map.map_service.mqtt;
 
-import com.whut.map.map_service.config.AisProperties;
+import com.whut.map.map_service.config.properties.AisProperties;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.domain.ShipRole;
 import lombok.extern.slf4j.Slf4j;

@@ -27,7 +27,10 @@ public class CpaTcpaEngine {
         double dvx = targetV[0] - ownV[0];
         double dvy = targetV[1] - ownV[1];
         // 2. 计算CPA和TCPA
-        double currentDist = Math.sqrt(dpx * dpx + dpy * dpy);
+        double currentDist = GeoUtils.distanceMetersByXY(
+                ownShip.getLatitude(), ownShip.getLongitude(),
+                targetShip.getLatitude(), targetShip.getLongitude()
+        );
         double cpa;
         double tcpa;
 

@@ -1,4 +1,4 @@
-package com.whut.map.map_service.config;
+package com.whut.map.map_service.config.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -19,4 +19,5 @@ public class ShipStateProperties {
      */
     private long cleanupIntervalSeconds = 30L;
 }
+
 

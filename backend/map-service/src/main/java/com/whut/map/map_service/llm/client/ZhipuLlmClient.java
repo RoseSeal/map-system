@@ -5,7 +5,7 @@ import ai.z.openapi.service.model.ChatCompletionCreateParams;
 import ai.z.openapi.service.model.ChatCompletionResponse;
 import ai.z.openapi.service.model.ChatMessage;
 import ai.z.openapi.service.model.ChatMessageRole;
-import com.whut.map.map_service.config.LlmProperties;
+import com.whut.map.map_service.config.properties.LlmProperties;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;
 import lombok.RequiredArgsConstructor;

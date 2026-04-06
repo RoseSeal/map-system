@@ -2,7 +2,7 @@ package com.whut.map.map_service.llm.client;
 
 import ai.z.openapi.service.model.ChatMessage;
 import ai.z.openapi.service.model.ChatMessageRole;
-import com.whut.map.map_service.config.LlmProperties;
+import com.whut.map.map_service.config.properties.LlmProperties;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;
 import org.junit.jupiter.api.Test;

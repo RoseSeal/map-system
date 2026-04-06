@@ -6,6 +6,7 @@ import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.llm.dto.LlmExplanation;
+import com.whut.map.map_service.util.GeoUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,7 +17,6 @@ import java.util.Map;
 
 @Component
 public class TargetAssembler {
-    private static final double METERS_PER_NAUTICAL_MILE = 1852.0;
     private static final String TRACKING_STATUS = "tracking";
 
     private final RiskVisualizationAssembler riskVisualizationAssembler;
@@ -65,7 +65,7 @@ public class TargetAssembler {
         vector.put("course_deg", targetShip.getCog());
 
         Map<String, Object> cpaMetrics = new LinkedHashMap<>();
-        cpaMetrics.put("dcpa_nm", toNm(assessment == null ? 0.0 : assessment.getCpaDistanceMeters()));
+        cpaMetrics.put("dcpa_nm", GeoUtils.metersToNm(assessment == null ? 0.0 : assessment.getCpaDistanceMeters()));
         cpaMetrics.put("tcpa_sec", assessment == null ? 0.0 : assessment.getTcpaSeconds());
 
         String riskLevel = assessment == null ? RiskConstants.SAFE : assessment.getRiskLevel();
@@ -118,8 +118,5 @@ public class TargetAssembler {
         return RiskConstants.EXPLANATION_TEXT_AWAITING_CPA;
     }
 
-    private double toNm(double meters) {
-        return meters / METERS_PER_NAUTICAL_MILE;
-    }
 }
 

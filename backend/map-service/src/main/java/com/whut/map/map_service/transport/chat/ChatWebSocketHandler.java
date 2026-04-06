@@ -2,7 +2,7 @@ package com.whut.map.map_service.transport.chat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.whut.map.map_service.config.WhisperProperties;
+import com.whut.map.map_service.config.properties.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.*;
 import com.whut.map.map_service.service.llm.LlmChatService;
 import com.whut.map.map_service.service.llm.VoiceChatService;

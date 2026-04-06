@@ -1,9 +1,11 @@
 package com.whut.map.map_service.engine.risk;
 
 import com.whut.map.map_service.domain.ShipStatus;
+import com.whut.map.map_service.config.properties.RiskAssessmentProperties;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.util.GeoUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -14,13 +16,11 @@ import java.util.Map;
 @Slf4j
 @Component
 public class RiskAssessmentEngine {
-    private static final double ALARM_DCPA_NM = 0.3;
-    private static final double WARNING_DCPA_NM = 0.5;
-    private static final double CAUTION_DCPA_NM = 1.0;
-    private static final double ALARM_TCPA_SEC = 300.0;
-    private static final double WARNING_TCPA_SEC = 900.0;
-    private static final double CAUTION_TCPA_SEC = 1800.0;
-    private static final double METERS_PER_NAUTICAL_MILE = 1852.0;
+    private final RiskAssessmentProperties riskProperties;
+
+    public RiskAssessmentEngine(RiskAssessmentProperties riskProperties) {
+        this.riskProperties = riskProperties;
+    }
 
     public RiskAssessmentResult consume(
             ShipStatus ownShip,
@@ -53,7 +53,7 @@ public class RiskAssessmentEngine {
     private TargetRiskAssessment buildTargetAssessment(String targetId, CpaTcpaResult cpaResult) {
         double cpaDistanceMeters = cpaResult == null ? 0.0 : cpaResult.getCpaDistance();
         double tcpaSeconds = cpaResult == null ? 0.0 : Math.max(cpaResult.getTcpaTime(), 0.0);
-        String riskLevel = classifyRisk(metersToNm(cpaDistanceMeters), tcpaSeconds);
+        String riskLevel = classifyRisk(GeoUtils.metersToNm(cpaDistanceMeters), tcpaSeconds);
 
         return TargetRiskAssessment.builder()
                 .targetId(targetId)
@@ -67,19 +67,15 @@ public class RiskAssessmentEngine {
     }
 
     private String classifyRisk(double dcpaNm, double tcpaSec) {
-        if (dcpaNm <= ALARM_DCPA_NM && tcpaSec > 0 && tcpaSec <= ALARM_TCPA_SEC) {
+        if (dcpaNm <= riskProperties.getAlarmDcpaNm() && tcpaSec > 0 && tcpaSec <= riskProperties.getAlarmTcpaSec()) {
             return RiskConstants.ALARM;
         }
-        if (dcpaNm <= WARNING_DCPA_NM && tcpaSec > 0 && tcpaSec <= WARNING_TCPA_SEC) {
+        if (dcpaNm <= riskProperties.getWarningDcpaNm() && tcpaSec > 0 && tcpaSec <= riskProperties.getWarningTcpaSec()) {
             return RiskConstants.WARNING;
         }
-        if (dcpaNm <= CAUTION_DCPA_NM && tcpaSec > 0 && tcpaSec <= CAUTION_TCPA_SEC) {
+        if (dcpaNm <= riskProperties.getCautionDcpaNm() && tcpaSec > 0 && tcpaSec <= riskProperties.getCautionTcpaSec()) {
             return RiskConstants.CAUTION;
         }
         return RiskConstants.SAFE;
-    }
-
-    private double metersToNm(double meters) {
-        return meters / METERS_PER_NAUTICAL_MILE;
     }
 }

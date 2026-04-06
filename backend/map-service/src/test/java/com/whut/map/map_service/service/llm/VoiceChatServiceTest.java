@@ -1,6 +1,6 @@
 package com.whut.map.map_service.service.llm;
 
-import com.whut.map.map_service.config.WhisperProperties;
+import com.whut.map.map_service.config.properties.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.SpeechMode;
 import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
@@ -94,7 +94,7 @@ class VoiceChatServiceTest {
         private boolean handleChatCalled;
 
         RecordingLlmChatService() {
-            super(null, new com.whut.map.map_service.config.LlmProperties(), new com.whut.map.map_service.llm.prompt.PromptTemplateService(), new ChatPayloadValidator(new WhisperProperties()));
+            super(null, new com.whut.map.map_service.config.properties.LlmProperties(), new com.whut.map.map_service.llm.prompt.PromptTemplateService(), new ChatPayloadValidator(new WhisperProperties()));
         }
 
         @Override

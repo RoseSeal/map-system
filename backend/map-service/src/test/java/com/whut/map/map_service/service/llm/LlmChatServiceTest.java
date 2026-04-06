@@ -1,7 +1,7 @@
 package com.whut.map.map_service.service.llm;
 
-import com.whut.map.map_service.config.LlmProperties;
-import com.whut.map.map_service.config.WhisperProperties;
+import com.whut.map.map_service.config.properties.LlmProperties;
+import com.whut.map.map_service.config.properties.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
 import com.whut.map.map_service.llm.client.LlmClient;
