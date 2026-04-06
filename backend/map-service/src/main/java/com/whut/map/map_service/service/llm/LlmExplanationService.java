@@ -9,6 +9,8 @@ import com.whut.map.map_service.llm.dto.LlmChatMessage;
 import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
+import com.whut.map.map_service.llm.prompt.PromptScene;
+import com.whut.map.map_service.llm.prompt.PromptTemplateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.annotation.PreDestroy;
@@ -31,6 +33,7 @@ import java.util.concurrent.TimeoutException;
 public class LlmExplanationService {
     private final LlmProperties llmProperties;
     private final LlmClient llmClient;
+    private final PromptTemplateService promptTemplateService;
     private final ExecutorService llmExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public record LlmExplanationError(ChatErrorCode errorCode, String errorMessage) {
@@ -100,7 +103,7 @@ public class LlmExplanationService {
         return List.of(
                 new LlmChatMessage(
                         ChatRole.SYSTEM,
-                        "你是一名航行安全助手，请根据态势信息，用1-2句简洁中文描述当前风险并给出建议。"
+                        promptTemplateService.getSystemPrompt(PromptScene.RISK_EXPLANATION)
                 ),
                 new LlmChatMessage(
                         ChatRole.USER,

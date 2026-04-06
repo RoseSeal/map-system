@@ -53,10 +53,11 @@
 | `ShipDispatcher` | 按 `ShipRole` 路由到对应引擎，并调用 `RiskObjectAssembler` 聚合结果 |
 | `RiskObjectAssembler` | 汇总风险数据，组装待推送与待 LLM 分析的 DTO |
 | `RiskStreamPublisher` | 风险事件统一发送入口，负责 `sequence_id` / `event_id` 分配与 SSE 发布 |
-| `LlmClient` | LLM 调用抽象接口 |
-| `GeminiLlmClient` | Gemini 实现 |
-| `ZhipuLlmClient` | 智谱实现 |
-| `LlmRiskContext` | 投喂给 LLM 的风险上下文结构体 |
+| `LlmClient`（`llm/client/`） | LLM 调用抽象接口，支持 `generateText` 与多角色 `chat(List<ChatMessage>)` |
+| `GeminiLlmClient`（`llm/client/`） | Gemini 实现 |
+| `ZhipuLlmClient`（`llm/client/`） | 智谱实现 |
+| `ChatMessage`（`llm/dto/`） | 多角色消息模型（`SYSTEM / USER / ASSISTANT`） |
+| `LlmRiskContext`（`llm/dto/`） | 投喂给 LLM 的风险上下文结构体 |
 
 ### 4.2 副服务
 

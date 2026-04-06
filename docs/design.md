@@ -421,8 +421,10 @@ map-system/
 │   │       ├── pipeline/
 │   │       ├── engine/
 │   │       ├── assembler/
-│   │       ├── service/llm/
-│   │       ├── client/
+│   │       ├── service/llm/        ← LlmChatService, LlmExplanationService, VoiceChatService
+│   │       ├── llm/
+│   │       │   ├── client/         ← LlmClient 接口及 Gemini/Zhipu 实现（Step 1 迁入）
+│   │       │   └── dto/            ← ChatMessage, LlmRiskContext 等 LLM 专用模型（Step 1 迁入）
 │   │       ├── transport/
 │   │       │   ├── protocol/
 │   │       │   ├── risk/

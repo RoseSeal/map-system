@@ -45,6 +45,8 @@
 - chat 通道支持文本问答与语音问答
 - 语音输入支持 `direct` / `preview` 两种模式
 - LLM 请求具备超时与错误降级能力
+- `LlmClient` 接口已升级支持多角色消息序列（`chat(List<ChatMessage>)`），`GeminiLlmClient` / `ZhipuLlmClient` 已完成适配（Step 1 已完成）
+- `llm/client/` 与 `llm/dto/` 包已完成收口，`LlmRiskContext` 等 LLM 专用 DTO 已迁入 `llm/dto/`（Step 1 已完成）
 
 当前还没有稳定落地的能力：
 
@@ -198,7 +200,7 @@
 
 历史设计文档已归档到：
 
-- [history/llm-module-v1.md](/home/xin/workspace/map-system/docs/history/llm-module-v1.md)
-- [history/llm-module-v2.md](/home/xin/workspace/map-system/docs/history/llm-module-v2.md)
+- [llm-history/llm-module-v1.md](/home/xin/workspace/map-system/docs/llm-history/llm-module-v1.md)
+- [llm-history/llm-module-v2.md](/home/xin/workspace/map-system/docs/llm-history/llm-module-v2.md)
 
 归档文档用于保留原始思路，不再作为当前实现真值。

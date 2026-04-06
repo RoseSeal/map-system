@@ -6,6 +6,8 @@ import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
 import com.whut.map.map_service.llm.client.LlmClient;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;
+import com.whut.map.map_service.llm.prompt.PromptScene;
+import com.whut.map.map_service.llm.prompt.PromptTemplateService;
 import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import com.whut.map.map_service.service.llm.validation.ValidationResult;
 import jakarta.annotation.PreDestroy;
@@ -31,6 +33,7 @@ public class LlmChatService {
 
     private final LlmClient llmClient;
     private final LlmProperties llmProperties;
+    private final PromptTemplateService promptTemplateService;
     private final ChatPayloadValidator chatPayloadValidator;
     private final ExecutorService llmExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -83,7 +86,7 @@ public class LlmChatService {
         return List.of(
                 new LlmChatMessage(
                         ChatRole.SYSTEM,
-                        "You are a maritime assistant. Answer the user's current message directly and concisely in 2-3 sentences."
+                        promptTemplateService.getSystemPrompt(PromptScene.CHAT)
                 ),
                 new LlmChatMessage(ChatRole.USER, request.getContent())
         );

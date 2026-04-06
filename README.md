@@ -21,6 +21,7 @@ MQTT -> `map-service` -> SSE (`/api/v2/risk`) + WebSocket (`/api/v2/chat`) -> Fr
 - System Design: [docs/design.md](/home/xin/workspace/map-system/docs/design.md)
 - Event Schema: [docs/EVENT_SCHEMA.md](/home/xin/workspace/map-system/docs/EVENT_SCHEMA.md)
 - LLM Roadmap: [docs/LLM_ROADMAP.md](/home/xin/workspace/map-system/docs/LLM_ROADMAP.md)
+- LLM Enhancement Plan: [docs/llm-enhancement/LLM_ENHANCEMENT_PLAN.md](/home/xin/workspace/map-system/docs/llm-enhancement/LLM_ENHANCEMENT_PLAN.md)
 - Frontend Design: [docs/frontend-design.md](/home/xin/workspace/map-system/docs/frontend-design.md)
 
 ## Tech Stack

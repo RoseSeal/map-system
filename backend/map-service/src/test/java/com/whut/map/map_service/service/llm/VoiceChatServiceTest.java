@@ -5,30 +5,20 @@ import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.websocket.SpeechMode;
 import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
 import com.whut.map.map_service.llm.client.WhisperClient;
+import com.whut.map.map_service.llm.dto.WhisperResponse;
 import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-
-@ExtendWith(MockitoExtension.class)
 class VoiceChatServiceTest {
-
-    @Mock
-    private WhisperClient whisperClient;
-
-    @Mock
-    private LlmChatService llmChatService;
 
     private final WhisperProperties whisperProperties = new WhisperProperties();
     private final ChatPayloadValidator chatPayloadValidator = new ChatPayloadValidator(whisperProperties);
 
     @Test
     void invalidChatEnvelopeReturnsErrorBeforeTranscription() {
+        RecordingWhisperClient whisperClient = new RecordingWhisperClient();
+        RecordingLlmChatService llmChatService = new RecordingLlmChatService();
         VoiceChatService service = new VoiceChatService(
                 whisperClient,
                 whisperProperties,
@@ -50,16 +40,8 @@ class VoiceChatServiceTest {
         assertThat(callback.errorMessage()).isEqualTo("event_id is required.");
         assertThat(callback.reply()).isNull();
         assertThat(callback.transcript()).isNull();
-        verify(whisperClient, never()).transcribe(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any()
-        );
-        verify(llmChatService, never()).handleChat(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any()
-        );
+        assertThat(whisperClient.transcribeCalled).isFalse();
+        assertThat(llmChatService.handleChatCalled).isFalse();
     }
 
     private static final class CapturingSpeechCallback {
@@ -95,6 +77,33 @@ class VoiceChatServiceTest {
 
         String errorMessage() {
             return errorMessage;
+        }
+    }
+
+    private static final class RecordingWhisperClient implements WhisperClient {
+        private boolean transcribeCalled;
+
+        @Override
+        public WhisperResponse transcribe(byte[] audioData, String audioFormat, String language) {
+            this.transcribeCalled = true;
+            return null;
+        }
+    }
+
+    private static final class RecordingLlmChatService extends LlmChatService {
+        private boolean handleChatCalled;
+
+        RecordingLlmChatService() {
+            super(null, new com.whut.map.map_service.config.LlmProperties(), new com.whut.map.map_service.llm.prompt.PromptTemplateService(), new ChatPayloadValidator(new WhisperProperties()));
+        }
+
+        @Override
+        public void handleChat(
+                com.whut.map.map_service.dto.websocket.ChatRequestPayload request,
+                java.util.function.Consumer<ChatReplyResult> onSuccess,
+                java.util.function.BiConsumer<ChatErrorCode, String> onError
+        ) {
+            this.handleChatCalled = true;
         }
     }
 }
