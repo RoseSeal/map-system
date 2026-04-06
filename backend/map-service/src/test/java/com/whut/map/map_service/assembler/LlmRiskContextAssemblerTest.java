@@ -1,0 +1,64 @@
+package com.whut.map.map_service.assembler;
+
+import com.whut.map.map_service.domain.ShipRole;
+import com.whut.map.map_service.domain.ShipStatus;
+import com.whut.map.map_service.llm.dto.LlmRiskContext;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class LlmRiskContextAssemblerTest {
+
+    private final LlmRiskContextAssembler assembler = new LlmRiskContextAssembler();
+
+    @Test
+    void assembleWritesCurrentDistanceFromPrecomputedMap() {
+        ShipStatus ownShip = ship("own-1", ShipRole.OWN_SHIP, 120.0000, 30.0000);
+        ShipStatus target = ship("target-1", ShipRole.TARGET_SHIP, 120.1000, 30.1000);
+
+        LlmRiskContext context = assembler.assemble(
+                ownShip,
+                List.of(ownShip, target),
+                Map.of("target-1", 1.23),
+                Map.of(),
+                null
+        );
+
+        assertThat(context.getTargets()).hasSize(1);
+        assertThat(context.getTargets().get(0).getTargetId()).isEqualTo("target-1");
+        assertThat(context.getTargets().get(0).getCurrentDistanceNm()).isEqualTo(1.23);
+        assertThat(context.getTargets().get(0).getDcpaNm()).isEqualTo(0.0);
+        assertThat(context.getTargets().get(0).getTcpaSec()).isEqualTo(0.0);
+    }
+
+    @Test
+    void assembleUsesZeroWhenDistanceMapIsMissingTarget() {
+        ShipStatus ownShip = ship("own-1", ShipRole.OWN_SHIP, 120.0000, 30.0000);
+        ShipStatus target = ship("target-1", ShipRole.TARGET_SHIP, 120.1000, 30.1000);
+
+        LlmRiskContext context = assembler.assemble(
+                ownShip,
+                List.of(ownShip, target),
+                Map.of(),
+                Map.of(),
+                null
+        );
+
+        assertThat(context.getTargets()).hasSize(1);
+        assertThat(context.getTargets().get(0).getCurrentDistanceNm()).isEqualTo(0.0);
+    }
+
+    private ShipStatus ship(String id, ShipRole role, double longitude, double latitude) {
+        return ShipStatus.builder()
+                .id(id)
+                .role(role)
+                .longitude(longitude)
+                .latitude(latitude)
+                .sog(10.0)
+                .cog(90.0)
+                .build();
+    }
+}

@@ -34,6 +34,8 @@ public class LlmChatService {
     private final LlmClient llmClient;
     private final LlmProperties llmProperties;
     private final PromptTemplateService promptTemplateService;
+    private final RiskContextHolder riskContextHolder;
+    private final RiskContextFormatter riskContextFormatter;
     private final ChatPayloadValidator chatPayloadValidator;
     private final ExecutorService llmExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -83,13 +85,26 @@ public class LlmChatService {
     }
 
     private List<LlmChatMessage> buildMessages(ChatRequestPayload request) {
-        return List.of(
-                new LlmChatMessage(
-                        ChatRole.SYSTEM,
-                        promptTemplateService.getSystemPrompt(PromptScene.CHAT)
-                ),
-                new LlmChatMessage(ChatRole.USER, request.getContent())
+        LlmChatMessage systemMessage = new LlmChatMessage(
+                ChatRole.SYSTEM,
+                promptTemplateService.getSystemPrompt(PromptScene.CHAT)
         );
+        String riskSummary = riskContextFormatter.formatSummary(
+                riskContextHolder.getCurrent(),
+                riskContextHolder.getUpdatedAt()
+        );
+        if (!StringUtils.hasText(riskSummary)) {
+            return List.of(systemMessage, new LlmChatMessage(ChatRole.USER, request.getContent()));
+        }
+
+        return List.of(
+                systemMessage,
+                new LlmChatMessage(ChatRole.USER, buildUserMessageContent(riskSummary, request.getContent()))
+        );
+    }
+
+    private String buildUserMessageContent(String riskSummary, String userContent) {
+        return riskSummary + "\n\n【用户问题】\n" + userContent;
     }
 
     private String resolveProviderName() {

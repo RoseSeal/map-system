@@ -12,6 +12,7 @@ public class LlmProperties {
     private String provider;
     private long timeoutMs = 5000L;
     private int maxTargetsPerCall = 1;
+    private int chatContextMaxTargets = 5;
     private int cooldownSeconds = 5;
     private boolean fallbackTemplateEnabled = true;
 

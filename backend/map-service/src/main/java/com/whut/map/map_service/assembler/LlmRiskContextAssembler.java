@@ -20,6 +20,7 @@ public class LlmRiskContextAssembler {
     public LlmRiskContext assemble(
             ShipStatus ownShip,
             Collection<ShipStatus> allShips,
+            Map<String, Double> currentDistancesNm,
             Map<String, CpaTcpaResult> cpaResults,
             RiskAssessmentResult riskResult
     ) {
@@ -29,7 +30,7 @@ public class LlmRiskContextAssembler {
 
         return LlmRiskContext.builder()
                 .ownShip(buildOwnShipContext(ownShip))
-                .targets(buildTargetContexts(ownShip, allShips, cpaResults, riskResult))
+                .targets(buildTargetContexts(ownShip, allShips, currentDistancesNm, cpaResults, riskResult))
                 .build();
     }
 
@@ -47,6 +48,7 @@ public class LlmRiskContextAssembler {
     private List<LlmRiskTargetContext> buildTargetContexts(
             ShipStatus ownShip,
             Collection<ShipStatus> allShips,
+            Map<String, Double> currentDistancesNm,
             Map<String, CpaTcpaResult> cpaResults,
             RiskAssessmentResult riskResult
     ) {
@@ -66,6 +68,7 @@ public class LlmRiskContextAssembler {
             targets.add(LlmRiskTargetContext.builder()
                     .targetId(ship.getId())
                     .riskLevel(assessment == null ? null : assessment.getRiskLevel())
+                    .currentDistanceNm(resolveCurrentDistanceNm(ship.getId(), currentDistancesNm))
                     .dcpaNm(GeoUtils.metersToNm(assessment == null ? 0.0 : assessment.getCpaDistanceMeters()))
                     .tcpaSec(assessment == null ? 0.0 : assessment.getTcpaSeconds())
                     .approaching(cpaResult != null && cpaResult.isApproaching())
@@ -79,5 +82,12 @@ public class LlmRiskContextAssembler {
         }
 
         return targets;
+    }
+
+    private double resolveCurrentDistanceNm(String targetId, Map<String, Double> currentDistancesNm) {
+        if (targetId == null || currentDistancesNm == null) {
+            return 0.0;
+        }
+        return currentDistancesNm.getOrDefault(targetId, 0.0);
     }
 }

@@ -94,7 +94,14 @@ class VoiceChatServiceTest {
         private boolean handleChatCalled;
 
         RecordingLlmChatService() {
-            super(null, new com.whut.map.map_service.config.properties.LlmProperties(), new com.whut.map.map_service.llm.prompt.PromptTemplateService(), new ChatPayloadValidator(new WhisperProperties()));
+            super(
+                    null,
+                    new com.whut.map.map_service.config.properties.LlmProperties(),
+                    new com.whut.map.map_service.llm.prompt.PromptTemplateService(),
+                    new RiskContextHolder(),
+                    new RiskContextFormatter(new com.whut.map.map_service.config.properties.LlmProperties()),
+                    new ChatPayloadValidator(new WhisperProperties())
+            );
         }
 
         @Override

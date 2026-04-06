@@ -12,7 +12,7 @@ class PromptTemplateServiceTest {
         PromptTemplateService service = new PromptTemplateService();
 
         assertThat(service.getSystemPrompt(PromptScene.CHAT))
-                .contains("maritime assistant")
+                .contains("航行安全助手")
                 .doesNotContain("\r");
         assertThat(service.getSystemPrompt(PromptScene.RISK_EXPLANATION))
                 .contains("航行安全助手")

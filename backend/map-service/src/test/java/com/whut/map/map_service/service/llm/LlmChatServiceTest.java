@@ -22,19 +22,29 @@ class LlmChatServiceTest {
     private final WhisperProperties whisperProperties = new WhisperProperties();
     private final ChatPayloadValidator chatPayloadValidator = new ChatPayloadValidator(whisperProperties);
     private final PromptTemplateService promptTemplateService = new PromptTemplateService();
+    private final RiskContextHolder riskContextHolder = new RiskContextHolder();
+    private final RiskContextFormatter riskContextFormatter = new RiskContextFormatter(new LlmProperties());
 
     @Test
     void validChatRequestsProduceChatReply() throws Exception {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
         StubLlmClient llmClient = new StubLlmClient();
         llmClient.response = "assistant reply";
-        LlmChatService service = new LlmChatService(llmClient, properties, promptTemplateService, chatPayloadValidator);
+        LlmChatService service = new LlmChatService(
+                llmClient,
+                properties,
+                promptTemplateService,
+                riskContextHolder,
+                riskContextFormatter,
+                chatPayloadValidator
+        );
         ChatRequestPayload request = buildRequest();
 
         CapturingChatCallback callback = new CapturingChatCallback();
         service.handleChat(request, callback::captureReply, callback::captureError);
 
         callback.await();
+        assertThat(llmClient.lastMessages).hasSize(2);
         assertThat(llmClient.lastMessages).containsExactly(
                 new LlmChatMessage(ChatRole.SYSTEM, promptTemplateService.getSystemPrompt(PromptScene.CHAT)),
                 new LlmChatMessage(ChatRole.USER, request.getContent())
@@ -49,7 +59,14 @@ class LlmChatServiceTest {
     void invalidChatRequestsReturnChatError() {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
         StubLlmClient llmClient = new StubLlmClient();
-        LlmChatService service = new LlmChatService(llmClient, properties, promptTemplateService, chatPayloadValidator);
+        LlmChatService service = new LlmChatService(
+                llmClient,
+                properties,
+                promptTemplateService,
+                riskContextHolder,
+                riskContextFormatter,
+                chatPayloadValidator
+        );
         ChatRequestPayload request = buildRequest();
         request.setContent(" ");
 
@@ -66,7 +83,14 @@ class LlmChatServiceTest {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
         StubLlmClient llmClient = new StubLlmClient();
         llmClient.failure = new IllegalStateException("boom");
-        LlmChatService service = new LlmChatService(llmClient, properties, promptTemplateService, chatPayloadValidator);
+        LlmChatService service = new LlmChatService(
+                llmClient,
+                properties,
+                promptTemplateService,
+                riskContextHolder,
+                riskContextFormatter,
+                chatPayloadValidator
+        );
         ChatRequestPayload request = buildRequest();
 
         CapturingChatCallback callback = new CapturingChatCallback();
@@ -86,6 +110,55 @@ class LlmChatServiceTest {
 
         assertThat(response).isEqualTo("delegated");
         assertThat(client.lastMessages()).containsExactly(new LlmChatMessage(ChatRole.USER, "hello"));
+    }
+
+    @Test
+    void validChatRequestsInjectRiskSummaryWhenContextExists() throws Exception {
+        LlmProperties properties = buildProperties(true, 1000L, "zhipu");
+        properties.setChatContextMaxTargets(5);
+        StubLlmClient llmClient = new StubLlmClient();
+        llmClient.response = "assistant reply";
+        RiskContextHolder holder = new RiskContextHolder();
+        holder.update(com.whut.map.map_service.llm.dto.LlmRiskContext.builder()
+                .ownShip(com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext.builder()
+                        .id("own-1")
+                        .longitude(120.1234)
+                        .latitude(30.5678)
+                        .sog(12.3)
+                        .cog(87.6)
+                        .build())
+                .targets(List.of(com.whut.map.map_service.llm.dto.LlmRiskTargetContext.builder()
+                        .targetId("target-1")
+                        .riskLevel(com.whut.map.map_service.engine.risk.RiskConstants.WARNING)
+                        .currentDistanceNm(0.80)
+                        .dcpaNm(0.42)
+                        .tcpaSec(240)
+                        .approaching(true)
+                        .build()))
+                .build());
+        LlmChatService service = new LlmChatService(
+                llmClient,
+                properties,
+                promptTemplateService,
+                holder,
+                new RiskContextFormatter(properties),
+                chatPayloadValidator
+        );
+        ChatRequestPayload request = buildRequest();
+
+        CapturingChatCallback callback = new CapturingChatCallback();
+        service.handleChat(request, callback::captureReply, callback::captureError);
+
+        callback.await();
+        assertThat(llmClient.lastMessages).hasSize(2);
+        assertThat(llmClient.lastMessages.get(0))
+                .isEqualTo(new LlmChatMessage(ChatRole.SYSTEM, promptTemplateService.getSystemPrompt(PromptScene.CHAT)));
+        assertThat(llmClient.lastMessages.get(1).role()).isEqualTo(ChatRole.USER);
+        assertThat(llmClient.lastMessages.get(1).content())
+                .contains("【当前态势】更新时间:")
+                .contains("目标船 target-1: 风险等级 WARNING")
+                .contains("【用户问题】")
+                .contains(request.getContent());
     }
 
     private LlmProperties buildProperties(boolean enabled, long timeoutMs, String provider) {

@@ -15,12 +15,16 @@ import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.service.llm.LlmTriggerService;
+import com.whut.map.map_service.service.llm.RiskContextHolder;
 import com.whut.map.map_service.store.ShipStateStore;
 import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
+import com.whut.map.map_service.util.GeoUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -34,6 +38,7 @@ public class ShipDispatcher {
     private final RiskObjectAssembler riskObjectAssembler;
     private final LlmRiskContextAssembler llmRiskContextAssembler;
     private final LlmTriggerService llmTriggerService;
+    private final RiskContextHolder riskContextHolder;
     private final ShipStateStore shipStateStore;
     private final RiskStreamPublisher riskStreamPublisher;
 
@@ -45,6 +50,7 @@ public class ShipDispatcher {
             RiskObjectAssembler riskObjectAssembler,
             LlmRiskContextAssembler llmRiskContextAssembler,
             LlmTriggerService llmTriggerService,
+            RiskContextHolder riskContextHolder,
             ShipStateStore shipStateStore,
             RiskStreamPublisher riskStreamPublisher
 
@@ -56,6 +62,7 @@ public class ShipDispatcher {
         this.riskObjectAssembler = riskObjectAssembler;
         this.llmRiskContextAssembler = llmRiskContextAssembler;
         this.llmTriggerService = llmTriggerService;
+        this.riskContextHolder = riskContextHolder;
         this.shipStateStore = shipStateStore;
         this.riskStreamPublisher = riskStreamPublisher;
     }
@@ -135,21 +142,51 @@ public class ShipDispatcher {
             return null;
         }
 
+        Map<String, Double> currentDistancesNm = buildCurrentDistancesNm(
+                context.ownShip(),
+                context.allShips()
+        );
+
         LlmRiskContext llmContext = llmRiskContextAssembler.assemble(
                 context.ownShip(),
                 context.allShips(),
+                currentDistancesNm,
                 outputs.cpaResults(),
                 riskResult
         );
         return new RiskDispatchSnapshot(riskResult, dto, llmContext);
     }
 
-    private void publishRiskSnapshot(RiskDispatchSnapshot snapshot) {
+    void publishRiskSnapshot(RiskDispatchSnapshot snapshot) {
+        riskContextHolder.update(snapshot.llmContext());
         riskStreamPublisher.publishRiskUpdate(snapshot.riskObject());
         llmTriggerService.triggerExplanationsIfNeeded(
                 snapshot.llmContext(),
                 snapshot.riskObject().getRiskObjectId()
         );
+    }
+
+    Map<String, Double> buildCurrentDistancesNm(ShipStatus ownShip, Collection<ShipStatus> allShips) {
+        Map<String, Double> currentDistancesNm = new HashMap<>();
+        if (ownShip == null || allShips == null) {
+            return currentDistancesNm;
+        }
+
+        for (ShipStatus ship : allShips) {
+            if (ship == null || ship.getId() == null || ship.getId().equals(ownShip.getId())) {
+                continue;
+            }
+
+            double distanceMeters = GeoUtils.distanceMetersByXY(
+                    ownShip.getLatitude(),
+                    ownShip.getLongitude(),
+                    ship.getLatitude(),
+                    ship.getLongitude()
+            );
+            currentDistancesNm.put(ship.getId(), GeoUtils.metersToNm(distanceMeters));
+        }
+
+        return currentDistancesNm;
     }
 
     private void logTargetCpa(ShipDispatchContext context, Map<String, CpaTcpaResult> cpaResults) {
