@@ -84,10 +84,10 @@ public class LlmRiskContextAssembler {
         return targets;
     }
 
-    private double resolveCurrentDistanceNm(String targetId, Map<String, Double> currentDistancesNm) {
+    private Double resolveCurrentDistanceNm(String targetId, Map<String, Double> currentDistancesNm) {
         if (targetId == null || currentDistancesNm == null) {
-            return 0.0;
+            return null;
         }
-        return currentDistancesNm.getOrDefault(targetId, 0.0);
+        return currentDistancesNm.get(targetId);
     }
 }

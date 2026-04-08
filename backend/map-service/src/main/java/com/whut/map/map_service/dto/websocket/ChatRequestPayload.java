@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,4 +22,7 @@ public class ChatRequestPayload {
 
     @JsonProperty("content")
     private String content;
+
+    @JsonProperty("selected_target_ids")
+    private List<String> selectedTargetIds;
 }

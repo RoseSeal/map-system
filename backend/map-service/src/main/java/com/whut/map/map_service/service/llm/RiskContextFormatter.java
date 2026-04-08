@@ -11,7 +11,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -56,6 +58,77 @@ public class RiskContextFormatter {
         return builder.toString();
     }
 
+    public String formatSelectedTargets(LlmRiskContext context, List<String> targetIds, Instant updatedAt) {
+        if (context == null || context.getOwnShip() == null || context.getTargets() == null
+                || targetIds == null || targetIds.isEmpty()) {
+            return null;
+        }
+
+        Map<String, LlmRiskTargetContext> targetById = new LinkedHashMap<>();
+        for (LlmRiskTargetContext target : context.getTargets()) {
+            if (target != null && StringUtils.hasText(target.getTargetId())) {
+                targetById.put(target.getTargetId(), target);
+            }
+        }
+
+        List<String> distinctTargetIds = targetIds.stream()
+                .distinct()
+                .toList();
+
+        List<LlmRiskTargetContext> matched = distinctTargetIds.stream()
+                .filter(targetById::containsKey)
+                .map(targetById::get)
+                .toList();
+
+        if (matched.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("【选中目标详情】更新时间: ")
+                .append(updatedAt == null ? "未知" : updatedAt)
+                .append('\n');
+        appendOwnShip(builder, context.getOwnShip());
+        builder.append("-----").append('\n');
+        for (LlmRiskTargetContext target : matched) {
+            appendTargetDetail(builder, target);
+        }
+        builder.append("共选中 ")
+                .append(distinctTargetIds.size())
+                .append(" 艘，匹配 ")
+                .append(matched.size())
+                .append(" 艘。");
+        return builder.toString();
+    }
+
+    private void appendTargetDetail(StringBuilder builder, LlmRiskTargetContext target) {
+        builder.append("目标船 ")
+                .append(defaultText(target.getTargetId()))
+                .append(": 风险等级 ")
+                .append(target.getRiskLevel())
+                .append(", 现距 ")
+                .append(formatDistanceNm(target.getCurrentDistanceNm()))
+                .append("海里, DCPA ")
+                .append(formatDecimal(target.getDcpaNm(), 2))
+                .append("海里, TCPA ")
+                .append(formatDecimal(target.getTcpaSec(), 0))
+                .append("秒, ")
+                .append(target.isApproaching() ? "正在接近" : "未接近")
+                .append(", 位置: (")
+                .append(formatDecimal(target.getLongitude(), 4))
+                .append(", ")
+                .append(formatDecimal(target.getLatitude(), 4))
+                .append("), 航速: ")
+                .append(formatDecimal(target.getSpeedKn(), 1))
+                .append("节, 航向: ")
+                .append(formatDecimal(target.getCourseDeg(), 1))
+                .append("°");
+        if (StringUtils.hasText(target.getRuleExplanation())) {
+            builder.append(", 说明: ").append(target.getRuleExplanation());
+        }
+        builder.append('\n');
+    }
+
     private void appendOwnShip(StringBuilder builder, LlmRiskOwnShipContext ownShip) {
         builder.append("本船 ID: ")
                 .append(defaultText(ownShip.getId()))
@@ -77,7 +150,7 @@ public class RiskContextFormatter {
                 .append(": 风险等级 ")
                 .append(target.getRiskLevel())
                 .append(", 现距 ")
-                .append(formatDecimal(target.getCurrentDistanceNm(), 2))
+                .append(formatDistanceNm(target.getCurrentDistanceNm()))
                 .append("海里, DCPA ")
                 .append(formatDecimal(target.getDcpaNm(), 2))
                 .append("海里, TCPA ")
@@ -123,5 +196,9 @@ public class RiskContextFormatter {
 
     private String formatDecimal(double value, int scale) {
         return String.format("%." + scale + "f", value);
+    }
+
+    private String formatDistanceNm(Double value) {
+        return value == null ? "未知" : formatDecimal(value, 2);
     }
 }

@@ -28,7 +28,8 @@ interface RiskState {
   lastError: SseErrorPayload | null;
 
   isLowTrust: boolean;
-  selectedTargetId: string | null;
+  selectedTargetIds: string[];
+  droppedTargetNotices: string[];
 
   setRiskUpdate: (payload: RiskUpdatePayload) => void;
   upsertExplanation: (payload: ExplanationPayload) => void;
@@ -36,6 +37,8 @@ interface RiskState {
   setRiskError: (payload: SseErrorPayload) => void;
   clearRiskError: () => void;
   selectTarget: (targetId: string | null) => void;
+  deselectTarget: (targetId: string) => void;
+  clearDroppedTargetNotices: () => void;
   reset: () => void;
 }
 
@@ -52,7 +55,8 @@ const initialState = {
   connectionError: null,
   lastError: null as SseErrorPayload | null,
   isLowTrust: false,
-  selectedTargetId: null as string | null,
+  selectedTargetIds: [] as string[],
+  droppedTargetNotices: [] as string[],
 };
 
 export const useRiskStore = create<RiskState>()(
@@ -65,6 +69,8 @@ export const useRiskStore = create<RiskState>()(
         const explanationsByTargetId = Object.fromEntries(
           Object.entries(state.explanationsByTargetId).filter(([targetId]) => targetIds.has(targetId)),
         );
+        const selectedTargetIds = state.selectedTargetIds.filter((id) => targetIds.has(id));
+        const droppedTargetNotices = state.selectedTargetIds.filter((id) => !targetIds.has(id));
 
         return {
           latestRiskUpdate: payload,
@@ -75,6 +81,8 @@ export const useRiskStore = create<RiskState>()(
           governance: payload.governance,
           environment: payload.environment_context,
           explanationsByTargetId,
+          selectedTargetIds,
+          droppedTargetNotices: droppedTargetNotices.length > 0 ? droppedTargetNotices : state.droppedTargetNotices,
           isConnected: true,
           connectionError: null,
           isLowTrust: payload.governance.trust_factor < PERFORMANCE.LOW_TRUST_THRESHOLD,
@@ -118,7 +126,27 @@ export const useRiskStore = create<RiskState>()(
     },
 
     selectTarget: (targetId: string | null) => {
-      set({ selectedTargetId: targetId });
+      if (targetId === null) {
+        set({ selectedTargetIds: [] });
+        return;
+      }
+      set((state) => {
+        const ids = state.selectedTargetIds;
+        if (ids.includes(targetId)) {
+          return { selectedTargetIds: ids.filter((id) => id !== targetId) };
+        }
+        return { selectedTargetIds: [...ids, targetId] };
+      });
+    },
+
+    deselectTarget: (targetId: string) => {
+      set((state) => ({
+        selectedTargetIds: state.selectedTargetIds.filter((id) => id !== targetId),
+      }));
+    },
+
+    clearDroppedTargetNotices: () => {
+      set({ droppedTargetNotices: [] });
     },
 
     reset: () => {
@@ -135,20 +163,25 @@ export const selectIsLowTrust = (state: RiskState) => state.isLowTrust;
 export const selectIsConnected = (state: RiskState) => state.isConnected;
 export const selectRiskConnectionError = (state: RiskState) => state.connectionError;
 export const selectExplanationsByTargetId = (state: RiskState) => state.explanationsByTargetId;
-export const selectSelectedTargetId = (state: RiskState) => state.selectedTargetId;
-export const selectSelectedTarget = (state: RiskState) => {
-  if (!state.selectedTargetId) {
-    return null;
+export const selectSelectedTargetIds = (state: RiskState) => state.selectedTargetIds;
+export const selectDroppedTargetNotices = (state: RiskState) => state.droppedTargetNotices;
+export const selectSelectedTargets = (state: RiskState) => {
+  if (state.selectedTargetIds.length === 0) {
+    return [];
   }
 
-  return state.targets.find((target) => target.id === state.selectedTargetId) || null;
+  return state.targets.filter((target) => state.selectedTargetIds.includes(target.id));
 };
-export const selectSelectedTargetExplanation = (state: RiskState) => {
-  if (!state.selectedTargetId) {
-    return null;
+export const selectSelectedTargetExplanations = (state: RiskState) => {
+  if (state.selectedTargetIds.length === 0) {
+    return {};
   }
 
-  return state.explanationsByTargetId[state.selectedTargetId] || null;
+  return Object.fromEntries(
+    state.selectedTargetIds
+      .filter((id) => id in state.explanationsByTargetId)
+      .map((id) => [id, state.explanationsByTargetId[id]]),
+  );
 };
 let hasInitializedRiskStoreSubscriptions = false;
 

@@ -8,8 +8,10 @@
   selectIsLowTrust,
   selectIsConnected,
   selectRiskConnectionError,
-  selectSelectedTarget,
-  selectSelectedTargetExplanation,
+  selectSelectedTargetIds,
+  selectSelectedTargets,
+  selectSelectedTargetExplanations,
+  selectDroppedTargetNotices,
 } from './useRiskStore';
 
 export {

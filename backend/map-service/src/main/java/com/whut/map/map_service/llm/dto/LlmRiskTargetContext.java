@@ -8,7 +8,7 @@ import lombok.Data;
 public class LlmRiskTargetContext {
     private String targetId;
     private String riskLevel;
-    private double currentDistanceNm;
+    private Double currentDistanceNm;
     private double dcpaNm;
     private double tcpaSec;
     private boolean approaching;

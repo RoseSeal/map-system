@@ -161,6 +161,81 @@ class LlmChatServiceTest {
                 .contains(request.getContent());
     }
 
+    @Test
+    void selectedTargetIdsInjectSelectedTargetDetails() throws Exception {
+        LlmProperties properties = buildProperties(true, 1000L, "zhipu");
+        properties.setChatContextMaxTargets(5);
+        StubLlmClient llmClient = new StubLlmClient();
+        llmClient.response = "target detail reply";
+        RiskContextHolder holder = new RiskContextHolder();
+        holder.update(com.whut.map.map_service.llm.dto.LlmRiskContext.builder()
+                .ownShip(com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext.builder()
+                        .id("own-1").longitude(120.0).latitude(30.0).sog(10.0).cog(90.0).build())
+                .targets(List.of(
+                        com.whut.map.map_service.llm.dto.LlmRiskTargetContext.builder()
+                                .targetId("target-1")
+                                .riskLevel(com.whut.map.map_service.engine.risk.RiskConstants.SAFE)
+                                .currentDistanceNm(5.0).dcpaNm(3.0).tcpaSec(600)
+                                .approaching(false).longitude(121.0).latitude(31.0)
+                                .speedKn(8.0).courseDeg(180.0)
+                                .build()))
+                .build());
+        LlmChatService service = new LlmChatService(
+                llmClient, properties, promptTemplateService, holder,
+                new RiskContextFormatter(properties), chatPayloadValidator);
+        ChatRequestPayload request = ChatRequestPayload.builder()
+                .conversationId("c-1").eventId("e-1").content("它距离多少")
+                .selectedTargetIds(List.of("target-1"))
+                .build();
+
+        CapturingChatCallback callback = new CapturingChatCallback();
+        service.handleChat(request, callback::captureReply, callback::captureError);
+        callback.await();
+
+        assertThat(llmClient.lastMessages.get(1).content())
+                .contains("【选中目标详情】")
+                .contains("目标船 target-1: 风险等级 SAFE")
+                .contains("位置: (121.0000, 31.0000)")
+                .contains("航速: 8.0节")
+                .contains("【用户问题】")
+                .contains("它距离多少");
+    }
+
+    @Test
+    void selectedTargetIdsFallsBackToSummaryWhenNoMatch() throws Exception {
+        LlmProperties properties = buildProperties(true, 1000L, "zhipu");
+        properties.setChatContextMaxTargets(5);
+        StubLlmClient llmClient = new StubLlmClient();
+        llmClient.response = "fallback reply";
+        RiskContextHolder holder = new RiskContextHolder();
+        holder.update(com.whut.map.map_service.llm.dto.LlmRiskContext.builder()
+                .ownShip(com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext.builder()
+                        .id("own-1").longitude(120.0).latitude(30.0).sog(10.0).cog(90.0).build())
+                .targets(List.of(
+                        com.whut.map.map_service.llm.dto.LlmRiskTargetContext.builder()
+                                .targetId("target-1")
+                                .riskLevel(com.whut.map.map_service.engine.risk.RiskConstants.WARNING)
+                                .currentDistanceNm(1.0).dcpaNm(0.5).tcpaSec(200)
+                                .approaching(true)
+                                .build()))
+                .build());
+        LlmChatService service = new LlmChatService(
+                llmClient, properties, promptTemplateService, holder,
+                new RiskContextFormatter(properties), chatPayloadValidator);
+        ChatRequestPayload request = ChatRequestPayload.builder()
+                .conversationId("c-1").eventId("e-1").content("hello")
+                .selectedTargetIds(List.of("nonexistent"))
+                .build();
+
+        CapturingChatCallback callback = new CapturingChatCallback();
+        service.handleChat(request, callback::captureReply, callback::captureError);
+        callback.await();
+
+        assertThat(llmClient.lastMessages.get(1).content())
+                .contains("【当前态势】")
+                .contains("目标船 target-1: 风险等级 WARNING");
+    }
+
     private LlmProperties buildProperties(boolean enabled, long timeoutMs, String provider) {
         LlmProperties properties = new LlmProperties();
         properties.setEnabled(enabled);

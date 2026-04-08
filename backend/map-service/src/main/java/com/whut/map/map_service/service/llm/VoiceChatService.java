@@ -127,6 +127,7 @@ public class VoiceChatService {
                 .conversationId(request.getConversationId())
                 .eventId(request.getEventId())
                 .content(content)
+                .selectedTargetIds(request.getSelectedTargetIds())
                 .build();
     }
 

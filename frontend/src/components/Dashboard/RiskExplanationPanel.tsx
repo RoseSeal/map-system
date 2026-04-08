@@ -3,7 +3,8 @@ import {
   useRiskStore,
   useAiCenterStore,
   selectAiCenterOpenRequestVersion,
-  selectSelectedTarget,
+  selectSelectedTargetIds,
+  selectDroppedTargetNotices,
   selectTargets,
   selectExplanationsByTargetId,
   selectChatMessages,
@@ -23,8 +24,11 @@ const PANEL_HEIGHT = '72vh';
 export function RiskExplanationPanel() {
   const targets = useRiskStore(selectTargets);
   const explanationsByTargetId = useRiskStore(selectExplanationsByTargetId);
-  const selectedTarget = useRiskStore(selectSelectedTarget);
+  const selectedTargetIds = useRiskStore(selectSelectedTargetIds);
+  const droppedTargetNotices = useRiskStore(selectDroppedTargetNotices);
   const selectTarget = useRiskStore((state) => state.selectTarget);
+  const deselectTarget = useRiskStore((state) => state.deselectTarget);
+  const clearDroppedTargetNotices = useRiskStore((state) => state.clearDroppedTargetNotices);
 
   const aiCenterOpenRequestVersion = useAiCenterStore(selectAiCenterOpenRequestVersion);
   const chatMessages = useAiCenterStore(selectChatMessages);
@@ -64,6 +68,17 @@ export function RiskExplanationPanel() {
       .filter((item): item is { target: RiskTarget; explanation: ExplanationPayload } => Boolean(item))
       .sort((l, r) => getRiskPriority(r.explanation.risk_level) - getRiskPriority(l.explanation.risk_level))
   ), [targets, explanationsByTargetId]);
+
+  const selectedTargetsForChip = useMemo(() => {
+    const chips: Array<{ id: string; riskLevel: string }> = [];
+    for (const id of selectedTargetIds) {
+      const target = targets.find((t) => t.id === id);
+      if (target) {
+        chips.push({ id: target.id, riskLevel: target.risk_assessment.risk_level });
+      }
+    }
+    return chips;
+  }, [selectedTargetIds, targets]);
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) {
@@ -200,7 +215,7 @@ export function RiskExplanationPanel() {
                 </div>
               ) : (
                 sortedExplainedTargets.map(({ target, explanation }) => {
-                  const isSelected = selectedTarget?.id === target.id;
+                  const isSelected = selectedTargetIds.includes(target.id);
                   const riskColor = getRiskColor(explanation.risk_level);
                   const riskHex = `rgb(${riskColor.join(',')})`;
 
@@ -272,6 +287,10 @@ export function RiskExplanationPanel() {
               voiceState={voiceCaptureState}
               voiceMode={activeVoiceMode}
               voiceError={voiceCaptureError}
+              selectedTargets={selectedTargetsForChip}
+              droppedTargetNotices={droppedTargetNotices}
+              onDeselectTarget={deselectTarget}
+              onClearDroppedNotices={clearDroppedTargetNotices}
               onChange={setChatInput}
               onSend={handleSendChat}
               onStartVoiceRecording={handleStartVoiceRecording}

@@ -2,7 +2,7 @@ import {
   useRiskStore,
   useAiCenterStore,
   selectTargets,
-  selectSelectedTarget,
+  selectSelectedTargetIds,
   selectExplanationsByTargetId,
 } from '../../store';
 import { getRiskColor } from '../../config';
@@ -11,7 +11,7 @@ export function TargetsPanel() {
   const targets = useRiskStore(selectTargets);
   const explanationsByTargetId = useRiskStore(selectExplanationsByTargetId);
   const selectTarget = useRiskStore((state) => state.selectTarget);
-  const selectedTarget = useRiskStore(selectSelectedTarget);
+  const selectedTargetIds = useRiskStore(selectSelectedTargetIds);
   const requestAiCenterOpen = useAiCenterStore((state) => state.requestAiCenterOpen);
 
   if (targets.length === 0) {
@@ -36,7 +36,7 @@ export function TargetsPanel() {
         {sortedTargets.map((target) => {
           const riskColor = getRiskColor(target.risk_assessment.risk_level);
           const riskHex = `rgb(${riskColor.join(',')})`;
-          const isSelected = selectedTarget?.id === target.id;
+          const isSelected = selectedTargetIds.includes(target.id);
           const explanation = explanationsByTargetId[target.id];
 
           return (

@@ -8,6 +8,7 @@ import type {
 } from '../types/schema';
 import type { AiCenterChatMessage } from '../types/aiCenter';
 import { chatWsService } from '../services/chatWsService';
+import { useRiskStore } from './useRiskStore';
 
 export type VoiceCaptureState = 'idle' | 'recording' | 'transcribing' | 'sent' | 'error';
 
@@ -98,9 +99,11 @@ export const useAiCenterStore = create<AiCenterState>()(
       }
 
       const conversationId = get().conversationId;
+      const selectedTargetIds = useRiskStore.getState().selectedTargetIds;
       const eventId = chatWsService.send('CHAT', {
         conversation_id: conversationId,
         content: text,
+        ...(selectedTargetIds.length > 0 && { selected_target_ids: selectedTargetIds }),
       });
 
       if (!eventId) {
@@ -139,11 +142,13 @@ export const useAiCenterStore = create<AiCenterState>()(
       }
 
       const conversationId = get().conversationId;
+      const selectedTargetIds = useRiskStore.getState().selectedTargetIds;
       const eventId = chatWsService.send('SPEECH', {
         conversation_id: conversationId,
         audio_data: trimmedAudio,
         audio_format: trimmedFormat,
         mode,
+        ...(selectedTargetIds.length > 0 && { selected_target_ids: selectedTargetIds }),
       });
 
       if (!eventId) {

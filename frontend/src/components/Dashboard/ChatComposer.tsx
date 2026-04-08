@@ -1,6 +1,11 @@
-﻿import type { KeyboardEvent, MouseEvent } from 'react';
+﻿import { type KeyboardEvent, type MouseEvent, useEffect, useState } from 'react';
 import type { VoiceCaptureState } from '../../store/useAiCenterStore';
 import type { SpeechMode } from '../../types/schema';
+
+interface SelectedTargetChip {
+  id: string;
+  riskLevel: string;
+}
 
 interface ChatComposerProps {
   value: string;
@@ -10,6 +15,10 @@ interface ChatComposerProps {
   voiceState: VoiceCaptureState;
   voiceMode?: SpeechMode | null;
   voiceError?: string | null;
+  selectedTargets?: SelectedTargetChip[];
+  droppedTargetNotices?: string[];
+  onDeselectTarget?: (id: string) => void;
+  onClearDroppedNotices?: () => void;
   onChange: (value: string) => void;
   onSend: () => void;
   onStartVoiceRecording: () => void;
@@ -26,6 +35,10 @@ export function ChatComposer({
   voiceState,
   voiceMode = null,
   voiceError,
+  selectedTargets = [],
+  droppedTargetNotices = [],
+  onDeselectTarget,
+  onClearDroppedNotices,
   onChange,
   onSend,
   onStartVoiceRecording,
@@ -33,6 +46,18 @@ export function ChatComposer({
   onFocus,
   onBlur,
 }: ChatComposerProps) {
+  const [visibleDropped, setVisibleDropped] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (droppedTargetNotices.length === 0) return;
+    setVisibleDropped(droppedTargetNotices);
+    const timer = setTimeout(() => {
+      setVisibleDropped([]);
+      onClearDroppedNotices?.();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [droppedTargetNotices, onClearDroppedNotices]);
+
   const hasText = Boolean(value.trim());
   const canSend = !disabled && hasText;
   const canStartVoice = voiceSupported && !disabled && !hasText && voiceState !== 'transcribing';
@@ -72,6 +97,36 @@ export function ChatComposer({
 
   return (
     <div className="shrink-0 border-t border-slate-300 dark:border-white/10 bg-white/80 dark:bg-slate-950/80 p-3 space-y-2 transition-colors duration-300">
+      {selectedTargets.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedTargets.map((target) => (
+            <span
+              key={target.id}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-slate-800/60 px-2 py-0.5 text-[10px] text-slate-600 dark:text-slate-300"
+            >
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: getRiskChipColor(target.riskLevel) }}
+              />
+              <span className="font-mono">{target.id}</span>
+              {onDeselectTarget && (
+                <button
+                  type="button"
+                  onClick={() => onDeselectTarget(target.id)}
+                  className="ml-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  &times;
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+      {visibleDropped.length > 0 && (
+        <div className="text-[10px] text-amber-600 dark:text-amber-400/80 animate-pulse">
+          目标 {visibleDropped.join('、')} 已失去跟踪，已自动移除
+        </div>
+      )}
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -186,6 +241,16 @@ function getVoiceStatusText(
       return '录音流程失败，请重新录音';
     default:
       return '输入框为空时可直接开始录音';
+  }
+}
+
+function getRiskChipColor(riskLevel: string): string {
+  switch (riskLevel) {
+    case 'ALARM': return '#ef4444';
+    case 'WARNING': return '#f59e0b';
+    case 'CAUTION': return '#3b82f6';
+    case 'SAFE': return '#22c55e';
+    default: return '#94a3b8';
   }
 }
 

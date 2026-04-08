@@ -11,6 +11,7 @@
 | v1 archived | 2026-04-01 | v1 停止生效，归档至 `docs/event-schema-history/SCHEMA_V1.md` |
 | v2-draft | 2026-04-01 | 确认 risk/chat 拆连接，定义 SSE + WebSocket 双协议结构 |
 | v2 | 2026-04-01 | 协议已落地，文档按当前实现修订 |
+| v2 | 2026-04-08 | CHAT/SPEECH payload 新增可选字段 `selected_target_ids`，用于选中目标定向注入 |
 
 ## 1. 文档定位
 
@@ -279,7 +280,8 @@ data: {"event_id":"server-event-xxx", ...payload}
   "payload": {
     "conversation_id": "conversation-xxx",
     "event_id": "client-event-xxx",
-    "content": "请评估当前风险"
+    "content": "请评估当前风险",
+    "selected_target_ids": ["413999001"]
   }
 }
 ```
@@ -291,6 +293,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `conversation_id` | `string` | 客户端会话 ID |
 | `event_id` | `string` | 当前用户请求事件 ID |
 | `content` | `string` | 用户问题文本 |
+| `selected_target_ids` | `string[]` | 可选，用户选中的目标船 ID 列表；存在时后端注入选中目标的完整数据 |
 
 ### 6.2 `SPEECH`
 
@@ -303,7 +306,8 @@ data: {"event_id":"server-event-xxx", ...payload}
     "event_id": "client-event-xxx",
     "audio_data": "<base64>",
     "audio_format": "webm",
-    "mode": "direct"
+    "mode": "direct",
+    "selected_target_ids": ["413999001"]
   }
 }
 ```
@@ -317,6 +321,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `audio_data` | `string` | Base64 音频内容 |
 | `audio_format` | `string` | 音频格式 |
 | `mode` | `string` | `direct` / `preview` |
+| `selected_target_ids` | `string[]` | 可选，用户选中的目标船 ID 列表；`direct` 模式下透传至 LLM 链路 |
 
 约束：
 

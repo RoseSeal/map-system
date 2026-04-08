@@ -164,6 +164,7 @@ export interface ChatRequestPayload {
   conversation_id: string;
   event_id: string;
   content: string;
+  selected_target_ids?: string[];
 }
 
 export interface SpeechRequestPayload {
@@ -172,6 +173,7 @@ export interface SpeechRequestPayload {
   audio_data: string;
   audio_format: string;
   mode: SpeechMode;
+  selected_target_ids?: string[];
 }
 
 export interface ChatReplyPayload {

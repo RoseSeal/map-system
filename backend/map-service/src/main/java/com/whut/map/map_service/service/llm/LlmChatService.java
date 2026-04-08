@@ -89,18 +89,29 @@ public class LlmChatService {
                 ChatRole.SYSTEM,
                 promptTemplateService.getSystemPrompt(PromptScene.CHAT)
         );
-        String riskSummary = riskContextFormatter.formatSummary(
-                riskContextHolder.getCurrent(),
-                riskContextHolder.getUpdatedAt()
-        );
-        if (!StringUtils.hasText(riskSummary)) {
+        String riskContext = resolveRiskContext(request);
+        if (!StringUtils.hasText(riskContext)) {
             return List.of(systemMessage, new LlmChatMessage(ChatRole.USER, request.getContent()));
         }
 
         return List.of(
                 systemMessage,
-                new LlmChatMessage(ChatRole.USER, buildUserMessageContent(riskSummary, request.getContent()))
+                new LlmChatMessage(ChatRole.USER, buildUserMessageContent(riskContext, request.getContent()))
         );
+    }
+
+    private String resolveRiskContext(ChatRequestPayload request) {
+        var context = riskContextHolder.getCurrent();
+        var updatedAt = riskContextHolder.getUpdatedAt();
+
+        if (request.getSelectedTargetIds() != null && !request.getSelectedTargetIds().isEmpty()) {
+            String selected = riskContextFormatter.formatSelectedTargets(context, request.getSelectedTargetIds(), updatedAt);
+            if (selected != null) {
+                return selected;
+            }
+        }
+
+        return riskContextFormatter.formatSummary(context, updatedAt);
     }
 
     private String buildUserMessageContent(String riskSummary, String userContent) {

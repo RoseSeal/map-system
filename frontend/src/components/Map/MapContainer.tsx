@@ -75,7 +75,7 @@ export function MapContainer() {
   const targets = useRiskStore(selectTargets);
   const allTargets = targets;
   const environment = useRiskStore(selectEnvironment);
-  const selectedTargetId = useRiskStore((state) => state.selectedTargetId);
+  const selectedTargetIds = useRiskStore((state) => state.selectedTargetIds);
   const selectTarget = useRiskStore((state) => state.selectTarget);
   const { isDarkMode } = useThemeStore();
   const safetyContourVal = environment?.safety_contour_val ?? 10;
@@ -280,12 +280,14 @@ export function MapContainer() {
     );
 
     if (allTargets.length > 0) {
-      const selectedTarget = allTargets.find((target) => target.id === selectedTargetId);
-      if (selectedTarget) {
+      const selectedTargets = allTargets.filter((target) => selectedTargetIds.includes(target.id));
+      if (selectedTargets.length > 0) {
         layers.push(
           new ScatterplotLayer({
             id: 'selected-target-highlight',
-            data: [{ position: [selectedTarget.position.lon, selectedTarget.position.lat] as LonLat }],
+            data: selectedTargets.map((target) => ({
+              position: [target.position.lon, target.position.lat] as LonLat,
+            })),
             getPosition: (d: { position: LonLat }) => [d.position[0], d.position[1], 32],
             getRadius: 95,
             radiusUnits: 'meters',
@@ -331,7 +333,7 @@ export function MapContainer() {
     }
 
     return layers;
-  }, [allTargets, ownShip, selectedTargetId, selectTarget, targets, isDarkMode]);
+  }, [allTargets, ownShip, selectedTargetIds, selectTarget, targets, isDarkMode]);
 
   useEffect(() => {
     if (!deckOverlay.current) return;
