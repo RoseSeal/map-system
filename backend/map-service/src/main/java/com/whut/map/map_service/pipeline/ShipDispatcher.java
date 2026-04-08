@@ -93,6 +93,7 @@ public class ShipDispatcher {
             return null;
         }
 
+        shipStateStore.triggerCleanupIfNeeded();
         return new ShipDispatchContext(message, shipStateStore.getOwnShip(), shipStateStore.getAll());
     }
 
@@ -187,6 +188,35 @@ public class ShipDispatcher {
         }
 
         return currentDistancesNm;
+    }
+
+    public void refreshAfterCleanup() {
+        ShipStatus ownShip = shipStateStore.getOwnShip();
+        if (ownShip == null) {
+            return;
+        }
+
+        Collection<ShipStatus> allShips = shipStateStore.getAll().values();
+
+        Map<String, CpaTcpaResult> cpaResults = cpaTcpaBatchCalculator.calculateAll(ownShip, allShips);
+
+        RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
+                ownShip, allShips, cpaResults, null, null);
+
+        RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
+                ownShip, allShips, cpaResults, riskResult,
+                Collections.emptyMap(), null, null);
+        if (dto == null) {
+            return;
+        }
+
+        Map<String, Double> currentDistancesNm = buildCurrentDistancesNm(ownShip, allShips);
+        LlmRiskContext llmContext = llmRiskContextAssembler.assemble(
+                ownShip, allShips, currentDistancesNm, cpaResults, riskResult);
+
+        riskContextHolder.update(llmContext);
+        riskStreamPublisher.publishRiskUpdate(dto);
+        log.debug("Published refreshed risk snapshot after cleanup, targets={}", allShips.size() - 1);
     }
 
     private void logTargetCpa(ShipDispatchContext context, Map<String, CpaTcpaResult> cpaResults) {

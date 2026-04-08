@@ -1,5 +1,7 @@
 package com.whut.map.map_service.config.scheduling;
 
+import com.whut.map.map_service.pipeline.ShipDispatcher;
+import com.whut.map.map_service.store.ShipStateStore;
 import com.whut.map.map_service.transport.risk.SseEmitterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -12,10 +14,19 @@ import org.springframework.scheduling.annotation.Scheduled;
 public class SseKeepaliveScheduler {
 
     private final SseEmitterRegistry sseEmitterRegistry;
+    private final ShipStateStore shipStateStore;
+    private final ShipDispatcher shipDispatcher;
 
     @Scheduled(initialDelay = 30000L, fixedRate = 30000L)
     public void sendKeepalive() {
         sseEmitterRegistry.sendKeepalive();
+    }
+
+    @Scheduled(initialDelay = 30000L, fixedRate = 30000L)
+    public void cleanupExpiredShips() {
+        if (shipStateStore.triggerCleanupIfNeeded()) {
+            shipDispatcher.refreshAfterCleanup();
+        }
     }
 }
 
