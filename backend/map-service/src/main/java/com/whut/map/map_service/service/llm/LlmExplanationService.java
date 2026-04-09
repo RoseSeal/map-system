@@ -11,9 +11,9 @@ import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.llm.prompt.PromptScene;
 import com.whut.map.map_service.llm.prompt.PromptTemplateService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -23,9 +23,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import static com.whut.map.map_service.config.llm.LlmExecutorConfig.LLM_EXECUTOR;
 
 @Slf4j
 @Component
@@ -34,7 +35,8 @@ public class LlmExplanationService {
     private final LlmProperties llmProperties;
     private final LlmClient llmClient;
     private final PromptTemplateService promptTemplateService;
-    private final ExecutorService llmExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    @Qualifier(LLM_EXECUTOR)
+    private final ExecutorService llmExecutor;
 
     public record LlmExplanationError(ChatErrorCode errorCode, String errorMessage) {
     }
@@ -148,10 +150,5 @@ public class LlmExplanationService {
 
     private String resolveProviderName() {
         return StringUtils.hasText(llmProperties.getProvider()) ? llmProperties.getProvider() : "llm";
-    }
-
-    @PreDestroy
-    public void shutdownExecutor() {
-        llmExecutor.shutdownNow();
     }
 }

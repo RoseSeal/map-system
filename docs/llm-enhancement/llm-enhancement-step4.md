@@ -65,9 +65,19 @@ public class ConversationMemory {
 
 ```java
 static class ConversationEntry {
-    private final ReentrantLock lock = new ReentrantLock();
+    private final Semaphore permit = new Semaphore(1);
     private final Deque<LlmChatMessage> messages = new ArrayDeque<>();
     private volatile long lastAccessTimeMillis = System.currentTimeMillis();
+
+    boolean tryAcquire() {
+        lastAccessTimeMillis = System.currentTimeMillis();
+        return permit.tryAcquire();
+    }
+
+    void release() {
+        lastAccessTimeMillis = System.currentTimeMillis();
+        permit.release();
+    }
 
     synchronized void append(LlmChatMessage message, int maxMessages) {
         messages.addLast(message);
@@ -85,26 +95,27 @@ static class ConversationEntry {
 }
 ```
 
-**两层锁职责分离**：
+**并发控制职责分离**：
 
-| 锁 | 归属 | 职责 | 粒度 |
-|----|------|------|------|
+| 机制 | 归属 | 职责 | 粒度 |
+|------|------|------|------|
 | `synchronized(this)` | `ConversationEntry` 内部 | 保护 `ArrayDeque` 读写不并发 | 单次 `append`/`snapshot` 调用 |
-| `ReentrantLock lock` | `ConversationEntry` 字段 | 保证同一会话的请求串行处理（读历史 → LLM 调用 → 写回历史 整个流程互斥） | `LlmChatService.handleChat` 全流程 |
+| `Semaphore permit` | `ConversationEntry` 字段 | 保证同一会话仅允许一个 in-flight LLM 请求 | `LlmChatService.handleChat` 全流程 |
 
-`synchronized` 保证数据结构安全，`ReentrantLock` 保证业务语义顺序。两者不冲突：`handleChat` 持有 `lock` 期间会调用 `snapshot()`/`append()`，后者短暂获取 `synchronized` 锁即返回。
+之所以不使用 `ReentrantLock`，是因为 `handleChat` 在请求线程获取并发控制标记，但在 `CompletableFuture.whenComplete` 的异步线程中释放；`ReentrantLock` 要求加锁与解锁发生在同一线程，跨线程释放会触发 `IllegalMonitorStateException`。`Semaphore` 的 `tryAcquire/release` 不受此约束，更适合“请求线程提交、回调线程释放”的异步模型。
 
-同步策略：`ConcurrentHashMap` 保证 entry 级别的原子查找/插入，entry 内部的 `append` 和 `snapshot` 通过 `synchronized(this)` 互斥，确保读写不会在同一个 `ArrayDeque` 上并发。锁粒度为单个会话，不同 `conversationId` 之间无竞争。
+同步策略：`ConcurrentHashMap` 保证 entry 级别的原子查找/插入，entry 内部的 `append` 和 `snapshot` 通过 `synchronized(this)` 互斥，确保读写不会在同一个 `ArrayDeque` 上并发；`Semaphore` 保证同一 `conversationId` 下最多存在一个 in-flight 请求。粒度为单个会话，不同 `conversationId` 之间无竞争。
 
 ### 核心方法
 
 | 方法 | 签名 | 行为 |
 |------|------|------|
-| `append` | `void append(String conversationId, LlmChatMessage message)` | 委托 `entry.append()`。通过 `computeIfAbsent` 获取或创建 entry |
+| `append` | `void append(String conversationId, LlmChatMessage message)` | 仅在 entry 已存在时委托 `entry.append()`；不复活已被 `clear()` 移除的会话 |
 | `getHistory` | `List<LlmChatMessage> getHistory(String conversationId)` | 委托 `entry.snapshot()`，返回不可变副本。不存在则返回空 list |
-| `getLock` | `ReentrantLock getLock(String conversationId)` | 返回 `entry.lock`。通过 `computeIfAbsent` 获取或创建 entry，锁的生命周期与 entry 绑定 |
-| `clear` | `void clear(String conversationId)` | `store.remove(conversationId)`，直接移除整个 entry（lock 随之被 GC） |
-| `evictExpired` | `void evictExpired()` | 遍历 store，移除 lastAccessTime 距当前超过 ttlMillis 的条目（entry 连同 lock 一起回收） |
+| `tryAcquire` | `ConversationPermit tryAcquire(String conversationId)` | 通过 `computeIfAbsent` 获取或创建 entry；若当前无 in-flight 请求则返回 permit，否则返回 `null` |
+| `ConversationPermit.close` | `void close()` | 释放对应 entry 的并发 permit；通过 permit 自身关闭，避免 `ConversationMemory` 暴露额外释放接口 |
+| `clear` | `void clear(String conversationId)` | `store.remove(conversationId)`，直接移除整个 entry（消息与 permit 一起回收） |
+| `evictExpired` | `void evictExpired()` | 遍历 store，移除 lastAccessTime 距当前超过 ttlMillis 的条目（entry 连同 permit 一起回收） |
 
 ### 设计约束
 
@@ -112,7 +123,7 @@ static class ConversationEntry {
 - 存储上限通过 deque size 硬控，不依赖外部 token 计数
 - `append` 内部按轮对齐裁剪：当 `messages.size() > maxTurns * 2` 时，连续 `pollFirst()` 两次（移除一个完整轮次）
 - 不在 `getHistory` 中做 TTL 检查（读路径保持轻量），TTL 清理由定时任务处理
-- `clear` 使用 `store.remove()` 而非 entry 内部清空，避免后续 append 复活已清理的 entry
+- `clear` 使用 `store.remove()` 而非 entry 内部清空；`append` 仅对已存在 entry 生效，避免 late reply 在会话被清理后重建历史
 
 ---
 
@@ -126,11 +137,15 @@ static class ConversationEntry {
 @Scheduled(fixedDelayString = "${llm.conversation-evict-interval-ms:60000}")
 public void evictExpired() {
     long now = System.currentTimeMillis();
-    store.entrySet().removeIf(entry ->
-        (now - entry.getValue().lastAccessTimeMillis) > ttlMillis
-    );
+    store.entrySet().removeIf(entry -> {
+        ConversationEntry value = entry.getValue();
+        return value.permit.availablePermits() > 0
+                && (now - value.lastAccessTimeMillis) >= ttlMillis;
+    });
 }
 ```
+
+实现约束：`evictExpired()` 只清理空闲会话，不清理 permit 已被占用的 in-flight 会话。否则若一次 LLM 调用耗时超过 TTL，entry 会在回调写回前被移除，导致历史静默丢失。
 
 ### 设计决策：为什么不绑定 WebSocket 生命周期
 
@@ -188,17 +203,27 @@ public void evictExpired() {
 
 ```java
 private void handleClearHistory(WebSocketSession session, JsonNode payloadNode) {
-    String conversationId = readText(payloadNode, ProtocolFields.CONVERSATION_ID);
-    String eventId = readText(payloadNode, ProtocolFields.EVENT_ID);
-    if (!StringUtils.hasText(conversationId)) {
-        sendError(session, eventId, ChatErrorCode.INVALID_CHAT_REQUEST,
+    ClearHistoryPayload payload = objectMapper.treeToValue(payloadNode, ClearHistoryPayload.class);
+    if (!StringUtils.hasText(payload.getEventId())) {
+        sendError(session, null, ChatErrorCode.INVALID_CHAT_REQUEST,
+                  "event_id is required for CLEAR_HISTORY.");
+        return;
+    }
+    if (!StringUtils.hasText(payload.getConversationId())) {
+        sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST,
                   "conversation_id is required for CLEAR_HISTORY.");
         return;
     }
-    conversationMemory.clear(conversationId);
-    sendClearHistoryAck(session, conversationId, eventId);
+    if (!conversationMemory.clear(payload.getConversationId())) {
+        sendError(session, payload.getEventId(), ChatErrorCode.CONVERSATION_BUSY,
+                  "Previous request in this conversation is still processing.");
+        return;
+    }
+    sendClearHistoryAck(session, payload.getConversationId(), payload.getEventId());
 }
 ```
+
+`CLEAR_HISTORY` 只允许在会话空闲时生效；若同一 `conversation_id` 仍有 in-flight 请求，后端返回 `CONVERSATION_BUSY`，避免清空期间创建新 entry 并导致旧回复回流到新历史。
 
 **文件**: `backend/.../transport/protocol/ProtocolFields.java`
 - 新增常量 `CONVERSATION_ID = "conversation_id"`
@@ -269,6 +294,39 @@ private List<LlmChatMessage> buildMessages(ChatRequestPayload request) {
 }
 ```
 
+### 风险上下文注入语义
+
+Step 4 的最终语义不是“会话开始时注入一次风险上下文”，而是“**每条消息都重新注入该条消息发送时刻的最新风险快照**”。
+
+- 风险上下文来源于 `RiskContextHolder` 的当前快照
+- 每次 `handleChat()` 调用都会重新取一次快照并组装到本轮消息列表
+- 风险上下文**不会写入** `ConversationMemory`
+- `ConversationMemory` 只保存纯用户文本与助手回复
+
+因此，历史消息延续的是语言上下文；风险数据延续的是实时快照，而不是历史累积。
+
+### 合并风险快照（summary + selected targets）
+
+`resolveRiskContext()` 不再采用“有 `selectedTargetIds` 时只注入选中目标，否则只注入 summary”的 `either/or` 逻辑，而是统一调用 `RiskContextFormatter.formatConsolidated(...)`：
+
+```java
+private String resolveRiskContext(ChatRequestPayload request) {
+    var context = riskContextHolder.getCurrent();
+    var updatedAt = riskContextHolder.getUpdatedAt();
+    return riskContextFormatter.formatConsolidated(context, request.getSelectedTargetIds(), updatedAt);
+}
+```
+
+`formatConsolidated(...)` 的行为：
+
+1. 始终先展示整体态势头部（更新时间 + 本船信息）
+2. 展示非 `SAFE` 目标的 Top-N 摘要
+3. 若用户选中了目标船，则把选中目标补充进同一份快照
+4. 若选中的目标已在 Top-N 中，则升级为详情展示，而不是重复输出两次
+5. 若选中的目标不在 Top-N 中，则追加到 `【用户关注目标】` 小节
+
+这意味着用户选中目标后，LLM 既保留整体态势感知，又能拿到用户关注目标的完整详情，不再丢失全局视角。
+
 ### handleChat 改造：写回历史
 
 在 `onSuccess` 回调中，将用户消息和助手回复写回 `ConversationMemory`：
@@ -296,6 +354,33 @@ CompletableFuture
 ### VoiceChatService 无需改动
 
 `VoiceChatService.forwardTranscriptToLlm()` 构造 `ChatRequestPayload` 时已经传入 `conversationId`，调用 `llmChatService.handleChat()` 后会自动走上述逻辑。
+
+### 最终历史消息管理模式
+
+最终发送给 LLM 的消息序列为：
+
+```text
+SYSTEM:      system prompt
+USER:        本轮请求时刻的实时风险快照
+USER:        历史用户消息 1
+ASSISTANT:   历史助手回复 1
+...
+USER:        当前用户问题
+```
+
+最终写回 `ConversationMemory` 的只有：
+
+```text
+USER:      当前用户问题
+ASSISTANT: 当前助手回复
+```
+
+不会写入历史的内容：
+
+- system prompt
+- 风险摘要
+- 选中目标详情
+- 其他运行时上下文
 
 ---
 
@@ -329,8 +414,8 @@ LLM provider 若因 token 超限拒绝请求，会走现有的 `LLM_REQUEST_FAIL
 private List<LlmChatMessage> trimToTokenBudget(List<LlmChatMessage> messages,
                                                 int historyStartIndex,
                                                 int historyEndIndex) {
-    int totalChars = messages.stream().mapToInt(m -> m.content().length()).sum();
-    int budgetChars = llmProperties.getConversationTokenBudget();
+        int totalChars = messages.stream().mapToInt(m -> m.content().length()).sum();
+        int budgetChars = llmProperties.getConversationTokenBudget();
 
     if (totalChars <= budgetChars) {
         return messages;
@@ -340,6 +425,7 @@ private List<LlmChatMessage> trimToTokenBudget(List<LlmChatMessage> messages,
     List<LlmChatMessage> result = new ArrayList<>(messages);
     int removeIndex = historyStartIndex;
 
+    // 历史消息按 USER/ASSISTANT 成对写入；若出现奇数条历史，视为异常状态，此处不裁单条以免进一步破坏对齐
     while (totalChars > budgetChars && removeIndex < historyEndIndex - 1) {
         totalChars -= result.get(removeIndex).content().length();
         totalChars -= result.get(removeIndex + 1).content().length();
@@ -373,18 +459,18 @@ private List<LlmChatMessage> trimToTokenBudget(List<LlmChatMessage> messages,
 
 ### 策略：per-conversationId 串行化
 
-锁归属于 `ConversationEntry`（见第一节），`LlmChatService` 通过 `conversationMemory.getLock(conversationId)` 获取。锁的生命周期与 entry 绑定，TTL 过期时 entry 被移除，lock 随之被 GC 回收，无泄漏风险。
+并发 permit 归属于 `ConversationEntry`（见第一节），`LlmChatService` 通过 `conversationMemory.tryAcquire(conversationId)` 获取。permit 的生命周期与 entry 绑定，TTL 过期时 entry 被移除，permit 随之回收，无泄漏风险。
 
-`handleChat` 在提交异步任务前获取锁，在 `whenComplete` 回调中释放：
+`handleChat` 在提交异步任务前尝试获取 permit，在 `whenComplete` 回调中关闭 permit：
 
 ```java
 public void handleChat(ChatRequestPayload request, ...) {
     // ... validation ...
 
     String conversationId = request.getConversationId();
-    ReentrantLock lock = conversationMemory.getLock(conversationId);
+    ConversationPermit permit = conversationMemory.tryAcquire(conversationId);
 
-    if (!lock.tryLock()) {
+    if (permit == null) {
         onError.accept(ChatErrorCode.CONVERSATION_BUSY,
                 "Previous request in this conversation is still processing.");
         return;
@@ -403,16 +489,16 @@ public void handleChat(ChatRequestPayload request, ...) {
                     // ... 错误处理 ...
                 }
             } finally {
-                lock.unlock();
+                permit.close();
             }
         });
 }
 ```
 
 要点：
-- `tryLock()` 非阻塞：若同一会话上一轮请求尚未完成，立即返回 `CONVERSATION_BUSY` 错误，而非排队等待
-- 锁归属 `ConversationEntry`，生命周期由 `ConversationMemory` 的 TTL 统一管理，无需 `LlmChatService` 额外维护锁集合
-- 锁粒度为单个 conversationId，不同会话之间完全并行
+- `tryAcquire()` 非阻塞：若同一会话上一轮请求尚未完成，立即返回 `CONVERSATION_BUSY` 错误，而非排队等待
+- permit 归属 `ConversationEntry`，生命周期由 `ConversationMemory` 的 TTL 统一管理，无需 `LlmChatService` 额外维护会话级 busy map；释放通过 `ConversationPermit.close()` 完成
+- 粒度为单个 conversationId，不同会话之间完全并行
 
 ### ChatErrorCode 扩展
 
@@ -431,14 +517,13 @@ public void handleChat(ChatRequestPayload request, ...) {
 | `llm.conversation-evict-interval-ms` | long | 60000 | TTL 清理定时任务间隔（毫秒） |
 | `llm.conversation-token-budget` | int | 6000 | 消息序列总字符数预算，超出后从历史最旧端裁剪 |
 
-**文件**: `backend/.../resources/application.yml`
+**文件**: `backend/.../resources/application.properties`
 
-```yaml
-llm:
-  conversation-max-turns: 10
-  conversation-ttl-minutes: 30
-  conversation-evict-interval-ms: 60000
-  conversation-token-budget: 6000
+```properties
+llm.conversation-max-turns=10
+llm.conversation-ttl-minutes=30
+llm.conversation-evict-interval-ms=60000
+llm.conversation-token-budget=6000
 ```
 
 ---
@@ -630,6 +715,17 @@ export const selectIsChatSending = (state: AiCenterState) => state.chatMessages.
 ```
 
 移除 `request_type === 'CHAT'` 过滤，任何 pending 的用户消息（CHAT 或 SPEECH direct）均禁用发送。preview 模式的 pending 在转录完成时已清除，不受影响。
+
+同时，`RiskExplanationPanel` 传给 `ChatComposer` 的 `disabled` prop 也需绑定 `isChatSending`，否则即使 selector 已修正，输入框和发送按钮仍不会真正禁用：
+
+```tsx
+<ChatComposer
+  value={chatInput}
+  disabled={isChatSending}
+  isSending={isChatSending}
+  ...
+/>
+```
 
 ---
 

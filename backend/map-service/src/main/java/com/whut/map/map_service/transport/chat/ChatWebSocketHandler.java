@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whut.map.map_service.config.properties.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.*;
+import com.whut.map.map_service.service.llm.ConversationMemory;
 import com.whut.map.map_service.service.llm.LlmChatService;
 import com.whut.map.map_service.service.llm.VoiceChatService;
 import com.whut.map.map_service.transport.protocol.ProtocolConnections;
@@ -30,6 +31,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final WhisperProperties whisperProperties;
     private final LlmChatService llmChatService;
     private final VoiceChatService voiceChatService;
+    private final ConversationMemory conversationMemory;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -72,6 +74,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             case PING -> handlePing(session, envelope.getPayload());
             case CHAT -> handleChat(session, envelope.getPayload());
             case SPEECH -> handleSpeech(session, envelope.getPayload());
+            case CLEAR_HISTORY -> handleClearHistory(session, envelope.getPayload());
             default -> sendError(session, readText(envelope.getPayload(), ProtocolFields.EVENT_ID), ChatErrorCode.INVALID_CHAT_REQUEST, "Unsupported message type.");
         }
     }
@@ -127,6 +130,40 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         );
     }
 
+    private void handleClearHistory(WebSocketSession session, JsonNode payloadNode) {
+        if (payloadNode == null || payloadNode.isNull()) {
+            sendError(session, null, ChatErrorCode.INVALID_CHAT_REQUEST, "CLEAR_HISTORY payload is required.");
+            return;
+        }
+
+        final ClearHistoryPayload payload;
+        try {
+            payload = objectMapper.treeToValue(payloadNode, ClearHistoryPayload.class);
+        } catch (Exception e) {
+            sendError(session, readText(payloadNode, ProtocolFields.EVENT_ID), ChatErrorCode.INVALID_CHAT_REQUEST,
+                    "CLEAR_HISTORY payload format is invalid.");
+            return;
+        }
+
+        if (!StringUtils.hasText(payload.getEventId())) {
+            sendError(session, null, ChatErrorCode.INVALID_CHAT_REQUEST, "event_id is required for CLEAR_HISTORY.");
+            return;
+        }
+        if (!StringUtils.hasText(payload.getConversationId())) {
+            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST,
+                    "conversation_id is required for CLEAR_HISTORY.");
+            return;
+        }
+
+        boolean cleared = conversationMemory.clear(payload.getConversationId());
+        if (!cleared) {
+            sendError(session, payload.getEventId(), ChatErrorCode.CONVERSATION_BUSY,
+                    "Previous request in this conversation is still processing.");
+            return;
+        }
+        sendClearHistoryAck(session, payload.getConversationId(), payload.getEventId());
+    }
+
     private void sendChatReply(
             WebSocketSession session,
             String conversationId,
@@ -160,6 +197,20 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .timestamp(Instant.now().toString())
                 .build();
         sendDownlink(session, ChatMessageType.SPEECH_TRANSCRIPT, payload);
+    }
+
+    private void sendClearHistoryAck(
+            WebSocketSession session,
+            String conversationId,
+            String replyToEventId
+    ) {
+        ClearHistoryAckPayload payload = ClearHistoryAckPayload.builder()
+                .eventId(generateEventId())
+                .conversationId(conversationId)
+                .replyToEventId(replyToEventId)
+                .timestamp(Instant.now().toString())
+                .build();
+        sendDownlink(session, ChatMessageType.CLEAR_HISTORY_ACK, payload);
     }
 
     private void sendError(

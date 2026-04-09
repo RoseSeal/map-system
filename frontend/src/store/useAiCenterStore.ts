@@ -97,6 +97,9 @@ export const useAiCenterStore = create<AiCenterState>()(
       if (!text) {
         return false;
       }
+      if (hasPendingConversationRequest(get())) {
+        return false;
+      }
 
       const conversationId = get().conversationId;
       const selectedTargetIds = useRiskStore.getState().selectedTargetIds;
@@ -138,6 +141,9 @@ export const useAiCenterStore = create<AiCenterState>()(
       const trimmedAudio = audioData.trim();
       const trimmedFormat = audioFormat.trim();
       if (!trimmedAudio || !trimmedFormat) {
+        return false;
+      }
+      if (hasPendingConversationRequest(get())) {
         return false;
       }
 
@@ -188,6 +194,9 @@ export const useAiCenterStore = create<AiCenterState>()(
 
     appendChatReply: (payload: ChatReplyPayload) => {
       set((state) => {
+        if (payload.conversation_id !== state.conversationId) {
+          return state;
+        }
         if (state.chatMessages.some((message) => message.event_id === payload.event_id)) {
           return {
             pendingChatEventIds: {
@@ -241,6 +250,9 @@ export const useAiCenterStore = create<AiCenterState>()(
       }
 
       set((state) => {
+        if (payload.conversation_id !== state.conversationId) {
+          return state;
+        }
         const isPreview = state.activeVoiceEventId === payload.reply_to_event_id && state.activeVoiceMode === 'preview';
 
         return {
@@ -275,33 +287,42 @@ export const useAiCenterStore = create<AiCenterState>()(
     appendChatError: (payload: ChatErrorPayload) => {
       const targetEventId = payload.reply_to_event_id;
 
-      set((state) => ({
-        latestChatError: payload,
-        chatMessages: targetEventId
-          ? state.chatMessages.map((message) => (
-              message.event_id === targetEventId
-                ? {
-                    ...message,
-                    status: 'error' as const,
-                    error_code: payload.error_code,
-                    error_message: payload.error_message,
-                  }
-                : message
-            ))
-          : state.chatMessages,
-        pendingChatEventIds: targetEventId
-          ? {
-              ...state.pendingChatEventIds,
-              [targetEventId]: false,
-            }
-          : state.pendingChatEventIds,
-        chatErrorByEventId: targetEventId
-          ? {
-              ...state.chatErrorByEventId,
-              [targetEventId]: payload.error_message,
-            }
-          : state.chatErrorByEventId,
-      }));
+      set((state) => {
+        if (targetEventId) {
+          const targetMessageExists = state.chatMessages.some((message) => message.event_id === targetEventId);
+          if (!targetMessageExists) {
+            return state;
+          }
+        }
+
+        return {
+          latestChatError: payload,
+          chatMessages: targetEventId
+            ? state.chatMessages.map((message) => (
+                message.event_id === targetEventId
+                  ? {
+                      ...message,
+                      status: 'error' as const,
+                      error_code: payload.error_code,
+                      error_message: payload.error_message,
+                    }
+                  : message
+              ))
+            : state.chatMessages,
+          pendingChatEventIds: targetEventId
+            ? {
+                ...state.pendingChatEventIds,
+                [targetEventId]: false,
+              }
+            : state.pendingChatEventIds,
+          chatErrorByEventId: targetEventId
+            ? {
+                ...state.chatErrorByEventId,
+                [targetEventId]: payload.error_message,
+              }
+            : state.chatErrorByEventId,
+        };
+      });
     },
 
     setSpeechEnabled: (enabled: boolean) => {
@@ -350,8 +371,12 @@ export const useAiCenterStore = create<AiCenterState>()(
     },
 
     resetConversation: () => {
+      const oldConversationId = get().conversationId;
+      const newConversationId = createConversationId();
+      chatWsService.sendClearHistory(oldConversationId);
+
       set((state) => ({
-        conversationId: createConversationId(),
+        conversationId: newConversationId,
         chatMessages: [],
         chatInput: '',
         pendingChatEventIds: {},
@@ -448,7 +473,7 @@ export const selectPendingChatEventIds = (state: AiCenterState) => state.pending
 export const selectChatErrorByEventId = (state: AiCenterState) => state.chatErrorByEventId;
 export const selectLatestChatError = (state: AiCenterState) => state.latestChatError;
 export const selectIsChatSending = (state: AiCenterState) => state.chatMessages.some(
-  (message) => message.role === 'user' && message.request_type === 'CHAT' && state.pendingChatEventIds[message.event_id],
+  (message) => message.role === 'user' && state.pendingChatEventIds[message.event_id],
 );
 export const selectSpokenMessages = (state: AiCenterState) => state.spokenMessages;
 export const selectLastSpokenAt = (state: AiCenterState) => state.lastSpokenAt;
@@ -491,6 +516,10 @@ function initializeAiCenterStoreSubscriptions(): void {
       store.setVoiceCaptureError(payload.error_message, payload.reply_to_event_id);
     }
   });
+
+  chatWsService.onClearHistoryAck((payload) => {
+    console.debug('[chatWsService] Clear history acknowledged', payload.conversation_id, payload.reply_to_event_id);
+  });
 }
 
 function createConversationId(): string {
@@ -517,6 +546,12 @@ function createUserChatMessage(options: {
     timestamp: new Date().toISOString(),
     message_type: options.requestType === 'SPEECH' ? 'speech_request' : 'chat_user',
   };
+}
+
+function hasPendingConversationRequest(state: Pick<AiCenterState, 'chatMessages' | 'pendingChatEventIds'>): boolean {
+  return state.chatMessages.some(
+    (message) => message.role === 'user' && state.pendingChatEventIds[message.event_id],
+  );
 }
 
 initializeAiCenterStoreSubscriptions();

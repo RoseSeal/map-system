@@ -5,8 +5,10 @@ public enum ChatMessageType {
     PONG("PONG"),
     CHAT("CHAT"),
     SPEECH("SPEECH"),
+    CLEAR_HISTORY("CLEAR_HISTORY"),
     CHAT_REPLY("CHAT_REPLY"),
     SPEECH_TRANSCRIPT("SPEECH_TRANSCRIPT"),
+    CLEAR_HISTORY_ACK("CLEAR_HISTORY_ACK"),
     ERROR("ERROR");
 
     private final String value;

@@ -157,8 +157,8 @@ export interface SseErrorPayload {
 // Chat WebSocket types
 // ============================================================
 
-export type ChatUplinkType = 'PING' | 'CHAT' | 'SPEECH';
-export type ChatDownlinkType = 'PONG' | 'CHAT_REPLY' | 'SPEECH_TRANSCRIPT' | 'ERROR';
+export type ChatUplinkType = 'PING' | 'CHAT' | 'SPEECH' | 'CLEAR_HISTORY';
+export type ChatDownlinkType = 'PONG' | 'CHAT_REPLY' | 'SPEECH_TRANSCRIPT' | 'ERROR' | 'CLEAR_HISTORY_ACK';
 
 export interface ChatRequestPayload {
   conversation_id: string;
@@ -174,6 +174,11 @@ export interface SpeechRequestPayload {
   audio_format: string;
   mode: SpeechMode;
   selected_target_ids?: string[];
+}
+
+export interface ClearHistoryPayload {
+  conversation_id: string;
+  event_id: string;
 }
 
 export interface ChatReplyPayload {
@@ -204,15 +209,22 @@ export interface ChatErrorPayload {
   timestamp: string;
 }
 
+export interface ClearHistoryAckPayload {
+  event_id: string;
+  conversation_id: string;
+  reply_to_event_id: string;
+  timestamp: string;
+}
+
 export interface ChatUplinkEnvelope {
   type: ChatUplinkType;
   source: 'client';
-  payload: ChatRequestPayload | SpeechRequestPayload | null;
+  payload: ChatRequestPayload | SpeechRequestPayload | ClearHistoryPayload | null;
 }
 
 export interface ChatDownlinkEnvelope {
   type: ChatDownlinkType;
   source: 'server';
   sequence_id: string;
-  payload: ChatReplyPayload | SpeechTranscriptPayload | ChatErrorPayload | null;
+  payload: ChatReplyPayload | SpeechTranscriptPayload | ChatErrorPayload | ClearHistoryAckPayload | null;
 }

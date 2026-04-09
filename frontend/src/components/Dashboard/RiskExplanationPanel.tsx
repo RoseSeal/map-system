@@ -282,6 +282,7 @@ export function RiskExplanationPanel() {
             <ChatMessageList messages={chatMessages} onRetry={handleRetry} />
             <ChatComposer
               value={chatInput}
+              disabled={isChatSending}
               isSending={isChatSending}
               voiceSupported={voiceCaptureSupported}
               voiceState={voiceCaptureState}

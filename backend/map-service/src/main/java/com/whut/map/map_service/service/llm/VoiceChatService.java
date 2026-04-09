@@ -10,9 +10,9 @@ import com.whut.map.map_service.llm.dto.WhisperResponse;
 import com.whut.map.map_service.service.llm.validation.AudioPayloadUtils;
 import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import com.whut.map.map_service.service.llm.validation.ValidationResult;
-import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -26,6 +26,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.whut.map.map_service.config.llm.LlmExecutorConfig.LLM_EXECUTOR;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,7 +37,8 @@ public class VoiceChatService {
     private final WhisperProperties whisperProperties;
     private final LlmChatService llmChatService;
     private final ChatPayloadValidator chatPayloadValidator;
-    private final ExecutorService voiceExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    @Qualifier(LLM_EXECUTOR)
+    private final ExecutorService voiceExecutor;
 
     public record SpeechTranscriptResult(String transcript, String language) {
     }
@@ -147,10 +150,5 @@ public class VoiceChatService {
             BiConsumer<ChatErrorCode, String> onError
     ) {
         onError.accept(validationResult.errorCode(), validationResult.errorMessage());
-    }
-
-    @PreDestroy
-    public void shutdown() {
-        voiceExecutor.shutdownNow();
     }
 }

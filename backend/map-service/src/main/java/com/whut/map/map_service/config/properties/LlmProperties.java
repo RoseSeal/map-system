@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "llm")
 public class LlmProperties {
+
     private boolean enabled = false;
     private String provider;
     private long timeoutMs = 5000L;
@@ -15,6 +16,10 @@ public class LlmProperties {
     private int chatContextMaxTargets = 5;
     private int cooldownSeconds = 5;
     private boolean fallbackTemplateEnabled = true;
+    private int conversationMaxTurns = 10;
+    private long conversationTtlMinutes = 30L;
+    private long conversationEvictIntervalMs = 60_000L;
+    private int conversationTokenBudget = 6000;
 
     private ProviderProperties gemini = new ProviderProperties();
     private ProviderProperties zhipu = new ProviderProperties();
@@ -25,4 +30,3 @@ public class LlmProperties {
         private String model;
     }
 }
-

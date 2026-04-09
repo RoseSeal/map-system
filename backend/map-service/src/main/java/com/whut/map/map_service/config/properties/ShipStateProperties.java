@@ -19,5 +19,3 @@ public class ShipStateProperties {
      */
     private long cleanupIntervalSeconds = 30L;
 }
-
-

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "whisper")
 public class WhisperProperties {
+
     private static final long WEBSOCKET_TEXT_FRAME_OVERHEAD_BYTES = 64 * 1024L;
 
     private String url = "http://127.0.0.1:8081";
@@ -24,4 +25,3 @@ public class WhisperProperties {
         return Math.toIntExact(maxAudioSizeBytes);
     }
 }
-

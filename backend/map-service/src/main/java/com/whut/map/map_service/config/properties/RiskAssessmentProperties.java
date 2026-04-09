@@ -17,4 +17,3 @@ public class RiskAssessmentProperties {
     private double warningTcpaSec = 900.0;
     private double cautionTcpaSec = 1800.0;
 }
-

@@ -13,6 +13,4 @@ public class AisProperties {
     private String timezone;
     private String dateFormat;
     private double confidence;
-
 }
-

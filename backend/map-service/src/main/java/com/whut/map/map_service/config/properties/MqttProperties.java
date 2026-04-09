@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "mqtt")
 public class MqttProperties {
+
     private String broker;
     private String clientId;
 
@@ -16,4 +17,3 @@ public class MqttProperties {
 
     private String topic;
 }
-

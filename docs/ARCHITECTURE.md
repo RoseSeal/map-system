@@ -118,6 +118,7 @@ ChatWebSocketHandler
 - 已具备多源消息接入、风险计算、SSE 风险推送、WebSocket 问答交互、TTS 播报与 ASR 语音输入能力。
 - 实时事件协议已完成 v2 整理，`risk` 与 `chat` 分别通过 SSE 与 WebSocket 承载；具体字段与事件类型以 `docs/EVENT_SCHEMA.md` 为准。
 - LLM 风险解释已从风险主链路中解绑，以异步事件下发；聊天链路当前仍以单轮问答为主，尚未建立稳定的多轮上下文管理。
+- Chat 会话当前由客户端 `conversation_id` 锚定，后端尚未绑定 WebSocket session 或用户身份；该实现适用于当前单操作者前端模型，但暂不提供多客户端会话隔离保证。
 - ASR 已通过 `whisper.cpp` 接入，当前采用后端统一编排的非流式方案。
 - 动画指令、规则引擎、多智能体 / RAG 仍处于规划阶段。
 - `listener-service` 当前不在主运行链路中。
@@ -148,7 +149,7 @@ ChatWebSocketHandler
 - [x] 风险流与聊天流拆分为 SSE + WebSocket 双连接
 - [x] 为协议消息增加版本号
 - [x] 新增 `docs/EVENT_SCHEMA.md` 协议文档
-- [ ] 建立多轮上下文管理
+- [x] 建立多轮上下文管理
 
 ### P3
 

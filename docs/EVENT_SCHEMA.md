@@ -221,7 +221,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 
 ```json
 {
-  "type": "PING | CHAT | SPEECH",
+  "type": "PING | CHAT | SPEECH | CLEAR_HISTORY",
   "source": "client",
   "payload": {}
 }
@@ -237,7 +237,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 
 ```json
 {
-  "type": "PONG | CHAT_REPLY | SPEECH_TRANSCRIPT | ERROR",
+  "type": "PONG | CHAT_REPLY | SPEECH_TRANSCRIPT | CLEAR_HISTORY_ACK | ERROR",
   "source": "server",
   "sequence_id": "string",
   "payload": {}
@@ -259,6 +259,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `PING` | `null` |
 | `CHAT` | `ChatPayload` |
 | `SPEECH` | `SpeechPayload` |
+| `CLEAR_HISTORY` | `ClearHistoryPayload` |
 
 #### server -> client
 
@@ -267,6 +268,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `PONG` | `null` |
 | `CHAT_REPLY` | `ChatReplyPayload` |
 | `SPEECH_TRANSCRIPT` | `SpeechTranscriptPayload` |
+| `CLEAR_HISTORY_ACK` | `ClearHistoryAckPayload` |
 | `ERROR` | `ErrorPayload` |
 
 ## 6. Payload 定义
@@ -330,7 +332,27 @@ data: {"event_id":"server-event-xxx", ...payload}
 - 解码后音频大小不得超过 10MB
 - 默认转写语言为 `zh`
 
-### 6.3 `CHAT_REPLY`
+### 6.3 `CLEAR_HISTORY`
+
+```json
+{
+  "type": "CLEAR_HISTORY",
+  "source": "client",
+  "payload": {
+    "conversation_id": "conversation-xxx",
+    "event_id": "client-event-xxx"
+  }
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `conversation_id` | `string` | 要清理的客户端会话 ID |
+| `event_id` | `string` | 当前清理请求事件 ID |
+
+### 6.4 `CHAT_REPLY`
 
 文本问答与 `mode=direct` 语音问答共用同一回复类型：
 
@@ -358,7 +380,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `provider` | `string` | `gemini` / `zhipu` |
 | `timestamp` | `string` | 回复时间 |
 
-### 6.4 `SPEECH_TRANSCRIPT`
+### 6.5 `SPEECH_TRANSCRIPT`
 
 ```json
 {
@@ -386,7 +408,27 @@ data: {"event_id":"server-event-xxx", ...payload}
 
 - `mode=preview` 时，到 `SPEECH_TRANSCRIPT` 为止，不继续触发 LLM
 
-### 6.5 `ERROR`
+### 6.6 `CLEAR_HISTORY_ACK`
+
+```json
+{
+  "event_id": "server-event-xxx",
+  "conversation_id": "conversation-xxx",
+  "reply_to_event_id": "client-event-xxx",
+  "timestamp": "2026-04-09T09:20:00Z"
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `event_id` | `string` | 服务端确认事件 ID |
+| `conversation_id` | `string` | 已清理的会话 ID |
+| `reply_to_event_id` | `string` | 对应的 `CLEAR_HISTORY` 请求事件 ID |
+| `timestamp` | `string` | 清理确认时间 |
+
+### 6.7 `ERROR`
 
 SSE 与 WebSocket chat 下行共用：
 
@@ -423,8 +465,9 @@ SSE 与 WebSocket chat 下行共用：
 - `LLM_TIMEOUT`
 - `LLM_REQUEST_FAILED`
 - `LLM_DISABLED`
+- `CONVERSATION_BUSY`
 
-### 6.6 `PING / PONG`
+### 6.8 `PING / PONG`
 
 ```json
 { "type": "PING", "source": "client", "payload": null }
@@ -442,8 +485,8 @@ SSE 与 WebSocket chat 下行共用：
 | PredictionType | `linear` |
 | SafetyDomainShape | `ellipse` |
 | RiskSseEventType | `RISK_UPDATE` / `EXPLANATION` / `ERROR` |
-| ChatDownlinkType | `PONG` / `CHAT_REPLY` / `SPEECH_TRANSCRIPT` / `ERROR` |
-| ChatUplinkType | `PING` / `CHAT` / `SPEECH` |
+| ChatDownlinkType | `PONG` / `CHAT_REPLY` / `SPEECH_TRANSCRIPT` / `CLEAR_HISTORY_ACK` / `ERROR` |
+| ChatUplinkType | `PING` / `CHAT` / `SPEECH` / `CLEAR_HISTORY` |
 
 ## 8. 与 v1 的核心差异
 

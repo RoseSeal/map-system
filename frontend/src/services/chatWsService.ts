@@ -5,6 +5,8 @@ import type {
   ChatRequestPayload,
   ChatUplinkEnvelope,
   ChatUplinkType,
+  ClearHistoryAckPayload,
+  ClearHistoryPayload,
   SpeechRequestPayload,
   SpeechTranscriptPayload,
 } from '../types/schema';
@@ -14,6 +16,7 @@ type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecti
 type ChatReplyCallback = (payload: ChatReplyPayload) => void;
 type SpeechTranscriptCallback = (payload: SpeechTranscriptPayload) => void;
 type ErrorCallback = (payload: ChatErrorPayload) => void;
+type ClearHistoryAckCallback = (payload: ClearHistoryAckPayload) => void;
 type PongCallback = () => void;
 
 const DEFAULT_CHAT_WS_URL: string = BACKEND_CONFIG.CHAT_WS_URL;
@@ -31,6 +34,7 @@ class ChatWsService {
   private chatReplyCallbacks = new Set<ChatReplyCallback>();
   private speechTranscriptCallbacks = new Set<SpeechTranscriptCallback>();
   private errorCallbacks = new Set<ErrorCallback>();
+  private clearHistoryAckCallbacks = new Set<ClearHistoryAckCallback>();
   private pongCallbacks = new Set<PongCallback>();
 
   connect(url: string = this.currentUrl): void {
@@ -109,9 +113,13 @@ class ChatWsService {
   send(type: 'PING', payload: null): boolean;
   send(type: 'CHAT', payload: Omit<ChatRequestPayload, 'event_id'>): string | null;
   send(type: 'SPEECH', payload: Omit<SpeechRequestPayload, 'event_id'>): string | null;
+  send(type: 'CLEAR_HISTORY', payload: Omit<ClearHistoryPayload, 'event_id'>): string | null;
   send(
     type: ChatUplinkType,
-    payload: Omit<ChatRequestPayload, 'event_id'> | Omit<SpeechRequestPayload, 'event_id'> | null,
+    payload: Omit<ChatRequestPayload, 'event_id'>
+      | Omit<SpeechRequestPayload, 'event_id'>
+      | Omit<ClearHistoryPayload, 'event_id'>
+      | null,
   ): boolean | string | null {
     if (!this.socket || this.state !== 'connected') {
       return type === 'PING' ? false : null;
@@ -120,6 +128,10 @@ class ChatWsService {
     const { envelope, eventId } = this.buildEnvelope(type, payload);
     this.socket.send(JSON.stringify(envelope));
     return type === 'PING' ? true : eventId;
+  }
+
+  sendClearHistory(conversationId: string): string | null {
+    return this.send('CLEAR_HISTORY', { conversation_id: conversationId });
   }
 
   onChatReply(cb: ChatReplyCallback): () => void {
@@ -143,6 +155,13 @@ class ChatWsService {
     };
   }
 
+  onClearHistoryAck(cb: ClearHistoryAckCallback): () => void {
+    this.clearHistoryAckCallbacks.add(cb);
+    return () => {
+      this.clearHistoryAckCallbacks.delete(cb);
+    };
+  }
+
   onPong(cb: PongCallback): () => void {
     this.pongCallbacks.add(cb);
     return () => {
@@ -156,7 +175,10 @@ class ChatWsService {
 
   private buildEnvelope(
     type: ChatUplinkType,
-    payload: Omit<ChatRequestPayload, 'event_id'> | Omit<SpeechRequestPayload, 'event_id'> | null,
+    payload: Omit<ChatRequestPayload, 'event_id'>
+      | Omit<SpeechRequestPayload, 'event_id'>
+      | Omit<ClearHistoryPayload, 'event_id'>
+      | null,
   ): { envelope: ChatUplinkEnvelope; eventId: string | null } {
     if (type === 'PING') {
       return {
@@ -213,6 +235,12 @@ class ChatWsService {
         if (isChatErrorPayload(message.payload)) {
           const payload = message.payload;
           this.errorCallbacks.forEach((cb) => cb(payload));
+        }
+        return;
+      case 'CLEAR_HISTORY_ACK':
+        if (isClearHistoryAckPayload(message.payload)) {
+          const payload = message.payload;
+          this.clearHistoryAckCallbacks.forEach((cb) => cb(payload));
         }
         return;
       default:
@@ -285,6 +313,16 @@ function isChatErrorPayload(payload: ChatDownlinkEnvelope['payload']): payload i
     && 'connection' in payload
     && 'error_code' in payload
     && 'error_message' in payload,
+  );
+}
+
+function isClearHistoryAckPayload(payload: ChatDownlinkEnvelope['payload']): payload is ClearHistoryAckPayload {
+  return Boolean(
+    payload
+    && typeof payload === 'object'
+    && 'conversation_id' in payload
+    && 'reply_to_event_id' in payload
+    && 'timestamp' in payload,
   );
 }
 

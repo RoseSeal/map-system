@@ -131,7 +131,91 @@ class RiskContextFormatterTest {
                 .targets(List.of(target("safe-1", RiskConstants.SAFE, 3.0, 2.5, 500, false)))
                 .build();
 
-        assertThat(formatter.formatSummary(context, Instant.now())).isNull();
+        assertThat(formatter.formatSummary(context, Instant.parse("2026-04-09T10:00:00Z")))
+                .contains("【当前态势】更新时间: 2026-04-09T10:00:00Z")
+                .contains("当前无非SAFE目标船，全部目标船风险等级均为 SAFE。")
+                .contains("共追踪 1 艘目标船，展示 0 艘，未展示 1 艘。");
+    }
+
+    @Test
+    void formatSummaryReturnsExplicitZeroTargetsWhenNoneTracked() {
+        LlmProperties properties = new LlmProperties();
+        RiskContextFormatter formatter = new RiskContextFormatter(properties);
+        LlmRiskContext context = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())
+                .targets(List.of())
+                .build();
+
+        assertThat(formatter.formatSummary(context, Instant.parse("2026-04-09T10:05:00Z")))
+                .contains("【当前态势】更新时间: 2026-04-09T10:05:00Z")
+                .contains("当前未追踪到目标船。")
+                .contains("共追踪 0 艘目标船，展示 0 艘，未展示 0 艘。");
+    }
+
+    @Test
+    void formatConsolidatedIncludesSummaryAndSelectedTargetsWithoutDuplication() {
+        LlmProperties properties = new LlmProperties();
+        properties.setChatContextMaxTargets(2);
+        RiskContextFormatter formatter = new RiskContextFormatter(properties);
+        LlmRiskContext context = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder()
+                        .id("own-1")
+                        .longitude(120.1234)
+                        .latitude(30.5678)
+                        .sog(12.3)
+                        .cog(87.6)
+                        .build())
+                .targets(List.of(
+                        detailedTarget("safe-1", RiskConstants.SAFE, 3.0, 2.5, 500, false,
+                                121.0, 31.0, 10.0, 180.0, null),
+                        detailedTarget("warning-2", RiskConstants.WARNING, 0.9, 0.4, 240, true,
+                                121.2, 31.2, 8.0, 90.0, null),
+                        detailedTarget("alarm-1", RiskConstants.ALARM, 1.1, 0.2, 120, true,
+                                121.5, 31.5, 9.0, 45.0, "目标船正从右舷接近"),
+                        detailedTarget("warning-1", RiskConstants.WARNING, 0.3, 0.5, 300, true,
+                                121.8, 31.8, 7.5, 135.0, null)
+                ))
+                .build();
+
+        String result = formatter.formatConsolidated(
+                context,
+                List.of("alarm-1", "safe-1"),
+                Instant.parse("2026-04-09T10:30:00Z"));
+
+        assertThat(result)
+                .contains("【当前态势】更新时间: 2026-04-09T10:30:00Z")
+                .contains("目标船 alarm-1: 风险等级 ALARM")
+                .contains("位置: (121.5000, 31.5000)")
+                .contains("说明: 目标船正从右舷接近")
+                .contains("目标船 warning-1: 风险等级 WARNING")
+                .contains("【用户关注目标】")
+                .contains("目标船 safe-1: 风险等级 SAFE")
+                .contains("共追踪 4 艘目标船，当前注入 3 艘，未注入 1 艘。");
+        assertThat(countOccurrences(result, "目标船 alarm-1:")).isEqualTo(1);
+    }
+
+    @Test
+    void formatConsolidatedStillShowsSelectedTargetWhenAllTargetsAreSafe() {
+        LlmProperties properties = new LlmProperties();
+        RiskContextFormatter formatter = new RiskContextFormatter(properties);
+        LlmRiskContext context = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())
+                .targets(List.of(
+                        detailedTarget("safe-1", RiskConstants.SAFE, 3.0, 2.5, 500, false,
+                                121.0, 31.0, 10.0, 180.0, null)
+                ))
+                .build();
+
+        String result = formatter.formatConsolidated(
+                context,
+                List.of("safe-1"),
+                Instant.parse("2026-04-09T10:35:00Z"));
+
+        assertThat(result)
+                .contains("当前无非SAFE目标船，全部目标船风险等级均为 SAFE。")
+                .contains("【用户关注目标】")
+                .contains("目标船 safe-1: 风险等级 SAFE")
+                .contains("共追踪 1 艘目标船，当前注入 1 艘，未注入 0 艘。");
     }
 
     private LlmRiskTargetContext target(
@@ -178,5 +262,15 @@ class RiskContextFormatterTest {
                 .courseDeg(courseDeg)
                 .ruleExplanation(ruleExplanation)
                 .build();
+    }
+
+    private int countOccurrences(String text, String pattern) {
+        int count = 0;
+        int fromIndex = 0;
+        while ((fromIndex = text.indexOf(pattern, fromIndex)) >= 0) {
+            count++;
+            fromIndex += pattern.length();
+        }
+        return count;
     }
 }

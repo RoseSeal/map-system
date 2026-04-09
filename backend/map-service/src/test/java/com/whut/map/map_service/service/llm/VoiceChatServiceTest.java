@@ -9,7 +9,11 @@ import com.whut.map.map_service.llm.dto.WhisperResponse;
 import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import static org.assertj.core.api.Assertions.assertThat;
+
 class VoiceChatServiceTest {
 
     private final WhisperProperties whisperProperties = new WhisperProperties();
@@ -19,29 +23,36 @@ class VoiceChatServiceTest {
     void invalidChatEnvelopeReturnsErrorBeforeTranscription() {
         RecordingWhisperClient whisperClient = new RecordingWhisperClient();
         RecordingLlmChatService llmChatService = new RecordingLlmChatService();
-        VoiceChatService service = new VoiceChatService(
-                whisperClient,
-                whisperProperties,
-                llmChatService,
-                chatPayloadValidator
-        );
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            VoiceChatService service = new VoiceChatService(
+                    whisperClient,
+                    whisperProperties,
+                    llmChatService,
+                    chatPayloadValidator,
+                    executor
+            );
 
-        SpeechRequestPayload request = SpeechRequestPayload.builder()
-                .conversationId("conversation-1")
-                .audioData("dGVzdA==")
-                .audioFormat("webm")
-                .mode(SpeechMode.DIRECT)
-                .build();
+            SpeechRequestPayload request = SpeechRequestPayload.builder()
+                    .conversationId("conversation-1")
+                    .audioData("dGVzdA==")
+                    .audioFormat("webm")
+                    .mode(SpeechMode.DIRECT)
+                    .build();
 
-        CapturingSpeechCallback callback = new CapturingSpeechCallback();
-        service.handleVoice(request, callback::captureTranscript, callback::captureReply, callback::captureError);
+            CapturingSpeechCallback callback = new CapturingSpeechCallback();
+            service.handleVoice(request, callback::captureTranscript, callback::captureReply, callback::captureError);
 
-        assertThat(callback.errorCode()).isEqualTo(ChatErrorCode.INVALID_SPEECH_REQUEST);
-        assertThat(callback.errorMessage()).isEqualTo("event_id is required.");
-        assertThat(callback.reply()).isNull();
-        assertThat(callback.transcript()).isNull();
-        assertThat(whisperClient.transcribeCalled).isFalse();
-        assertThat(llmChatService.handleChatCalled).isFalse();
+            assertThat(callback.errorCode()).isEqualTo(ChatErrorCode.INVALID_SPEECH_REQUEST);
+            assertThat(callback.errorMessage()).isEqualTo("event_id is required.");
+            assertThat(callback.reply()).isNull();
+            assertThat(callback.transcript()).isNull();
+            assertThat(whisperClient.transcribeCalled).isFalse();
+            assertThat(llmChatService.handleChatCalled).isFalse();
+        } finally {
+            executor.shutdownNow();
+            llmChatService.shutdown();
+        }
     }
 
     private static final class CapturingSpeechCallback {
@@ -92,16 +103,24 @@ class VoiceChatServiceTest {
 
     private static final class RecordingLlmChatService extends LlmChatService {
         private boolean handleChatCalled;
+        private final ExecutorService executor;
 
         RecordingLlmChatService() {
+            this(Executors.newSingleThreadExecutor());
+        }
+
+        private RecordingLlmChatService(ExecutorService executor) {
             super(
                     null,
                     new com.whut.map.map_service.config.properties.LlmProperties(),
                     new com.whut.map.map_service.llm.prompt.PromptTemplateService(),
                     new RiskContextHolder(),
                     new RiskContextFormatter(new com.whut.map.map_service.config.properties.LlmProperties()),
-                    new ChatPayloadValidator(new WhisperProperties())
+                    new ConversationMemory(new com.whut.map.map_service.config.properties.LlmProperties()),
+                    new ChatPayloadValidator(new WhisperProperties()),
+                    executor
             );
+            this.executor = executor;
         }
 
         @Override
@@ -111,6 +130,10 @@ class VoiceChatServiceTest {
                 java.util.function.BiConsumer<ChatErrorCode, String> onError
         ) {
             this.handleChatCalled = true;
+        }
+
+        void shutdown() {
+            executor.shutdownNow();
         }
     }
 }
