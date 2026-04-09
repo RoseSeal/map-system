@@ -140,7 +140,7 @@ ChatWebSocketHandler
 - [x] 语音输入 ASR（`whisper.cpp`，非流式，Backend-orchestrated）
 - [x] LLM 解释从风险主流程解绑，形成独立异步流
 - [x] 增加前端亮色主题，形成 `light / dark` 可切换模式
-- [ ] 向 LLM 注入当前风险上下文
+- [x] 向 LLM 注入当前风险上下文
 
 ### P2
 

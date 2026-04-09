@@ -44,6 +44,7 @@ backend/map-service/src/main/resources/application-local.properties
 __pycache__/
 *.pyc
 
-# Other
+# AI
 .codex
 AGENTS.md
+.claude/
