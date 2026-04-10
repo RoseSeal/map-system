@@ -1,15 +1,12 @@
 package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.config.properties.LlmProperties;
-import com.whut.map.map_service.config.properties.WhisperProperties;
-import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
+import com.whut.map.map_service.domain.RiskLevel;
 import com.whut.map.map_service.llm.client.LlmClient;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;
 import com.whut.map.map_service.llm.prompt.PromptScene;
 import com.whut.map.map_service.llm.prompt.PromptTemplateService;
-import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,8 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class LlmChatServiceTest {
 
-    private final WhisperProperties whisperProperties = new WhisperProperties();
-    private final ChatPayloadValidator chatPayloadValidator = new ChatPayloadValidator(whisperProperties);
     private final PromptTemplateService promptTemplateService = new PromptTemplateService();
     private final RiskContextHolder riskContextHolder = new RiskContextHolder();
     private final RiskContextFormatter riskContextFormatter = new RiskContextFormatter(new LlmProperties());
@@ -43,10 +38,9 @@ class LlmChatServiceTest {
                     riskContextHolder,
                     riskContextFormatter,
                     conversationMemory,
-                    chatPayloadValidator,
                     executor
             );
-            ChatRequestPayload request = buildRequest();
+            LlmChatRequest request = buildRequest();
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -55,14 +49,14 @@ class LlmChatServiceTest {
             assertThat(llmClient.lastMessages).hasSize(2);
             assertThat(llmClient.lastMessages).containsExactly(
                     new LlmChatMessage(ChatRole.SYSTEM, promptTemplateService.getSystemPrompt(PromptScene.CHAT)),
-                    new LlmChatMessage(ChatRole.USER, request.getContent())
+                    new LlmChatMessage(ChatRole.USER, request.content())
             );
             assertThat(callback.reply()).isNotNull();
             assertThat(callback.reply().provider()).isEqualTo("zhipu");
             assertThat(callback.reply().content()).isEqualTo("assistant reply");
             assertThat(callback.errorCode()).isNull();
-            assertThat(conversationMemory.getHistory(request.getConversationId())).containsExactly(
-                    new LlmChatMessage(ChatRole.USER, request.getContent()),
+            assertThat(conversationMemory.getHistory(request.conversationId())).containsExactly(
+                    new LlmChatMessage(ChatRole.USER, request.content()),
                     new LlmChatMessage(ChatRole.ASSISTANT, "assistant reply")
             );
         } finally {
@@ -71,8 +65,9 @@ class LlmChatServiceTest {
     }
 
     @Test
-    void invalidChatRequestsReturnChatError() {
+    void disabledChatRequestsReturnLlmDisabledError() {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
+        properties.setEnabled(false);
         StubLlmClient llmClient = new StubLlmClient();
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
@@ -83,18 +78,16 @@ class LlmChatServiceTest {
                     riskContextHolder,
                     riskContextFormatter,
                     new ConversationMemory(properties),
-                    chatPayloadValidator,
                     executor
             );
-            ChatRequestPayload request = buildRequest();
-            request.setContent(" ");
+            LlmChatRequest request = buildRequest();
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
 
             assertThat(callback.reply()).isNull();
-            assertThat(callback.errorCode()).isEqualTo(ChatErrorCode.INVALID_CHAT_REQUEST);
-            assertThat(callback.errorMessage()).isEqualTo("content must not be blank.");
+            assertThat(callback.errorCode()).isEqualTo(LlmErrorCode.LLM_DISABLED);
+            assertThat(callback.errorMessage()).isEqualTo("LLM chat is disabled.");
         } finally {
             executor.shutdownNow();
         }
@@ -114,17 +107,16 @@ class LlmChatServiceTest {
                     riskContextHolder,
                     riskContextFormatter,
                     new ConversationMemory(properties),
-                    chatPayloadValidator,
                     executor
             );
-            ChatRequestPayload request = buildRequest();
+            LlmChatRequest request = buildRequest();
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
 
             callback.await();
             assertThat(callback.reply()).isNull();
-            assertThat(callback.errorCode()).isEqualTo(ChatErrorCode.LLM_REQUEST_FAILED);
+            assertThat(callback.errorCode()).isEqualTo(LlmErrorCode.LLM_FAILED);
             assertThat(callback.errorMessage()).isEqualTo("LLM request failed.");
         } finally {
             executor.shutdownNow();
@@ -158,7 +150,7 @@ class LlmChatServiceTest {
                         .build())
                 .targets(List.of(com.whut.map.map_service.llm.dto.LlmRiskTargetContext.builder()
                         .targetId("target-1")
-                        .riskLevel(com.whut.map.map_service.engine.risk.RiskConstants.WARNING)
+                        .riskLevel(RiskLevel.WARNING)
                         .currentDistanceNm(0.80)
                         .dcpaNm(0.42)
                         .tcpaSec(240)
@@ -174,10 +166,9 @@ class LlmChatServiceTest {
                     holder,
                     new RiskContextFormatter(properties),
                     new ConversationMemory(properties),
-                    chatPayloadValidator,
                     executor
             );
-            ChatRequestPayload request = buildRequest();
+            LlmChatRequest request = buildRequest();
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -191,7 +182,7 @@ class LlmChatServiceTest {
                     .contains("【当前态势】更新时间:")
                     .contains("目标船 target-1: 风险等级 WARNING");
             assertThat(llmClient.lastMessages.get(2))
-                    .isEqualTo(new LlmChatMessage(ChatRole.USER, request.getContent()));
+                    .isEqualTo(new LlmChatMessage(ChatRole.USER, request.content()));
         } finally {
             executor.shutdownNow();
         }
@@ -222,10 +213,9 @@ class LlmChatServiceTest {
                     holder,
                     new RiskContextFormatter(properties),
                     new ConversationMemory(properties),
-                    chatPayloadValidator,
                     executor
             );
-            ChatRequestPayload request = buildRequest();
+            LlmChatRequest request = buildRequest();
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -236,7 +226,7 @@ class LlmChatServiceTest {
                     .contains("当前未追踪到目标船。")
                     .contains("共追踪 0 艘目标船，当前注入 0 艘，未注入 0 艘。");
             assertThat(llmClient.lastMessages.get(2))
-                    .isEqualTo(new LlmChatMessage(ChatRole.USER, request.getContent()));
+                    .isEqualTo(new LlmChatMessage(ChatRole.USER, request.content()));
         } finally {
             executor.shutdownNow();
         }
@@ -255,14 +245,14 @@ class LlmChatServiceTest {
                 .targets(List.of(
                         com.whut.map.map_service.llm.dto.LlmRiskTargetContext.builder()
                                 .targetId("target-2")
-                                .riskLevel(com.whut.map.map_service.engine.risk.RiskConstants.WARNING)
+                                .riskLevel(RiskLevel.WARNING)
                                 .currentDistanceNm(0.8).dcpaNm(0.4).tcpaSec(240)
                                 .approaching(true).longitude(120.5).latitude(30.5)
                                 .speedKn(9.0).courseDeg(45.0)
                                 .build(),
                         com.whut.map.map_service.llm.dto.LlmRiskTargetContext.builder()
                                 .targetId("target-1")
-                                .riskLevel(com.whut.map.map_service.engine.risk.RiskConstants.SAFE)
+                                .riskLevel(RiskLevel.SAFE)
                                 .currentDistanceNm(5.0).dcpaNm(3.0).tcpaSec(600)
                                 .approaching(false).longitude(121.0).latitude(31.0)
                                 .speedKn(8.0).courseDeg(180.0)
@@ -272,11 +262,8 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = new LlmChatService(
                     llmClient, properties, promptTemplateService, holder,
-                    new RiskContextFormatter(properties), new ConversationMemory(properties), chatPayloadValidator, executor);
-            ChatRequestPayload request = ChatRequestPayload.builder()
-                    .conversationId("c-1").eventId("e-1").content("它距离多少")
-                    .selectedTargetIds(List.of("target-1"))
-                    .build();
+                    new RiskContextFormatter(properties), new ConversationMemory(properties), executor);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "它距离多少", List.of("target-1"));
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -311,7 +298,7 @@ class LlmChatServiceTest {
                 .targets(List.of(
                         com.whut.map.map_service.llm.dto.LlmRiskTargetContext.builder()
                                 .targetId("target-1")
-                                .riskLevel(com.whut.map.map_service.engine.risk.RiskConstants.WARNING)
+                                .riskLevel(RiskLevel.WARNING)
                                 .currentDistanceNm(1.0).dcpaNm(0.5).tcpaSec(200)
                                 .approaching(true)
                                 .build()))
@@ -320,11 +307,8 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = new LlmChatService(
                     llmClient, properties, promptTemplateService, holder,
-                    new RiskContextFormatter(properties), new ConversationMemory(properties), chatPayloadValidator, executor);
-            ChatRequestPayload request = ChatRequestPayload.builder()
-                    .conversationId("c-1").eventId("e-1").content("hello")
-                    .selectedTargetIds(List.of("nonexistent"))
-                    .build();
+                    new RiskContextFormatter(properties), new ConversationMemory(properties), executor);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of("nonexistent"));
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -355,21 +339,21 @@ class LlmChatServiceTest {
                     riskContextHolder,
                     riskContextFormatter,
                     conversationMemory,
-                    chatPayloadValidator,
                     executor
             );
 
-            ChatRequestPayload first = buildRequest();
+            LlmChatRequest first = buildRequest();
             llmClient.response = "assistant-1";
             CapturingChatCallback firstCallback = new CapturingChatCallback();
             service.handleChat(first, firstCallback::captureReply, firstCallback::captureError);
             firstCallback.await();
 
-            ChatRequestPayload second = ChatRequestPayload.builder()
-                    .conversationId(first.getConversationId())
-                    .eventId("user-2")
-                    .content("follow up")
-                    .build();
+            LlmChatRequest second = new LlmChatRequest(
+                    first.conversationId(),
+                    "user-2",
+                    "follow up",
+                    null
+            );
             llmClient.response = "assistant-2";
             CapturingChatCallback secondCallback = new CapturingChatCallback();
             service.handleChat(second, secondCallback::captureReply, secondCallback::captureError);
@@ -399,7 +383,6 @@ class LlmChatServiceTest {
                     riskContextHolder,
                     riskContextFormatter,
                     new ConversationMemory(properties),
-                    chatPayloadValidator,
                     executor
             );
 
@@ -409,17 +392,13 @@ class LlmChatServiceTest {
 
             CapturingChatCallback secondCallback = new CapturingChatCallback();
             service.handleChat(
-                    ChatRequestPayload.builder()
-                            .conversationId("conversation-1")
-                            .eventId("user-2")
-                            .content("second")
-                            .build(),
+                    new LlmChatRequest("conversation-1", "user-2", "second", null),
                     secondCallback::captureReply,
                     secondCallback::captureError
             );
 
             assertThat(secondCallback.reply()).isNull();
-            assertThat(secondCallback.errorCode()).isEqualTo(ChatErrorCode.CONVERSATION_BUSY);
+            assertThat(secondCallback.errorCode()).isEqualTo(LlmErrorCode.CONVERSATION_BUSY);
 
             llmClient.release("assistant reply");
             firstCallback.await();
@@ -437,17 +416,13 @@ class LlmChatServiceTest {
         return properties;
     }
 
-    private ChatRequestPayload buildRequest() {
-        return ChatRequestPayload.builder()
-                .conversationId("conversation-1")
-                .eventId("user-1")
-                .content("hello")
-                .build();
+    private LlmChatRequest buildRequest() {
+        return new LlmChatRequest("conversation-1", "user-1", "hello", null);
     }
 
     private static final class CapturingChatCallback {
         private LlmChatService.ChatReplyResult reply;
-        private ChatErrorCode errorCode;
+        private LlmErrorCode errorCode;
         private String errorMessage;
         private final CountDownLatch latch = new CountDownLatch(1);
 
@@ -456,7 +431,7 @@ class LlmChatServiceTest {
             latch.countDown();
         }
 
-        void captureError(ChatErrorCode errorCode, String errorMessage) {
+        void captureError(LlmErrorCode errorCode, String errorMessage) {
             this.errorCode = errorCode;
             this.errorMessage = errorMessage;
             latch.countDown();
@@ -470,7 +445,7 @@ class LlmChatServiceTest {
             return reply;
         }
 
-        ChatErrorCode errorCode() {
+        LlmErrorCode errorCode() {
             return errorCode;
         }
 

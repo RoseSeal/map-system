@@ -1,12 +1,11 @@
 package com.whut.map.map_service.service.llm;
 
-import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.config.properties.LlmProperties;
-import com.whut.map.map_service.engine.risk.RiskConstants;
+import com.whut.map.map_service.domain.RiskLevel;
+import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
-import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -14,8 +13,11 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 @Slf4j
 @Component
@@ -24,9 +26,15 @@ public class LlmTriggerService {
     private final LlmProperties llmProperties;
     private final ConcurrentHashMap<String, Instant> nextAllowedTimeMap = new ConcurrentHashMap<>();
     private final LlmExplanationService llmExplanationService;
-    private final RiskStreamPublisher riskStreamPublisher;
 
-    public void triggerExplanationsIfNeeded(LlmRiskContext context, String riskObjectId) {
+    public void triggerExplanationsIfNeeded(
+            LlmRiskContext context,
+            Consumer<LlmExplanation> onExplanation,
+            BiConsumer<LlmRiskTargetContext, LlmExplanationService.LlmExplanationError> onError
+    ) {
+        Objects.requireNonNull(onExplanation, "onExplanation must not be null");
+        Objects.requireNonNull(onError, "onError must not be null");
+
         if (!llmProperties.isEnabled()) {
             log.debug("Skipping LLM explanation because llm.enabled=false");
             return;
@@ -62,8 +70,8 @@ public class LlmTriggerService {
         llmExplanationService.generateTargetExplanationsAsync(
                 ownShip,
                 triggeredTargets,
-                explanation -> riskStreamPublisher.publishExplanation(explanation, riskObjectId),
-                (target, error) -> publishError(target, error)
+                onExplanation,
+                onError
         );
     }
 
@@ -89,23 +97,7 @@ public class LlmTriggerService {
         return target != null
                 && target.getRiskLevel() != null
                 && target.getTargetId() != null
-                && !RiskConstants.SAFE.equals(target.getRiskLevel());
-    }
-
-    private void publishError(
-            LlmRiskTargetContext target,
-            LlmExplanationService.LlmExplanationError error
-    ) {
-        if (error == null) {
-            return;
-        }
-
-        String targetId = target == null ? null : target.getTargetId();
-        riskStreamPublisher.publishError(resolveErrorCode(error.errorCode()), error.errorMessage(), targetId);
-    }
-
-    private ChatErrorCode resolveErrorCode(ChatErrorCode errorCode) {
-        return errorCode == null ? ChatErrorCode.LLM_REQUEST_FAILED : errorCode;
+                && target.getRiskLevel() != RiskLevel.SAFE;
     }
 
     private Duration cooldown() {

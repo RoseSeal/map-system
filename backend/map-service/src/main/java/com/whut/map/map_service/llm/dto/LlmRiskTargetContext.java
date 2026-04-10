@@ -1,5 +1,6 @@
 package com.whut.map.map_service.llm.dto;
 
+import com.whut.map.map_service.domain.RiskLevel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -7,8 +8,9 @@ import lombok.Data;
 @Builder
 public class LlmRiskTargetContext {
     private String targetId;
-    private String riskLevel;
+    private RiskLevel riskLevel;
     private Double currentDistanceNm;
+    private Double relativeBearingDeg;
     private double dcpaNm;
     private double tcpaSec;
     private boolean approaching;

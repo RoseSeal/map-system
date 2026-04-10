@@ -51,6 +51,43 @@ class LlmRiskContextAssemblerTest {
         assertThat(context.getTargets().get(0).getCurrentDistanceNm()).isNull();
     }
 
+    @Test
+    void assembleCalculatesRelativeBearingFromOwnShipHeadingWhenAvailable() {
+        ShipStatus ownShip = ship("own-1", ShipRole.OWN_SHIP, 120.0000, 30.0000);
+        ShipStatus target = ship("target-1", ShipRole.TARGET_SHIP, 120.0000, 30.1000);
+        ownShip.setHeading(180.0);
+
+        LlmRiskContext context = assembler.assemble(
+                ownShip,
+                List.of(ownShip, target),
+                Map.of("target-1", 1.23),
+                Map.of(),
+                null
+        );
+
+        assertThat(context.getTargets()).hasSize(1);
+        assertThat(context.getTargets().get(0).getRelativeBearingDeg()).isCloseTo(180.0, within(5.0));
+        assertThat(context.getTargets().get(0).getRiskLevel()).isNull();
+    }
+
+    @Test
+    void assembleFallsBackToCogWhenHeadingIsUnavailable() {
+        ShipStatus ownShip = ship("own-1", ShipRole.OWN_SHIP, 120.0000, 30.0000);
+        ShipStatus target = ship("target-1", ShipRole.TARGET_SHIP, 120.0000, 30.1000);
+
+        LlmRiskContext context = assembler.assemble(
+                ownShip,
+                List.of(ownShip, target),
+                Map.of("target-1", 1.23),
+                Map.of(),
+                null
+        );
+
+        assertThat(context.getTargets()).hasSize(1);
+        assertThat(context.getTargets().get(0).getRelativeBearingDeg()).isCloseTo(270.0, within(5.0));
+        assertThat(context.getTargets().get(0).getRiskLevel()).isNull();
+    }
+
     private ShipStatus ship(String id, ShipRole role, double longitude, double latitude) {
         return ShipStatus.builder()
                 .id(id)
@@ -60,5 +97,9 @@ class LlmRiskContextAssemblerTest {
                 .sog(10.0)
                 .cog(90.0)
                 .build();
+    }
+
+    private org.assertj.core.data.Offset<Double> within(double value) {
+        return org.assertj.core.data.Offset.offset(value);
     }
 }

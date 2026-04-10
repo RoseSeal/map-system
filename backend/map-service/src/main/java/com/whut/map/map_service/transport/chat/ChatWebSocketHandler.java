@@ -5,8 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whut.map.map_service.config.properties.WhisperProperties;
 import com.whut.map.map_service.dto.websocket.*;
 import com.whut.map.map_service.service.llm.ConversationMemory;
+import com.whut.map.map_service.service.llm.LlmChatRequest;
 import com.whut.map.map_service.service.llm.LlmChatService;
+import com.whut.map.map_service.service.llm.LlmErrorCode;
+import com.whut.map.map_service.service.llm.LlmVoiceMode;
+import com.whut.map.map_service.service.llm.LlmVoiceRequest;
 import com.whut.map.map_service.service.llm.VoiceChatService;
+import com.whut.map.map_service.service.llm.validation.AudioValidator;
 import com.whut.map.map_service.transport.protocol.ProtocolConnections;
 import com.whut.map.map_service.transport.protocol.ProtocolFields;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +37,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final LlmChatService llmChatService;
     private final VoiceChatService voiceChatService;
     private final ConversationMemory conversationMemory;
+    private final AudioValidator audioValidator;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -101,10 +107,23 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        String validationMessage = validateChatPayload(payload);
+        if (validationMessage != null) {
+            sendError(session, payload == null ? null : payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST, validationMessage);
+            return;
+        }
+
+        LlmChatRequest request = new LlmChatRequest(
+                payload.getConversationId(),
+                payload.getEventId(),
+                payload.getContent(),
+                payload.getSelectedTargetIds()
+        );
+
         llmChatService.handleChat(
-                payload,
+                request,
                 result -> sendChatReply(session, payload.getConversationId(), payload.getEventId(), result),
-                (errorCode, errorMessage) -> sendError(session, payload.getEventId(), errorCode, errorMessage)
+                (errorCode, errorMessage) -> sendError(session, payload.getEventId(), mapToProtocolErrorCode(errorCode), errorMessage)
         );
     }
 
@@ -122,11 +141,32 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        String validationMessage = validateSpeechPayload(payload);
+        if (validationMessage != null) {
+            sendError(session, payload == null ? null : payload.getEventId(), ChatErrorCode.INVALID_SPEECH_REQUEST, validationMessage);
+            return;
+        }
+
+        AudioValidator.Result audioValidation = audioValidator.validateAudio(payload.getAudioData(), payload.getAudioFormat());
+        if (audioValidation.hasError()) {
+            sendError(session, payload.getEventId(), mapAudioValidationCode(audioValidation.errorCode()), audioValidation.errorMessage());
+            return;
+        }
+
+        LlmVoiceRequest request = new LlmVoiceRequest(
+                payload.getConversationId(),
+                payload.getEventId(),
+                audioValidation.normalizedAudioData(),
+                payload.getAudioFormat(),
+                mapVoiceMode(payload.getMode()),
+                payload.getSelectedTargetIds()
+        );
+
         voiceChatService.handleVoice(
-                payload,
+                request,
                 transcript -> sendSpeechTranscript(session, payload.getConversationId(), payload.getEventId(), transcript),
                 reply -> sendChatReply(session, payload.getConversationId(), payload.getEventId(), reply),
-                (errorCode, errorMessage) -> sendError(session, payload.getEventId(), errorCode, errorMessage)
+                (errorCode, errorMessage) -> sendError(session, payload.getEventId(), mapToProtocolErrorCode(errorCode), errorMessage)
         );
     }
 
@@ -264,6 +304,69 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private String generateEventId() {
         return UUID.randomUUID().toString();
+    }
+
+    private String validateChatPayload(ChatRequestPayload payload) {
+        if (payload == null) {
+            return "CHAT payload is required.";
+        }
+        if (!StringUtils.hasText(payload.getConversationId())) {
+            return "conversation_id is required.";
+        }
+        if (!StringUtils.hasText(payload.getEventId())) {
+            return "event_id is required.";
+        }
+        if (!StringUtils.hasText(payload.getContent())) {
+            return "content must not be blank.";
+        }
+        return null;
+    }
+
+    private String validateSpeechPayload(SpeechRequestPayload payload) {
+        if (payload == null) {
+            return "SPEECH payload is required.";
+        }
+        if (!StringUtils.hasText(payload.getConversationId())) {
+            return "conversation_id is required.";
+        }
+        if (!StringUtils.hasText(payload.getEventId())) {
+            return "event_id is required.";
+        }
+        if (!StringUtils.hasText(payload.getAudioData())) {
+            return "audio_data is required.";
+        }
+        if (!StringUtils.hasText(payload.getAudioFormat())) {
+            return "audio_format is required.";
+        }
+        if (payload.getMode() == null) {
+            return "mode is required.";
+        }
+        return null;
+    }
+
+    private ChatErrorCode mapToProtocolErrorCode(LlmErrorCode errorCode) {
+        if (errorCode == null) {
+            return ChatErrorCode.LLM_REQUEST_FAILED;
+        }
+        return switch (errorCode) {
+            case LLM_TIMEOUT -> ChatErrorCode.LLM_TIMEOUT;
+            case LLM_FAILED -> ChatErrorCode.LLM_REQUEST_FAILED;
+            case LLM_DISABLED -> ChatErrorCode.LLM_DISABLED;
+            case CONVERSATION_BUSY -> ChatErrorCode.CONVERSATION_BUSY;
+            case TRANSCRIPTION_FAILED -> ChatErrorCode.TRANSCRIPTION_FAILED;
+            case TRANSCRIPTION_TIMEOUT -> ChatErrorCode.TRANSCRIPTION_TIMEOUT;
+        };
+    }
+
+    private ChatErrorCode mapAudioValidationCode(AudioValidator.AudioValidationCode errorCode) {
+        if (errorCode == AudioValidator.AudioValidationCode.AUDIO_TOO_LARGE) {
+            return ChatErrorCode.AUDIO_TOO_LARGE;
+        }
+        return ChatErrorCode.INVALID_AUDIO_FORMAT;
+    }
+
+    private LlmVoiceMode mapVoiceMode(SpeechMode mode) {
+        return mode == SpeechMode.PREVIEW ? LlmVoiceMode.PREVIEW : LlmVoiceMode.DIRECT;
     }
 
     private String readText(JsonNode node, String fieldName) {

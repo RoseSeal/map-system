@@ -1,5 +1,6 @@
 package com.whut.map.map_service.assembler;
 
+import com.whut.map.map_service.domain.RiskLevel;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
@@ -41,6 +42,7 @@ public class LlmRiskContextAssembler {
                 .latitude(ownShip.getLatitude())
                 .sog(ownShip.getSog())
                 .cog(ownShip.getCog())
+                .heading(ownShip.getHeading())
                 .confidence(ownShip.getConfidence())
                 .build();
     }
@@ -67,8 +69,9 @@ public class LlmRiskContextAssembler {
 
             targets.add(LlmRiskTargetContext.builder()
                     .targetId(ship.getId())
-                    .riskLevel(assessment == null ? null : assessment.getRiskLevel())
+                    .riskLevel(resolveRiskLevel(assessment))
                     .currentDistanceNm(resolveCurrentDistanceNm(ship.getId(), currentDistancesNm))
+                    .relativeBearingDeg(resolveRelativeBearingDeg(ownShip, ship))
                     .dcpaNm(GeoUtils.metersToNm(assessment == null ? 0.0 : assessment.getCpaDistanceMeters()))
                     .tcpaSec(assessment == null ? 0.0 : assessment.getTcpaSeconds())
                     .approaching(cpaResult != null && cpaResult.isApproaching())
@@ -82,6 +85,24 @@ public class LlmRiskContextAssembler {
         }
 
         return targets;
+    }
+
+    private RiskLevel resolveRiskLevel(TargetRiskAssessment assessment) {
+        return assessment == null ? null : RiskLevel.fromValue(assessment.getRiskLevel());
+    }
+
+    private Double resolveRelativeBearingDeg(ShipStatus ownShip, ShipStatus targetShip) {
+        if (ownShip == null || targetShip == null) {
+            return null;
+        }
+        double trueBearing = GeoUtils.trueBearing(
+                ownShip.getLatitude(),
+                ownShip.getLongitude(),
+                targetShip.getLatitude(),
+                targetShip.getLongitude()
+        );
+        double referenceHeading = ownShip.getHeading() != null ? ownShip.getHeading() : ownShip.getCog();
+        return (trueBearing - referenceHeading + 360.0) % 360.0;
     }
 
     private Double resolveCurrentDistanceNm(String targetId, Map<String, Double> currentDistancesNm) {

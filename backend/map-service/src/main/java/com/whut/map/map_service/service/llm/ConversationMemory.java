@@ -21,7 +21,8 @@ public class ConversationMemory {
 
     public ConversationMemory(LlmProperties llmProperties) {
         this.maxMessages = Math.max(0, llmProperties.getConversationMaxTurns() * 2);
-        this.ttlMillis = Math.max(0, llmProperties.getConversationTtlMinutes()) * 60_000L;
+        long ttlMinutes = llmProperties.getConversationTtlMinutes();
+        this.ttlMillis = ttlMinutes < 0 ? -1L : ttlMinutes * 60_000L;
     }
 
     public void append(String conversationId, LlmChatMessage message) {
@@ -107,6 +108,9 @@ public class ConversationMemory {
         synchronized boolean retireIfEvictable(long now, long ttlMillis) {
             if (retired) {
                 return true;
+            }
+            if (ttlMillis < 0) {
+                return false;
             }
             if (permit.availablePermits() <= 0 || (now - lastAccessTimeMillis) < ttlMillis) {
                 return false;

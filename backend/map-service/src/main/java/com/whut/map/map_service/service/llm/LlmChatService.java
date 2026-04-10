@@ -2,15 +2,11 @@ package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.config.llm.LlmExecutorConfig;
 import com.whut.map.map_service.config.properties.LlmProperties;
-import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
 import com.whut.map.map_service.llm.client.LlmClient;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;
 import com.whut.map.map_service.llm.prompt.PromptScene;
 import com.whut.map.map_service.llm.prompt.PromptTemplateService;
-import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
-import com.whut.map.map_service.service.llm.validation.ValidationResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -39,7 +35,6 @@ public class LlmChatService {
     private final RiskContextHolder riskContextHolder;
     private final RiskContextFormatter riskContextFormatter;
     private final ConversationMemory conversationMemory;
-    private final ChatPayloadValidator chatPayloadValidator;
     @Qualifier(LlmExecutorConfig.LLM_EXECUTOR)
     private final ExecutorService llmExecutor;
 
@@ -47,25 +42,20 @@ public class LlmChatService {
     }
 
     public void handleChat(
-            ChatRequestPayload request,
+            LlmChatRequest request,
             Consumer<ChatReplyResult> onSuccess,
-            BiConsumer<ChatErrorCode, String> onError
+            BiConsumer<LlmErrorCode, String> onError
     ) {
-        ValidationResult validationResult = chatPayloadValidator.validateTextRequest(request);
-        if (validationResult.hasError()) {
-            onError.accept(validationResult.errorCode(), validationResult.errorMessage());
-            return;
-        }
-
         if (!llmProperties.isEnabled()) {
-            onError.accept(ChatErrorCode.LLM_DISABLED, "LLM chat is disabled.");
+            onError.accept(LlmErrorCode.LLM_DISABLED, "LLM chat is disabled.");
             return;
         }
 
-        String conversationId = request.getConversationId();
+        String conversationId = request.conversationId();
+
         ConversationMemory.ConversationPermit permit = conversationMemory.tryAcquire(conversationId);
         if (permit == null) {
-            onError.accept(ChatErrorCode.CONVERSATION_BUSY,
+            onError.accept(LlmErrorCode.CONVERSATION_BUSY,
                     "Previous request in this conversation is still processing.");
             return;
         }
@@ -79,7 +69,7 @@ public class LlmChatService {
                         try {
                             if (throwable == null) {
                                 conversationMemory.append(conversationId,
-                                        new LlmChatMessage(ChatRole.USER, request.getContent()));
+                                        new LlmChatMessage(ChatRole.USER, request.content()));
                                 conversationMemory.append(conversationId,
                                         new LlmChatMessage(ChatRole.ASSISTANT, responseText));
                                 onSuccess.accept(new ChatReplyResult(responseText, resolveProviderName()));
@@ -87,9 +77,9 @@ public class LlmChatService {
                             }
 
                             Throwable cause = unwrap(throwable);
-                            ChatErrorCode errorCode = cause instanceof TimeoutException
-                                    ? ChatErrorCode.LLM_TIMEOUT
-                                    : ChatErrorCode.LLM_REQUEST_FAILED;
+                            LlmErrorCode errorCode = cause instanceof TimeoutException
+                                    ? LlmErrorCode.LLM_TIMEOUT
+                                    : LlmErrorCode.LLM_FAILED;
                             String errorMessage = cause instanceof TimeoutException
                                     ? "LLM request timed out."
                                     : "LLM request failed.";
@@ -106,14 +96,14 @@ public class LlmChatService {
         } catch (RejectedExecutionException e) {
             permit.close();
             log.warn("LLM executor rejected chat request: {}", e.getMessage());
-            onError.accept(ChatErrorCode.LLM_REQUEST_FAILED, "LLM request failed.");
+            onError.accept(LlmErrorCode.LLM_FAILED, "LLM request failed.");
         } catch (RuntimeException e) {
             permit.close();
             throw e;
         }
     }
 
-    private List<LlmChatMessage> buildMessages(ChatRequestPayload request) {
+    private List<LlmChatMessage> buildMessages(LlmChatRequest request) {
         List<LlmChatMessage> messages = new ArrayList<>();
         messages.add(new LlmChatMessage(
                 ChatRole.SYSTEM,
@@ -126,18 +116,18 @@ public class LlmChatService {
         }
 
         int historyStartIndex = messages.size();
-        List<LlmChatMessage> history = conversationMemory.getHistory(request.getConversationId());
+        List<LlmChatMessage> history = conversationMemory.getHistory(request.conversationId());
         messages.addAll(history);
         int historyEndIndex = messages.size();
-        messages.add(new LlmChatMessage(ChatRole.USER, request.getContent()));
+        messages.add(new LlmChatMessage(ChatRole.USER, request.content()));
 
         return trimToTokenBudget(messages, historyStartIndex, historyEndIndex);
     }
 
-    private String resolveRiskContext(ChatRequestPayload request) {
+    private String resolveRiskContext(LlmChatRequest request) {
         var context = riskContextHolder.getCurrent();
         var updatedAt = riskContextHolder.getUpdatedAt();
-        return riskContextFormatter.formatConsolidated(context, request.getSelectedTargetIds(), updatedAt);
+        return riskContextFormatter.formatConsolidated(context, request.selectedTargetIds(), updatedAt);
     }
 
     private String resolveProviderName() {

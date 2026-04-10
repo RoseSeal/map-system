@@ -1,15 +1,8 @@
 package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.config.properties.WhisperProperties;
-import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.dto.websocket.ChatRequestPayload;
-import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
-import com.whut.map.map_service.dto.websocket.SpeechMode;
 import com.whut.map.map_service.llm.client.WhisperClient;
 import com.whut.map.map_service.llm.dto.WhisperResponse;
-import com.whut.map.map_service.service.llm.validation.AudioPayloadUtils;
-import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
-import com.whut.map.map_service.service.llm.validation.ValidationResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,7 +15,6 @@ import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -36,7 +28,6 @@ public class VoiceChatService {
     private final WhisperClient whisperClient;
     private final WhisperProperties whisperProperties;
     private final LlmChatService llmChatService;
-    private final ChatPayloadValidator chatPayloadValidator;
     @Qualifier(LLM_EXECUTOR)
     private final ExecutorService voiceExecutor;
 
@@ -44,28 +35,21 @@ public class VoiceChatService {
     }
 
     public void handleVoice(
-            SpeechRequestPayload request,
+            LlmVoiceRequest request,
             Consumer<SpeechTranscriptResult> onTranscript,
             Consumer<LlmChatService.ChatReplyResult> onReply,
-            BiConsumer<ChatErrorCode, String> onError
+            BiConsumer<LlmErrorCode, String> onError
     ) {
-        ValidationResult validation = chatPayloadValidator.validateSpeechRequest(request);
-        if (validation.hasError()) {
-            emitValidationError(validation, onError);
-            return;
-        }
-
-        String normalizedAudioData = AudioPayloadUtils.normalizeAudioData(request.getAudioData());
         byte[] audioBytes;
         try {
-            audioBytes = Base64.getDecoder().decode(normalizedAudioData);
+            audioBytes = Base64.getDecoder().decode(request.audioData());
         } catch (IllegalArgumentException e) {
-            onError.accept(ChatErrorCode.INVALID_AUDIO_FORMAT, "audio_data is not valid Base64 audio.");
+            onError.accept(LlmErrorCode.TRANSCRIPTION_FAILED, "Invalid audio data encoding.");
             return;
         }
 
         String language = whisperProperties.getDefaultLanguage();
-        String audioFormat = request.getAudioFormat();
+        String audioFormat = request.audioFormat();
         CompletableFuture
                 .supplyAsync(() -> whisperClient.transcribe(audioBytes, audioFormat, language), voiceExecutor)
                 .orTimeout(whisperProperties.getTimeoutMs(), TimeUnit.MILLISECONDS)
@@ -76,9 +60,9 @@ public class VoiceChatService {
                     }
 
                     Throwable cause = unwrap(throwable);
-                    ChatErrorCode errorCode = cause instanceof TimeoutException
-                            ? ChatErrorCode.TRANSCRIPTION_TIMEOUT
-                            : ChatErrorCode.TRANSCRIPTION_FAILED;
+                    LlmErrorCode errorCode = cause instanceof TimeoutException
+                            ? LlmErrorCode.TRANSCRIPTION_TIMEOUT
+                            : LlmErrorCode.TRANSCRIPTION_FAILED;
                     String errorMessage = cause instanceof TimeoutException
                             ? "Audio transcription timed out."
                             : "Audio transcription failed.";
@@ -92,16 +76,16 @@ public class VoiceChatService {
     }
 
     private void handlePostTranscription(
-            SpeechRequestPayload request,
+            LlmVoiceRequest request,
             WhisperResponse response,
             String language,
             Consumer<SpeechTranscriptResult> onTranscript,
             Consumer<LlmChatService.ChatReplyResult> onReply,
-            BiConsumer<ChatErrorCode, String> onError
+            BiConsumer<LlmErrorCode, String> onError
     ) {
         String transcript = response == null ? null : response.getText();
         if (!StringUtils.hasText(transcript)) {
-            onError.accept(ChatErrorCode.TRANSCRIPTION_FAILED, "Audio transcription returned empty text.");
+            onError.accept(LlmErrorCode.TRANSCRIPTION_FAILED, "Audio transcription returned empty text.");
             return;
         }
 
@@ -116,26 +100,26 @@ public class VoiceChatService {
     }
 
     private void forwardTranscriptToLlm(
-            SpeechRequestPayload request,
+            LlmVoiceRequest request,
             String transcript,
             Consumer<LlmChatService.ChatReplyResult> onReply,
-            BiConsumer<ChatErrorCode, String> onError
+            BiConsumer<LlmErrorCode, String> onError
     ) {
-        ChatRequestPayload textRequest = buildTextRequestFromTranscript(request, transcript);
+        LlmChatRequest textRequest = buildTextRequestFromTranscript(request, transcript);
         llmChatService.handleChat(textRequest, onReply, onError);
     }
 
-    private ChatRequestPayload buildTextRequestFromTranscript(SpeechRequestPayload request, String content) {
-        return ChatRequestPayload.builder()
-                .conversationId(request.getConversationId())
-                .eventId(request.getEventId())
-                .content(content)
-                .selectedTargetIds(request.getSelectedTargetIds())
-                .build();
+    private LlmChatRequest buildTextRequestFromTranscript(LlmVoiceRequest request, String content) {
+        return new LlmChatRequest(
+                request.conversationId(),
+                request.eventId(),
+                content,
+                request.selectedTargetIds()
+        );
     }
 
-    private boolean isPreviewMode(SpeechRequestPayload request) {
-        return request != null && request.getMode() == SpeechMode.PREVIEW;
+    private boolean isPreviewMode(LlmVoiceRequest request) {
+        return request != null && request.mode() == LlmVoiceMode.PREVIEW;
     }
 
     private Throwable unwrap(Throwable throwable) {
@@ -143,12 +127,5 @@ public class VoiceChatService {
             return throwable.getCause();
         }
         return throwable;
-    }
-
-    private void emitValidationError(
-            ValidationResult validationResult,
-            BiConsumer<ChatErrorCode, String> onError
-    ) {
-        onError.accept(validationResult.errorCode(), validationResult.errorMessage());
     }
 }

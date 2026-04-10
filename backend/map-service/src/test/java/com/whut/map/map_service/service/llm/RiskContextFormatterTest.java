@@ -1,7 +1,7 @@
 package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.config.properties.LlmProperties;
-import com.whut.map.map_service.engine.risk.RiskConstants;
+import com.whut.map.map_service.domain.RiskLevel;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
@@ -28,10 +28,10 @@ class RiskContextFormatterTest {
                         .cog(87.6)
                         .build())
                 .targets(List.of(
-                        target("safe-1", RiskConstants.SAFE, 3.0, 2.5, 500, false),
-                        target("warning-2", RiskConstants.WARNING, 0.9, 0.4, 240, true),
-                        target("alarm-1", RiskConstants.ALARM, 1.1, 0.2, 120, true),
-                        target("warning-1", RiskConstants.WARNING, 0.3, 0.5, 300, true)
+                        target("safe-1", RiskLevel.SAFE, 3.0, 2.5, 500, false),
+                        target("warning-2", RiskLevel.WARNING, 0.9, 0.4, 240, true),
+                        target("alarm-1", RiskLevel.ALARM, 1.1, 0.2, 120, true),
+                        target("warning-1", RiskLevel.WARNING, 0.3, 0.5, 300, true)
                 ))
                 .build();
 
@@ -61,9 +61,9 @@ class RiskContextFormatterTest {
                         .cog(87.6)
                         .build())
                 .targets(List.of(
-                        detailedTarget("safe-1", RiskConstants.SAFE, 3.0, 2.5, 500, false,
+                        detailedTarget("safe-1", RiskLevel.SAFE, 3.0, 2.5, 500, false,
                                 121.0, 31.0, 10.0, 180.0, null),
-                        detailedTarget("warning-1", RiskConstants.WARNING, 0.9, 0.4, 240, true,
+                        detailedTarget("warning-1", RiskLevel.WARNING, 0.9, 0.4, 240, true,
                                 121.5, 31.5, 8.0, 45.0, "目标船正从右舷接近")
                 ))
                 .build();
@@ -91,7 +91,7 @@ class RiskContextFormatterTest {
         RiskContextFormatter formatter = new RiskContextFormatter(properties);
         LlmRiskContext context = LlmRiskContext.builder()
                 .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())
-                .targets(List.of(target("target-1", RiskConstants.WARNING, 1.0, 0.5, 200, true)))
+                .targets(List.of(target("target-1", RiskLevel.WARNING, 1.0, 0.5, 200, true)))
                 .build();
 
         String partial = formatter.formatSelectedTargets(context,
@@ -114,7 +114,7 @@ class RiskContextFormatterTest {
         RiskContextFormatter formatter = new RiskContextFormatter(properties);
         LlmRiskContext context = LlmRiskContext.builder()
                 .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())
-                .targets(List.of(target("target-1", RiskConstants.WARNING, 1.0, 0.5, 200, true)))
+                .targets(List.of(target("target-1", RiskLevel.WARNING, 1.0, 0.5, 200, true)))
                 .build();
 
         assertThat(formatter.formatSelectedTargets(context, List.of(), Instant.now())).isNull();
@@ -128,7 +128,7 @@ class RiskContextFormatterTest {
         RiskContextFormatter formatter = new RiskContextFormatter(properties);
         LlmRiskContext context = LlmRiskContext.builder()
                 .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())
-                .targets(List.of(target("safe-1", RiskConstants.SAFE, 3.0, 2.5, 500, false)))
+                .targets(List.of(target("safe-1", RiskLevel.SAFE, 3.0, 2.5, 500, false)))
                 .build();
 
         assertThat(formatter.formatSummary(context, Instant.parse("2026-04-09T10:00:00Z")))
@@ -166,13 +166,13 @@ class RiskContextFormatterTest {
                         .cog(87.6)
                         .build())
                 .targets(List.of(
-                        detailedTarget("safe-1", RiskConstants.SAFE, 3.0, 2.5, 500, false,
+                        detailedTarget("safe-1", RiskLevel.SAFE, 3.0, 2.5, 500, false,
                                 121.0, 31.0, 10.0, 180.0, null),
-                        detailedTarget("warning-2", RiskConstants.WARNING, 0.9, 0.4, 240, true,
+                        detailedTarget("warning-2", RiskLevel.WARNING, 0.9, 0.4, 240, true,
                                 121.2, 31.2, 8.0, 90.0, null),
-                        detailedTarget("alarm-1", RiskConstants.ALARM, 1.1, 0.2, 120, true,
+                        detailedTarget("alarm-1", RiskLevel.ALARM, 1.1, 0.2, 120, true,
                                 121.5, 31.5, 9.0, 45.0, "目标船正从右舷接近"),
-                        detailedTarget("warning-1", RiskConstants.WARNING, 0.3, 0.5, 300, true,
+                        detailedTarget("warning-1", RiskLevel.WARNING, 0.3, 0.5, 300, true,
                                 121.8, 31.8, 7.5, 135.0, null)
                 ))
                 .build();
@@ -201,7 +201,7 @@ class RiskContextFormatterTest {
         LlmRiskContext context = LlmRiskContext.builder()
                 .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())
                 .targets(List.of(
-                        detailedTarget("safe-1", RiskConstants.SAFE, 3.0, 2.5, 500, false,
+                        detailedTarget("safe-1", RiskLevel.SAFE, 3.0, 2.5, 500, false,
                                 121.0, 31.0, 10.0, 180.0, null)
                 ))
                 .build();
@@ -220,7 +220,7 @@ class RiskContextFormatterTest {
 
     private LlmRiskTargetContext target(
             String targetId,
-            String riskLevel,
+            RiskLevel riskLevel,
             double currentDistanceNm,
             double dcpaNm,
             double tcpaSec,
@@ -238,7 +238,7 @@ class RiskContextFormatterTest {
 
     private LlmRiskTargetContext detailedTarget(
             String targetId,
-            String riskLevel,
+            RiskLevel riskLevel,
             double currentDistanceNm,
             double dcpaNm,
             double tcpaSec,

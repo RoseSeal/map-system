@@ -11,7 +11,10 @@ import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.safety.ShipDomainEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
+import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
+import com.whut.map.map_service.llm.dto.LlmExplanation;
+import com.whut.map.map_service.service.llm.LlmExplanationService;
 import com.whut.map.map_service.service.llm.LlmTriggerService;
 import com.whut.map.map_service.service.llm.RiskContextHolder;
 import com.whut.map.map_service.store.ShipStateStore;
@@ -20,6 +23,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -98,11 +103,15 @@ class ShipDispatcherTest {
 
     private static final class NoopLlmTriggerService extends LlmTriggerService {
         NoopLlmTriggerService() {
-            super(new com.whut.map.map_service.config.properties.LlmProperties(), null, null);
+            super(new com.whut.map.map_service.config.properties.LlmProperties(), null);
         }
 
         @Override
-        public void triggerExplanationsIfNeeded(LlmRiskContext context, String riskObjectId) {
+        public void triggerExplanationsIfNeeded(
+                LlmRiskContext context,
+                Consumer<LlmExplanation> onExplanation,
+                BiConsumer<LlmRiskTargetContext, LlmExplanationService.LlmExplanationError> onError
+        ) {
         }
     }
 }

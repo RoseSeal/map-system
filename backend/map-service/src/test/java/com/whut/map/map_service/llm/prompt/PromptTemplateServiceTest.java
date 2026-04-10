@@ -15,7 +15,8 @@ class PromptTemplateServiceTest {
                 .contains("航行安全助手")
                 .doesNotContain("\r");
         assertThat(service.getSystemPrompt(PromptScene.RISK_EXPLANATION))
-                .contains("航行安全助手")
+                .contains("风险描述模块")
+                .contains("相对方位")
                 .doesNotContain("\r");
     }
 

@@ -115,6 +115,23 @@ class ConversationMemoryTest {
         assertThat(memory.getHistory(conversationId)).isEmpty();
     }
 
+    @Test
+    void evictExpiredIsDisabledWhenTtlIsNegative() {
+        ConversationMemory memory = new ConversationMemory(properties(2, -1));
+        String conversationId = "conversation-1";
+        ConversationMemory.ConversationPermit permit = memory.tryAcquire(conversationId);
+        permit.close();
+        memory.append(conversationId, new LlmChatMessage(ChatRole.USER, "u1"));
+        memory.append(conversationId, new LlmChatMessage(ChatRole.ASSISTANT, "a1"));
+
+        memory.evictExpired();
+
+        assertThat(memory.getHistory(conversationId)).containsExactly(
+                new LlmChatMessage(ChatRole.USER, "u1"),
+                new LlmChatMessage(ChatRole.ASSISTANT, "a1")
+        );
+    }
+
     private LlmProperties properties(int maxTurns, long ttlMinutes) {
         LlmProperties properties = new LlmProperties();
         properties.setConversationMaxTurns(maxTurns);

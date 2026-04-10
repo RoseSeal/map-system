@@ -1,18 +1,25 @@
 package com.whut.map.map_service.engine.risk;
 
+import com.whut.map.map_service.domain.RiskLevel;
+import com.whut.map.map_service.llm.dto.LlmExplanation;
+
 public final class RiskConstants {
     private RiskConstants() {
     }
 
-    public static final String SAFE = "SAFE";
-    public static final String CAUTION = "CAUTION";
-    public static final String WARNING = "WARNING";
-    public static final String ALARM = "ALARM";
+    @Deprecated
+    public static final String SAFE = RiskLevel.SAFE.name();
+    @Deprecated
+    public static final String CAUTION = RiskLevel.CAUTION.name();
+    @Deprecated
+    public static final String WARNING = RiskLevel.WARNING.name();
+    @Deprecated
+    public static final String ALARM = RiskLevel.ALARM.name();
 
     public static final String EXPLANATION_SOURCE_RULE = "rule";
-    public static final String EXPLANATION_SOURCE_LLM = "llm";
+    @Deprecated
+    public static final String EXPLANATION_SOURCE_LLM = LlmExplanation.SOURCE_LLM;
     public static final String EXPLANATION_SOURCE_FALLBACK = "fallback";
     public static final String EXPLANATION_TEXT_AWAITING_CPA = "Awaiting CPA/TCPA";
     public static final String EXPLANATION_TEXT_DERIVED = "CPA/TCPA derived risk";
 }
-

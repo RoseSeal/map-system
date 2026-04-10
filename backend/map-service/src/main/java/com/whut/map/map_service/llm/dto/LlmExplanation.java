@@ -6,6 +6,8 @@ import lombok.Data;
 @Data
 @Builder
 public class LlmExplanation {
+    public static final String SOURCE_LLM = "llm";
+
     private String source;
     private String provider;
     private String targetId;

@@ -1,7 +1,7 @@
 package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.config.properties.LlmProperties;
-import com.whut.map.map_service.dto.websocket.ChatErrorCode;
+import com.whut.map.map_service.domain.RiskLevel;
 import com.whut.map.map_service.llm.client.LlmClient;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;
@@ -38,6 +38,7 @@ class LlmExplanationServiceTest {
                     .latitude(30.5678)
                     .sog(12.3)
                     .cog(87.6)
+                    .heading(35.0)
                     .build();
             LlmRiskTargetContext target = LlmRiskTargetContext.builder()
                     .targetId("target-9")
@@ -45,7 +46,9 @@ class LlmExplanationServiceTest {
                     .latitude(31.6789)
                     .speedKn(10.4)
                     .courseDeg(270.1)
-                    .riskLevel("WARNING")
+                    .riskLevel(RiskLevel.WARNING)
+                    .currentDistanceNm(0.80)
+                    .relativeBearingDeg(45.0)
                     .dcpaNm(0.42)
                     .tcpaSec(240)
                     .approaching(true)
@@ -70,9 +73,13 @@ class LlmExplanationServiceTest {
             assertThat(messages.get(1).content())
                     .contains("【本船】")
                     .contains("ID: own-1")
+                    .contains("船首向: 35.0°")
                     .contains("【目标船】")
                     .contains("ID: target-9")
+                    .contains("航向: 270.1°")
                     .contains("风险等级: WARNING")
+                    .contains("现距: 0.80 海里")
+                    .contains("相对方位: 右舷前方 (45°)")
                     .contains("DCPA: 0.42 海里")
                     .contains("TCPA: 240 秒")
                     .contains("接近中: 是")
@@ -96,7 +103,7 @@ class LlmExplanationServiceTest {
 
     private static final class CapturingExplanationCallback {
         private LlmExplanation success;
-        private ChatErrorCode errorCode;
+        private LlmErrorCode errorCode;
         private String errorMessage;
         private final CountDownLatch latch = new CountDownLatch(1);
 
@@ -119,7 +126,7 @@ class LlmExplanationServiceTest {
             return success;
         }
 
-        ChatErrorCode errorCode() {
+        LlmErrorCode errorCode() {
             return errorCode;
         }
 

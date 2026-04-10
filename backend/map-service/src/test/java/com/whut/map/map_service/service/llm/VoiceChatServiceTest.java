@@ -1,26 +1,23 @@
 package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.config.properties.WhisperProperties;
-import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.dto.websocket.SpeechMode;
-import com.whut.map.map_service.dto.websocket.SpeechRequestPayload;
 import com.whut.map.map_service.llm.client.WhisperClient;
 import com.whut.map.map_service.llm.dto.WhisperResponse;
-import com.whut.map.map_service.service.llm.validation.ChatPayloadValidator;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class VoiceChatServiceTest {
 
     private final WhisperProperties whisperProperties = new WhisperProperties();
-    private final ChatPayloadValidator chatPayloadValidator = new ChatPayloadValidator(whisperProperties);
 
     @Test
-    void invalidChatEnvelopeReturnsErrorBeforeTranscription() {
+    void previewModeReturnsTranscriptWithoutForwardingToChat() throws Exception {
         RecordingWhisperClient whisperClient = new RecordingWhisperClient();
         RecordingLlmChatService llmChatService = new RecordingLlmChatService();
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -29,24 +26,67 @@ class VoiceChatServiceTest {
                     whisperClient,
                     whisperProperties,
                     llmChatService,
-                    chatPayloadValidator,
                     executor
             );
 
-            SpeechRequestPayload request = SpeechRequestPayload.builder()
-                    .conversationId("conversation-1")
-                    .audioData("dGVzdA==")
-                    .audioFormat("webm")
-                    .mode(SpeechMode.DIRECT)
-                    .build();
+            WhisperResponse response = new WhisperResponse();
+            response.setText("甲板前方目标接近");
+            whisperClient.response = response;
+            LlmVoiceRequest request = new LlmVoiceRequest(
+                    "conversation-1",
+                    "event-1",
+                    "dGVzdA==",
+                    "webm",
+                    LlmVoiceMode.PREVIEW,
+                    java.util.List.of("target-1")
+            );
+
+            CapturingSpeechCallback callback = new CapturingSpeechCallback();
+            service.handleVoice(request, callback::captureTranscript, callback::captureReply, callback::captureError);
+            callback.await();
+
+            assertThat(callback.errorCode()).isNull();
+            assertThat(callback.errorMessage()).isNull();
+            assertThat(callback.reply()).isNull();
+            assertThat(callback.transcript()).isNotNull();
+            assertThat(callback.transcript().transcript()).isEqualTo("甲板前方目标接近");
+            assertThat(whisperClient.transcribeCalled).isTrue();
+            assertThat(llmChatService.handleChatCalled).isFalse();
+        } finally {
+            executor.shutdownNow();
+            llmChatService.shutdown();
+        }
+    }
+
+    @Test
+    void invalidBase64ReturnsEncodingErrorBeforeTranscription() {
+        RecordingWhisperClient whisperClient = new RecordingWhisperClient();
+        RecordingLlmChatService llmChatService = new RecordingLlmChatService();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            VoiceChatService service = new VoiceChatService(
+                    whisperClient,
+                    whisperProperties,
+                    llmChatService,
+                    executor
+            );
+
+            LlmVoiceRequest request = new LlmVoiceRequest(
+                    "conversation-1",
+                    "event-1",
+                    "A===",
+                    "webm",
+                    LlmVoiceMode.DIRECT,
+                    java.util.List.of()
+            );
 
             CapturingSpeechCallback callback = new CapturingSpeechCallback();
             service.handleVoice(request, callback::captureTranscript, callback::captureReply, callback::captureError);
 
-            assertThat(callback.errorCode()).isEqualTo(ChatErrorCode.INVALID_SPEECH_REQUEST);
-            assertThat(callback.errorMessage()).isEqualTo("event_id is required.");
-            assertThat(callback.reply()).isNull();
+            assertThat(callback.errorCode()).isEqualTo(LlmErrorCode.TRANSCRIPTION_FAILED);
+            assertThat(callback.errorMessage()).isEqualTo("Invalid audio data encoding.");
             assertThat(callback.transcript()).isNull();
+            assertThat(callback.reply()).isNull();
             assertThat(whisperClient.transcribeCalled).isFalse();
             assertThat(llmChatService.handleChatCalled).isFalse();
         } finally {
@@ -58,20 +98,28 @@ class VoiceChatServiceTest {
     private static final class CapturingSpeechCallback {
         private VoiceChatService.SpeechTranscriptResult transcript;
         private LlmChatService.ChatReplyResult reply;
-        private ChatErrorCode errorCode;
+        private LlmErrorCode errorCode;
         private String errorMessage;
+        private final CountDownLatch latch = new CountDownLatch(1);
 
         void captureTranscript(VoiceChatService.SpeechTranscriptResult transcript) {
             this.transcript = transcript;
+            latch.countDown();
         }
 
         void captureReply(LlmChatService.ChatReplyResult reply) {
             this.reply = reply;
+            latch.countDown();
         }
 
-        void captureError(ChatErrorCode errorCode, String errorMessage) {
+        void captureError(LlmErrorCode errorCode, String errorMessage) {
             this.errorCode = errorCode;
             this.errorMessage = errorMessage;
+            latch.countDown();
+        }
+
+        void await() throws InterruptedException {
+            assertThat(latch.await(1, TimeUnit.SECONDS)).isTrue();
         }
 
         VoiceChatService.SpeechTranscriptResult transcript() {
@@ -82,7 +130,7 @@ class VoiceChatServiceTest {
             return reply;
         }
 
-        ChatErrorCode errorCode() {
+        LlmErrorCode errorCode() {
             return errorCode;
         }
 
@@ -93,11 +141,12 @@ class VoiceChatServiceTest {
 
     private static final class RecordingWhisperClient implements WhisperClient {
         private boolean transcribeCalled;
+        private WhisperResponse response;
 
         @Override
         public WhisperResponse transcribe(byte[] audioData, String audioFormat, String language) {
             this.transcribeCalled = true;
-            return null;
+            return response;
         }
     }
 
@@ -117,7 +166,6 @@ class VoiceChatServiceTest {
                     new RiskContextHolder(),
                     new RiskContextFormatter(new com.whut.map.map_service.config.properties.LlmProperties()),
                     new ConversationMemory(new com.whut.map.map_service.config.properties.LlmProperties()),
-                    new ChatPayloadValidator(new WhisperProperties()),
                     executor
             );
             this.executor = executor;
@@ -125,9 +173,9 @@ class VoiceChatServiceTest {
 
         @Override
         public void handleChat(
-                com.whut.map.map_service.dto.websocket.ChatRequestPayload request,
+                LlmChatRequest request,
                 java.util.function.Consumer<ChatReplyResult> onSuccess,
-                java.util.function.BiConsumer<ChatErrorCode, String> onError
+                java.util.function.BiConsumer<LlmErrorCode, String> onError
         ) {
             this.handleChatCalled = true;
         }

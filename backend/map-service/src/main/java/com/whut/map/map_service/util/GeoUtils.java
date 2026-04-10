@@ -43,4 +43,12 @@ public class GeoUtils {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
+    public static double trueBearing(double lat1, double lon1, double lat2, double lon2) {
+        double meanLatRad = Math.toRadians((lat1 + lat2) / 2.0);
+        double dx = (lon2 - lon1) * Math.cos(meanLatRad) * 111320.0;
+        double dy = (lat2 - lat1) * 111320.0;
+        double bearing = Math.toDegrees(Math.atan2(dx, dy));
+        return bearing >= 0 ? bearing : bearing + 360.0;
+    }
+
 }

@@ -1,8 +1,6 @@
 package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.config.properties.LlmProperties;
-import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.llm.client.LlmClient;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;
@@ -38,7 +36,7 @@ public class LlmExplanationService {
     @Qualifier(LLM_EXECUTOR)
     private final ExecutorService llmExecutor;
 
-    public record LlmExplanationError(ChatErrorCode errorCode, String errorMessage) {
+    public record LlmExplanationError(LlmErrorCode errorCode, String errorMessage) {
     }
 
     public void generateTargetExplanationsAsync(
@@ -69,10 +67,10 @@ public class LlmExplanationService {
                         if (throwable == null) {
                             log.debug("LLM response for target {}: {}", target.getTargetId(), text);
                             onSuccess.accept(LlmExplanation.builder()
-                                    .source(RiskConstants.EXPLANATION_SOURCE_LLM)
+                                    .source(LlmExplanation.SOURCE_LLM)
                                     .provider(resolveProviderName())
                                     .targetId(target.getTargetId())
-                                    .riskLevel(target.getRiskLevel())
+                                    .riskLevel(target.getRiskLevel() == null ? null : target.getRiskLevel().name())
                                     .text(text)
                                     .timestamp(Instant.now().toString())
                                     .build());
@@ -85,7 +83,7 @@ public class LlmExplanationService {
                             log.warn("LLM call timed out for target {} after {} ms. Check DNS/proxy/network reachability.",
                                     target.getTargetId(), llmProperties.getTimeoutMs());
                             onError.accept(target, new LlmExplanationError(
-                                    ChatErrorCode.LLM_TIMEOUT,
+                                    LlmErrorCode.LLM_TIMEOUT,
                                     "LLM explanation request timed out."
                             ));
                             return;
@@ -94,7 +92,7 @@ public class LlmExplanationService {
                         log.warn("LLM client failed for target {}, type={}, error={}",
                                 target.getTargetId(), cause.getClass().getSimpleName(), cause.getMessage());
                         onError.accept(target, new LlmExplanationError(
-                                ChatErrorCode.LLM_REQUEST_FAILED,
+                                LlmErrorCode.LLM_FAILED,
                                 "LLM explanation request failed."
                         ));
                     });
@@ -113,13 +111,15 @@ public class LlmExplanationService {
                         【本船】
                         ID: %s
                         位置: (%.4f, %.4f)
-                        航速: %.1f 节，航向: %.1f°
+                        航速: %.1f 节，船首向: %s
 
                         【目标船】
                         ID: %s
                         位置: (%.4f, %.4f)
                         航速: %.1f 节，航向: %.1f°
                         风险等级: %s
+                        现距: %s
+                        相对方位: %s
                         DCPA: %.2f 海里，TCPA: %.0f 秒
                         接近中: %s
                         规则说明: %s
@@ -128,11 +128,13 @@ public class LlmExplanationService {
                         """.formatted(
                                 ownShip.getId(),
                                 ownShip.getLongitude(), ownShip.getLatitude(),
-                                ownShip.getSog(), ownShip.getCog(),
+                                ownShip.getSog(), formatOwnShipHeading(ownShip),
                                 target.getTargetId(),
                                 target.getLongitude(), target.getLatitude(),
                                 target.getSpeedKn(), target.getCourseDeg(),
-                                target.getRiskLevel(),
+                                target.getRiskLevel() == null ? "未知" : target.getRiskLevel().name(),
+                                formatDistanceNm(target.getCurrentDistanceNm()),
+                                formatRelativeBearing(target.getRelativeBearingDeg()),
                                 target.getDcpaNm(), target.getTcpaSec(),
                                 target.isApproaching() ? "是" : "否",
                                 target.getRuleExplanation() != null ? target.getRuleExplanation() : "无"
@@ -150,5 +152,50 @@ public class LlmExplanationService {
 
     private String resolveProviderName() {
         return StringUtils.hasText(llmProperties.getProvider()) ? llmProperties.getProvider() : "llm";
+    }
+
+    static String bearingSectorLabel(double relativeBearingDeg) {
+        double normalized = ((relativeBearingDeg % 360.0) + 360.0) % 360.0;
+        if (normalized >= 337.5 || normalized < 22.5) {
+            return "正前方";
+        }
+        if (normalized < 67.5) {
+            return "右舷前方";
+        }
+        if (normalized < 112.5) {
+            return "右舷正横";
+        }
+        if (normalized < 157.5) {
+            return "右舷后方";
+        }
+        if (normalized < 202.5) {
+            return "正后方";
+        }
+        if (normalized < 247.5) {
+            return "左舷后方";
+        }
+        if (normalized < 292.5) {
+            return "左舷正横";
+        }
+        return "左舷前方";
+    }
+
+    private String formatDistanceNm(Double currentDistanceNm) {
+        return currentDistanceNm == null ? "未知" : String.format("%.2f 海里", currentDistanceNm);
+    }
+
+    private String formatOwnShipHeading(LlmRiskOwnShipContext ownShip) {
+        Double heading = ownShip.getHeading();
+        if (heading != null) {
+            return String.format("%.1f°", heading);
+        }
+        return String.format("%.1f° (COG近似)", ownShip.getCog());
+    }
+
+    private String formatRelativeBearing(Double relativeBearingDeg) {
+        if (relativeBearingDeg == null) {
+            return "未知";
+        }
+        return "%s (%.0f°)".formatted(bearingSectorLabel(relativeBearingDeg), relativeBearingDeg);
     }
 }

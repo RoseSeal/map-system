@@ -1,7 +1,7 @@
 package com.whut.map.map_service.service.llm;
 
 import com.whut.map.map_service.config.properties.LlmProperties;
-import com.whut.map.map_service.engine.risk.RiskConstants;
+import com.whut.map.map_service.domain.RiskLevel;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
@@ -177,7 +177,7 @@ public class RiskContextFormatter {
         builder.append("目标船 ")
                 .append(defaultText(target.getTargetId()))
                 .append(": 风险等级 ")
-                .append(target.getRiskLevel())
+                .append(formatRiskLevel(target.getRiskLevel()))
                 .append(", 现距 ")
                 .append(formatDistanceNm(target.getCurrentDistanceNm()))
                 .append("海里, DCPA ")
@@ -220,7 +220,7 @@ public class RiskContextFormatter {
         builder.append("目标船 ")
                 .append(defaultText(target.getTargetId()))
                 .append(": 风险等级 ")
-                .append(target.getRiskLevel())
+                .append(formatRiskLevel(target.getRiskLevel()))
                 .append(", 现距 ")
                 .append(formatDistanceNm(target.getCurrentDistanceNm()))
                 .append("海里, DCPA ")
@@ -233,33 +233,31 @@ public class RiskContextFormatter {
     }
 
     private boolean isVisibleTarget(LlmRiskTargetContext target) {
-        if (target == null || !StringUtils.hasText(target.getTargetId()) || !StringUtils.hasText(target.getRiskLevel())) {
+        if (target == null || !StringUtils.hasText(target.getTargetId()) || target.getRiskLevel() == null) {
             return false;
         }
-        return riskLevelOrder(target.getRiskLevel()) > riskLevelOrder(RiskConstants.SAFE);
+        return riskLevelOrder(target.getRiskLevel()) > riskLevelOrder(RiskLevel.SAFE);
     }
 
     private Comparator<LlmRiskTargetContext> targetComparator() {
         return Comparator
                 .comparingInt((LlmRiskTargetContext target) -> riskLevelOrder(target.getRiskLevel()))
                 .reversed()
-                .thenComparingDouble(LlmRiskTargetContext::getCurrentDistanceNm);
+                .thenComparingDouble(target -> target.getCurrentDistanceNm() == null
+                        ? Double.POSITIVE_INFINITY
+                        : target.getCurrentDistanceNm());
     }
 
-    private int riskLevelOrder(String riskLevel) {
-        if (RiskConstants.ALARM.equals(riskLevel)) {
-            return 4;
+    private int riskLevelOrder(RiskLevel riskLevel) {
+        if (riskLevel == null) {
+            return 0;
         }
-        if (RiskConstants.WARNING.equals(riskLevel)) {
-            return 3;
-        }
-        if (RiskConstants.CAUTION.equals(riskLevel)) {
-            return 2;
-        }
-        if (RiskConstants.SAFE.equals(riskLevel)) {
-            return 1;
-        }
-        return 0;
+        return switch (riskLevel) {
+            case ALARM -> 4;
+            case WARNING -> 3;
+            case CAUTION -> 2;
+            case SAFE -> 1;
+        };
     }
 
     private String defaultText(String value) {
@@ -292,5 +290,9 @@ public class RiskContextFormatter {
 
     private String formatDistanceNm(Double value) {
         return value == null ? "未知" : formatDecimal(value, 2);
+    }
+
+    private String formatRiskLevel(RiskLevel riskLevel) {
+        return riskLevel == null ? "未知" : riskLevel.name();
     }
 }

@@ -17,7 +17,7 @@ public class LlmProperties {
     private int cooldownSeconds = 5;
     private boolean fallbackTemplateEnabled = true;
     private int conversationMaxTurns = 10;
-    private long conversationTtlMinutes = 30L;
+    private long conversationTtlMinutes = 30L; // 负数表示不自动清理
     private long conversationEvictIntervalMs = 60_000L;
     private int conversationTokenBudget = 6000;
 

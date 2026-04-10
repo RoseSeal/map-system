@@ -11,5 +11,6 @@ public class LlmRiskOwnShipContext {
     private double latitude;
     private double sog;
     private double cog;
+    private Double heading;
     private Double confidence;
 }

@@ -4,6 +4,7 @@ import com.whut.map.map_service.assembler.LlmRiskContextAssembler;
 import com.whut.map.map_service.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
+import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.RiskObjectDto;
 import com.whut.map.map_service.engine.collision.CpaTcpaBatchCalculator;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
@@ -14,6 +15,7 @@ import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
+import com.whut.map.map_service.service.llm.LlmErrorCode;
 import com.whut.map.map_service.service.llm.LlmTriggerService;
 import com.whut.map.map_service.service.llm.RiskContextHolder;
 import com.whut.map.map_service.store.ShipStateStore;
@@ -161,9 +163,20 @@ public class ShipDispatcher {
     void publishRiskSnapshot(RiskDispatchSnapshot snapshot) {
         riskContextHolder.update(snapshot.llmContext());
         riskStreamPublisher.publishRiskUpdate(snapshot.riskObject());
+        String riskObjectId = snapshot.riskObject().getRiskObjectId();
         llmTriggerService.triggerExplanationsIfNeeded(
                 snapshot.llmContext(),
-                snapshot.riskObject().getRiskObjectId()
+                explanation -> riskStreamPublisher.publishExplanation(explanation, riskObjectId),
+                (target, error) -> {
+                    ChatErrorCode errorCode = error != null && error.errorCode() == LlmErrorCode.LLM_TIMEOUT
+                            ? ChatErrorCode.LLM_TIMEOUT
+                            : ChatErrorCode.LLM_REQUEST_FAILED;
+                    riskStreamPublisher.publishError(
+                            errorCode,
+                            error == null ? "LLM explanation request failed." : error.errorMessage(),
+                            target == null ? null : target.getTargetId()
+                    );
+                }
         );
     }
 
