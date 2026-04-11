@@ -83,7 +83,7 @@ llmTriggerService.triggerExplanationsIfNeeded(
 
 **方案**：
 - 定义 `LlmChatRequest` record（字段：`conversationId`、`eventId`、`content`、`selectedTargetIds`），置于 `service.llm`。
-- 定义 `LlmVoiceRequest` record（字段：`conversationId`、`eventId`、`audioData`、`audioFormat`、`mode`、`selectedTargetIds`），置于 `service.llm`。其中 `mode` 类型为 `LlmVoiceMode` 枚举（`DIRECT` / `PREVIEW`），定义于 `service.llm`。
+- 定义 `LlmVoiceRequest` record（字段：`conversationId`、`eventId`、`audioBytes`、`audioFormat`、`mode`、`selectedTargetIds`），置于 `service.llm`。其中 `audioBytes` 为 transport 层完成校验和解码后的字节数组；`mode` 类型为 `LlmVoiceMode` 枚举（`DIRECT` / `PREVIEW`），定义于 `service.llm`。
 - `ChatWebSocketHandler` 在协议校验通过后构造内部请求类型，再调用 LLM 服务。
 
 **`LlmVoiceMode` 命名**：沿用 `DIRECT` / `PREVIEW`，与协议层 `SpeechMode` 值语义一致，只做类型隔离，不做语义改名。
@@ -256,9 +256,9 @@ Phase B 完成后，`service.llm` 包不再存在 `engine.risk.*` 的 import。
 
 | 步骤 | 描述 |
 |------|------|
-| C1 | `LlmChatService.handleChat()` 入参从 `ChatRequestPayload` 改为 `LlmChatRequest`；错误回调从 `BiConsumer<ChatErrorCode, String>` 改为 `BiConsumer<LlmErrorCode, String>`。内部逻辑不变，仅字段访问方式变更（`request.getContent()` → `request.content()`）。删除 `ChatPayloadValidator` 依赖（文本校验已上移）。 |
+| C1 | `LlmChatService.handleChat()` 入参从 `ChatRequestPayload` 改为 `LlmChatRequest`；错误回调从 `BiConsumer<ChatErrorCode, String>` 改为 `BiConsumer<LlmErrorCode, String>`。内部逻辑基本不变，仅字段访问方式变更（`request.getContent()` → `request.content()`）。删除 `ChatPayloadValidator` 依赖；协议文本校验上移到 handler，同时在 service 内保留 `content` 非空兜底 guard。 |
 | C2 | `VoiceChatService.handleVoice()` 入参从 `SpeechRequestPayload` 改为 `LlmVoiceRequest`；错误回调同步切换。`buildTextRequestFromTranscript()` 改为构造 `LlmChatRequest`。`isPreviewMode()` 判断 `LlmVoiceMode.PREVIEW`。 |
-| C3 | `ChatPayloadValidator` 重构为 `AudioValidator`：删除 `validateTextRequest()` / `validateSpeechRequest()`；新增 `validateAudio(String audioData, String audioFormat)` —— 仅负责 base64 合法性和大小校验。返回 `AudioValidator.Result`（含规范化后的 base64、内部 `AudioValidationCode` 和错误消息），由 `ChatWebSocketHandler` 映射为协议错误码。 |
+| C3 | `ChatPayloadValidator` 重构为 `AudioValidator`：删除 `validateTextRequest()` / `validateSpeechRequest()`；新增 `validateAudio(String audioData, String audioFormat)` —— 负责 base64 解码合法性和解码后大小校验。返回 `AudioValidator.Result`（含已解码 `byte[]`、内部 `AudioValidationCode` 和错误消息），由 `ChatWebSocketHandler` 映射为协议错误码。 |
 | C4 | 删除 `ValidationResult.java`。音频校验结果由 `AudioValidator.Result` 内联承载，不再单独保留通用验证结果类型。 |
 | C5 | `LlmExplanationService`：`LlmExplanationError.errorCode` 类型改为 `LlmErrorCode`；删除 `ChatErrorCode` import。 |
 | C6 | `LlmTriggerService`：(a) 删除 `RiskStreamPublisher` 字段；(b) `triggerExplanationsIfNeeded()` 增加回调参数 `Consumer<LlmExplanation> onExplanation`、`BiConsumer<LlmRiskTargetContext, LlmExplanationService.LlmExplanationError> onError`；(c) 内部将回调透传给 `LlmExplanationService.generateTargetExplanationsAsync()`；(d) 删除 `RiskStreamPublisher` / `ChatErrorCode` import；(e) 删除不再需要的 `riskObjectId` 形参。 |
@@ -272,14 +272,14 @@ Phase C 完成后，`service.llm` 包不再存在 `dto.websocket.*` 或 `transpo
 | D1 | `ChatWebSocketHandler.handleChat()`：解析 `ChatRequestPayload` 后，内联执行字段校验（`conversationId`、`eventId`、`content` 非空），校验失败直接 `sendError(ChatErrorCode.INVALID_CHAT_REQUEST, ...)`。校验通过后构造 `LlmChatRequest`，调用 `llmChatService.handleChat()`。错误回调中新增 `mapToProtocolErrorCode(LlmErrorCode)` 映射。 |
 | D2 | `ChatWebSocketHandler.handleSpeech()`：解析 `SpeechRequestPayload` 后，先做协议字段校验，再调用 `AudioValidator.validateAudio()` 做音频内容校验；全部通过后构造 `LlmVoiceRequest`，调用 `voiceChatService.handleVoice()`。 |
 | D3 | `ChatWebSocketHandler` 新增私有方法 `mapToProtocolErrorCode(LlmErrorCode) → ChatErrorCode`，覆盖所有 6 个 `LlmErrorCode` 值。 |
-| D4 | `ShipDispatcher.publishRiskSnapshot()`：调用 `llmTriggerService.triggerExplanationsIfNeeded()` 时传入回调 lambda。`riskObjectId` 由 `ShipDispatcher` 在 lambda 闭包中捕获，`LlmTriggerService` 不再接收该参数。`onExplanation` 转发至 `riskStreamPublisher.publishExplanation()`。`onError` 从 `LlmExplanationError` 中提取 `LlmErrorCode`，映射为 `ChatErrorCode`（`LLM_TIMEOUT` → `ChatErrorCode.LLM_TIMEOUT`，其余 → `ChatErrorCode.LLM_REQUEST_FAILED`），转发至 `riskStreamPublisher.publishError()`。 |
+| D4 | `ShipDispatcher.publishRiskSnapshot()`：调用 `llmTriggerService.triggerExplanationsIfNeeded()` 时传入回调 lambda。`riskObjectId` 由 `ShipDispatcher` 在 lambda 闭包中捕获，`LlmTriggerService` 不再接收该参数。`onExplanation` 转发至 `riskStreamPublisher.publishExplanation()`。`onError` 从 `LlmExplanationError` 中提取 `LlmErrorCode`，通过本地 `switch` 完整映射为 `ChatErrorCode`，再转发至 `riskStreamPublisher.publishError()`，与 `ChatWebSocketHandler.mapToProtocolErrorCode()` 保持一致。 |
 
 ### Phase E：风险解释 prompt 增强
 
 | 步骤 | 描述 |
 |------|------|
 | E1 | 重写 `resources/prompts/system-risk-explanation.txt`，见下文。 |
-| E2 | `LlmExplanationService.buildMessages()`：用户消息中补入 `currentDistanceNm`（"现距: X.XX 海里"）和相对方位（"相对方位: 右舷前方 (045°)"），放置在"风险等级"行之后、"DCPA"行之前。新增 `bearingSectorLabel()` 私有方法（或放入公共工具类）。 |
+| E2 | `LlmExplanationService.buildMessages()`：用户消息中补入 `currentDistanceNm`（"现距: X.XX 海里"）和相对方位（"相对方位: 右舷前方 (045°)"），放置在"风险等级"行之后、"DCPA"行之前。扇区标签由 `GeoUtils.bearingSectorLabel()` 提供。 |
 
 ### Phase F：清理与验证
 
@@ -287,7 +287,7 @@ Phase C 完成后，`service.llm` 包不再存在 `dto.websocket.*` 或 `transpo
 |------|------|
 | F1 | 删除 `service.llm.validation.ChatPayloadValidator.java` 和 `ValidationResult.java`（已由 `AudioValidator` 及其内联结果类型替代）。 |
 | F2 | 确认 `service.llm` 包内无残余 `dto.websocket.*`、`engine.risk.*`、`transport.*` import。验证命令：`grep -rn "import com.whut.map.map_service.dto.websocket\|import com.whut.map.map_service.engine.risk\|import com.whut.map.map_service.transport" backend/.../service/llm/` |
-| F3 | 更新既有单元测试，适配新类型签名。新增 `GeoUtils.trueBearing()` 和 `bearingSectorLabel()` 的单元测试。 |
+| F3 | 更新既有单元测试，适配新类型签名。新增 `GeoUtils.trueBearing()` / `bearingSectorLabel()` 边界测试，以及 `AudioValidator` 单元测试。 |
 
 ---
 
@@ -302,7 +302,7 @@ Phase C 完成后，`service.llm` 包不再存在 `dto.websocket.*` 或 `transpo
 | `LlmChatRequest.java` | `service.llm` | record：`conversationId`、`eventId`、`content`、`selectedTargetIds` |
 | `LlmVoiceRequest.java` | `service.llm` | record：`conversationId`、`eventId`、`audioData`、`audioFormat`、`mode`(LlmVoiceMode)、`selectedTargetIds` |
 | `LlmVoiceMode.java` | `service.llm` | 枚举：`DIRECT`、`PREVIEW` |
-| `AudioValidator.java` | `service.llm.validation` | 替代 `ChatPayloadValidator`，仅校验音频内容（base64 / 大小），内含 `Result` / `AudioValidationCode` |
+| `AudioValidator.java` | `service.llm.validation` | 替代 `ChatPayloadValidator`，负责音频 base64 解码校验与解码后大小限制，内含 `Result` / `AudioValidationCode` |
 
 ### 修改文件
 
@@ -315,7 +315,7 @@ Phase C 完成后，`service.llm` 包不再存在 `dto.websocket.*` 或 `transpo
 | `RiskConstants.java` | 风险等级常量标记 `@Deprecated` |
 | `LlmChatService.java` | `handleChat()` 入参 → `LlmChatRequest`；错误回调 → `LlmErrorCode`；删除 `ChatPayloadValidator` 依赖和协议 DTO import |
 | `VoiceChatService.java` | `handleVoice()` 入参 → `LlmVoiceRequest`；`buildTextRequestFromTranscript()` 构造 `LlmChatRequest`；`isPreviewMode()` 判断 `LlmVoiceMode.PREVIEW`；删除协议 DTO import |
-| `LlmExplanationService.java` | `EXPLANATION_SOURCE_LLM` → `LlmExplanation.SOURCE_LLM`；`LlmExplanationError.errorCode` → `LlmErrorCode`；`buildMessages()` 补入 `currentDistanceNm` 和相对方位；新增 `bearingSectorLabel()` 方法；删除 `RiskConstants` / `ChatErrorCode` import |
+| `LlmExplanationService.java` | `EXPLANATION_SOURCE_LLM` → `LlmExplanation.SOURCE_LLM`；`LlmExplanationError.errorCode` → `LlmErrorCode`；`buildMessages()` 补入 `currentDistanceNm` 和相对方位；删除本地 `bearingSectorLabel()`，改用 `GeoUtils`；删除 `RiskConstants` / `ChatErrorCode` import |
 | `LlmTriggerService.java` | 删除 `RiskStreamPublisher` 字段；`triggerExplanationsIfNeeded()` 增加回调参数（透传给 `LlmExplanationService`）并删除 `riskObjectId` 形参；`isExplainableTarget()` → `RiskLevel.SAFE`；删除 `RiskStreamPublisher` / `RiskConstants` / `ChatErrorCode` import |
 | `RiskContextFormatter.java` | 所有 `RiskConstants.*` → `RiskLevel.*`；`riskLevelOrder()` 改为基于枚举；删除 `RiskConstants` import |
 | `ChatWebSocketHandler.java` | `handleChat()`：内联文本校验 → 构造 `LlmChatRequest` → 调用 service。`handleSpeech()`：内联协议字段校验 → `AudioValidator.validateAudio()` → 构造 `LlmVoiceRequest` → 调用 service。新增 `mapToProtocolErrorCode(LlmErrorCode)` 私有方法。 |
@@ -378,7 +378,7 @@ Phase C 完成后，`service.llm` 包不再存在 `dto.websocket.*` 或 `transpo
 ```
 
 - `currentDistanceNm`：`Double`，可能为 null，null 时输出"未知"。
-- 相对方位：由 `bearingSectorLabel()` 计算扇区标签（如"右舷前方"），括号内为数值角度。`relativeBearingDeg` 为 null 时整行输出"相对方位: 未知"。
+- 相对方位：由 `GeoUtils.bearingSectorLabel()` 计算扇区标签（如"右舷前方"），括号内为数值角度。`relativeBearingDeg` 为 null 时整行输出"相对方位: 未知"。
 - 本船方向：显示为"船首向"，优先使用 `heading`；若 `heading` 缺失，则回退显示 `cog`，并标注为 `COG` 近似值。
 
 ---

@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.Base64;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
@@ -40,18 +39,15 @@ public class VoiceChatService {
             Consumer<LlmChatService.ChatReplyResult> onReply,
             BiConsumer<LlmErrorCode, String> onError
     ) {
-        byte[] audioBytes;
-        try {
-            audioBytes = Base64.getDecoder().decode(request.audioData());
-        } catch (IllegalArgumentException e) {
-            onError.accept(LlmErrorCode.TRANSCRIPTION_FAILED, "Invalid audio data encoding.");
+        if (!isValidRequest(request)) {
+            onError.accept(LlmErrorCode.LLM_FAILED, "Invalid voice request: mode is required.");
             return;
         }
 
         String language = whisperProperties.getDefaultLanguage();
         String audioFormat = request.audioFormat();
         CompletableFuture
-                .supplyAsync(() -> whisperClient.transcribe(audioBytes, audioFormat, language), voiceExecutor)
+                .supplyAsync(() -> whisperClient.transcribe(request.audioBytes(), audioFormat, language), voiceExecutor)
                 .orTimeout(whisperProperties.getTimeoutMs(), TimeUnit.MILLISECONDS)
                 .whenComplete((response, throwable) -> {
                     if (throwable == null) {
@@ -92,11 +88,12 @@ public class VoiceChatService {
         String normalizedTranscript = transcript.trim();
         onTranscript.accept(new SpeechTranscriptResult(normalizedTranscript, language));
 
-        if (isPreviewMode(request)) {
-            return;
+        switch (request.mode()) {
+            case PREVIEW -> {
+                return;
+            }
+            case DIRECT -> forwardTranscriptToLlm(request, normalizedTranscript, onReply, onError);
         }
-
-        forwardTranscriptToLlm(request, normalizedTranscript, onReply, onError);
     }
 
     private void forwardTranscriptToLlm(
@@ -118,8 +115,8 @@ public class VoiceChatService {
         );
     }
 
-    private boolean isPreviewMode(LlmVoiceRequest request) {
-        return request != null && request.mode() == LlmVoiceMode.PREVIEW;
+    private boolean isValidRequest(LlmVoiceRequest request) {
+        return request != null && request.mode() != null;
     }
 
     private Throwable unwrap(Throwable throwable) {

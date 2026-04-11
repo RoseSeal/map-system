@@ -35,7 +35,7 @@ class VoiceChatServiceTest {
             LlmVoiceRequest request = new LlmVoiceRequest(
                     "conversation-1",
                     "event-1",
-                    "dGVzdA==",
+                    "test".getBytes(java.nio.charset.StandardCharsets.UTF_8),
                     "webm",
                     LlmVoiceMode.PREVIEW,
                     java.util.List.of("target-1")
@@ -59,7 +59,7 @@ class VoiceChatServiceTest {
     }
 
     @Test
-    void invalidBase64ReturnsEncodingErrorBeforeTranscription() {
+    void nullModeReturnsInvalidRequestErrorWithoutTranscription() throws Exception {
         RecordingWhisperClient whisperClient = new RecordingWhisperClient();
         RecordingLlmChatService llmChatService = new RecordingLlmChatService();
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -74,19 +74,49 @@ class VoiceChatServiceTest {
             LlmVoiceRequest request = new LlmVoiceRequest(
                     "conversation-1",
                     "event-1",
-                    "A===",
+                    "test".getBytes(java.nio.charset.StandardCharsets.UTF_8),
                     "webm",
-                    LlmVoiceMode.DIRECT,
-                    java.util.List.of()
+                    null,
+                    java.util.List.of("target-1")
             );
 
             CapturingSpeechCallback callback = new CapturingSpeechCallback();
             service.handleVoice(request, callback::captureTranscript, callback::captureReply, callback::captureError);
+            callback.await();
 
-            assertThat(callback.errorCode()).isEqualTo(LlmErrorCode.TRANSCRIPTION_FAILED);
-            assertThat(callback.errorMessage()).isEqualTo("Invalid audio data encoding.");
-            assertThat(callback.transcript()).isNull();
+            assertThat(callback.errorCode()).isEqualTo(LlmErrorCode.LLM_FAILED);
+            assertThat(callback.errorMessage()).isEqualTo("Invalid voice request: mode is required.");
             assertThat(callback.reply()).isNull();
+            assertThat(callback.transcript()).isNull();
+            assertThat(whisperClient.transcribeCalled).isFalse();
+            assertThat(llmChatService.handleChatCalled).isFalse();
+        } finally {
+            executor.shutdownNow();
+            llmChatService.shutdown();
+        }
+    }
+
+    @Test
+    void nullRequestReturnsInvalidRequestErrorWithoutTranscription() throws Exception {
+        RecordingWhisperClient whisperClient = new RecordingWhisperClient();
+        RecordingLlmChatService llmChatService = new RecordingLlmChatService();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            VoiceChatService service = new VoiceChatService(
+                    whisperClient,
+                    whisperProperties,
+                    llmChatService,
+                    executor
+            );
+
+            CapturingSpeechCallback callback = new CapturingSpeechCallback();
+            service.handleVoice(null, callback::captureTranscript, callback::captureReply, callback::captureError);
+            callback.await();
+
+            assertThat(callback.errorCode()).isEqualTo(LlmErrorCode.LLM_FAILED);
+            assertThat(callback.errorMessage()).isEqualTo("Invalid voice request: mode is required.");
+            assertThat(callback.reply()).isNull();
+            assertThat(callback.transcript()).isNull();
             assertThat(whisperClient.transcribeCalled).isFalse();
             assertThat(llmChatService.handleChatCalled).isFalse();
         } finally {

@@ -9,6 +9,7 @@ import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.llm.prompt.PromptScene;
 import com.whut.map.map_service.llm.prompt.PromptTemplateService;
+import com.whut.map.map_service.util.GeoUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -154,32 +155,6 @@ public class LlmExplanationService {
         return StringUtils.hasText(llmProperties.getProvider()) ? llmProperties.getProvider() : "llm";
     }
 
-    static String bearingSectorLabel(double relativeBearingDeg) {
-        double normalized = ((relativeBearingDeg % 360.0) + 360.0) % 360.0;
-        if (normalized >= 337.5 || normalized < 22.5) {
-            return "正前方";
-        }
-        if (normalized < 67.5) {
-            return "右舷前方";
-        }
-        if (normalized < 112.5) {
-            return "右舷正横";
-        }
-        if (normalized < 157.5) {
-            return "右舷后方";
-        }
-        if (normalized < 202.5) {
-            return "正后方";
-        }
-        if (normalized < 247.5) {
-            return "左舷后方";
-        }
-        if (normalized < 292.5) {
-            return "左舷正横";
-        }
-        return "左舷前方";
-    }
-
     private String formatDistanceNm(Double currentDistanceNm) {
         return currentDistanceNm == null ? "未知" : String.format("%.2f 海里", currentDistanceNm);
     }
@@ -196,6 +171,6 @@ public class LlmExplanationService {
         if (relativeBearingDeg == null) {
             return "未知";
         }
-        return "%s (%.0f°)".formatted(bearingSectorLabel(relativeBearingDeg), relativeBearingDeg);
+        return "%s (%.0f°)".formatted(GeoUtils.bearingSectorLabel(relativeBearingDeg), relativeBearingDeg);
     }
 }

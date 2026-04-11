@@ -50,6 +50,10 @@ public class LlmChatService {
             onError.accept(LlmErrorCode.LLM_DISABLED, "LLM chat is disabled.");
             return;
         }
+        if (!StringUtils.hasText(request.content())) {
+            onError.accept(LlmErrorCode.LLM_FAILED, "Chat content must not be blank.");
+            return;
+        }
 
         String conversationId = request.conversationId();
 

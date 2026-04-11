@@ -30,7 +30,7 @@ public class AudioValidator {
             return Result.fail(AudioValidationCode.AUDIO_TOO_LARGE, "Audio payload exceeds the maximum size.");
         }
 
-        return Result.ok(normalizedAudioData);
+        return Result.ok(decodedAudio);
     }
 
     public enum AudioValidationCode {
@@ -39,12 +39,16 @@ public class AudioValidator {
     }
 
     public record Result(
-            String normalizedAudioData,
+            byte[] decodedAudio,
             AudioValidationCode errorCode,
             String errorMessage
     ) {
-        public static Result ok(String normalizedAudioData) {
-            return new Result(normalizedAudioData, null, null);
+        public Result {
+            decodedAudio = decodedAudio == null ? null : decodedAudio.clone();
+        }
+
+        public static Result ok(byte[] decodedAudio) {
+            return new Result(decodedAudio, null, null);
         }
 
         public static Result fail(AudioValidationCode errorCode, String errorMessage) {

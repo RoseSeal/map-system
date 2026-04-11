@@ -51,4 +51,30 @@ public class GeoUtils {
         return bearing >= 0 ? bearing : bearing + 360.0;
     }
 
+    public static String bearingSectorLabel(double relativeBearingDeg) {
+        double normalized = ((relativeBearingDeg % 360.0) + 360.0) % 360.0;
+        if (normalized >= 337.5 || normalized < 22.5) {
+            return "正前方";
+        }
+        if (normalized < 67.5) {
+            return "右舷前方";
+        }
+        if (normalized < 112.5) {
+            return "右舷正横";
+        }
+        if (normalized < 157.5) {
+            return "右舷后方";
+        }
+        if (normalized < 202.5) {
+            return "正后方";
+        }
+        if (normalized < 247.5) {
+            return "左舷后方";
+        }
+        if (normalized < 292.5) {
+            return "左舷正横";
+        }
+        return "左舷前方";
+    }
+
 }

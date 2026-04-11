@@ -130,6 +130,40 @@ class ChatWebSocketHandlerTest {
         assertThat(response.path("payload").path("reply_to_event_id").asText()).isEqualTo("event-3");
     }
 
+    @Test
+    void missingSpeechModeReturnsInvalidSpeechRequest() throws Exception {
+        WhisperProperties whisperProperties = whisperProperties();
+        ChatWebSocketHandler handler = new ChatWebSocketHandler(
+                objectMapper,
+                whisperProperties,
+                null,
+                null,
+                null,
+                new AudioValidator(whisperProperties)
+        );
+        RecordingWebSocketSession session = new RecordingWebSocketSession();
+
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("""
+                {
+                  "type": "SPEECH",
+                  "source": "client",
+                  "payload": {
+                    "conversation_id": "conversation-1",
+                    "event_id": "event-4",
+                    "audio_data": "QUJD",
+                    "audio_format": "webm"
+                  }
+                }
+                """));
+
+        JsonNode response = lastResponse(session);
+        assertThat(response.path("type").asText()).isEqualTo("ERROR");
+        assertThat(response.path("payload").path("error_code").asText()).isEqualTo(ChatErrorCode.INVALID_SPEECH_REQUEST.getValue());
+        assertThat(response.path("payload").path("error_message").asText()).isEqualTo("mode is required.");
+        assertThat(response.path("payload").path("reply_to_event_id").asText()).isEqualTo("event-4");
+    }
+
     private WhisperProperties whisperProperties() {
         WhisperProperties properties = new WhisperProperties();
         properties.setMaxAudioSizeBytes(1024);

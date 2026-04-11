@@ -168,9 +168,7 @@ public class ShipDispatcher {
                 snapshot.llmContext(),
                 explanation -> riskStreamPublisher.publishExplanation(explanation, riskObjectId),
                 (target, error) -> {
-                    ChatErrorCode errorCode = error != null && error.errorCode() == LlmErrorCode.LLM_TIMEOUT
-                            ? ChatErrorCode.LLM_TIMEOUT
-                            : ChatErrorCode.LLM_REQUEST_FAILED;
+                    ChatErrorCode errorCode = mapToProtocolErrorCode(error == null ? null : error.errorCode());
                     riskStreamPublisher.publishError(
                             errorCode,
                             error == null ? "LLM explanation request failed." : error.errorMessage(),
@@ -230,6 +228,20 @@ public class ShipDispatcher {
         riskContextHolder.update(llmContext);
         riskStreamPublisher.publishRiskUpdate(dto);
         log.debug("Published refreshed risk snapshot after cleanup, targets={}", allShips.size() - 1);
+    }
+
+    private ChatErrorCode mapToProtocolErrorCode(LlmErrorCode errorCode) {
+        if (errorCode == null) {
+            return ChatErrorCode.LLM_REQUEST_FAILED;
+        }
+        return switch (errorCode) {
+            case LLM_TIMEOUT -> ChatErrorCode.LLM_TIMEOUT;
+            case LLM_FAILED -> ChatErrorCode.LLM_REQUEST_FAILED;
+            case LLM_DISABLED -> ChatErrorCode.LLM_DISABLED;
+            case CONVERSATION_BUSY -> ChatErrorCode.CONVERSATION_BUSY;
+            case TRANSCRIPTION_FAILED -> ChatErrorCode.TRANSCRIPTION_FAILED;
+            case TRANSCRIPTION_TIMEOUT -> ChatErrorCode.TRANSCRIPTION_TIMEOUT;
+        };
     }
 
     private void logTargetCpa(ShipDispatchContext context, Map<String, CpaTcpaResult> cpaResults) {

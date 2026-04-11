@@ -94,6 +94,35 @@ class LlmChatServiceTest {
     }
 
     @Test
+    void blankChatContentReturnsLlmFailedError() {
+        LlmProperties properties = buildProperties(true, 1000L, "zhipu");
+        StubLlmClient llmClient = new StubLlmClient();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            LlmChatService service = new LlmChatService(
+                    llmClient,
+                    properties,
+                    promptTemplateService,
+                    riskContextHolder,
+                    riskContextFormatter,
+                    new ConversationMemory(properties),
+                    executor
+            );
+            LlmChatRequest request = new LlmChatRequest("conversation-1", "event-1", "   ", List.of());
+
+            CapturingChatCallback callback = new CapturingChatCallback();
+            service.handleChat(request, callback::captureReply, callback::captureError);
+
+            assertThat(callback.reply()).isNull();
+            assertThat(callback.errorCode()).isEqualTo(LlmErrorCode.LLM_FAILED);
+            assertThat(callback.errorMessage()).isEqualTo("Chat content must not be blank.");
+            assertThat(llmClient.lastMessages).isNull();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
     void llmFailuresReturnChatError() throws Exception {
         LlmProperties properties = buildProperties(true, 1000L, "zhipu");
         StubLlmClient llmClient = new StubLlmClient();

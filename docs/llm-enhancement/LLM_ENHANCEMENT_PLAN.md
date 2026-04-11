@@ -1,6 +1,6 @@
 # LLM 增强实现规划
 
-> 最后更新：2026-04-04
+> 最后更新：2026-04-11
 > 对应 ARCHITECTURE.md 中 P1 ~ P3 的 LLM 相关待办项
 
 ---
@@ -80,11 +80,11 @@ map-service/
 ## 一、实现步骤总览
 
 ```
-Step 1  升级 LlmClient 接口，支持多消息输入          ← 地基
-Step 2  引入 System Prompt 管理                      ← 角色与行为约束
-Step 3  向聊天链路注入实时风险上下文（P1）             ← 让 LLM 能回答态势问题
-Step 4  建立多轮上下文管理（P2）                      ← 让对话有记忆
-Step 5  风险解释 prompt 增强                         ← 提升解释质量
+Step 1  升级 LlmClient 接口，支持多消息输入          ← 地基       ✓ DONE
+Step 2  引入 System Prompt 管理                      ← 角色与行为约束  ✓ DONE
+Step 3  向聊天链路注入实时风险上下文（P1）             ← 让 LLM 能回答态势问题  ✓ DONE
+Step 4  建立多轮上下文管理（P2）                      ← 让对话有记忆   ✓ DONE
+Step 5  依赖收口 + 风险解释 prompt 增强               ← LLM 模块边界清晰  ✓ DONE
 ```
 
 > Step 3 是 P1 的交付物，Step 4 是 P2 的交付物。Step 1-2 是二者的前置依赖。Step 5 是对风险解释链路的独立优化，可与 Step 4 并行。

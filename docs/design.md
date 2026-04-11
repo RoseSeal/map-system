@@ -19,7 +19,8 @@
 
 本文档不重复维护协议细节与 ADR 全量内容：
 
-- 架构概览与 ADR 以 `docs/ARCHITECTURE.md` 为准
+- 架构概览以 `docs/ARCHITECTURE.md` 为准
+- ADR 与 review findings 以 `docs/ADR_AND_REVIEW_FINDINGS.md` 为准
 - 实时事件字段与示例以 `docs/EVENT_SCHEMA.md` 为准
 
 ---
@@ -436,6 +437,7 @@ map-system/
 └── docs/
     ├── design.md
     ├── ARCHITECTURE.md
+    ├── ADR_AND_REVIEW_FINDINGS.md
     └── EVENT_SCHEMA.md
 ```
 
@@ -471,5 +473,5 @@ map-system/
 
 - 当系统职责边界发生变化时，同时更新本文档与 `docs/ARCHITECTURE.md`
 - 当实时事件字段或语义变化时，只在 `docs/EVENT_SCHEMA.md` 维护协议真值
-- 当新增关键取舍时，在 `docs/ARCHITECTURE.md` 中补充 ADR
+- 当新增关键取舍或对应复盘结论时，在 `docs/ADR_AND_REVIEW_FINDINGS.md` 中补充
 - 当本文档与协议文档冲突时，以 `docs/EVENT_SCHEMA.md` 为准；当本文档与架构职责描述冲突时，以 `docs/ARCHITECTURE.md` 为准

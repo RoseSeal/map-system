@@ -43,7 +43,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) {
         session.setTextMessageSizeLimit(whisperProperties.getWebSocketTextMessageSizeLimitBytes());
         session.setBinaryMessageSizeLimit(whisperProperties.getWebSocketBinaryMessageSizeLimitBytes());
-        session.getAttributes().put(ProtocolFields.CHAT_SEQUENCE_ATTRIBUTE, new AtomicLong(0L));
         log.debug("Chat WebSocket connected: {}", session.getId());
     }
 
@@ -99,17 +98,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        final ChatRequestPayload payload;
-        try {
-            payload = objectMapper.treeToValue(payloadNode, ChatRequestPayload.class);
-        } catch (Exception e) {
-            sendError(session, readText(payloadNode, ProtocolFields.EVENT_ID), ChatErrorCode.INVALID_CHAT_REQUEST, "CHAT payload format is invalid.");
-            return;
-        }
+        ChatRequestPayload payload = tryParsePayload(session, payloadNode, ChatRequestPayload.class, ChatErrorCode.INVALID_CHAT_REQUEST, "CHAT");
+        if (payload == null) return;
 
         String validationMessage = validateChatPayload(payload);
         if (validationMessage != null) {
-            sendError(session, payload == null ? null : payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST, validationMessage);
+            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST, validationMessage);
             return;
         }
 
@@ -133,17 +127,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        final SpeechRequestPayload payload;
-        try {
-            payload = objectMapper.treeToValue(payloadNode, SpeechRequestPayload.class);
-        } catch (Exception e) {
-            sendError(session, readText(payloadNode, ProtocolFields.EVENT_ID), ChatErrorCode.INVALID_SPEECH_REQUEST, "SPEECH payload format is invalid.");
-            return;
-        }
+        SpeechRequestPayload payload = tryParsePayload(session, payloadNode, SpeechRequestPayload.class, ChatErrorCode.INVALID_SPEECH_REQUEST, "SPEECH");
+        if (payload == null) return;
 
         String validationMessage = validateSpeechPayload(payload);
         if (validationMessage != null) {
-            sendError(session, payload == null ? null : payload.getEventId(), ChatErrorCode.INVALID_SPEECH_REQUEST, validationMessage);
+            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_SPEECH_REQUEST, validationMessage);
             return;
         }
 
@@ -156,7 +145,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         LlmVoiceRequest request = new LlmVoiceRequest(
                 payload.getConversationId(),
                 payload.getEventId(),
-                audioValidation.normalizedAudioData(),
+                audioValidation.decodedAudio(),
                 payload.getAudioFormat(),
                 mapVoiceMode(payload.getMode()),
                 payload.getSelectedTargetIds()
@@ -176,22 +165,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        final ClearHistoryPayload payload;
-        try {
-            payload = objectMapper.treeToValue(payloadNode, ClearHistoryPayload.class);
-        } catch (Exception e) {
-            sendError(session, readText(payloadNode, ProtocolFields.EVENT_ID), ChatErrorCode.INVALID_CHAT_REQUEST,
-                    "CLEAR_HISTORY payload format is invalid.");
-            return;
-        }
+        ClearHistoryPayload payload = tryParsePayload(session, payloadNode, ClearHistoryPayload.class, ChatErrorCode.INVALID_CHAT_REQUEST, "CLEAR_HISTORY");
+        if (payload == null) return;
 
-        if (!StringUtils.hasText(payload.getEventId())) {
-            sendError(session, null, ChatErrorCode.INVALID_CHAT_REQUEST, "event_id is required for CLEAR_HISTORY.");
-            return;
-        }
-        if (!StringUtils.hasText(payload.getConversationId())) {
-            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST,
-                    "conversation_id is required for CLEAR_HISTORY.");
+        String validationMessage = validateClearHistoryPayload(payload);
+        if (validationMessage != null) {
+            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST, validationMessage);
             return;
         }
 
@@ -342,6 +321,28 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return "mode is required.";
         }
         return null;
+    }
+
+    private String validateClearHistoryPayload(ClearHistoryPayload payload) {
+        if (payload == null) {
+            return "CLEAR_HISTORY payload is required.";
+        }
+        if (!StringUtils.hasText(payload.getEventId())) {
+            return "event_id is required for CLEAR_HISTORY.";
+        }
+        if (!StringUtils.hasText(payload.getConversationId())) {
+            return "conversation_id is required for CLEAR_HISTORY.";
+        }
+        return null;
+    }
+
+    private <T> T tryParsePayload(WebSocketSession session, JsonNode payloadNode, Class<T> clazz, ChatErrorCode errorCode, String msgTypeLabel) {
+        try {
+            return objectMapper.treeToValue(payloadNode, clazz);
+        } catch (Exception e) {
+            sendError(session, readText(payloadNode, ProtocolFields.EVENT_ID), errorCode, msgTypeLabel + " payload format is invalid.");
+            return null;
+        }
     }
 
     private ChatErrorCode mapToProtocolErrorCode(LlmErrorCode errorCode) {
