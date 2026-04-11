@@ -1,11 +1,11 @@
 package com.whut.map.map_service.pipeline;
 
-import com.whut.map.map_service.assembler.LlmRiskContextAssembler;
 import com.whut.map.map_service.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
-import com.whut.map.map_service.dto.websocket.ChatErrorCode;
 import com.whut.map.map_service.dto.RiskObjectDto;
+import com.whut.map.map_service.dto.riskstream.RiskAssessmentCompletedEvent;
+import com.whut.map.map_service.dto.riskstream.RiskFrame;
 import com.whut.map.map_service.engine.collision.CpaTcpaBatchCalculator;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
@@ -14,19 +14,13 @@ import com.whut.map.map_service.engine.safety.ShipDomainEngine;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
-import com.whut.map.map_service.llm.dto.LlmRiskContext;
-import com.whut.map.map_service.service.llm.LlmErrorCode;
-import com.whut.map.map_service.service.llm.LlmTriggerService;
-import com.whut.map.map_service.service.llm.RiskContextHolder;
 import com.whut.map.map_service.store.ShipStateStore;
 import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
-import com.whut.map.map_service.util.GeoUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -38,11 +32,9 @@ public class ShipDispatcher {
     private final CpaTcpaBatchCalculator cpaTcpaBatchCalculator;
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
-    private final LlmRiskContextAssembler llmRiskContextAssembler;
-    private final LlmTriggerService llmTriggerService;
-    private final RiskContextHolder riskContextHolder;
     private final ShipStateStore shipStateStore;
     private final RiskStreamPublisher riskStreamPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public ShipDispatcher(
             ShipDomainEngine shipDomainEngine,
@@ -50,11 +42,9 @@ public class ShipDispatcher {
             CpaTcpaBatchCalculator cpaTcpaBatchCalculator,
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
-            LlmRiskContextAssembler llmRiskContextAssembler,
-            LlmTriggerService llmTriggerService,
-            RiskContextHolder riskContextHolder,
             ShipStateStore shipStateStore,
-            RiskStreamPublisher riskStreamPublisher
+            RiskStreamPublisher riskStreamPublisher,
+            ApplicationEventPublisher applicationEventPublisher
 
     ) {
         this.shipDomainEngine = shipDomainEngine;
@@ -62,11 +52,9 @@ public class ShipDispatcher {
         this.cpaTcpaBatchCalculator = cpaTcpaBatchCalculator;
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
-        this.llmRiskContextAssembler = llmRiskContextAssembler;
-        this.llmTriggerService = llmTriggerService;
-        this.riskContextHolder = riskContextHolder;
         this.shipStateStore = shipStateStore;
         this.riskStreamPublisher = riskStreamPublisher;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     public void dispatch(ShipStatus message) {
@@ -76,7 +64,7 @@ public class ShipDispatcher {
         }
 
         ShipDerivedOutputs outputs = runDerivations(context);
-        RiskDispatchSnapshot snapshot = buildRiskSnapshot(context, outputs);
+        RiskDispatchSnapshot snapshot = buildRiskSnapshot(context, outputs, true);
         if (snapshot == null) {
             return;
         }
@@ -118,7 +106,11 @@ public class ShipDispatcher {
         return new ShipDerivedOutputs(shipDomainResult, cvPredictionResult, cpaResults);
     }
 
-    private RiskDispatchSnapshot buildRiskSnapshot(ShipDispatchContext context, ShipDerivedOutputs outputs) {
+    private RiskDispatchSnapshot buildRiskSnapshot(
+            ShipDispatchContext context,
+            ShipDerivedOutputs outputs,
+            boolean triggerExplanations
+    ) {
         if (!context.hasOwnShip()) {
             log.debug("Skipping RiskObject broadcast until ownShip is available, incoming id={}", context.message().getId());
             return null;
@@ -137,7 +129,6 @@ public class ShipDispatcher {
                 context.allShips(),
                 outputs.cpaResults(),
                 riskResult,
-                Collections.emptyMap(),
                 outputs.shipDomainResult(),
                 outputs.cvPredictionResult()
         );
@@ -145,60 +136,29 @@ public class ShipDispatcher {
             return null;
         }
 
-        Map<String, Double> currentDistancesNm = buildCurrentDistancesNm(
-                context.ownShip(),
-                context.allShips()
-        );
-
-        LlmRiskContext llmContext = llmRiskContextAssembler.assemble(
+        return new RiskDispatchSnapshot(
                 context.ownShip(),
                 context.allShips(),
-                currentDistancesNm,
                 outputs.cpaResults(),
-                riskResult
+                riskResult,
+                dto,
+                triggerExplanations
         );
-        return new RiskDispatchSnapshot(riskResult, dto, llmContext);
     }
 
     void publishRiskSnapshot(RiskDispatchSnapshot snapshot) {
-        riskContextHolder.update(snapshot.llmContext());
-        riskStreamPublisher.publishRiskUpdate(snapshot.riskObject());
-        String riskObjectId = snapshot.riskObject().getRiskObjectId();
-        llmTriggerService.triggerExplanationsIfNeeded(
-                snapshot.llmContext(),
-                explanation -> riskStreamPublisher.publishExplanation(explanation, riskObjectId),
-                (target, error) -> {
-                    ChatErrorCode errorCode = mapToProtocolErrorCode(error == null ? null : error.errorCode());
-                    riskStreamPublisher.publishError(
-                            errorCode,
-                            error == null ? "LLM explanation request failed." : error.errorMessage(),
-                            target == null ? null : target.getTargetId()
-                    );
-                }
-        );
-    }
-
-    Map<String, Double> buildCurrentDistancesNm(ShipStatus ownShip, Collection<ShipStatus> allShips) {
-        Map<String, Double> currentDistancesNm = new HashMap<>();
-        if (ownShip == null || allShips == null) {
-            return currentDistancesNm;
-        }
-
-        for (ShipStatus ship : allShips) {
-            if (ship == null || ship.getId() == null || ship.getId().equals(ownShip.getId())) {
-                continue;
-            }
-
-            double distanceMeters = GeoUtils.distanceMetersByXY(
-                    ownShip.getLatitude(),
-                    ownShip.getLongitude(),
-                    ship.getLatitude(),
-                    ship.getLongitude()
-            );
-            currentDistancesNm.put(ship.getId(), GeoUtils.metersToNm(distanceMeters));
-        }
-
-        return currentDistancesNm;
+        riskStreamPublisher.publishRiskFrame(new RiskFrame(
+                snapshot.riskObject(),
+                snapshotVersion -> applicationEventPublisher.publishEvent(new RiskAssessmentCompletedEvent(
+                        snapshotVersion,
+                        snapshot.ownShip(),
+                        snapshot.allShips(),
+                        snapshot.cpaResults(),
+                        snapshot.riskAssessmentResult(),
+                        snapshot.riskObject().getRiskObjectId(),
+                        snapshot.triggerExplanations()
+                ))
+        ));
     }
 
     public void refreshAfterCleanup() {
@@ -215,33 +175,20 @@ public class ShipDispatcher {
                 ownShip, allShips, cpaResults, null, null);
 
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
-                ownShip, allShips, cpaResults, riskResult,
-                Collections.emptyMap(), null, null);
+                ownShip, allShips, cpaResults, riskResult, null, null);
         if (dto == null) {
             return;
         }
 
-        Map<String, Double> currentDistancesNm = buildCurrentDistancesNm(ownShip, allShips);
-        LlmRiskContext llmContext = llmRiskContextAssembler.assemble(
-                ownShip, allShips, currentDistancesNm, cpaResults, riskResult);
-
-        riskContextHolder.update(llmContext);
-        riskStreamPublisher.publishRiskUpdate(dto);
+        publishRiskSnapshot(new RiskDispatchSnapshot(
+                ownShip,
+                allShips,
+                cpaResults,
+                riskResult,
+                dto,
+                false
+        ));
         log.debug("Published refreshed risk snapshot after cleanup, targets={}", allShips.size() - 1);
-    }
-
-    private ChatErrorCode mapToProtocolErrorCode(LlmErrorCode errorCode) {
-        if (errorCode == null) {
-            return ChatErrorCode.LLM_REQUEST_FAILED;
-        }
-        return switch (errorCode) {
-            case LLM_TIMEOUT -> ChatErrorCode.LLM_TIMEOUT;
-            case LLM_FAILED -> ChatErrorCode.LLM_REQUEST_FAILED;
-            case LLM_DISABLED -> ChatErrorCode.LLM_DISABLED;
-            case CONVERSATION_BUSY -> ChatErrorCode.CONVERSATION_BUSY;
-            case TRANSCRIPTION_FAILED -> ChatErrorCode.TRANSCRIPTION_FAILED;
-            case TRANSCRIPTION_TIMEOUT -> ChatErrorCode.TRANSCRIPTION_TIMEOUT;
-        };
     }
 
     private void logTargetCpa(ShipDispatchContext context, Map<String, CpaTcpaResult> cpaResults) {

@@ -1,11 +1,10 @@
 package com.whut.map.map_service.transport.risk;
 
 import com.whut.map.map_service.dto.RiskObjectDto;
+import com.whut.map.map_service.dto.riskstream.RiskFrame;
 import com.whut.map.map_service.dto.sse.ExplanationPayload;
 import com.whut.map.map_service.dto.sse.RiskUpdatePayload;
 import com.whut.map.map_service.dto.sse.SseErrorPayload;
-import com.whut.map.map_service.dto.websocket.ChatErrorCode;
-import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.transport.protocol.ProtocolConnections;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class RiskStreamPublisher {
 
     private final AtomicLong sequence = new AtomicLong(0L);
+    private final AtomicLong snapshotVersion = new AtomicLong(0L);
     private final SseEventFactory sseEventFactory;
     private final SseEmitterRegistry sseEmitterRegistry;
     private final ExecutorService publishExecutor = Executors.newSingleThreadExecutor(riskPublishThreadFactory());
@@ -39,9 +39,20 @@ public class RiskStreamPublisher {
         });
     }
 
-    public void publishRiskUpdate(RiskObjectDto riskObject) {
-        submit("publish risk update", () -> {
-            RiskUpdatePayload payload = sseEventFactory.buildRiskUpdate(riskObject);
+    public void publishRiskFrame(RiskFrame frame) {
+        submit("publish risk frame", () -> {
+            if (frame == null || frame.riskObject() == null) {
+                return;
+            }
+
+            long version = snapshotVersion.incrementAndGet();
+            // Run the callback on the publisher thread so context refresh and risk-frame publish
+            // share one server-side ordering point. This does not imply client-side delivery ACK.
+            if (frame.beforePublish() != null) {
+                frame.beforePublish().accept(version);
+            }
+
+            RiskUpdatePayload payload = sseEventFactory.buildRiskUpdate(frame.riskObject());
             if (payload == null) {
                 return;
             }
@@ -50,9 +61,8 @@ public class RiskStreamPublisher {
         });
     }
 
-    public void publishExplanation(LlmExplanation explanation, String riskObjectId) {
+    public void publishExplanation(ExplanationPayload payload) {
         submit("publish explanation", () -> {
-            ExplanationPayload payload = sseEventFactory.buildExplanation(explanation, riskObjectId);
             if (payload == null) {
                 return;
             }
@@ -61,7 +71,7 @@ public class RiskStreamPublisher {
         });
     }
 
-    public void publishError(ChatErrorCode errorCode, String errorMessage, String targetId) {
+    public void publishError(String errorCode, String errorMessage, String targetId) {
         submit("publish risk error", () -> {
             String payloadErrorMessage = errorMessage;
             if (targetId != null && !targetId.isBlank()) {
@@ -85,8 +95,8 @@ public class RiskStreamPublisher {
         return String.valueOf(sequence.incrementAndGet());
     }
 
-    private String resolveErrorCode(ChatErrorCode errorCode) {
-        return errorCode == null ? ChatErrorCode.LLM_REQUEST_FAILED.getValue() : errorCode.getValue();
+    private String resolveErrorCode(String errorCode) {
+        return errorCode == null || errorCode.isBlank() ? "LLM_REQUEST_FAILED" : errorCode;
     }
 
     private void publishAndCacheLatestRiskFrame(RiskUpdatePayload payload) {

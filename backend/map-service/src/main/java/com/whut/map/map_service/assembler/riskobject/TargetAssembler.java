@@ -5,7 +5,6 @@ import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
-import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.util.GeoUtils;
 import org.springframework.stereotype.Component;
 
@@ -29,8 +28,7 @@ public class TargetAssembler {
             ShipStatus ownShip,
             Collection<ShipStatus> allShips,
             Map<String, CpaTcpaResult> cpaResults,
-            RiskAssessmentResult riskResult,
-            Map<String, LlmExplanation> llmExplanations
+            RiskAssessmentResult riskResult
     ) {
         List<Map<String, Object>> targets = new ArrayList<>();
         if (allShips == null) {
@@ -43,8 +41,7 @@ public class TargetAssembler {
             }
             CpaTcpaResult cpaResult = cpaResults == null ? null : cpaResults.get(ship.getId());
             TargetRiskAssessment assessment = riskResult == null ? null : riskResult.getTargetAssessment(ship.getId());
-            LlmExplanation llmExplanation = llmExplanations == null ? null : llmExplanations.get(ship.getId());
-            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment, llmExplanation));
+            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment));
         }
         return targets;
     }
@@ -53,8 +50,7 @@ public class TargetAssembler {
             ShipStatus ownShip,
             ShipStatus targetShip,
             CpaTcpaResult cpaResult,
-            TargetRiskAssessment assessment,
-            LlmExplanation llmExplanation
+            TargetRiskAssessment assessment
     ) {
         Map<String, Object> position = new LinkedHashMap<>();
         position.put("lon", targetShip.getLongitude());
@@ -84,11 +80,6 @@ public class TargetAssembler {
             riskAssessment.put("ozt_sector", oztSector);
         }
 
-        Map<String, Object> explanation = new LinkedHashMap<>();
-        explanation.put("source", resolveExplanationSource(assessment, llmExplanation));
-        explanation.put("text", resolveExplanationText(assessment, llmExplanation));
-        riskAssessment.put("explanation", explanation);
-
         Map<String, Object> target = new LinkedHashMap<>();
         target.put("id", targetShip.getId());
         target.put("tracking_status", TRACKING_STATUS);
@@ -97,26 +88,4 @@ public class TargetAssembler {
         target.put("risk_assessment", riskAssessment);
         return target;
     }
-
-    private String resolveExplanationSource(TargetRiskAssessment assessment, LlmExplanation llmExplanation) {
-        if (llmExplanation != null && llmExplanation.getSource() != null) {
-            return llmExplanation.getSource();
-        }
-        if (assessment != null && assessment.getExplanationSource() != null) {
-            return assessment.getExplanationSource();
-        }
-        return RiskConstants.EXPLANATION_SOURCE_FALLBACK;
-    }
-
-    private String resolveExplanationText(TargetRiskAssessment assessment, LlmExplanation llmExplanation) {
-        if (llmExplanation != null && llmExplanation.getText() != null && !llmExplanation.getText().isBlank()) {
-            return llmExplanation.getText();
-        }
-        if (assessment != null && assessment.getExplanationText() != null && !assessment.getExplanationText().isBlank()) {
-            return assessment.getExplanationText();
-        }
-        return RiskConstants.EXPLANATION_TEXT_AWAITING_CPA;
-    }
-
 }
-

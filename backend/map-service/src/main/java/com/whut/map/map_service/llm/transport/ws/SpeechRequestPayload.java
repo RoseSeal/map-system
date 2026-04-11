@@ -1,0 +1,34 @@
+package com.whut.map.map_service.llm.transport.ws;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SpeechRequestPayload {
+
+    @JsonProperty("conversation_id")
+    private String conversationId;
+
+    @JsonProperty("event_id")
+    private String eventId;
+
+    @JsonProperty("audio_data")
+    private String audioData;
+
+    @JsonProperty("audio_format")
+    private String audioFormat;
+
+    @JsonProperty("mode")
+    private SpeechMode mode;
+
+    @JsonProperty("selected_target_ids")
+    private List<String> selectedTargetIds;
+}

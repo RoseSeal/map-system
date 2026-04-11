@@ -1,6 +1,6 @@
 package com.whut.map.map_service.llm.client;
 
-import com.whut.map.map_service.config.properties.WhisperProperties;
+import com.whut.map.map_service.llm.config.WhisperProperties;
 import com.whut.map.map_service.llm.dto.WhisperResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;

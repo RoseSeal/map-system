@@ -5,7 +5,7 @@ import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
-import com.whut.map.map_service.config.properties.LlmProperties;
+import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;
 import lombok.RequiredArgsConstructor;

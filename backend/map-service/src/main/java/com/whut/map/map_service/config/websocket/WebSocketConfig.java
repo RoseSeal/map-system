@@ -1,29 +1,16 @@
 package com.whut.map.map_service.config.websocket;
 
-import com.whut.map.map_service.config.properties.WhisperProperties;
-import com.whut.map.map_service.transport.chat.ChatWebSocketHandler;
-import com.whut.map.map_service.transport.protocol.ProtocolPaths;
+import com.whut.map.map_service.llm.config.WhisperProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
-import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
 @Configuration
-@EnableWebSocket
 @RequiredArgsConstructor
-public class WebSocketConfig implements WebSocketConfigurer {
+public class WebSocketConfig {
 
-    private final ChatWebSocketHandler chatWebSocketHandler;
     private final WhisperProperties whisperProperties;
-
-    @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(chatWebSocketHandler, ProtocolPaths.CHAT_SOCKET)
-                .setAllowedOriginPatterns("*");
-    }
 
     @Bean
     public ServletServerContainerFactoryBean webSocketContainer() {

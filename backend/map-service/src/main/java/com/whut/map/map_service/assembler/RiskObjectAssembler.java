@@ -9,7 +9,6 @@ import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
-import com.whut.map.map_service.llm.dto.LlmExplanation;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -37,7 +36,6 @@ public class RiskObjectAssembler {
             Collection<ShipStatus> allShips,
             Map<String, CpaTcpaResult> cpaResults,
             RiskAssessmentResult riskResult,
-            Map<String, LlmExplanation> llmExplanations,
             ShipDomainResult domainResult,
             CvPredictionResult cvResult
     ) {
@@ -52,7 +50,7 @@ public class RiskObjectAssembler {
                 .timestamp(snapshotTimestamp)
                 .governance(riskObjectMetaAssembler.buildGovernance())
                 .ownShip(ownShipAssembler.assemble(ownShip, domainResult, cvResult))
-                .targets(targetAssembler.assembleTargets(ownShip, allShips, cpaResults, riskResult, llmExplanations))
+                .targets(targetAssembler.assembleTargets(ownShip, allShips, cpaResults, riskResult))
                 .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext())
                 .build();
     }

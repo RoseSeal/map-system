@@ -503,7 +503,7 @@ D-S 证据理论相比贝叶斯网络更适合本场景：
 
 在 `AisMessageMapper` 中增加针对 AIS 协议特征的来源特定校验，产出 `qualityFlags` 和动态 `confidence`，为风险评估的置信度计算提供基础。
 
-> **范围限定**：5A 只处理"看报文本身就能判断的问题"——协议合法性、字段缺失、取值越界。需要上下文（历史状态）才能发现的"物理上不可信"问题（位置跳变、SOG 突变等）由 Step 5B 处理。
+> **范围限定**：5A 只处理"看报文本身就能判断的问题"——协议合法性、字段缺失、取值越界，以及来源侧可直接识别的报文新鲜度/重复投递问题。需要上下文（历史状态）才能发现的"物理上不可信"问题（位置跳变、SOG 突变等）由 Step 5B 处理。
 
 ### 做什么
 
@@ -540,16 +540,25 @@ D-S 证据理论相比贝叶斯网络更适合本场景：
    | 航速异常 | sog > 30 kn 或 sog < 0 | `SPEED_OUT_OF_RANGE` | -0.3 |
    | 位置越界 | lon 不在 [-180, 180] 或 lat 不在 [-90, 90] | `POSITION_OUT_OF_RANGE` | -0.5 |
    | 时间戳缺失 | msgTime == null | `MISSING_TIMESTAMP` | -0.2 |
+   | 来源侧重复报文 | 同一 MMSI 连续收到与当前已接收状态 `msgTime` 相同的报文 | 复用 `MISSING_TIMESTAMP` 或新增 `DUPLICATE_REPORT` | 不提升 confidence；用于后续阻止重复旧包刷新活跃时间 |
 
    `confidence` 从基础值 1.0 开始按质量问题扣减，clamp 到 [0.0, 1.0]。
 
-4. **`ShipStateStore.snapshotOf()` 传播 qualityFlags**
+4. **`ShipStateStore` 增加重复报文接受策略**
+
+   对同一 MMSI 的相同 `msgTime` 重复报文，按"来源侧重复投递/新鲜度不足"处理，而不是默认视为新的有效状态更新：
+   - 不刷新目标的存活时间窗口，避免重复旧包导致 ghost ship 长期留存
+   - 不在 Step 5A 中引入运动学推断；这里只定义 store 接受策略
+   - 若后续确认某数据源存在"同时间戳但字段仍会修正"的语义，再单独细化覆盖规则
+
+5. **`ShipStateStore.snapshotOf()` 传播 qualityFlags**
 
 ### 影响范围
 
 - 修改 `ShipStatus`：新增 `qualityFlags` 字段
 - 新增 `QualityFlag` 枚举
 - 修改 `AisMessageMapper`：增加 5A 校验逻辑
+- 修改 `ShipStateStore`：补充重复报文接受策略，避免相同 `msgTime` 重复刷新活跃时间
 - 修改 `ShipStateStore.snapshotOf()`：传播 qualityFlags
 
 ### 协议影响
@@ -560,6 +569,7 @@ D-S 证据理论相比贝叶斯网络更适合本场景：
 
 - 单元测试：各类协议异常（航速越界、位置越界、时间戳缺失）正确标记 qualityFlags 并降低 confidence
 - 单元测试：正常 AIS 数据 confidence = 1.0，qualityFlags 为空
+- 单元测试：同一 MMSI 的相同 `msgTime` 重复报文不会被视为新鲜更新，不会无限刷新过期窗口
 
 ---
 
