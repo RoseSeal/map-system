@@ -70,7 +70,7 @@ public class TargetAssembler {
         riskAssessment.put("risk_level", riskLevel);
         riskAssessment.put("cpa_metrics", cpaMetrics);
 
-        Map<String, Object> graphicCpaLine = riskVisualizationAssembler.buildGraphicCpaLine(ownShip, targetShip, cpaResult);
+        Map<String, Object> graphicCpaLine = riskVisualizationAssembler.buildGraphicCpaLine(ownShip, targetShip, assessment);
         if (graphicCpaLine != null) {
             riskAssessment.put("graphic_cpa_line", graphicCpaLine);
         }

@@ -14,10 +14,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -51,12 +53,21 @@ public class LlmTriggerService {
             return;
         }
 
-        if (context.getTargets() == null || context.getTargets().isEmpty()) {
+        List<LlmRiskTargetContext> targets = context.getTargets();
+        if (targets == null || targets.isEmpty()) {
+            // Do not clear nextAllowedTimeMap here: a transient empty snapshot (polling gap,
+            // state-store churn) must not reset cooldown state for targets that will reappear.
             log.debug("Skipping LLM explanation because no target context is available");
             return;
         }
 
-        List<LlmRiskTargetContext> triggeredTargets = context.getTargets().stream()
+        // Lazily evict stale entries: remove MMSIs no longer present in the current snapshot.
+        Set<String> activeTargetIds = targets.stream()
+                .map(LlmRiskTargetContext::getTargetId)
+                .collect(Collectors.toSet());
+        nextAllowedTimeMap.keySet().retainAll(activeTargetIds);
+
+        List<LlmRiskTargetContext> triggeredTargets = targets.stream()
                 .filter(this::isExplainableTarget)
                 .filter(this::tryAcquireTrigger)
                 .limit(llmProperties.getMaxTargetsPerCall())

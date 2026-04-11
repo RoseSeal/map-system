@@ -9,8 +9,6 @@
   selectIsConnected,
   selectRiskConnectionError,
   selectSelectedTargetIds,
-  selectSelectedTargets,
-  selectSelectedTargetExplanations,
   selectDroppedTargetNotices,
 } from './useRiskStore';
 

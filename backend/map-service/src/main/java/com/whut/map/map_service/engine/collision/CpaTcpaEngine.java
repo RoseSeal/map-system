@@ -36,9 +36,14 @@ public class CpaTcpaEngine {
 
         double vel2 = dvx * dvx + dvy * dvy; // 相对速度的平方
         if (vel2 < MIN_RELATIVE_SPEED_MS) {
-            // 如果相对速度接近于零，认为TCPA无意义，保持当前
-            tcpa = 0;
-            cpa = currentDist;
+            // 相对速度接近零（平行航行或相对静止），TCPA无意义；cpaValid=false 通知下游跳过风险分类。
+            return CpaTcpaResult.builder()
+                    .targetMmsi(targetId)
+                    .cpaDistance(currentDist)
+                    .tcpaTime(0)
+                    .isApproaching(false)
+                    .cpaValid(false)
+                    .build();
         } else {
             tcpa = - (dpx * dvx + dpy * dvy) / vel2;
             if(tcpa <= 0) {

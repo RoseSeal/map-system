@@ -15,6 +15,7 @@ interface ChatComposerProps {
   voiceState: VoiceCaptureState;
   voiceMode?: SpeechMode | null;
   voiceError?: string | null;
+  sendError?: string | null;
   selectedTargets?: SelectedTargetChip[];
   droppedTargetNotices?: string[];
   onDeselectTarget?: (id: string) => void;
@@ -35,6 +36,7 @@ export function ChatComposer({
   voiceState,
   voiceMode = null,
   voiceError,
+  sendError,
   selectedTargets = [],
   droppedTargetNotices = [],
   onDeselectTarget,
@@ -176,7 +178,7 @@ export function ChatComposer({
             <div className="flex items-center gap-2 text-[11px] text-slate-400 min-h-[20px]">
               <span className={statusIndicatorClassName(voiceState)} />
               <span className="truncate">
-                {voiceError || getVoiceStatusText(voiceSupported, voiceState, hasText, voiceMode)}
+                {sendError || voiceError || getVoiceStatusText(voiceSupported, voiceState, hasText, voiceMode)}
               </span>
             </div>
           )}

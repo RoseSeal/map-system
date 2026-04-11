@@ -69,8 +69,9 @@ public class LlmChatService {
 
         try {
             List<LlmChatMessage> messages = buildMessages(request);
-            CompletableFuture
-                    .supplyAsync(() -> llmClient.chat(messages), llmExecutor)
+            CompletableFuture<String> future = CompletableFuture
+                    .supplyAsync(() -> llmClient.chat(messages), llmExecutor);
+            future
                     .orTimeout(llmProperties.getTimeoutMs(), TimeUnit.MILLISECONDS)
                     .whenComplete((responseText, throwable) -> {
                         try {
@@ -84,18 +85,18 @@ public class LlmChatService {
                             }
 
                             Throwable cause = unwrap(throwable);
-                            LlmErrorCode errorCode = cause instanceof TimeoutException
-                                    ? LlmErrorCode.LLM_TIMEOUT
-                                    : LlmErrorCode.LLM_FAILED;
-                            String errorMessage = cause instanceof TimeoutException
-                                    ? "LLM request timed out."
-                                    : "LLM request failed.";
+                            if (cause instanceof TimeoutException) {
+                                future.cancel(true);
+                                log.warn("LLM chat request timed out after {} ms. Check DNS/proxy/network reachability.",
+                                        llmProperties.getTimeoutMs());
+                                onError.accept(LlmErrorCode.LLM_TIMEOUT, "LLM request timed out.");
+                                return;
+                            }
 
                             log.warn("LLM chat request failed, type={}, message={}",
                                     cause.getClass().getSimpleName(),
                                     cause.getMessage());
-
-                            onError.accept(errorCode, errorMessage);
+                            onError.accept(LlmErrorCode.LLM_FAILED, "LLM request failed.");
                         } finally {
                             permit.close();
                         }

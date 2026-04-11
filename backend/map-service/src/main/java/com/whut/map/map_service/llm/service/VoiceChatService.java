@@ -45,8 +45,9 @@ public class VoiceChatService {
 
         String language = whisperProperties.getDefaultLanguage();
         String audioFormat = request.audioFormat();
-        CompletableFuture
-                .supplyAsync(() -> whisperClient.transcribe(request.audioBytes(), audioFormat, language), voiceExecutor)
+        CompletableFuture<WhisperResponse> future = CompletableFuture
+                .supplyAsync(() -> whisperClient.transcribe(request.audioBytes(), audioFormat, language), voiceExecutor);
+        future
                 .orTimeout(whisperProperties.getTimeoutMs(), TimeUnit.MILLISECONDS)
                 .whenComplete((response, throwable) -> {
                     if (throwable == null) {
@@ -55,18 +56,17 @@ public class VoiceChatService {
                     }
 
                     Throwable cause = unwrap(throwable);
-                    LlmErrorCode errorCode = cause instanceof TimeoutException
-                            ? LlmErrorCode.TRANSCRIPTION_TIMEOUT
-                            : LlmErrorCode.TRANSCRIPTION_FAILED;
-                    String errorMessage = cause instanceof TimeoutException
-                            ? "Audio transcription timed out."
-                            : "Audio transcription failed.";
+                    if (cause instanceof TimeoutException) {
+                        future.cancel(true);
+                        log.warn("Voice transcription timed out after {} ms.", whisperProperties.getTimeoutMs());
+                        onError.accept(LlmErrorCode.TRANSCRIPTION_TIMEOUT, "Audio transcription timed out.");
+                        return;
+                    }
 
                     log.warn("Voice transcription failed, type={}, message={}",
                             cause.getClass().getSimpleName(),
                             cause.getMessage());
-
-                    onError.accept(errorCode, errorMessage);
+                    onError.accept(LlmErrorCode.TRANSCRIPTION_FAILED, "Audio transcription failed.");
                 });
     }
 

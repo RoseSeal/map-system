@@ -1,8 +1,8 @@
 package com.whut.map.map_service.assembler.riskobject;
 
 import com.whut.map.map_service.domain.ShipStatus;
-import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskConstants;
+import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -12,8 +12,8 @@ import java.util.Map;
 @Component
 public class RiskVisualizationAssembler {
 
-    public Map<String, Object> buildGraphicCpaLine(ShipStatus ownShip, ShipStatus targetShip, CpaTcpaResult cpaResult) {
-        if (cpaResult == null || !cpaResult.isApproaching()) {
+    public Map<String, Object> buildGraphicCpaLine(ShipStatus ownShip, ShipStatus targetShip, TargetRiskAssessment assessment) {
+        if (assessment == null || !assessment.isApproaching()) {
             return null;
         }
 

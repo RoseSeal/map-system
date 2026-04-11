@@ -9,6 +9,7 @@ class VoiceRecorderService {
   private mediaStream: MediaStream | null = null;
   private chunks: BlobPart[] = [];
   private pendingStop: Promise<RecordingResult> | null = null;
+  private sessionId = 0;
   private readonly mimeCandidates = ['audio/webm;codecs=opus', 'audio/webm'];
 
   isSupported(): boolean {
@@ -48,6 +49,7 @@ class VoiceRecorderService {
 
     this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const mimeType = this.getPreferredMimeType();
+    this.sessionId++;
     this.chunks = [];
     this.mediaRecorder = new MediaRecorder(this.mediaStream, { mimeType });
     this.mediaRecorder.ondataavailable = (event: BlobEvent) => {
@@ -71,11 +73,16 @@ class VoiceRecorderService {
 
     const recorder = this.mediaRecorder;
     const mimeType = recorder.mimeType || this.getPreferredMimeType();
+    const capturedChunks = this.chunks;
+    const sessionAtStop = this.sessionId;
 
     this.pendingStop = new Promise<RecordingResult>((resolve, reject) => {
       recorder.onstop = () => {
+        if (this.sessionId !== sessionAtStop) {
+          return;
+        }
         try {
-          const blob = new Blob(this.chunks, { type: mimeType || 'audio/webm' });
+          const blob = new Blob(capturedChunks, { type: mimeType || 'audio/webm' });
           this.cleanup();
           resolve({
             blob,

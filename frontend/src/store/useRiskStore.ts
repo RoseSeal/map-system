@@ -82,7 +82,7 @@ export const useRiskStore = create<RiskState>()(
           environment: payload.environment_context,
           explanationsByTargetId,
           selectedTargetIds,
-          droppedTargetNotices: droppedTargetNotices.length > 0 ? droppedTargetNotices : state.droppedTargetNotices,
+          droppedTargetNotices: [...new Set([...state.droppedTargetNotices, ...droppedTargetNotices])],
           isConnected: true,
           connectionError: null,
           isLowTrust: payload.governance.trust_factor < PERFORMANCE.LOW_TRUST_THRESHOLD,
@@ -165,24 +165,6 @@ export const selectRiskConnectionError = (state: RiskState) => state.connectionE
 export const selectExplanationsByTargetId = (state: RiskState) => state.explanationsByTargetId;
 export const selectSelectedTargetIds = (state: RiskState) => state.selectedTargetIds;
 export const selectDroppedTargetNotices = (state: RiskState) => state.droppedTargetNotices;
-export const selectSelectedTargets = (state: RiskState) => {
-  if (state.selectedTargetIds.length === 0) {
-    return [];
-  }
-
-  return state.targets.filter((target) => state.selectedTargetIds.includes(target.id));
-};
-export const selectSelectedTargetExplanations = (state: RiskState) => {
-  if (state.selectedTargetIds.length === 0) {
-    return {};
-  }
-
-  return Object.fromEntries(
-    state.selectedTargetIds
-      .filter((id) => id in state.explanationsByTargetId)
-      .map((id) => [id, state.explanationsByTargetId[id]]),
-  );
-};
 let hasInitializedRiskStoreSubscriptions = false;
 
 function initializeRiskStoreSubscriptions(): void {

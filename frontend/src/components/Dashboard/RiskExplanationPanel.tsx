@@ -51,8 +51,23 @@ export function RiskExplanationPanel() {
     cancelVoiceCapture,
   } = useVoiceCapture();
 
+  const lastSseError = useRiskStore((state) => state.lastError);
+  const clearRiskError = useRiskStore((state) => state.clearRiskError);
+
   const [isHovered, setIsHovered] = useState(false);
   const [topSectionHeight, setTopSectionHeight] = useState(60);
+  const [chatSendError, setChatSendError] = useState<string | null>(null);
+  const [visibleSseError, setVisibleSseError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!lastSseError) return;
+    setVisibleSseError(lastSseError.error_message);
+    const timer = setTimeout(() => {
+      setVisibleSseError(null);
+      clearRiskError();
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [lastSseError, clearRiskError]);
   const isDragging = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -110,7 +125,11 @@ export function RiskExplanationPanel() {
   }, [aiCenterOpenRequestVersion]);
 
   const handleSendChat = () => {
-    sendTextMessage(chatInput);
+    const sent = sendTextMessage(chatInput);
+    if (!sent) {
+      setChatSendError('发送失败：连接已断开');
+      setTimeout(() => setChatSendError(null), 3000);
+    }
   };
 
   const handleRetry = (message: AiCenterChatMessage) => {
@@ -207,6 +226,11 @@ export function RiskExplanationPanel() {
               <span>态势监控日志</span>
               <span>{sortedExplainedTargets.length} 个风险目标</span>
             </div>
+            {visibleSseError && (
+              <div className="px-4 pb-2 text-[10px] text-red-500 dark:text-red-400/80 animate-pulse shrink-0">
+                服务异常：{visibleSseError}
+              </div>
+            )}
 
             <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-thin relative transition-colors duration-300">
               {sortedExplainedTargets.length === 0 ? (
@@ -288,6 +312,7 @@ export function RiskExplanationPanel() {
               voiceState={voiceCaptureState}
               voiceMode={activeVoiceMode}
               voiceError={voiceCaptureError}
+              sendError={chatSendError}
               selectedTargets={selectedTargetsForChip}
               droppedTargetNotices={droppedTargetNotices}
               onDeselectTarget={deselectTarget}

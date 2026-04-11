@@ -39,7 +39,7 @@ export function useAiSpeechBroadcast() {
           return;
         }
 
-        const lastSpokenAt = aiState.lastSpokenAt[event.message_id] || 0;
+        const lastSpokenAt = aiState.lastSpokenAt[event.conversation_id] || 0;
         const isAlarm = event.risk_level === 'ALARM';
         const now = Date.now();
 
@@ -48,6 +48,7 @@ export function useAiSpeechBroadcast() {
         }
 
         if (!isAlarm && speechService.isSpeaking()) {
+          useAiCenterStore.getState().markMessageSpoken(event.conversation_id, event.text);
           return;
         }
 
@@ -57,6 +58,7 @@ export function useAiSpeechBroadcast() {
 
         if (didSpeak) {
           useAiCenterStore.getState().markMessageSpoken(event.message_id, event.text);
+          useAiCenterStore.getState().markMessageSpoken(event.conversation_id, event.text);
         }
       });
 

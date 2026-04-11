@@ -76,7 +76,7 @@ public class LlmRiskContextAssembler {
                     .relativeBearingDeg(resolveRelativeBearingDeg(ownShip, ship))
                     .dcpaNm(GeoUtils.metersToNm(assessment == null ? 0.0 : assessment.getCpaDistanceMeters()))
                     .tcpaSec(assessment == null ? 0.0 : assessment.getTcpaSeconds())
-                    .approaching(cpaResult != null && cpaResult.isApproaching())
+                    .approaching(assessment != null && assessment.isApproaching())
                     .longitude(ship.getLongitude())
                     .latitude(ship.getLatitude())
                     .speedKn(ship.getSog())
