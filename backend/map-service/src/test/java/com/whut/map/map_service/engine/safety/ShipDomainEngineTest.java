@@ -1,0 +1,91 @@
+package com.whut.map.map_service.engine.safety;
+
+import com.whut.map.map_service.config.properties.ShipDomainProperties;
+import com.whut.map.map_service.domain.ShipRole;
+import com.whut.map.map_service.domain.ShipStatus;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
+
+class ShipDomainEngineTest {
+
+    private final ShipDomainProperties properties = new ShipDomainProperties();
+    private final ShipDomainEngine engine = new ShipDomainEngine(properties);
+
+    @Test
+    void returnsBaselineDomainAtReferenceSpeed() {
+        ShipDomainResult result = engine.consume(shipWithSog(8.0));
+
+        assertThat(result.getForeNm()).isEqualTo(0.5);
+        assertThat(result.getAftNm()).isEqualTo(0.1);
+        assertThat(result.getPortNm()).isEqualTo(0.2);
+        assertThat(result.getStbdNm()).isEqualTo(0.2);
+        assertThat(result.getShapeType()).isEqualTo(ShipDomainResult.SHAPE_ELLIPSE);
+    }
+
+    @Test
+    void clampsLowSpeedToMinimumFactor() {
+        ShipDomainResult result = engine.consume(shipWithSog(0.0));
+
+        assertThat(result.getForeNm()).isEqualTo(0.25);
+        assertThat(result.getAftNm()).isEqualTo(0.05);
+        assertThat(result.getPortNm()).isEqualTo(0.1);
+        assertThat(result.getStbdNm()).isEqualTo(0.1);
+    }
+
+    @Test
+    void clampsHighSpeedToMaximumFactor() {
+        ShipDomainResult result = engine.consume(shipWithSog(20.0));
+
+        assertThat(result.getForeNm()).isEqualTo(1.0);
+        assertThat(result.getAftNm()).isEqualTo(0.2);
+        assertThat(result.getPortNm()).isEqualTo(0.4);
+        assertThat(result.getStbdNm()).isEqualTo(0.4);
+    }
+
+    @Test
+    void scalesLinearlyWithinClampRange() {
+        ShipDomainResult result = engine.consume(shipWithSog(12.0));
+
+        assertThat(result.getForeNm()).isEqualTo(0.75);
+        assertThat(result.getAftNm()).isCloseTo(0.15, within(1e-12));
+        assertThat(result.getPortNm()).isCloseTo(0.3, within(1e-12));
+        assertThat(result.getStbdNm()).isCloseTo(0.3, within(1e-12));
+    }
+
+    @Test
+    void fallsBackToReferenceSpeedForInvalidSog() {
+        assertBaseline(engine.consume(shipWithSog(102.3)));
+        assertBaseline(engine.consume(shipWithSog(200.0)));
+        assertBaseline(engine.consume(shipWithSog(-1.0)));
+        assertBaseline(engine.consume(shipWithSog(Double.NaN)));
+    }
+
+    @Test
+    void fallsBackToBaselineWhenReferenceSpeedIsInvalid() {
+        ShipDomainProperties invalidProperties = new ShipDomainProperties();
+        invalidProperties.setReferenceSpeedKn(0.0);
+        ShipDomainEngine invalidEngine = new ShipDomainEngine(invalidProperties);
+
+        ShipDomainResult result = invalidEngine.consume(shipWithSog(8.0));
+
+        assertBaseline(result);
+    }
+
+    private void assertBaseline(ShipDomainResult result) {
+        assertThat(result.getForeNm()).isEqualTo(0.5);
+        assertThat(result.getAftNm()).isEqualTo(0.1);
+        assertThat(result.getPortNm()).isEqualTo(0.2);
+        assertThat(result.getStbdNm()).isEqualTo(0.2);
+        assertThat(result.getShapeType()).isEqualTo(ShipDomainResult.SHAPE_ELLIPSE);
+    }
+
+    private ShipStatus shipWithSog(double sog) {
+        return ShipStatus.builder()
+                .id("ownShip")
+                .role(ShipRole.OWN_SHIP)
+                .sog(sog)
+                .build();
+    }
+}

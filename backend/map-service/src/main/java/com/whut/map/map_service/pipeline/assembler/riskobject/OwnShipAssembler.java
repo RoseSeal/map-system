@@ -30,13 +30,13 @@ public class OwnShipAssembler {
         futureTrajectory.put("prediction_type", "linear");
 
         Map<String, Object> dimensions = new LinkedHashMap<>();
-        dimensions.put("fore_nm", 0.5);
-        dimensions.put("aft_nm", 0.1);
-        dimensions.put("port_nm", 0.2);
-        dimensions.put("stbd_nm", 0.2);
+        dimensions.put("fore_nm", domainResult.getForeNm());
+        dimensions.put("aft_nm", domainResult.getAftNm());
+        dimensions.put("port_nm", domainResult.getPortNm());
+        dimensions.put("stbd_nm", domainResult.getStbdNm());
 
         Map<String, Object> safetyDomain = new LinkedHashMap<>();
-        safetyDomain.put("shape_type", "ellipse");
+        safetyDomain.put("shape_type", domainResult.getShapeType());
         safetyDomain.put("dimensions", dimensions);
 
         Map<String, Object> ownShipData = new LinkedHashMap<>();

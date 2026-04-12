@@ -91,8 +91,8 @@ public class ShipDispatcher {
         ShipDomainResult shipDomainResult = null;
         CvPredictionResult cvPredictionResult = null;
 
-        if (context.message().getRole() == ShipRole.OWN_SHIP) {
-            shipDomainResult = shipDomainEngine.consume(context.message());
+        if (context.hasOwnShip()) {
+            shipDomainResult = shipDomainEngine.consume(context.ownShip());
         }
         if (context.message().getRole() == ShipRole.TARGET_SHIP) {
             cvPredictionResult = cvPredictionEngine.consume(context.message());
@@ -168,14 +168,15 @@ public class ShipDispatcher {
         }
 
         Collection<ShipStatus> allShips = shipStateStore.getAll().values();
+        ShipDomainResult domainResult = shipDomainEngine.consume(ownShip);
 
         Map<String, CpaTcpaResult> cpaResults = cpaTcpaBatchCalculator.calculateAll(ownShip, allShips);
 
         RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
-                ownShip, allShips, cpaResults, null, null);
+                ownShip, allShips, cpaResults, domainResult, null);
 
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
-                ownShip, allShips, cpaResults, riskResult, null, null);
+                ownShip, allShips, cpaResults, riskResult, domainResult, null);
         if (dto == null) {
             return;
         }
