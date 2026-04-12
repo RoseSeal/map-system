@@ -1,9 +1,11 @@
 package com.whut.map.map_service.llm.context;
 
+import com.whut.map.map_service.config.properties.EncounterProperties;
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.sse.ExplanationPayload;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.engine.encounter.EncounterClassifier;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.event.RiskAssessmentCompletedEvent;
@@ -31,7 +33,7 @@ class LlmRiskEventListenerTest {
         RecordingLlmTriggerService triggerService = new RecordingLlmTriggerService();
         RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
         LlmRiskEventListener listener = new LlmRiskEventListener(
-                new LlmRiskContextAssembler(),
+                new LlmRiskContextAssembler(new EncounterClassifier(new EncounterProperties())),
                 holder,
                 triggerService,
                 publisher
@@ -63,7 +65,7 @@ class LlmRiskEventListenerTest {
                 .build();
         RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
         LlmRiskEventListener listener = new LlmRiskEventListener(
-                new LlmRiskContextAssembler(),
+                new LlmRiskContextAssembler(new EncounterClassifier(new EncounterProperties())),
                 holder,
                 triggerService,
                 publisher

@@ -47,4 +47,13 @@ class GeoUtilsTest {
         assertThat(res[1]).isEqualTo(120.0);
     }
 
+    @Test
+    void testAngleDifference() {
+        assertThat(GeoUtils.angleDifference(10, 350)).isEqualTo(20.0);
+        assertThat(GeoUtils.angleDifference(0, 180)).isEqualTo(180.0);
+        assertThat(GeoUtils.angleDifference(90, 90)).isEqualTo(0.0);
+        assertThat(GeoUtils.angleDifference(0, 270)).isEqualTo(90.0);
+        assertThat(GeoUtils.angleDifference(350, 10)).isEqualTo(20.0);
+    }
 }
+

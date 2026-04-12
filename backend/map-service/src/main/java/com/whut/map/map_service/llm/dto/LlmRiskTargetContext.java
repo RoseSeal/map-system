@@ -1,6 +1,7 @@
 package com.whut.map.map_service.llm.dto;
 
 import com.whut.map.map_service.domain.RiskLevel;
+import com.whut.map.map_service.engine.encounter.EncounterType;
 import lombok.Builder;
 import lombok.Data;
 
@@ -20,4 +21,5 @@ public class LlmRiskTargetContext {
     private double courseDeg;
     private Double confidence;
     private String ruleExplanation;
+    private EncounterType encounterType;
 }

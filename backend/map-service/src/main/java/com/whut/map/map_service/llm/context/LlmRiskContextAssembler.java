@@ -3,6 +3,8 @@ package com.whut.map.map_service.llm.context;
 import com.whut.map.map_service.domain.RiskLevel;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
+import com.whut.map.map_service.engine.encounter.EncounterClassifier;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
@@ -19,6 +21,13 @@ import java.util.HashMap;
 
 @Component
 public class LlmRiskContextAssembler {
+
+    private final EncounterClassifier encounterClassifier;
+
+    public LlmRiskContextAssembler(EncounterClassifier encounterClassifier) {
+        this.encounterClassifier = encounterClassifier;
+    }
+
     public LlmRiskContext assemble(
             ShipStatus ownShip,
             Collection<ShipStatus> allShips,
@@ -68,6 +77,7 @@ public class LlmRiskContextAssembler {
 
             TargetRiskAssessment assessment = riskResult == null ? null : riskResult.getTargetAssessment(ship.getId());
             CpaTcpaResult cpaResult = cpaResults == null ? null : cpaResults.get(ship.getId());
+            EncounterClassificationResult enc = encounterClassifier.classify(ownShip, ship);
 
             targets.add(LlmRiskTargetContext.builder()
                     .targetId(ship.getId())
@@ -83,6 +93,7 @@ public class LlmRiskContextAssembler {
                     .courseDeg(ship.getCog())
                     .confidence(ship.getConfidence())
                     .ruleExplanation(assessment == null ? null : assessment.getExplanationText())
+                    .encounterType(enc.getEncounterType())
                     .build());
         }
 
@@ -103,7 +114,9 @@ public class LlmRiskContextAssembler {
                 targetShip.getLatitude(),
                 targetShip.getLongitude()
         );
-        double referenceHeading = ownShip.getHeading() != null ? ownShip.getHeading() : ownShip.getCog();
+        double referenceHeading = (ownShip.getHeading() != null && ownShip.getHeading() < 360.0)
+                ? ownShip.getHeading()
+                : ownShip.getCog();
         return (trueBearing - referenceHeading + 360.0) % 360.0;
     }
 

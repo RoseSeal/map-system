@@ -2,6 +2,7 @@ package com.whut.map.map_service.pipeline.assembler.riskobject;
 
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
@@ -30,7 +31,8 @@ public class TargetAssembler {
             Collection<ShipStatus> allShips,
             Map<String, CpaTcpaResult> cpaResults,
             RiskAssessmentResult riskResult,
-            Map<String, CvPredictionResult> cvResults
+            Map<String, CvPredictionResult> cvResults,
+            Map<String, EncounterClassificationResult> encounterResults
     ) {
         List<Map<String, Object>> targets = new ArrayList<>();
         if (allShips == null) {
@@ -44,7 +46,8 @@ public class TargetAssembler {
             CpaTcpaResult cpaResult = cpaResults == null ? null : cpaResults.get(ship.getId());
             TargetRiskAssessment assessment = riskResult == null ? null : riskResult.getTargetAssessment(ship.getId());
             CvPredictionResult cvResult = (cvResults == null) ? null : cvResults.get(ship.getId());
-            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment, cvResult));
+            EncounterClassificationResult encounterResult = encounterResults == null ? null : encounterResults.get(ship.getId());
+            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment, cvResult, encounterResult));
         }
         return targets;
     }
@@ -54,7 +57,8 @@ public class TargetAssembler {
             ShipStatus targetShip,
             CpaTcpaResult cpaResult,
             TargetRiskAssessment assessment,
-            CvPredictionResult cvResult
+            CvPredictionResult cvResult,
+            EncounterClassificationResult encounterResult
     ) {
         Map<String, Object> position = new LinkedHashMap<>();
         position.put("lon", targetShip.getLongitude());
@@ -82,6 +86,10 @@ public class TargetAssembler {
         Map<String, Object> oztSector = riskVisualizationAssembler.buildOztSector(targetShip, riskLevel);
         if (oztSector != null) {
             riskAssessment.put("ozt_sector", oztSector);
+        }
+
+        if (encounterResult != null) {
+            riskAssessment.put("encounter_type", encounterResult.getEncounterType().name());
         }
 
         Map<String, Object> target = new LinkedHashMap<>();

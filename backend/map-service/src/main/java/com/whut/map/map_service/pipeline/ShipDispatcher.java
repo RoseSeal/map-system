@@ -8,6 +8,8 @@ import com.whut.map.map_service.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.event.RiskFrame;
 import com.whut.map.map_service.engine.collision.CpaTcpaBatchCalculator;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
+import com.whut.map.map_service.engine.encounter.EncounterClassifier;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.safety.ShipDomainEngine;
@@ -33,6 +35,7 @@ public class ShipDispatcher {
     private final ShipDomainEngine shipDomainEngine;
     private final CvPredictionEngine cvPredictionEngine;
     private final CpaTcpaBatchCalculator cpaTcpaBatchCalculator;
+    private final EncounterClassifier encounterClassifier;
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
     private final ShipStateStore shipStateStore;
@@ -44,6 +47,7 @@ public class ShipDispatcher {
             ShipDomainEngine shipDomainEngine,
             CvPredictionEngine cvPredictionEngine,
             CpaTcpaBatchCalculator cpaTcpaBatchCalculator,
+            EncounterClassifier encounterClassifier,
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
             ShipStateStore shipStateStore,
@@ -55,6 +59,7 @@ public class ShipDispatcher {
         this.shipDomainEngine = shipDomainEngine;
         this.cvPredictionEngine = cvPredictionEngine;
         this.cpaTcpaBatchCalculator = cpaTcpaBatchCalculator;
+        this.encounterClassifier = encounterClassifier;
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
         this.shipStateStore = shipStateStore;
@@ -107,6 +112,22 @@ public class ShipDispatcher {
         return results;
     }
 
+    private Map<String, EncounterClassificationResult> batchClassify(
+            ShipStatus ownShip, Collection<ShipStatus> allShips) {
+        if (ownShip == null || allShips == null) {
+            return Map.of();
+        }
+        Map<String, EncounterClassificationResult> results = new HashMap<>();
+        String ownId = ownShip.getId();
+        for (ShipStatus ship : allShips) {
+            if (ship == null || ship.getId() == null || ship.getId().equals(ownId)) {
+                continue;
+            }
+            results.put(ship.getId(), encounterClassifier.classify(ownShip, ship));
+        }
+        return results;
+    }
+
     private ShipDerivedOutputs runDerivations(ShipDispatchContext context) {
         ShipDomainResult shipDomainResult = null;
 
@@ -122,7 +143,10 @@ public class ShipDispatcher {
                 context.allShips()
         );
 
-        return new ShipDerivedOutputs(shipDomainResult, cvPredictionResults, cpaResults);
+        Map<String, EncounterClassificationResult> encounterResults =
+                batchClassify(context.ownShip(), context.allShips());
+
+        return new ShipDerivedOutputs(shipDomainResult, cvPredictionResults, cpaResults, encounterResults);
     }
 
     private RiskDispatchSnapshot buildRiskSnapshot(
@@ -149,7 +173,8 @@ public class ShipDispatcher {
                 outputs.cpaResults(),
                 riskResult,
                 outputs.shipDomainResult(),
-                outputs.cvPredictionResults()
+                outputs.cvPredictionResults(),
+                outputs.encounterResults()
         );
         if (dto == null) {
             return null;
@@ -195,8 +220,10 @@ public class ShipDispatcher {
         RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
                 ownShip, allShips, cpaResults, domainResult, null);
 
+        Map<String, EncounterClassificationResult> encounterResults = batchClassify(ownShip, allShips);
+
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
-                ownShip, allShips, cpaResults, riskResult, domainResult, cvPredictionResults);
+                ownShip, allShips, cpaResults, riskResult, domainResult, cvPredictionResults, encounterResults);
         if (dto == null) {
             return;
         }

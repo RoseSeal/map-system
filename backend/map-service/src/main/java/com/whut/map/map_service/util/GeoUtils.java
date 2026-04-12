@@ -57,6 +57,15 @@ public class GeoUtils {
         return bearing >= 0 ? bearing : bearing + 360.0;
     }
 
+    /**
+     * 返回两个航向角之间的最小角度差，范围 [0, 180]。
+     * 示例：angleDifference(10, 350) == 20；angleDifference(0, 180) == 180。
+     */
+    public static double angleDifference(double a, double b) {
+        double diff = Math.abs(((a - b) % 360.0 + 360.0) % 360.0);
+        return diff > 180.0 ? 360.0 - diff : diff;
+    }
+
     public static String bearingSectorLabel(double relativeBearingDeg) {
         double normalized = ((relativeBearingDeg % 360.0) + 360.0) % 360.0;
         if (normalized >= 337.5 || normalized < 22.5) {

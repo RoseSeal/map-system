@@ -6,6 +6,7 @@ import com.whut.map.map_service.pipeline.assembler.riskobject.TargetAssembler;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
@@ -37,7 +38,8 @@ public class RiskObjectAssembler {
             Map<String, CpaTcpaResult> cpaResults,
             RiskAssessmentResult riskResult,
             ShipDomainResult domainResult,
-            Map<String, CvPredictionResult> cvResults
+            Map<String, CvPredictionResult> cvResults,
+            Map<String, EncounterClassificationResult> encounterResults
     ) {
         if (ownShip == null) {
             return null;
@@ -51,7 +53,7 @@ public class RiskObjectAssembler {
                 .governance(riskObjectMetaAssembler.buildGovernance())
                 .ownShip(ownShipAssembler.assemble(ownShip, domainResult))
                 .targets(targetAssembler.assembleTargets(
-                        ownShip, allShips, cpaResults, riskResult, cvResults))
+                        ownShip, allShips, cpaResults, riskResult, cvResults, encounterResults))
                 .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext())
                 .build();
     }

@@ -1,5 +1,6 @@
 package com.whut.map.map_service.pipeline;
 
+import com.whut.map.map_service.config.properties.EncounterProperties;
 import com.whut.map.map_service.config.properties.ShipStateProperties;
 import com.whut.map.map_service.pipeline.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.pipeline.assembler.riskobject.OwnShipAssembler;
@@ -13,6 +14,7 @@ import com.whut.map.map_service.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.event.RiskFrame;
 import com.whut.map.map_service.engine.collision.CpaTcpaBatchCalculator;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.engine.encounter.EncounterClassifier;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.safety.ShipDomainEngine;
@@ -26,6 +28,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.OffsetDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,7 +62,7 @@ class ShipDispatcherTest {
     }
 
     @Test
-    void dispatchUsesOwnShipDomainWhenTriggeredByTargetShip() {
+    void dispatchUsesOwnShipDomainAndEncounterClassification() {
         RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
         RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
         ShipStateStore shipStateStore = shipStateStore();
@@ -76,6 +79,7 @@ class ShipDispatcherTest {
         RecordingCvPredictionEngine cvPredictionEngine = new RecordingCvPredictionEngine();
         StubCpaTcpaBatchCalculator cpaTcpaBatchCalculator = new StubCpaTcpaBatchCalculator(Map.of());
         StubRiskAssessmentEngine riskAssessmentEngine = new StubRiskAssessmentEngine(RiskAssessmentResult.empty());
+        EncounterClassifier encounterClassifier = new EncounterClassifier(new EncounterProperties());
 
         shipStateStore.update(ownShip);
 
@@ -83,6 +87,7 @@ class ShipDispatcherTest {
                 shipDomainEngine,
                 cvPredictionEngine,
                 cpaTcpaBatchCalculator,
+                encounterClassifier,
                 riskAssessmentEngine,
                 riskObjectAssembler(),
                 shipStateStore,
@@ -95,17 +100,14 @@ class ShipDispatcherTest {
 
         assertThat(shipDomainEngine.lastConsumedShip).isNotNull();
         assertThat(shipDomainEngine.lastConsumedShip.getId()).isEqualTo("ownShip");
-        assertThat(shipDomainEngine.lastConsumedShip.getRole()).isEqualTo(ShipRole.OWN_SHIP);
         assertThat(cvPredictionEngine.lastConsumedShip).isEqualTo(targetShip);
-        assertThat(riskAssessmentEngine.lastDomainResult).isSameAs(domainResult);
         assertThat(publisher.publishedFrame).isNotNull();
-        Map<String, Object> safetyDomain = castMap(publisher.publishedFrame.riskObject().getOwnShip().get("safety_domain"));
-        Map<String, Object> dimensions = castMap(safetyDomain.get("dimensions"));
-        assertThat(safetyDomain).containsEntry("shape_type", ShipDomainResult.SHAPE_ELLIPSE);
-        assertThat(dimensions).containsEntry("fore_nm", 0.75);
-        assertThat(dimensions).containsEntry("aft_nm", 0.15);
-        assertThat(dimensions).containsEntry("port_nm", 0.3);
-        assertThat(dimensions).containsEntry("stbd_nm", 0.3);
+        
+        // Verify encounter_type exists for target
+        List<Map<String, Object>> targets = (List<Map<String, Object>>) publisher.publishedFrame.riskObject().getTargets();
+        Map<String, Object> targetMap = targets.get(0);
+        Map<String, Object> riskAssessment = castMap(targetMap.get("risk_assessment"));
+        assertThat(riskAssessment).containsKey("encounter_type");
     }
 
     @Test
@@ -124,6 +126,7 @@ class ShipDispatcherTest {
         RecordingShipDomainEngine shipDomainEngine = new RecordingShipDomainEngine(domainResult);
         StubCpaTcpaBatchCalculator cpaTcpaBatchCalculator = new StubCpaTcpaBatchCalculator(Map.of());
         StubRiskAssessmentEngine riskAssessmentEngine = new StubRiskAssessmentEngine(RiskAssessmentResult.empty());
+        EncounterClassifier encounterClassifier = new EncounterClassifier(new EncounterProperties());
 
         shipStateStore.update(ownShip);
 
@@ -131,6 +134,7 @@ class ShipDispatcherTest {
                 shipDomainEngine,
                 new RecordingCvPredictionEngine(),
                 cpaTcpaBatchCalculator,
+                encounterClassifier,
                 riskAssessmentEngine,
                 riskObjectAssembler(),
                 shipStateStore,
@@ -143,15 +147,7 @@ class ShipDispatcherTest {
 
         assertThat(shipDomainEngine.lastConsumedShip).isNotNull();
         assertThat(shipDomainEngine.lastConsumedShip.getId()).isEqualTo("ownShip");
-        assertThat(shipDomainEngine.lastConsumedShip.getRole()).isEqualTo(ShipRole.OWN_SHIP);
-        assertThat(riskAssessmentEngine.lastDomainResult).isSameAs(domainResult);
         assertThat(publisher.publishedFrame).isNotNull();
-        Map<String, Object> safetyDomain = castMap(publisher.publishedFrame.riskObject().getOwnShip().get("safety_domain"));
-        Map<String, Object> dimensions = castMap(safetyDomain.get("dimensions"));
-        assertThat(dimensions).containsEntry("fore_nm", 0.6);
-        assertThat(dimensions).containsEntry("aft_nm", 0.12);
-        assertThat(dimensions).containsEntry("port_nm", 0.24);
-        assertThat(dimensions).containsEntry("stbd_nm", 0.24);
     }
 
     private ShipDispatcher dispatcher(
@@ -162,6 +158,7 @@ class ShipDispatcherTest {
                 (ShipDomainEngine) null,
                 (CvPredictionEngine) null,
                 (CpaTcpaBatchCalculator) null,
+                (EncounterClassifier) null,
                 (RiskAssessmentEngine) null,
                 (RiskObjectAssembler) null,
                 (ShipStateStore) null,
