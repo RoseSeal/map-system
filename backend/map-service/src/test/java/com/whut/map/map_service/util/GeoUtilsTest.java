@@ -25,5 +25,26 @@ class GeoUtilsTest {
 
         assertThat(GeoUtils.distanceMetersByXY(30.0, 120.0, 30.01, 120.02)).isEqualTo(expected);
     }
-}
 
+    @Test
+    void displaceZeroReturnsSame() {
+        double[] res = GeoUtils.displace(30.0, 120.0, 0, 0);
+        assertThat(res[0]).isEqualTo(30.0);
+        assertThat(res[1]).isEqualTo(120.0);
+    }
+
+    @Test
+    void displaceEastIncreasesLongitude() {
+        double[] res = GeoUtils.displace(30.0, 120.0, 1000, 0);
+        assertThat(res[0]).isEqualTo(30.0);
+        assertThat(res[1]).isGreaterThan(120.0);
+    }
+
+    @Test
+    void displaceNorthIncreasesLatitude() {
+        double[] res = GeoUtils.displace(30.0, 120.0, 0, 1000);
+        assertThat(res[0]).isGreaterThan(30.0);
+        assertThat(res[1]).isEqualTo(120.0);
+    }
+
+}

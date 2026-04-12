@@ -27,6 +27,12 @@ public class GeoUtils {
         return new double[]{vx, vy};
     }
 
+    public static double[] displace(double refLat, double refLon, double eastMeters, double northMeters) {
+        double dLat = northMeters / 111320.0;
+        double dLon = eastMeters / (Math.cos(Math.toRadians(refLat)) * 111320.0);
+        return new double[]{refLat + dLat, refLon + dLon};
+    }
+
     public static double metersToNm(double meters) {
         return meters / METERS_PER_NAUTICAL_MILE;
     }

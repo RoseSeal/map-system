@@ -37,7 +37,7 @@ public class RiskObjectAssembler {
             Map<String, CpaTcpaResult> cpaResults,
             RiskAssessmentResult riskResult,
             ShipDomainResult domainResult,
-            CvPredictionResult cvResult
+            Map<String, CvPredictionResult> cvResults
     ) {
         if (ownShip == null) {
             return null;
@@ -49,8 +49,9 @@ public class RiskObjectAssembler {
                 .riskObjectId(riskObjectMetaAssembler.buildRiskObjectId(ownShip, snapshotTimestamp))
                 .timestamp(snapshotTimestamp)
                 .governance(riskObjectMetaAssembler.buildGovernance())
-                .ownShip(ownShipAssembler.assemble(ownShip, domainResult, cvResult))
-                .targets(targetAssembler.assembleTargets(ownShip, allShips, cpaResults, riskResult))
+                .ownShip(ownShipAssembler.assemble(ownShip, domainResult))
+                .targets(targetAssembler.assembleTargets(
+                        ownShip, allShips, cpaResults, riskResult, cvResults))
                 .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext())
                 .build();
     }

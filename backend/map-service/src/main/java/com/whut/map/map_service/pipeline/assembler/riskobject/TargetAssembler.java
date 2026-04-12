@@ -5,6 +5,7 @@ import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
+import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.util.GeoUtils;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +29,8 @@ public class TargetAssembler {
             ShipStatus ownShip,
             Collection<ShipStatus> allShips,
             Map<String, CpaTcpaResult> cpaResults,
-            RiskAssessmentResult riskResult
+            RiskAssessmentResult riskResult,
+            Map<String, CvPredictionResult> cvResults
     ) {
         List<Map<String, Object>> targets = new ArrayList<>();
         if (allShips == null) {
@@ -41,7 +43,8 @@ public class TargetAssembler {
             }
             CpaTcpaResult cpaResult = cpaResults == null ? null : cpaResults.get(ship.getId());
             TargetRiskAssessment assessment = riskResult == null ? null : riskResult.getTargetAssessment(ship.getId());
-            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment));
+            CvPredictionResult cvResult = (cvResults == null) ? null : cvResults.get(ship.getId());
+            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment, cvResult));
         }
         return targets;
     }
@@ -50,7 +53,8 @@ public class TargetAssembler {
             ShipStatus ownShip,
             ShipStatus targetShip,
             CpaTcpaResult cpaResult,
-            TargetRiskAssessment assessment
+            TargetRiskAssessment assessment,
+            CvPredictionResult cvResult
     ) {
         Map<String, Object> position = new LinkedHashMap<>();
         position.put("lon", targetShip.getLongitude());
@@ -86,6 +90,27 @@ public class TargetAssembler {
         target.put("position", position);
         target.put("vector", vector);
         target.put("risk_assessment", riskAssessment);
+
+        if (cvResult != null && cvResult.getTrajectory() != null && !cvResult.getTrajectory().isEmpty()) {
+            target.put("predicted_trajectory", buildPredictedTrajectory(cvResult));
+        }
+
         return target;
+    }
+
+    private Map<String, Object> buildPredictedTrajectory(CvPredictionResult cvResult) {
+        List<Map<String, Object>> points = new ArrayList<>();
+        for (CvPredictionResult.PredictedPoint p : cvResult.getTrajectory()) {
+            Map<String, Object> point = new LinkedHashMap<>();
+            point.put("lat", p.getLatitude());
+            point.put("lon", p.getLongitude());
+            point.put("offset_seconds", p.getOffsetSeconds());
+            points.add(point);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("prediction_type", "cv");
+        result.put("horizon_seconds", cvResult.getHorizonSeconds());
+        result.put("points", points);
+        return result;
     }
 }

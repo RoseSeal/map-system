@@ -8,7 +8,7 @@ import java.util.Map;
 
 record ShipDerivedOutputs(
         ShipDomainResult shipDomainResult,
-        CvPredictionResult cvPredictionResult,
+        Map<String, CvPredictionResult> cvPredictionResults,
         Map<String, CpaTcpaResult> cpaResults
 ) {
 }

@@ -86,6 +86,7 @@ class ShipDispatcherTest {
                 riskAssessmentEngine,
                 riskObjectAssembler(),
                 shipStateStore,
+                new com.whut.map.map_service.store.ShipTrajectoryStore(),
                 publisher,
                 eventPublisher
         );
@@ -95,7 +96,7 @@ class ShipDispatcherTest {
         assertThat(shipDomainEngine.lastConsumedShip).isNotNull();
         assertThat(shipDomainEngine.lastConsumedShip.getId()).isEqualTo("ownShip");
         assertThat(shipDomainEngine.lastConsumedShip.getRole()).isEqualTo(ShipRole.OWN_SHIP);
-        assertThat(cvPredictionEngine.lastConsumedShip).isSameAs(targetShip);
+        assertThat(cvPredictionEngine.lastConsumedShip).isEqualTo(targetShip);
         assertThat(riskAssessmentEngine.lastDomainResult).isSameAs(domainResult);
         assertThat(publisher.publishedFrame).isNotNull();
         Map<String, Object> safetyDomain = castMap(publisher.publishedFrame.riskObject().getOwnShip().get("safety_domain"));
@@ -133,6 +134,7 @@ class ShipDispatcherTest {
                 riskAssessmentEngine,
                 riskObjectAssembler(),
                 shipStateStore,
+                new com.whut.map.map_service.store.ShipTrajectoryStore(),
                 publisher,
                 eventPublisher
         );
@@ -163,6 +165,7 @@ class ShipDispatcherTest {
                 (RiskAssessmentEngine) null,
                 (RiskObjectAssembler) null,
                 (ShipStateStore) null,
+                (com.whut.map.map_service.store.ShipTrajectoryStore) null,
                 publisher,
                 eventPublisher
         );
@@ -252,6 +255,10 @@ class ShipDispatcherTest {
 
     private static final class RecordingCvPredictionEngine extends CvPredictionEngine {
         private ShipStatus lastConsumedShip;
+
+        RecordingCvPredictionEngine() {
+            super(new com.whut.map.map_service.config.properties.TrajectoryPredictionProperties());
+        }
 
         @Override
         public com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult consume(ShipStatus message) {

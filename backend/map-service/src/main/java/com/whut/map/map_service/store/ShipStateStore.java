@@ -100,9 +100,9 @@ public class ShipStateStore {
                 .build();
     }
 
-    boolean purgeExpiredShips(OffsetDateTime referenceTime) {
+    java.util.Set<String> purgeExpiredShips(OffsetDateTime referenceTime) {
         if (referenceTime == null) {
-            return false;
+            return Collections.emptySet();
         }
 
         long expireAfterSeconds = Math.max(1L, shipStateProperties.getExpireAfterSeconds());
@@ -125,18 +125,18 @@ public class ShipStateStore {
         if (!removedShipIds.isEmpty()) {
             log.debug("Removed {} expired ship states older than {}s: {}", removedShipIds.size(), expireAfterSeconds, removedShipIds);
         }
-        return !removedShipIds.isEmpty();
+        return Collections.unmodifiableSet(new java.util.HashSet<>(removedShipIds));
     }
 
-    public boolean triggerCleanupIfNeeded() {
+    public java.util.Set<String> triggerCleanupIfNeeded() {
         long cleanupIntervalMillis = Math.max(1L, shipStateProperties.getCleanupIntervalSeconds()) * 1000L;
         long now = System.currentTimeMillis();
         long nextCleanupAt = nextCleanupAtMillis.get();
         if (now < nextCleanupAt) {
-            return false;
+            return Collections.emptySet();
         }
         if (!nextCleanupAtMillis.compareAndSet(nextCleanupAt, now + cleanupIntervalMillis)) {
-            return false;
+            return Collections.emptySet();
         }
 
         return purgeExpiredShips(OffsetDateTime.now());

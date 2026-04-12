@@ -15,13 +15,16 @@ import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.store.ShipStateStore;
+import com.whut.map.map_service.store.ShipTrajectoryStore;
 import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -33,6 +36,7 @@ public class ShipDispatcher {
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
     private final ShipStateStore shipStateStore;
+    private final ShipTrajectoryStore shipTrajectoryStore;
     private final RiskStreamPublisher riskStreamPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -43,6 +47,7 @@ public class ShipDispatcher {
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
             ShipStateStore shipStateStore,
+            ShipTrajectoryStore shipTrajectoryStore,
             RiskStreamPublisher riskStreamPublisher,
             ApplicationEventPublisher applicationEventPublisher
 
@@ -53,6 +58,7 @@ public class ShipDispatcher {
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
         this.shipStateStore = shipStateStore;
+        this.shipTrajectoryStore = shipTrajectoryStore;
         this.riskStreamPublisher = riskStreamPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
     }
@@ -83,27 +89,40 @@ public class ShipDispatcher {
             return null;
         }
 
-        shipStateStore.triggerCleanupIfNeeded();
+        Set<String> removedIds = shipStateStore.triggerCleanupIfNeeded();
+        removedIds.forEach(shipTrajectoryStore::remove);
+        shipTrajectoryStore.append(message);
+
         return new ShipDispatchContext(message, shipStateStore.getOwnShip(), shipStateStore.getAll());
+    }
+
+    private Map<String, CvPredictionResult> batchPredict(String ownShipId, Collection<ShipStatus> allShips) {
+        Map<String, CvPredictionResult> results = new HashMap<>();
+        for (ShipStatus ship : allShips) {
+            if (ship == null || ship.getId() == null || ship.getId().equals(ownShipId)) {
+                continue;
+            }
+            results.put(ship.getId(), cvPredictionEngine.consume(ship));
+        }
+        return results;
     }
 
     private ShipDerivedOutputs runDerivations(ShipDispatchContext context) {
         ShipDomainResult shipDomainResult = null;
-        CvPredictionResult cvPredictionResult = null;
 
         if (context.hasOwnShip()) {
             shipDomainResult = shipDomainEngine.consume(context.ownShip());
         }
-        if (context.message().getRole() == ShipRole.TARGET_SHIP) {
-            cvPredictionResult = cvPredictionEngine.consume(context.message());
-        }
+
+        String ownShipId = context.hasOwnShip() ? context.ownShip().getId() : null;
+        Map<String, CvPredictionResult> cvPredictionResults = batchPredict(ownShipId, context.allShips());
 
         Map<String, CpaTcpaResult> cpaResults = cpaTcpaBatchCalculator.calculateAll(
                 context.ownShip(),
                 context.allShips()
         );
 
-        return new ShipDerivedOutputs(shipDomainResult, cvPredictionResult, cpaResults);
+        return new ShipDerivedOutputs(shipDomainResult, cvPredictionResults, cpaResults);
     }
 
     private RiskDispatchSnapshot buildRiskSnapshot(
@@ -121,7 +140,7 @@ public class ShipDispatcher {
                 context.allShips(),
                 outputs.cpaResults(),
                 outputs.shipDomainResult(),
-                outputs.cvPredictionResult()
+                null
         );
 
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
@@ -130,7 +149,7 @@ public class ShipDispatcher {
                 outputs.cpaResults(),
                 riskResult,
                 outputs.shipDomainResult(),
-                outputs.cvPredictionResult()
+                outputs.cvPredictionResults()
         );
         if (dto == null) {
             return null;
@@ -170,13 +189,14 @@ public class ShipDispatcher {
         Collection<ShipStatus> allShips = shipStateStore.getAll().values();
         ShipDomainResult domainResult = shipDomainEngine.consume(ownShip);
 
+        Map<String, CvPredictionResult> cvPredictionResults = batchPredict(ownShip.getId(), allShips);
         Map<String, CpaTcpaResult> cpaResults = cpaTcpaBatchCalculator.calculateAll(ownShip, allShips);
 
         RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
                 ownShip, allShips, cpaResults, domainResult, null);
 
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
-                ownShip, allShips, cpaResults, riskResult, domainResult, null);
+                ownShip, allShips, cpaResults, riskResult, domainResult, cvPredictionResults);
         if (dto == null) {
             return;
         }
