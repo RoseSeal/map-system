@@ -58,6 +58,43 @@ Step 5B（依赖 Step 2）────────────────→ St
 | Step 5A | 小（Mapper 增强 + qualityFlags） | 无 |
 | Step 5B | 小-中（运动学校验器，新增 qualityFlags 类型） | Step 2 |
 | Step 6 | 中（assembler 全面替换 + 集成测试） | Step 4, 5A, 5B |
+| Step 7 | 中（包结构全面重组，纯重构，无逻辑变更） | Step 6 |
+
+---
+
+## Step 7：包结构重组（垂直功能域化）
+
+### 背景
+
+当前包结构在 LLM 模块解耦完成后已做 Option A 小修缮（`event/`、`pipeline/assembler/` 等），但整体仍混用横向分层与纵向子模块两种范式。Step 6 完成后是最后一次大规模 assembler 改动，此后改做全面重组风险最小。
+
+### 目标结构
+
+```
+map_service/
+  ais/             ← mqtt/ + store/（AIS 数据入口与状态存储）
+  chart/           ← api/S57Controller + repository/S57TileRepository（航图服务）
+  risk/            ← engine/ + pipeline/ + event/（风险评估核心）
+  llm/             ← 保持现有内部结构不变
+  shared/          ← domain/ + dto/ + config/ + util/（跨域共享类型）
+  api/             ← RiskSseController（保留，SSE 出口）
+```
+
+### 做什么
+
+1. **新建顶层包**：`ais/`、`chart/`、`risk/`、`shared/`
+2. **迁移**（纯包声明 + import 变更，不改逻辑）：
+   - `mqtt/*` → `ais/mqtt/`，`store/*` → `ais/store/`
+   - `repository/*`、`api/S57Controller` → `chart/`
+   - `engine/*`、`pipeline/*`、`event/*` → `risk/engine/`、`risk/pipeline/`、`risk/event/`
+   - `domain/*`、`dto/*`、`config/*`、`util/*` → `shared/`（或保留 `shared/` 前缀）
+3. **批量 import 替换**（sed/IDE 重构工具），逐包验证编译
+
+### 约束
+
+- **纯重构**：零逻辑变更，每个文件只改 `package` 声明和 `import`
+- **前置条件**：Step 6 已合并，所有 assembler 硬编码替换完成
+- **验收**：全量单元测试通过，SSE/WS 端到端冒烟通过
 
 ---
 

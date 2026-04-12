@@ -1,7 +1,7 @@
 package com.whut.map.map_service.transport.risk;
 
 import com.whut.map.map_service.dto.RiskObjectDto;
-import com.whut.map.map_service.dto.riskstream.RiskFrame;
+import com.whut.map.map_service.event.RiskFrame;
 import com.whut.map.map_service.dto.sse.ExplanationPayload;
 import com.whut.map.map_service.dto.sse.RiskUpdatePayload;
 import com.whut.map.map_service.dto.sse.SseErrorPayload;

@@ -1,9 +1,7 @@
-package com.whut.map.map_service.llm;
+package com.whut.map.map_service.llm.context;
 
-import com.whut.map.map_service.llm.context.LlmRiskContextAssembler;
-import com.whut.map.map_service.dto.riskstream.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.dto.sse.ExplanationPayload;
-import com.whut.map.map_service.llm.context.RiskContextHolder;
+import com.whut.map.map_service.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.llm.service.LlmErrorCode;
 import com.whut.map.map_service.llm.service.LlmTriggerService;

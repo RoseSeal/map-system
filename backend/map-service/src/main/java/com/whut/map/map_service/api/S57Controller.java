@@ -1,6 +1,6 @@
 package com.whut.map.map_service.api;
 
-import com.whut.map.map_service.service.s57.S57TileService;
+import com.whut.map.map_service.repository.S57TileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -22,7 +22,7 @@ import java.util.*;
 @CrossOrigin(origins = "*")  // Enable CORS for frontend
 public class S57Controller {
 
-    private final S57TileService s57TileService;
+    private final S57TileRepository s57TileRepository;
 
     /**
      * 1. Vector Tile Endpoint - Standard MVT service
@@ -61,7 +61,7 @@ public class S57Controller {
 
         log.info("Single layer tile request: layer={}, z={}, x={}, y={}", layer, z, x, y);
 
-        byte[] tile = s57TileService.getTile(layer.toUpperCase(), z, x, y, null);
+        byte[] tile = s57TileRepository.getTile(layer.toUpperCase(), z, x, y, null);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("application/vnd.mapbox-vector-tile"));
@@ -74,7 +74,7 @@ public class S57Controller {
      */
     private byte[] generateCompositeTile(int z, int x, int y, Double safetyContour) {
         // Use the new composite tile method from service
-        byte[] compositeTile = s57TileService.getCompositeTile(z, x, y, safetyContour);
+        byte[] compositeTile = s57TileRepository.getCompositeTile(z, x, y, safetyContour);
         if (compositeTile != null && compositeTile.length > 0) {
             return compositeTile;
         }
@@ -82,7 +82,7 @@ public class S57Controller {
         // Fallback: try individual layers if composite fails
         String[] layers = {"DEPARE", "LNDARE", "COALNE", "DEPCNT", "SOUNDG"};
         for (String layer : layers) {
-            byte[] layerTile = s57TileService.getTile(layer, z, x, y, safetyContour);
+            byte[] layerTile = s57TileRepository.getTile(layer, z, x, y, safetyContour);
             if (layerTile != null && layerTile.length > 0) {
                 return layerTile;
             }

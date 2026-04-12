@@ -1,16 +1,16 @@
-package com.whut.map.map_service.llm;
+package com.whut.map.map_service.llm.context;
 
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
-import com.whut.map.map_service.dto.riskstream.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.dto.sse.ExplanationPayload;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
+import com.whut.map.map_service.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.llm.config.LlmProperties;
-import com.whut.map.map_service.llm.context.LlmRiskContextAssembler;
-import com.whut.map.map_service.llm.context.RiskContextHolder;
 import com.whut.map.map_service.llm.dto.LlmExplanation;
+import com.whut.map.map_service.llm.dto.LlmRiskContext;
+import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.llm.service.LlmExplanationService;
 import com.whut.map.map_service.llm.service.LlmTriggerService;
 import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
@@ -124,7 +124,7 @@ class LlmRiskEventListenerTest {
     }
 
     private static final class RecordingLlmTriggerService extends LlmTriggerService {
-        private com.whut.map.map_service.llm.dto.LlmRiskContext lastContext;
+        private LlmRiskContext lastContext;
         private LlmExplanation explanationToSend;
 
         RecordingLlmTriggerService() {
@@ -133,9 +133,9 @@ class LlmRiskEventListenerTest {
 
         @Override
         public void triggerExplanationsIfNeeded(
-                com.whut.map.map_service.llm.dto.LlmRiskContext context,
+                LlmRiskContext context,
                 Consumer<LlmExplanation> onExplanation,
-                BiConsumer<com.whut.map.map_service.llm.dto.LlmRiskTargetContext, LlmExplanationService.LlmExplanationError> onError
+                BiConsumer<LlmRiskTargetContext, LlmExplanationService.LlmExplanationError> onError
         ) {
             this.lastContext = context;
             if (explanationToSend != null) {

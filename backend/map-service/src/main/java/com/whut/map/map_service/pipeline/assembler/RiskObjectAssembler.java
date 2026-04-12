@@ -1,8 +1,8 @@
-package com.whut.map.map_service.assembler;
+package com.whut.map.map_service.pipeline.assembler;
 
-import com.whut.map.map_service.assembler.riskobject.OwnShipAssembler;
-import com.whut.map.map_service.assembler.riskobject.RiskObjectMetaAssembler;
-import com.whut.map.map_service.assembler.riskobject.TargetAssembler;
+import com.whut.map.map_service.pipeline.assembler.riskobject.OwnShipAssembler;
+import com.whut.map.map_service.pipeline.assembler.riskobject.RiskObjectMetaAssembler;
+import com.whut.map.map_service.pipeline.assembler.riskobject.TargetAssembler;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
@@ -55,4 +55,3 @@ public class RiskObjectAssembler {
                 .build();
     }
 }
-

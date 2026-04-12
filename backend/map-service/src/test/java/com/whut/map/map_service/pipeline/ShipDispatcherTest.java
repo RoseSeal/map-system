@@ -1,11 +1,11 @@
 package com.whut.map.map_service.pipeline;
 
-import com.whut.map.map_service.assembler.RiskObjectAssembler;
+import com.whut.map.map_service.pipeline.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
-import com.whut.map.map_service.dto.riskstream.RiskAssessmentCompletedEvent;
-import com.whut.map.map_service.dto.riskstream.RiskFrame;
+import com.whut.map.map_service.event.RiskAssessmentCompletedEvent;
+import com.whut.map.map_service.event.RiskFrame;
 import com.whut.map.map_service.engine.collision.CpaTcpaBatchCalculator;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;

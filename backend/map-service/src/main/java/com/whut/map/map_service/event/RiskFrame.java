@@ -1,4 +1,4 @@
-package com.whut.map.map_service.dto.riskstream;
+package com.whut.map.map_service.event;
 
 import com.whut.map.map_service.dto.RiskObjectDto;
 

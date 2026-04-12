@@ -1,4 +1,4 @@
-package com.whut.map.map_service.assembler.riskobject;
+package com.whut.map.map_service.pipeline.assembler.riskobject;
 
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.risk.RiskConstants;

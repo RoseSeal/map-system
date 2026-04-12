@@ -2,7 +2,7 @@ package com.whut.map.map_service.transport.risk;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whut.map.map_service.dto.RiskObjectDto;
-import com.whut.map.map_service.dto.riskstream.RiskFrame;
+import com.whut.map.map_service.event.RiskFrame;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
