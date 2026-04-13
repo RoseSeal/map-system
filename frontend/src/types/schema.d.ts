@@ -107,11 +107,24 @@ export interface TargetVector {
   course_deg: number;
 }
 
+export interface PredictedTrajectoryPoint {
+  lat: number;
+  lon: number;
+  offset_seconds: number;
+}
+
+export interface PredictedTrajectory {
+  prediction_type: string;
+  horizon_seconds: number;
+  points: PredictedTrajectoryPoint[];
+}
+
 export interface RiskTarget {
   id: string;
   tracking_status: TrackingStatus;
   position: Position;
   vector: TargetVector;
+  predicted_trajectory?: PredictedTrajectory;
   risk_assessment: RiskAssessment;
 }
 

@@ -151,6 +151,14 @@ data: {"event_id":"server-event-xxx", ...payload}
       "tracking_status": "tracking",
       "position": { "lon": 114.31, "lat": 30.51 },
       "vector": { "speed_kn": 8.0, "course_deg": 45.0 },
+      "predicted_trajectory": {
+        "prediction_type": "cv",
+        "horizon_seconds": 600,
+        "points": [
+          { "lat": 30.512, "lon": 114.312, "offset_seconds": 30 },
+          { "lat": 30.514, "lon": 114.314, "offset_seconds": 60 }
+        ]
+      },
       "risk_assessment": {
         "risk_level": "WARNING",
         "cpa_metrics": { "dcpa_nm": 0.42, "tcpa_sec": 180.0 },
@@ -170,6 +178,8 @@ data: {"event_id":"server-event-xxx", ...payload}
 - `risk_assessment.explanation` 在 v2 中移除
 - `all_targets` 不再出现在 risk payload 中
 - `simulation_layer` 不再出现在 risk payload 中
+- `target.predicted_trajectory` 为可选字段；存在时结构固定为 `{ prediction_type, horizon_seconds, points[] }`
+- CTR 升级后 `target.predicted_trajectory.prediction_type` 仍保持 `"cv"`
 
 ### 4.4 `ERROR` payload（risk）
 

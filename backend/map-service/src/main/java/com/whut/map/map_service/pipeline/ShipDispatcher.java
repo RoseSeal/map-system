@@ -107,7 +107,7 @@ public class ShipDispatcher {
             if (ship == null || ship.getId() == null || ship.getId().equals(ownShipId)) {
                 continue;
             }
-            results.put(ship.getId(), cvPredictionEngine.consume(ship));
+            results.put(ship.getId(), cvPredictionEngine.consume(ship, shipTrajectoryStore.getHistory(ship.getId())));
         }
         return results;
     }

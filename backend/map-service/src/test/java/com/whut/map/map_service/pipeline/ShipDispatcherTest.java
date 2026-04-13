@@ -258,7 +258,10 @@ class ShipDispatcherTest {
         }
 
         @Override
-        public com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult consume(ShipStatus message) {
+        public com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult consume(
+                ShipStatus message,
+                List<ShipStatus> history
+        ) {
             this.lastConsumedShip = message;
             return null;
         }

@@ -19,8 +19,12 @@ export function TargetsPanel() {
   }
 
   const sortedTargets = [...targets].sort((a, b) => {
-    const riskScore = { ALARM: 4, WARNING: 3, CAUTION: 2, SAFE: 1 };
-    return (riskScore[b.risk_assessment.risk_level] || 0) - (riskScore[a.risk_assessment.risk_level] || 0);
+    const levelScore = { ALARM: 4, WARNING: 3, CAUTION: 2, SAFE: 1 };
+    const levelDiff = (levelScore[b.risk_assessment.risk_level] || 0) - (levelScore[a.risk_assessment.risk_level] || 0);
+    if (levelDiff !== 0) {
+      return levelDiff;
+    }
+    return (b.risk_assessment.risk_score ?? 0) - (a.risk_assessment.risk_score ?? 0);
   });
 
   return (

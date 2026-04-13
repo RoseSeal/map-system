@@ -1,7 +1,7 @@
 # Frontend Design Reference
 
 > 文档状态：current
-> 最后更新：2026-04-06
+> 最后更新：2026-04-13
 > 基线来源：`docs/ARCHITECTURE.md`、`docs/EVENT_SCHEMA.md`
 
 This document describes the frontend architecture, rendering model, and operational guidance for the Map System.
@@ -141,6 +141,30 @@ Implementation guidance:
 
 Constraint:
 - Frontend compatibility must not be mistaken for frontend commitment. Accepting a field in the contract layer does not require immediate visual consumption.
+
+### 9.3 Trajectory Rendering Style — No Branch on `prediction_type`
+
+`target.predicted_trajectory.points` may be produced by either the CV (linear) or CTR (constant turn rate) model. The backend communicates which model was used via `prediction_type`, but the frontend must not branch on this field for rendering style.
+
+Frontend responsibilities:
+- Render `PathLayer` with a uniform style regardless of `prediction_type` value.
+- Treat all trajectory point arrays identically: connect them in sequence, apply the standard fade-opacity scheme.
+- Curved appearance emerges naturally from point spatial distribution when the backend CTR model is active; no renderer change is required.
+
+Constraint:
+- Do not add style branches, icon changes, or color overrides keyed on `prediction_type`. Doing so would couple the renderer to backend algorithm internals, requiring frontend changes on every future model upgrade.
+
+### 9.4 `risk_score` — Sort Signal Only, Not a Display Value
+
+`risk_score` (0.0–1.0) is a continuous auxiliary field used for secondary ordering of targets within the same `risk_level` group. It is not a calibrated operator-facing metric.
+
+Frontend responsibilities:
+- Use `risk_score` exclusively as a tiebreaker in `TargetsPanel` sort order (descending within the same `risk_level`).
+- Treat a missing `risk_score` as 0.0 for sort purposes.
+
+Constraint:
+- Do not display `risk_score` as a numeric value, progress bar, chip intensity, or any operator-visible indicator on target cards or list items.
+- This constraint holds until the backend scoring model has been validated against real traffic data and the field is explicitly promoted to a primary display signal. That decision belongs to the backend design, not to the frontend.
 
 ## 10. Local Frontend Development
 

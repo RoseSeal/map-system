@@ -29,7 +29,6 @@ import {
   generateEllipsePolygon,
   generateLinearTrajectory,
 } from '../../utils';
-import { getTargetRemainingWaypoints, isTargetInTrackingRange } from '../../services/mockDataGenerator';
 import type { LonLat, RiskTarget, OwnShip, RGBAColor } from '../../types/schema';
 
 const VESSEL_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
@@ -207,12 +206,13 @@ export function MapContainer() {
       const targetRouteSegments: { path: Position[]; color: RGBAColor }[] = [];
 
       allTargets.forEach((target) => {
-        if (!isTargetInTrackingRange(target.id)) return;
+        const traj = target.predicted_trajectory;
+        if (!traj?.points || traj.points.length < 1) return;
 
-        const waypoints = getTargetRemainingWaypoints(target.id);
-        if (!waypoints || waypoints.length < 2) return;
-
-        const fullPath: LonLat[] = [[target.position.lon, target.position.lat], ...waypoints.slice(0, 2)];
+        const fullPath: LonLat[] = [
+          [target.position.lon, target.position.lat],
+          ...traj.points.map((point): LonLat => [point.lon, point.lat]),
+        ];
 
         for (let i = 0; i < fullPath.length - 1; i += 1) {
           const opacity = i === 0 ? 160 : 90;

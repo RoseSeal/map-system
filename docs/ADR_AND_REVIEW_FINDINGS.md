@@ -283,6 +283,7 @@ build RiskFrame
 - 不采用“事件发布后由两个并行 listener 各自消费即可自然对齐”的表述，因为该方案没有提供可观察一致性的上界保证。
 - 不为本步引入历史快照缓存、多版本 context holder 或 `snapshotId` 问答协议；若未来需要历史问答，应作为独立 history retrieval 能力设计。
 
+
 ## 二、Review Findings
 
 - `ADR-005 / 连接状态建模`：`ERROR` SSE 事件属于业务错误而非传输断线；实现上由前端 `riskSseService` 与 `useRiskStore` 将 `lastError` 与 `isConnected` 分离，避免一次 LLM 超时导致面板误判离线。

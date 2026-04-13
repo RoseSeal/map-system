@@ -47,13 +47,15 @@ public CvPredictionResult consume(ShipStatus message, List<ShipStatus> history)
 
 **内部新增方法 `extractRotDegPerSec(List<ShipStatus> history)`**：
 
-1. 从 history 过滤：COG 在 [0, 360)、`msgTime` 非 null、且 `qualityFlags` 不含 `COG_JUMP` 的点，按 `msgTime` 升序。`qualityFlags` 为 null 时视为无标志（null-safe，Step 5B 实施前为 no-op）
+1. 从 history 过滤：COG 在 [0, 360)、`msgTime` 非 null 的点，按 `msgTime` 升序。
+  - 仓库当前 `ShipStatus` 尚未包含 `qualityFlags` 字段，因此本步实现不做 `COG_JUMP` 过滤。
+  - 待 Step 5B 引入 `qualityFlags` 后，再在该过滤条件中补入 `COG_JUMP` 排除逻辑（保持 null-safe）。
 2. 若有效点 < 3：返回 `0.0`（退化 CV）
 3. 对 COG 序列做角度解缠（unwrap）：相邻帧差超过 ±180° 时累加 ±360° 修正，确保连续转向（如 359° → 1°）被正确表示为 +2° 而非 -358°
 4. 对 `(time_sec, cog_unwrapped)` 做最小二乘线性回归，斜率即 ROT（deg/sec）
 5. 若 `|ROT| × 60 < rotThresholdDegPerMin`：返回 `0.0`（噪声，退化 CV）
 
-> **设计说明**：`COG_JUMP` 过滤是 Step 5B 的前置钩子。Step 5B 未实施时 `qualityFlags` 为 null，过滤条件等价于旧行为；Step 5B 实施后，跳变帧自动被排除，不需要改动本方法。在 Step 5B 落地前，AIS 跳变帧可能混入回归——由于需要 ≥3 个有效点且 ROT 要超过噪声阈值，单个跳变帧触发误判的概率较低，但这是已知的局限性。
+> **设计说明（按仓库现状修订）**：由于当前 `ShipStatus` 尚无 `qualityFlags` 字段，本步无法落地 `COG_JUMP` 过滤钩子；已实现版本仅基于 COG 有效性与时间戳做筛选。该限制不影响 CTR 主流程落地，但在 Step 5B 之前，AIS 跳变帧仍可能混入回归。考虑到需要 ≥3 个有效点且 ROT 需超过阈值，单点跳变触发误判的概率较低，此为已知局限。
 
 **线性回归公式**（无外部依赖，约 10 行）：
 

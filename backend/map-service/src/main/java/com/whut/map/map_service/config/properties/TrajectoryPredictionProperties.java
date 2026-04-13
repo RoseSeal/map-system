@@ -10,4 +10,5 @@ import org.springframework.stereotype.Component;
 public class TrajectoryPredictionProperties {
     private int horizonSeconds = 600;
     private int stepSeconds = 30;
+    private double rotThresholdDegPerMin = 1.5;
 }
