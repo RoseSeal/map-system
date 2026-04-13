@@ -24,7 +24,7 @@ public class SseKeepaliveScheduler {
 
     @Scheduled(initialDelay = 30000L, fixedRate = 30000L)
     public void cleanupExpiredShips() {
-        if (shipStateStore.triggerCleanupIfNeeded()) {
+        if (!shipStateStore.triggerCleanupIfNeeded().isEmpty()) {
             shipDispatcher.refreshAfterCleanup();
         }
     }
