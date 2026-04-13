@@ -77,6 +77,10 @@ public class TargetAssembler {
         Map<String, Object> riskAssessment = new LinkedHashMap<>();
         riskAssessment.put("risk_level", riskLevel);
         riskAssessment.put("cpa_metrics", cpaMetrics);
+        
+        // Ensure core scoring fields are always present for protocol stability
+        riskAssessment.put("risk_score", assessment != null ? assessment.getRiskScore() : 0.0);
+        riskAssessment.put("risk_confidence", assessment != null ? assessment.getRiskConfidence() : 1.0);
 
         Map<String, Object> graphicCpaLine = riskVisualizationAssembler.buildGraphicCpaLine(ownShip, targetShip, assessment);
         if (graphicCpaLine != null) {

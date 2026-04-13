@@ -1,5 +1,6 @@
 package com.whut.map.map_service.engine.risk;
 
+import com.whut.map.map_service.engine.encounter.EncounterType;
 import lombok.Builder;
 import lombok.Data;
 
@@ -13,4 +14,13 @@ public class TargetRiskAssessment {
     private boolean approaching;
     private String explanationSource;
     private String explanationText;
+    
+    @Builder.Default
+    private double riskScore = 0.0;
+    
+    @Builder.Default
+    private double riskConfidence = 1.0;
+    
+    private EncounterType encounterType;
+    private Double domainPenetration;
 }

@@ -154,6 +154,8 @@ data: {"event_id":"server-event-xxx", ...payload}
       "risk_assessment": {
         "risk_level": "WARNING",
         "cpa_metrics": { "dcpa_nm": 0.42, "tcpa_sec": 180.0 },
+        "risk_score": 0.85,
+        "risk_confidence": 0.9,
         "graphic_cpa_line": { "own_pos": [114.3, 30.5], "target_pos": [114.31, 30.51] },
         "ozt_sector": { "start_angle_deg": 35.0, "end_angle_deg": 55.0, "is_active": true }
       }

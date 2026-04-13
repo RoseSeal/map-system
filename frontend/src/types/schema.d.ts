@@ -98,6 +98,8 @@ export interface RiskAssessment {
   cpa_metrics: CpaMetrics;
   graphic_cpa_line?: GraphicCpaLine;
   ozt_sector?: OztSector;
+  risk_score?: number;
+  risk_confidence?: number;
 }
 
 export interface TargetVector {

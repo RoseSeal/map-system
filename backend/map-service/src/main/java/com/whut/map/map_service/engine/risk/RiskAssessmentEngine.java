@@ -2,10 +2,14 @@ package com.whut.map.map_service.engine.risk;
 
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.config.properties.RiskAssessmentProperties;
+import com.whut.map.map_service.config.properties.RiskScoringProperties;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
+import com.whut.map.map_service.engine.encounter.EncounterType;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.util.GeoUtils;
+import com.whut.map.map_service.util.MathUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -16,17 +20,23 @@ import java.util.Map;
 @Slf4j
 @Component
 public class RiskAssessmentEngine {
-    /**
-     * Ships within this many seconds of CPA (on either side) are treated as at the closest point
-     * of approach and classified by DCPA alone. Prevents a sudden drop to SAFE at the exact
-     * TCPA == 0 instant due to floating-point boundary effects.
-     */
+    // TCPA容差：允许轻微负值，避免数值抖动导致“刚刚错过”被误判为远离。
     private static final double TCPA_CPA_EPS_SEC = 1.0;
 
     private final RiskAssessmentProperties riskProperties;
+    private final RiskScoringProperties scoringProperties;
+    private final DomainPenetrationCalculator domainPenetrationCalculator;
+    private final PredictedCpaCalculator predictedCpaCalculator;
 
-    public RiskAssessmentEngine(RiskAssessmentProperties riskProperties) {
+    public RiskAssessmentEngine(
+            RiskAssessmentProperties riskProperties,
+            RiskScoringProperties scoringProperties,
+            DomainPenetrationCalculator domainPenetrationCalculator,
+            PredictedCpaCalculator predictedCpaCalculator) {
         this.riskProperties = riskProperties;
+        this.scoringProperties = scoringProperties;
+        this.domainPenetrationCalculator = domainPenetrationCalculator;
+        this.predictedCpaCalculator = predictedCpaCalculator;
     }
 
     public RiskAssessmentResult consume(
@@ -34,8 +44,10 @@ public class RiskAssessmentEngine {
             Collection<ShipStatus> allShips,
             Map<String, CpaTcpaResult> cpaResults,
             ShipDomainResult shipDomainResult,
-            CvPredictionResult cvPredictionResult
+            Map<String, CvPredictionResult> cvPredictionResults,
+            Map<String, EncounterClassificationResult> encounterResults
     ) {
+        // 输入不完整时返回空结果，避免下游空指针。
         if (ownShip == null || allShips == null) {
             return RiskAssessmentResult.empty();
         }
@@ -44,11 +56,24 @@ public class RiskAssessmentEngine {
 
         Map<String, TargetRiskAssessment> assessments = new LinkedHashMap<>();
         for (ShipStatus ship : allShips) {
+            // 跳过空目标、无ID目标和本船自身。
             if (ship == null || ship.getId() == null || ship.getId().equals(ownShip.getId())) {
                 continue;
             }
+            // 每个目标ID分别拉取CPA/预测/会遇结果，再聚合为单目标风险评估。
             CpaTcpaResult cpaResult = cpaResults == null ? null : cpaResults.get(ship.getId());
-            TargetRiskAssessment assessment = buildTargetAssessment(ship.getId(), cpaResult);
+            CvPredictionResult predictionResult = cvPredictionResults == null ? null : cvPredictionResults.get(ship.getId());
+            EncounterClassificationResult encounterResult = encounterResults == null ? null : encounterResults.get(ship.getId());
+            
+            TargetRiskAssessment assessment = buildTargetAssessment(
+                    ship.getId(), 
+                    cpaResult,
+                    ownShip,
+                    ship,
+                    shipDomainResult,
+                    predictionResult,
+                    encounterResult
+            );
             assessments.put(ship.getId(), assessment);
         }
 
@@ -57,7 +82,16 @@ public class RiskAssessmentEngine {
                 .build();
     }
 
-    private TargetRiskAssessment buildTargetAssessment(String targetId, CpaTcpaResult cpaResult) {
+    private TargetRiskAssessment buildTargetAssessment(
+            String targetId, 
+            CpaTcpaResult cpaResult,
+            ShipStatus ownShip,
+            ShipStatus targetShip,
+            ShipDomainResult domainResult,
+            CvPredictionResult predictionResult,
+            EncounterClassificationResult encounterResult
+    ) {
+        // 无cpa/tcap直接返回，解释文本为等待cpa
         if (cpaResult == null) {
             return TargetRiskAssessment.builder()
                     .targetId(targetId)
@@ -70,42 +104,109 @@ public class RiskAssessmentEngine {
                     .build();
         }
 
+        // 几何风险基础量：DCPA(最近会遇距离) + TCPA(到最近会遇时间)。
+        double cpaDistanceMeters = cpaResult.getCpaDistance();
+        double dcpaNm = GeoUtils.metersToNm(cpaDistanceMeters);
+        double rawTcpaSec = cpaResult.getTcpaTime();
+        
+        String riskLevel;
+        double tcpaScore = 0.0;
+        boolean approaching = false;
+
         if (!cpaResult.isCpaValid()) {
-            // Relative motion is near-zero (parallel / stationary ships): TCPA is undefined.
-            // Current distance equals CPA distance but there is no convergence; classify as SAFE.
-            return TargetRiskAssessment.builder()
-                    .targetId(targetId)
-                    .riskLevel(RiskConstants.SAFE)
-                    .cpaDistanceMeters(cpaResult.getCpaDistance())
-                    .tcpaSeconds(0.0)
-                    .approaching(false)
-                    .explanationSource(RiskConstants.EXPLANATION_SOURCE_RULE)
-                    .explanationText(RiskConstants.EXPLANATION_TEXT_DERIVED)
-                    .build();
+            // Relative motion is too small to determine convergence (parallel / stationary ships).
+            // No approaching trend → riskLevel stays SAFE regardless of current separation.
+            // riskScore still captures proximity via dcpaScore (tcpaScore = 0 by default above).
+            riskLevel = RiskConstants.SAFE;
+        } else {
+            // 离散等级由阈值规则决定。
+            riskLevel = classifyRisk(dcpaNm, rawTcpaSec);
+            approaching = (rawTcpaSec >= -TCPA_CPA_EPS_SEC);
+            if (approaching) {
+                // TCPA越小越危险，线性映射到[0,1]。
+                tcpaScore = 1.0 - MathUtils.clamp(rawTcpaSec / riskProperties.getCautionTcpaSec(), 0, 1);
+            }
         }
 
-        double cpaDistanceMeters = cpaResult.getCpaDistance();
-        // Raw TCPA: negative means ships are already diverging past CPA.
-        // Pass the raw value to classifyRisk so the eps boundary can distinguish
-        // "just past CPA" from "clearly diverging". Clamp to >= 0 only for display.
-        double rawTcpaSec = cpaResult.getTcpaTime();
-        String riskLevel = classifyRisk(GeoUtils.metersToNm(cpaDistanceMeters), rawTcpaSec);
+        // DCPA越小越危险，几何分取DCPA与TCPA均值。
+        double dcpaScore = 1.0 - MathUtils.clamp(dcpaNm / riskProperties.getCautionDcpaNm(), 0, 1);
+        double geometryScore = (dcpaScore + tcpaScore) / 2.0;
+
+        if (cpaResult.isCpaValid() && predictionResult != null) {
+            // 用轨迹预测对几何分做微调：变危险加分幅度大于变安全减分幅度。
+            double[] predictedCpa = predictedCpaCalculator.calculate(ownShip, predictionResult);
+            if (predictedCpa != null) {
+                double predictedCpaNm = predictedCpa[0];
+                double denominator = Math.max(dcpaNm, 0.001);
+                if (dcpaNm > 0) {
+                    if (predictedCpaNm < dcpaNm) {
+                        double worseningRatio = MathUtils.clamp((dcpaNm - predictedCpaNm) / denominator, 0, 0.3);
+                        geometryScore = MathUtils.clamp(geometryScore + worseningRatio, 0, 1);
+                    } else {
+                        double easingRatio = MathUtils.clamp((predictedCpaNm - dcpaNm) / denominator, 0, 0.15);
+                        geometryScore = MathUtils.clamp(geometryScore - easingRatio, 0, 1);
+                    }
+                }
+            }
+        }
+
+        // 船域侵入分量：用于描述“空间压迫”风险。
+        Double penetration = domainPenetrationCalculator.calculate(ownShip, targetShip, domainResult);
+        double domainScore = 0.0;
+        double finalRiskScore;
+        // 会遇修正因子：不同会遇类型对应不同风险放大/缩小权重。
+        double encounterModifier = scoringProperties.getUndefinedModifier();
+        
+        EncounterType encounterType = encounterResult != null ? encounterResult.getEncounterType() : null;
+        if (encounterType != null && encounterType != EncounterType.UNDEFINED) {
+            switch (encounterType) {
+                case HEAD_ON:
+                    encounterModifier = scoringProperties.getHeadOnModifier();
+                    break;
+                case CROSSING:
+                    encounterModifier = scoringProperties.getCrossingModifier();
+                    break;
+                case OVERTAKING:
+                    encounterModifier = scoringProperties.getOvertakingModifier();
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (domainResult != null && penetration != null) {
+            domainScore = MathUtils.clamp(penetration, 0, 1);
+            // 几何风险与船域风险按权重融合，再乘会遇修正。
+            finalRiskScore = (scoringProperties.getGeometryWeight() * geometryScore + scoringProperties.getDomainWeight() * domainScore) * encounterModifier;
+        } else {
+            finalRiskScore = geometryScore * encounterModifier;
+        }
+        
+        finalRiskScore = MathUtils.clamp(finalRiskScore, 0.0, 1.0);
+
+        // 置信度取本船与目标船中的较低值，体现“短板效应”。
+        double riskConfidence = Math.min(
+                ownShip.getConfidence() != null ? ownShip.getConfidence() : 1.0,
+                targetShip.getConfidence() != null ? targetShip.getConfidence() : 1.0
+        );
 
         return TargetRiskAssessment.builder()
                 .targetId(targetId)
                 .riskLevel(riskLevel)
                 .cpaDistanceMeters(cpaDistanceMeters)
-                .tcpaSeconds(Math.max(rawTcpaSec, 0.0))
-                // "approaching" mirrors the eps boundary with >= to match classifyRisk.
-                .approaching(rawTcpaSec >= -TCPA_CPA_EPS_SEC)
+                .tcpaSeconds(cpaResult.isCpaValid() ? Math.max(rawTcpaSec, 0.0) : 0.0)
+                .approaching(approaching)
                 .explanationSource(RiskConstants.EXPLANATION_SOURCE_RULE)
                 .explanationText(RiskConstants.EXPLANATION_TEXT_DERIVED)
+                .riskScore(finalRiskScore)
+                .riskConfidence(riskConfidence)
+                .encounterType(encounterType)
+                .domainPenetration(penetration)
                 .build();
     }
 
     private String classifyRisk(double dcpaNm, double tcpaSec) {
-        // tcpaSec >= -TCPA_CPA_EPS_SEC: approaching or at CPA (classify by DCPA + TCPA).
-        // tcpaSec < -TCPA_CPA_EPS_SEC: clearly diverging past CPA, return SAFE regardless of DCPA.
+        // 按 alarm -> warning -> caution 逐级判定，命中即返回。
         if (dcpaNm <= riskProperties.getAlarmDcpaNm() && tcpaSec >= -TCPA_CPA_EPS_SEC && tcpaSec <= riskProperties.getAlarmTcpaSec()) {
             return RiskConstants.ALARM;
         }

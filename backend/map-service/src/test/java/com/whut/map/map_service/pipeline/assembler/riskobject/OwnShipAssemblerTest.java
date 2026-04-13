@@ -31,7 +31,7 @@ class OwnShipAssemblerTest {
                 .shapeType(ShipDomainResult.SHAPE_ELLIPSE)
                 .build();
 
-        Map<String, Object> ownShipData = assembler.assemble(ownShip, domainResult, null);
+        Map<String, Object> ownShipData = assembler.assemble(ownShip, domainResult);
 
         assertThat(ownShipData).containsEntry("id", "ownShip");
         Map<String, Object> safetyDomain = castMap(ownShipData.get("safety_domain"));

@@ -164,7 +164,8 @@ public class ShipDispatcher {
                 context.allShips(),
                 outputs.cpaResults(),
                 outputs.shipDomainResult(),
-                null
+                outputs.cvPredictionResults(),
+                outputs.encounterResults()
         );
 
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
@@ -217,10 +218,10 @@ public class ShipDispatcher {
         Map<String, CvPredictionResult> cvPredictionResults = batchPredict(ownShip.getId(), allShips);
         Map<String, CpaTcpaResult> cpaResults = cpaTcpaBatchCalculator.calculateAll(ownShip, allShips);
 
-        RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
-                ownShip, allShips, cpaResults, domainResult, null);
-
         Map<String, EncounterClassificationResult> encounterResults = batchClassify(ownShip, allShips);
+
+        RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
+                ownShip, allShips, cpaResults, domainResult, cvPredictionResults, encounterResults);
 
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
                 ownShip, allShips, cpaResults, riskResult, domainResult, cvPredictionResults, encounterResults);

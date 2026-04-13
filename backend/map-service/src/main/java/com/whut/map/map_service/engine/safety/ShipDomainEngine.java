@@ -2,6 +2,7 @@ package com.whut.map.map_service.engine.safety;
 
 import com.whut.map.map_service.config.properties.ShipDomainProperties;
 import com.whut.map.map_service.domain.ShipStatus;
+import com.whut.map.map_service.util.MathUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,8 +26,9 @@ public class ShipDomainEngine {
             sog = referenceSpeedKn;
         }
 
-        double speedFactor = Math.min(
-                Math.max(sog / referenceSpeedKn, shipDomainProperties.getMinSpeedFactor()),
+        double speedFactor = MathUtils.clamp(
+                sog / referenceSpeedKn,
+                shipDomainProperties.getMinSpeedFactor(),
                 shipDomainProperties.getMaxSpeedFactor()
         );
 

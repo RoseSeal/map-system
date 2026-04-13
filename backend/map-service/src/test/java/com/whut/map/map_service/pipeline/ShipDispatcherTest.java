@@ -283,7 +283,7 @@ class ShipDispatcherTest {
         private ShipDomainResult lastDomainResult;
 
         StubRiskAssessmentEngine(RiskAssessmentResult result) {
-            super(new com.whut.map.map_service.config.properties.RiskAssessmentProperties());
+            super(new com.whut.map.map_service.config.properties.RiskAssessmentProperties(), null, null, null);
             this.result = result;
         }
 
@@ -293,7 +293,8 @@ class ShipDispatcherTest {
                 Collection<ShipStatus> allShips,
                 Map<String, CpaTcpaResult> cpaResults,
                 ShipDomainResult shipDomainResult,
-                com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult cvPredictionResult
+                Map<String, com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult> cvPredictionResults,
+                Map<String, com.whut.map.map_service.engine.encounter.EncounterClassificationResult> encounterResults
         ) {
             this.lastDomainResult = shipDomainResult;
             return result;

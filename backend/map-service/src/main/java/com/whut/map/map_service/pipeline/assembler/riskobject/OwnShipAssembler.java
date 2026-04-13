@@ -2,7 +2,6 @@ package com.whut.map.map_service.pipeline.assembler.riskobject;
 
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
-import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -11,7 +10,7 @@ import java.util.Map;
 @Component
 public class OwnShipAssembler {
 
-    public Map<String, Object> assemble(ShipStatus ownShip, ShipDomainResult domainResult, CvPredictionResult cvResult) {
+    public Map<String, Object> assemble(ShipStatus ownShip, ShipDomainResult domainResult) {
         Map<String, Object> position = new LinkedHashMap<>();
         position.put("lon", ownShip.getLongitude());
         position.put("lat", ownShip.getLatitude());
