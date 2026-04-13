@@ -288,13 +288,68 @@ CV Source    → CvMapper    ──┘
 4. `ShipStateStore` 改为持有 `TrackedTarget`（融合后状态）而非原始 `ShipStatus`
 5. Pipeline 下游无需修改（只消费融合后的目标状态）
 
-## 十、Architecture Decisions / Review Findings
+## 十、引擎管线上下文聚合（可选优化预案）
+
+> 当前引擎输入以多个独立 Map 参数传递，可在后续迭代中统一为类型化的上下文对象。本节记录该重构方向的设计预案，不影响现有引擎增强计划的实施路径。
+
+### 背景
+
+`RiskAssessmentEngine.consume()` 当前接收 6 个独立参数（`ownShip`、`allShips`、`cpaResults`、`shipDomainResult`、`cvPredictionResults`、`encounterResults`），各 per-target 结果以独立 `Map<String, T>` 传入。随着引擎增强步骤推进，参数数量仍会增加（如未来目标船域侵入比）。
+
+### 目标结构
+
+使用 Java 21 sealed class + record 构建类型化上下文层次：
+
+```java
+sealed abstract class EnrichedShipStatus permits OwnShipContext, TargetShipContext {
+    public abstract ShipStatus base();
+}
+
+record OwnShipContext(
+    ShipStatus base,
+    ShipDomainResult safetyDomain,   // Step 1 产出
+    PlannedRoute plannedRoute        // 接口待定，初期为 null
+) extends EnrichedShipStatus {}
+
+record TargetShipContext(
+    ShipStatus base,
+    CpaTcpaResult cpaResult,
+    CvPredictionResult cvPrediction,
+    EncounterClassificationResult encounterType
+    // 后续扩展: Double domainPenetration
+) extends EnrichedShipStatus {}
+```
+
+引擎签名变为：
+
+```java
+RiskAssessmentResult consume(OwnShipContext ownShip, Collection<TargetShipContext> targets)
+```
+
+### 职责变化
+
+- `ShipDispatcher.buildRiskSnapshot()` 承担组装职责：从 `ShipDerivedOutputs` 各 map 中查询并构造 `TargetShipContext` 列表；引擎内部参数减少，逻辑更集中。
+- `buildTargetAssessment()` 签名对称变为 `(OwnShipContext, TargetShipContext)`，用 sealed + pattern matching 替代 null 检查约定。
+
+### PlannedRoute 接口
+
+本船预规划航线需在系统外部录入后存入系统。接入接口尚未确定，候选方案：REST 接口预存、WebSocket 客户端下发、数据库 lookup（按 MMSI）。确定前 `plannedRoute` 字段为 null，相关逻辑跳过。
+
+### 可扩展性
+
+`OwnShipContext` 设计为可扩展至舰队场景：若后续本船升级为本船舰队，新增 `FleetContext permits OwnShipContext` 层或将 `OwnShipContext` 替换为 `List<OwnShipContext>` 均不影响 `TargetShipContext` 侧逻辑。
+
+### 实施前提
+
+此重构为纯结构性变更，不改变任何风险计算逻辑，可在 Engine 增强全部步骤完成后独立执行。
+
+## 十一、Architecture Decisions / Review Findings
 
 关键设计取舍与对应 review 沉淀已迁移至：
 
 - `docs/ADR_AND_REVIEW_FINDINGS.md`
 
-## 十一、维护要求
+## 十二、维护要求
 
 - 新增模块或职责变更时，同步更新模块地图。
 - 消息链路变更时，同步更新链路图。

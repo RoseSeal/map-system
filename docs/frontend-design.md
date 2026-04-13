@@ -102,7 +102,47 @@ Frontend supports `light / dark` switchable themes. Toggle is managed in fronten
 - ASR: Audio captured by `MediaRecorder`, sent as `SPEECH` WebSocket message (Base64, `webm` format) to backend. Backend orchestrates `whisper.cpp` transcription.
 - Two modes: `direct` (transcribe + LLM reply) and `preview` (transcribe only, result returned in input field).
 
-## 9. Local Frontend Development
+## 9. Frontend Integration Guidance
+
+### 9.1 Risk Score Rendering Continuity
+
+`risk_score` is a continuous display signal, but backend scoring may still contain intentional rule boundaries. A representative case is the CPA crossing point: once a target transitions from approaching to diverging, backend `tcpaScore` may drop sharply by design.
+
+This discontinuity should be handled at the frontend rendering layer rather than forcing backend risk semantics to become animation-oriented.
+
+Frontend responsibilities:
+- Treat backend `risk_score` as the authoritative instantaneous value.
+- Apply short-window visual smoothing when rendering charts, cards, or list ordering indicators derived from `risk_score`.
+- Prefer interpolation / easing for displayed values, not mutation of the underlying store payload.
+- Keep alarm logic, threshold logic, and protocol state based on raw backend values, not smoothed values.
+
+Implementation guidance:
+- Suitable targets include progress bars, chip intensity, marker glow, panel transitions, and secondary ranking visuals.
+- Suitable techniques include lerp, spring easing, or fixed-duration tweening over a short interval.
+- Do not delay or soften discrete backend fields such as `risk_level`, `ozt_sector.is_active`, or warning trigger conditions.
+
+Constraint:
+- Smoothing is a presentation concern only. It must not change business semantics, alert timing, or operator-visible categorical state.
+
+### 9.2 Stepwise Backend Field Adoption
+
+Step 2 and Step 3 may extend the frontend schema ahead of stable UI usage, for example `targets[*].predicted_trajectory` and `targets[*].risk_assessment.encounter_type`.
+
+Frontend responsibilities:
+- Accept new optional protocol fields in TypeScript schema and store ingestion as soon as the backend begins emitting them.
+- Avoid deep UI coupling to fields whose semantics are still expected to evolve in later engine steps.
+- Prefer thin compatibility work first: schema updates, safe parsing, optional-field guards, and internal render hooks.
+- Defer production-facing visualization and interaction logic for evolving Step 2/3 engine outputs until Step 4 risk semantics are stable.
+
+Implementation guidance:
+- It is acceptable to add debug-only panels or non-blocking inspection views for intermediate fields.
+- Map layers, target cards, ranking logic, and operator-facing summaries should not depend on intermediate fields unless the backend contract for those fields is already stable.
+- Cleanup-path omissions, temporary fallback values, and staging-only asymmetries are expected during engine enhancement steps and should not force premature frontend coupling.
+
+Constraint:
+- Frontend compatibility must not be mistaken for frontend commitment. Accepting a field in the contract layer does not require immediate visual consumption.
+
+## 10. Local Frontend Development
 
 ```bash
 cd frontend
@@ -113,7 +153,7 @@ npm run dev
 Backend must be running at `http://localhost:8080` for SSE and WebSocket connections to succeed.
 Whisper service runs at `http://localhost:8081` (Docker, orchestrated by backend — not called directly by frontend).
 
-## 10. Acceptance Checklist
+## 11. Acceptance Checklist
 
 - Frontend compiles and launches without errors.
 - SSE connection to `/api/v2/risk` established; `RISK_UPDATE` events received and rendered.
