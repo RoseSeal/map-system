@@ -1,6 +1,7 @@
 package com.whut.map.map_service.mqtt;
 
 import com.whut.map.map_service.config.properties.AisProperties;
+import com.whut.map.map_service.domain.QualityFlag;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.domain.ShipRole;
 import lombok.extern.slf4j.Slf4j;
@@ -8,10 +9,18 @@ import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
 
 @Slf4j
 @Component
 public class AisMessageMapper {
+
+    private static final double DEDUCTION_MISSING_HEADING = 0.1;
+    private static final double DEDUCTION_SPEED_OUT_OF_RANGE = 0.3;
+    private static final double DEDUCTION_POSITION_OUT_OF_RANGE = 0.5;
+    private static final double DEDUCTION_MISSING_TIMESTAMP = 0.2;
 
     private final AisProperties aisProperties;
 
@@ -23,7 +32,6 @@ public class AisMessageMapper {
     public ShipStatus toDomain(MqttAisDto mqttAisDto) {
         String ownShipMmsi = aisProperties.getOwnShipMmsi(); // 获取配置的本船 Id
         String timezone = aisProperties.getTimezone(); // 获取配置的时区
-        Double confidence = aisProperties.getConfidence(); // 默认置信度，可以根据实际情况调整
         OffsetDateTime msgTime = null; // 用于存储解析后的时间
         String rawMmsi = mqttAisDto.getMmsi();
 
@@ -59,6 +67,34 @@ public class AisMessageMapper {
                 ? ShipRole.OWN_SHIP
                 : ShipRole.TARGET_SHIP;
 
+        Double heading = mqttAisDto.getHeading() != 511 ? mqttAisDto.getHeading() : null;
+        Set<QualityFlag> qualityFlags = EnumSet.noneOf(QualityFlag.class);
+        double totalDeduction = 0.0;
+
+        if (heading == null) {
+            qualityFlags.add(QualityFlag.MISSING_HEADING);
+            totalDeduction += DEDUCTION_MISSING_HEADING;
+        }
+        if (mqttAisDto.getSog() < 0.0 || mqttAisDto.getSog() > 30.0) {
+            qualityFlags.add(QualityFlag.SPEED_OUT_OF_RANGE);
+            totalDeduction += DEDUCTION_SPEED_OUT_OF_RANGE;
+        }
+        if (mqttAisDto.getLongitude() < -180.0 || mqttAisDto.getLongitude() > 180.0
+                || mqttAisDto.getLatitude() < -90.0 || mqttAisDto.getLatitude() > 90.0) {
+            qualityFlags.add(QualityFlag.POSITION_OUT_OF_RANGE);
+            totalDeduction += DEDUCTION_POSITION_OUT_OF_RANGE;
+        }
+        if (msgTime == null) {
+            qualityFlags.add(QualityFlag.MISSING_TIMESTAMP);
+            totalDeduction += DEDUCTION_MISSING_TIMESTAMP;
+        }
+
+        double protocolConfidence = Math.max(0.0, 1.0 - totalDeduction);
+        double confidence = Math.min(protocolConfidence, aisProperties.getConfidence());
+        Set<QualityFlag> finalFlags = qualityFlags.isEmpty()
+                ? Collections.emptySet()
+                : EnumSet.copyOf(qualityFlags);
+
         return ShipStatus.builder()
                 .msgTime(msgTime)
                 .id(mmsi) // 传入安全的 MMSI 值
@@ -66,9 +102,10 @@ public class AisMessageMapper {
                 .latitude(mqttAisDto.getLatitude())
                 .sog(mqttAisDto.getSog())
                 .cog(mqttAisDto.getCog())
-                .heading(mqttAisDto.getHeading() != 511 ? mqttAisDto.getHeading() : null) // 511 表示未知
+                .heading(heading) // 511 表示未知
                 .role(computedRole) // 状态一但确定，整个JVM生命周期内只读
                 .confidence(confidence)
+                .qualityFlags(finalFlags)
                 .build();
     }
 }

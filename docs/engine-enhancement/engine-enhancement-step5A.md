@@ -100,8 +100,26 @@ if (newTime.isAfter(existingTime)) {
 **`snapshotOf` 补全**：`ShipStateStore.snapshotOf()` 需补充 `qualityFlags` 字段的拷贝：
 
 ```java
-.qualityFlags(ship.getQualityFlags() == null ? null : new java.util.HashSet<>(ship.getQualityFlags()))
+.qualityFlags(
+    ship.getQualityFlags() == null ? null :
+    (ship.getQualityFlags().isEmpty()
+        ? java.util.Collections.emptySet()
+        : java.util.EnumSet.copyOf(ship.getQualityFlags()))
+)
 ```
+
+### 2.4 评审回收补充（2026-04-13）
+
+根据代码评审结果，对 Step 5A 做以下补充处置：
+
+- **已接受并实现**：`ShipTrajectoryStore.snapshotOf()` 同步补齐 `qualityFlags` 的防御性拷贝，避免历史轨迹中的质量标志丢失。
+- **已接受并实现**：`ShipStateStore` / `ShipTrajectoryStore` 的 `qualityFlags` 拷贝策略优化为：
+    - `null` 保持 `null`（保持现有语义）
+    - 空集合复用 `Collections.emptySet()`（避免高频创建空集合对象）
+    - 非空集合使用 `EnumSet.copyOf(...)`（枚举集合内存更紧凑）
+- **延后实现**：协议层扣减分值（`DEDUCTION_*`）配置化暂不纳入 Step 5A。
+    - 原因：Step 5A 设计已明确为 Mapper 内固定规则扣减，当前实现与计划一致；此项属于可维护性增强，不是 5A 功能闭环或稳定性缺陷。
+    - 计划：在后续独立配置治理任务中统一推进（避免在当前步骤扩大 scope）。
 
 ## 3. 影响范围评估
 
@@ -110,6 +128,7 @@ if (newTime.isAfter(existingTime)) {
   - `ShipStatus`：增加 `qualityFlags` 字段。
   - `AisMessageMapper`：实现协议层校验与置信度计算。
   - `ShipStateStore`：修复等时间戳帧的 `lastSeenAt` 刷新问题；修复 `snapshotOf` 未拷贝 `qualityFlags`。
+    - `ShipTrajectoryStore`：修复 `snapshotOf` 未拷贝 `qualityFlags`，确保历史帧保留质量标志。
 - **前端协议影响**：`qualityFlags` 仅作为内部流转字段，不直接暴露给前端。
 
 ## 4. 测试与验证要求

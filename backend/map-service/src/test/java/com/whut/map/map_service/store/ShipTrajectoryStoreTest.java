@@ -1,9 +1,11 @@
 package com.whut.map.map_service.store;
 
+import com.whut.map.map_service.domain.QualityFlag;
 import com.whut.map.map_service.domain.ShipStatus;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -64,5 +66,22 @@ class ShipTrajectoryStoreTest {
 
         List<ShipStatus> history = store.getHistory("123");
         assertThat(history.get(0).getLongitude()).isEqualTo(10.0); // unmodified
+    }
+
+    @Test
+    void snapshotCopiesQualityFlagsDefensively() {
+        ShipTrajectoryStore store = new ShipTrajectoryStore();
+        ShipStatus ship = ShipStatus.builder()
+                .id("123")
+                .qualityFlags(Set.of(QualityFlag.MISSING_HEADING, QualityFlag.MISSING_TIMESTAMP))
+                .build();
+        store.append(ship);
+
+        ship.setQualityFlags(Set.of());
+
+        List<ShipStatus> history = store.getHistory("123");
+        assertThat(history).hasSize(1);
+        assertThat(history.get(0).getQualityFlags())
+                .containsExactlyInAnyOrder(QualityFlag.MISSING_HEADING, QualityFlag.MISSING_TIMESTAMP);
     }
 }

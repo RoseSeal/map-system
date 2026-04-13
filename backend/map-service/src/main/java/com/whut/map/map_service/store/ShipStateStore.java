@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,7 +53,10 @@ public class ShipStateStore {
             if (newTime == null) {
                 return existing;
             }
-            if (!newTime.isBefore(existingTime)) {
+            if (newTime.isEqual(existingTime)) {
+                return existing;
+            }
+            if (newTime.isAfter(existingTime)) {
                 updated.set(true);
                 return new TrackedShip(snapshotOf(ship), now);
             }
@@ -97,7 +101,20 @@ public class ShipStateStore {
                 .heading(ship.getHeading())
                 .msgTime(ship.getMsgTime())
                 .confidence(ship.getConfidence())
+                .qualityFlags(copyQualityFlags(ship.getQualityFlags()))
                 .build();
+    }
+
+    private java.util.Set<com.whut.map.map_service.domain.QualityFlag> copyQualityFlags(
+            java.util.Set<com.whut.map.map_service.domain.QualityFlag> qualityFlags
+    ) {
+        if (qualityFlags == null) {
+            return null;
+        }
+        if (qualityFlags.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return EnumSet.copyOf(qualityFlags);
     }
 
     java.util.Set<String> purgeExpiredShips(OffsetDateTime referenceTime) {

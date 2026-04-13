@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 @Data
 @Builder
@@ -17,4 +18,5 @@ public class ShipStatus {
     private Double heading; // 将511表示无法解析航向的情况，用null表示
     private OffsetDateTime msgTime;
     private Double confidence; // null 表示无置信度，0.0表示完全不可信，1.0表示完全可信
+    private Set<QualityFlag> qualityFlags;
 }
