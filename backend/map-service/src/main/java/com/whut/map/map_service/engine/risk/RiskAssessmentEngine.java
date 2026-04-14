@@ -82,7 +82,7 @@ public class RiskAssessmentEngine {
                 .build();
     }
 
-    private TargetRiskAssessment buildTargetAssessment(
+    public TargetRiskAssessment buildTargetAssessment(
             String targetId, 
             CpaTcpaResult cpaResult,
             ShipStatus ownShip,

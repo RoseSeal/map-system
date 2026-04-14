@@ -29,4 +29,11 @@ public class CpaTcpaBatchCalculator {
         }
         return cpaResults;
     }
+
+    public CpaTcpaResult calculateOne(ShipStatus ownShip, ShipStatus targetShip) {
+        if (ownShip == null || targetShip == null || targetShip.getId() == null || targetShip.getId().equals(ownShip.getId())) {
+            return null;
+        }
+        return cpaTcpaEngine.calculate(ownShip, targetShip);
+    }
 }

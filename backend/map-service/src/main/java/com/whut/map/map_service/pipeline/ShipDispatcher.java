@@ -19,6 +19,9 @@ import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.store.ShipStateStore;
 import com.whut.map.map_service.store.ShipTrajectoryStore;
+import com.whut.map.map_service.store.DerivedTargetStateStore;
+import com.whut.map.map_service.store.TargetDerivedSnapshot;
+import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,7 +29,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Slf4j
@@ -44,6 +49,8 @@ public class ShipDispatcher {
     private final RiskStreamPublisher riskStreamPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final ShipKinematicQualityChecker kinematicChecker;
+    private final DerivedTargetStateStore derivedTargetStateStore;
+    private volatile ShipDomainResult cachedOwnShipDomainResult;
 
     public ShipDispatcher(
             ShipDomainEngine shipDomainEngine,
@@ -56,8 +63,8 @@ public class ShipDispatcher {
             ShipTrajectoryStore shipTrajectoryStore,
             RiskStreamPublisher riskStreamPublisher,
             ApplicationEventPublisher applicationEventPublisher,
-            ShipKinematicQualityChecker kinematicChecker
-
+            ShipKinematicQualityChecker kinematicChecker,
+            DerivedTargetStateStore derivedTargetStateStore
     ) {
         this.shipDomainEngine = shipDomainEngine;
         this.cvPredictionEngine = cvPredictionEngine;
@@ -70,22 +77,123 @@ public class ShipDispatcher {
         this.riskStreamPublisher = riskStreamPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
         this.kinematicChecker = kinematicChecker;
+        this.derivedTargetStateStore = derivedTargetStateStore;
     }
 
     public void dispatch(ShipStatus message) {
+        long start = System.currentTimeMillis();
         ShipDispatchContext context = prepareContext(message);
         if (context == null) {
             return;
         }
 
-        ShipDerivedOutputs outputs = runDerivations(context);
+        long prepTime = System.currentTimeMillis() - start;
+        long derivStart = System.currentTimeMillis();
+        
+        ShipRole role = message.getRole();
+        ShipDerivedOutputs outputs;
+        
+        boolean incremental = shouldUseIncrementalPath(context, role);
+        
+        if (incremental) {
+            outputs = dispatchIncrementalForTarget(context, message);
+        } else {
+            outputs = dispatchFull(context);
+        }
+        
+        long derivTime = System.currentTimeMillis() - derivStart;
+        long assemStart = System.currentTimeMillis();
+        
         RiskDispatchSnapshot snapshot = buildRiskSnapshot(context, outputs, true);
         if (snapshot == null) {
             return;
         }
+        
+        long assemTime = System.currentTimeMillis() - assemStart;
+        long pubStart = System.currentTimeMillis();
 
         publishRiskSnapshot(snapshot);
+        
+        long pubTime = System.currentTimeMillis() - pubStart;
+        log.info("Dispatcher Time: Total={}ms, Prep={}ms, Deriv={}ms (incr={}), Assemble={}ms, Publish={}ms, Targets={}", 
+            System.currentTimeMillis() - start, prepTime, derivTime, incremental, assemTime, pubTime, context.allShips().size());
+            
         logTargetCpa(context, outputs.cpaResults());
+    }
+    
+    
+    public void refreshAfterCleanup() {
+        derivedTargetStateStore.clear();
+        ShipDispatchContext context = new ShipDispatchContext(
+                null, shipStateStore.getOwnShip(), shipStateStore.getAll(), Set.of());
+        if (!context.hasOwnShip()) return;
+        ShipDerivedOutputs outputs = dispatchFull(context);
+        RiskDispatchSnapshot snapshot = buildRiskSnapshot(context, outputs, false);
+        if (snapshot != null) {
+            publishRiskSnapshot(snapshot);
+        }
+    }
+
+    private ShipDerivedOutputs dispatchFull(ShipDispatchContext context) {
+        ShipDerivedOutputs outputs = runDerivations(context);
+        this.cachedOwnShipDomainResult = outputs.shipDomainResult();
+        
+        if (!context.hasOwnShip()) {
+            return outputs;
+        }
+
+        derivedTargetStateStore.clear();
+        for (ShipStatus target : context.allShips()) {
+            if (target.getId().equals(context.ownShip().getId())) continue;
+            TargetRiskAssessment riskAssessment = riskAssessmentEngine.buildTargetAssessment(
+                    target.getId(), 
+                    outputs.cpaResults().get(target.getId()), 
+                    context.ownShip(), target, 
+                    this.cachedOwnShipDomainResult, 
+                    outputs.cvPredictionResults().get(target.getId()), 
+                    outputs.encounterResults().get(target.getId()));
+                    
+            TargetDerivedSnapshot ts = new TargetDerivedSnapshot(
+                target.getId(),
+                outputs.cvPredictionResults().get(target.getId()),
+                outputs.cpaResults().get(target.getId()),
+                outputs.encounterResults().get(target.getId()),
+                riskAssessment
+            );
+            derivedTargetStateStore.put(target.getId(), ts);
+        }
+        return outputs;
+    }
+    
+    private ShipDerivedOutputs dispatchIncrementalForTarget(ShipDispatchContext context, ShipStatus targetShip) {
+        String tId = targetShip.getId();
+        
+        CvPredictionResult pred = cvPredictionEngine.consume(targetShip, shipTrajectoryStore.getHistory(tId));
+        CpaTcpaResult cpa = cpaTcpaBatchCalculator.calculateOne(context.ownShip(), targetShip);
+        EncounterClassificationResult enc = encounterClassifier.classify(context.ownShip(), targetShip);
+        
+        TargetRiskAssessment riskAssessment = riskAssessmentEngine.buildTargetAssessment(
+                tId, cpa, context.ownShip(), targetShip, this.cachedOwnShipDomainResult, pred, enc);
+                
+        TargetDerivedSnapshot ts = new TargetDerivedSnapshot(tId, pred, cpa, enc, riskAssessment);
+        derivedTargetStateStore.put(tId, ts);
+        
+        // Reconstruct outputs from cache
+        Map<String, CvPredictionResult> cvs = new HashMap<>();
+        Map<String, CpaTcpaResult> cpas = new HashMap<>();
+        Map<String, EncounterClassificationResult> encs = new HashMap<>();
+        
+        for (ShipStatus s : context.allShips()) {
+            if (s.getId().equals(context.ownShip().getId())) continue;
+            TargetDerivedSnapshot st = derivedTargetStateStore.get(s.getId());
+            if (st != null) {
+                cvs.put(s.getId(), st.predictionResult());
+                cpas.put(s.getId(), st.cpaResult());
+                encs.put(s.getId(), st.encounterResult());
+            }
+        }
+        
+        return new ShipDerivedOutputs(this.cachedOwnShipDomainResult, cvs, cpas, encs);
     }
 
     private ShipDispatchContext prepareContext(ShipStatus message) {
@@ -103,9 +211,15 @@ public class ShipDispatcher {
 
         Set<String> removedIds = shipStateStore.triggerCleanupIfNeeded();
         removedIds.forEach(shipTrajectoryStore::remove);
+        removedIds.forEach(derivedTargetStateStore::remove);
         shipTrajectoryStore.append(qualified);
 
-        return new ShipDispatchContext(qualified, shipStateStore.getOwnShip(), shipStateStore.getAll());
+        return new ShipDispatchContext(
+                qualified,
+                shipStateStore.getOwnShip(),
+                shipStateStore.getAll(),
+                removedIds
+        );
     }
 
     private Map<String, CvPredictionResult> batchPredict(String ownShipId, Collection<ShipStatus> allShips) {
@@ -166,14 +280,7 @@ public class ShipDispatcher {
             return null;
         }
 
-        RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
-                context.ownShip(),
-                context.allShips(),
-                outputs.cpaResults(),
-                outputs.shipDomainResult(),
-                outputs.cvPredictionResults(),
-                outputs.encounterResults()
-        );
+        RiskAssessmentResult riskResult = buildRiskAssessmentResult(context, outputs);
 
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
                 context.ownShip(),
@@ -213,39 +320,71 @@ public class ShipDispatcher {
         ));
     }
 
-    public void refreshAfterCleanup() {
-        ShipStatus ownShip = shipStateStore.getOwnShip();
-        if (ownShip == null) {
-            return;
+    private boolean shouldUseIncrementalPath(ShipDispatchContext context, ShipRole role) {
+        if (role != ShipRole.TARGET_SHIP || !context.hasOwnShip() || cachedOwnShipDomainResult == null) {
+            return false;
         }
-
-        Collection<ShipStatus> allShips = shipStateStore.getAll().values();
-        ShipDomainResult domainResult = shipDomainEngine.consume(ownShip);
-
-        Map<String, CvPredictionResult> cvPredictionResults = batchPredict(ownShip.getId(), allShips);
-        Map<String, CpaTcpaResult> cpaResults = cpaTcpaBatchCalculator.calculateAll(ownShip, allShips);
-
-        Map<String, EncounterClassificationResult> encounterResults = batchClassify(ownShip, allShips);
-
-        RiskAssessmentResult riskResult = riskAssessmentEngine.consume(
-                ownShip, allShips, cpaResults, domainResult, cvPredictionResults, encounterResults);
-
-        RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
-                ownShip, allShips, cpaResults, riskResult, domainResult, cvPredictionResults, encounterResults);
-        if (dto == null) {
-            return;
+        if (!context.removedTargetIds().isEmpty()) {
+            return false;
         }
-
-        publishRiskSnapshot(new RiskDispatchSnapshot(
-                ownShip,
-                allShips,
-                cpaResults,
-                riskResult,
-                dto,
-                false
-        ));
-        log.debug("Published refreshed risk snapshot after cleanup, targets={}", allShips.size() - 1);
+        return hasCompleteDerivedCache(context);
     }
+
+    private boolean hasCompleteDerivedCache(ShipDispatchContext context) {
+        int trackedTargetCount = 0;
+        for (ShipStatus ship : context.allShips()) {
+            if (ship == null || ship.getId() == null || Objects.equals(ship.getId(), context.ownShip().getId())) {
+                continue;
+            }
+            trackedTargetCount++;
+            if (derivedTargetStateStore.get(ship.getId()) == null) {
+                return false;
+            }
+        }
+        return derivedTargetStateStore.getAll().size() == trackedTargetCount;
+    }
+
+    private RiskAssessmentResult buildRiskAssessmentResult(
+            ShipDispatchContext context,
+            ShipDerivedOutputs outputs
+    ) {
+        RiskAssessmentResult cachedResult = rebuildRiskAssessmentFromCache(context);
+        if (cachedResult != null) {
+            return cachedResult;
+        }
+
+        return riskAssessmentEngine.consume(
+                context.ownShip(),
+                context.allShips(),
+                outputs.cpaResults(),
+                outputs.shipDomainResult(),
+                outputs.cvPredictionResults(),
+                outputs.encounterResults()
+        );
+    }
+
+    private RiskAssessmentResult rebuildRiskAssessmentFromCache(ShipDispatchContext context) {
+        if (!context.hasOwnShip()) {
+            return null;
+        }
+
+        Map<String, TargetRiskAssessment> assessments = new LinkedHashMap<>();
+        for (ShipStatus ship : context.allShips()) {
+            if (ship == null || ship.getId() == null || ship.getId().equals(context.ownShip().getId())) {
+                continue;
+            }
+            TargetDerivedSnapshot snapshot = derivedTargetStateStore.get(ship.getId());
+            if (snapshot == null || snapshot.riskAssessment() == null) {
+                return null;
+            }
+            assessments.put(ship.getId(), snapshot.riskAssessment());
+        }
+
+        return RiskAssessmentResult.builder()
+                .targetAssessments(assessments)
+                .build();
+    }
+
 
     private void logTargetCpa(ShipDispatchContext context, Map<String, CpaTcpaResult> cpaResults) {
         if (context.message().getRole() != ShipRole.TARGET_SHIP || !cpaResults.containsKey(context.message().getId())) {
@@ -253,6 +392,9 @@ public class ShipDispatcher {
         }
 
         CpaTcpaResult cpaResult = cpaResults.get(context.message().getId());
+        if (cpaResult == null) {
+            return;
+        }
         log.debug("CPA={}m, TCPA={}s, target={}",
                 String.format("%.1f", cpaResult.getCpaDistance()),
                 String.format("%.1f", cpaResult.getTcpaTime()),

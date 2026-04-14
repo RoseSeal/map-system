@@ -191,7 +191,11 @@ private volatile ShipDomainResult cachedOwnShipDomainResult;
 说明：
 
 - 本步骤的增量核心在于减少派生计算，不是减少最终输出内容。
-- 若 `CpaTcpaBatchCalculator` 和 `RiskAssessmentEngine` 没有合适的单目标入口，可在其上增加局部方法，避免引入新的抽象层。`buildTargetAssessment` 在 `RiskAssessmentEngine` 中已为 private 方法，改为 package-private 即可在测试与 dispatcher 中复用，无需提升为独立接口。
+- 若 `CpaTcpaBatchCalculator` 和 `RiskAssessmentEngine` 没有合适的单目标入口，可在其上增加局部方法，避免引入新的抽象层。
+`buildTargetAssessment` 在 `RiskAssessmentEngine` 中已为 private 方法，改为 package-private 即可在测试与 dispatcher 中复用，无需提升为独立接口。
+  - 实际做法：直接将 RiskAssessmentEngine#buildTargetAssessment 修改为 public（由于它跨包被 pipeline 包中的分发器调用），同时在 CpaTcpaBatchCalculator 内增加了非常轻量纯粹的 calculateOne() 方法，借此直接复用底层已存在的 CpaTcpaEngine 状态。
+  - 原因：这使得业务上不需专门额外封装一层专门的单目标组装器，降低认知负担，等价且开销更低。
+
 
 ### 5.4 全量回建与缓存校准
 
