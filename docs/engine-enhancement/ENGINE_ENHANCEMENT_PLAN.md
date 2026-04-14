@@ -35,6 +35,7 @@ Step 4A 多因子风险评估增强                     ← 域侵入 + pairwise
 Step 4B 预测轨迹增强与前端集成                 ← CTR 转向模型 + 轨迹协议传递 + 前端弧线渲染 + riskScore 排序
 Step 5A AIS 协议层质量校验                    ← Mapper 来源特定校验 + qualityFlags
 Step 5B AIS 运动学连续性校验                  ← 位置跳变/速度突变检测（依赖 ShipTrajectoryStore）
+Step 5C 风险管线混合增量计算与性能观测         ← target 增量、本船全量回退、cleanup 全量重建、补齐耗时打点
 Step 6  Mock 清理与管线集成                    ← 消除全部硬编码，端到端集成
 ```
 
@@ -47,8 +48,10 @@ Step 2 ──→ Step 4B（历史轨迹）
 Step 2 ──→ Step 5B
 Step 3 ──→ Step 4A
 Step 4B ───────────────────────→ Step 6
+Step 4A ──→ Step 5C
+Step 4B ──→ Step 5C
 Step 5A（独立，可与 Step 1-3 并行）──→ Step 6
-Step 5B（依赖 Step 2）────────────────→ Step 6
+Step 5B（依赖 Step 2）──→ Step 5C ───→ Step 6
 ```
 
 | 步骤 | 预期改动量 | 前置依赖 |
@@ -60,7 +63,8 @@ Step 5B（依赖 Step 2）────────────────→ St
 | Step 4B | 中（CTR 轨迹预测 + 协议传递 + 前端渲染） | Step 2, 4A |
 | Step 5A | 小（Mapper 增强 + qualityFlags） | 无 |
 | Step 5B | 小-中（运动学校验器，新增 qualityFlags 类型） | Step 2 |
-| Step 6 | 中（assembler 全面替换 + 集成测试） | Step 4B, 5A, 5B |
+| Step 5C | 中（dispatcher 分支化 + per-target 派生缓存 + 打点） | Step 4A, 4B, 5B |
+| Step 6 | 中（assembler 全面替换 + 集成测试） | Step 4B, 5A, 5B, 5C |
 | Step 7 | 中（包结构全面重组，纯重构，无逻辑变更） | Step 6 |
 
 ---
@@ -673,13 +677,13 @@ D-S 证据理论相比贝叶斯网络更适合本场景：
 
 ### 前置依赖
 
-需要 `ShipTrajectoryStore`（Step 2 建立），用于读取同一目标的前一帧状态。
+需要通过 `ShipStateStore` 读取同一目标的前一帧状态，进行前后帧对比。注意不是从 `ShipTrajectoryStore` 读取，因为只需对比最近一次已知状态。
 
 ### 做什么
 
 1. **新增 `ShipKinematicQualityChecker`**
 
-   在 `ShipDispatcher.prepareContext()` 中，将当前消息写入 `ShipTrajectoryStore` 后，立即调用此 checker，对比当前帧与前一帧，检测以下情形：
+   在 `ShipDispatcher.prepareContext()` 中，在调用 `shipStateStore.update()` 之前，立即调用此 checker，对比当前帧与存储中的前一帧（`shipStateStore.get(message.getId())`），检测以下情形：
 
    | 校验项 | 规则 | qualityFlag | confidence 影响 |
    | --- | --- | --- | --- |
@@ -690,7 +694,7 @@ D-S 证据理论相比贝叶斯网络更适合本场景：
 
    校验结果追加到 `ShipStatus.qualityFlags`（合并 5A 已有 flags），并更新 `confidence`。
 
-   > `ShipKinematicQualityChecker` 不修改已入库的历史状态，只消费 `ShipTrajectoryStore.getLatest()` 做对比。
+   > `ShipKinematicQualityChecker` 对比后返回带有 flags 的 `ShipStatus` 新实例，随后由 `ShipStateStore` 和 `ShipTrajectoryStore` 写入存储。
 
 2. **阈值配置**
 
@@ -764,9 +768,10 @@ D-S 证据理论相比贝叶斯网络更适合本场景：
    - 确保 `runDerivations()` 产出的所有引擎结果完整传递到 assembler 层
    - `refreshAfterCleanup()` 中的简化路径（当前传 null）改为传递实际计算结果
 
-### 影响范围
+7. **跨步骤耦合收尾（技术债清理）**
 
-- 修改 `OwnShipAssembler`、`TargetAssembler`、`RiskVisualizationAssembler`、`RiskObjectMetaAssembler`
+   - 复核 `CvPredictionEngine.extractRotDegPerSec()`（起于 Step 4B），增加过滤条件：跳过携带 `COG_JUMP` 或 `POSITION_JUMP` 等质量标志的历史数据点，防止异常帧污染 CTR 转向率回归计算。
+
 - 修改 `LlmRiskContextAssembler`、`LlmRiskTargetContext`
 - 修改 `ShipDispatcher.refreshAfterCleanup()`
 - **前端协议新增字段**（已在各 Step 协议影响中确认）：

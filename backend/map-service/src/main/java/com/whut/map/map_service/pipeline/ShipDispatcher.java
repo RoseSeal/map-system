@@ -12,6 +12,7 @@ import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.engine.encounter.EncounterClassifier;
 import com.whut.map.map_service.engine.risk.RiskAssessmentEngine;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
+import com.whut.map.map_service.engine.ShipKinematicQualityChecker;
 import com.whut.map.map_service.engine.safety.ShipDomainEngine;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
@@ -42,6 +43,7 @@ public class ShipDispatcher {
     private final ShipTrajectoryStore shipTrajectoryStore;
     private final RiskStreamPublisher riskStreamPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ShipKinematicQualityChecker kinematicChecker;
 
     public ShipDispatcher(
             ShipDomainEngine shipDomainEngine,
@@ -53,7 +55,8 @@ public class ShipDispatcher {
             ShipStateStore shipStateStore,
             ShipTrajectoryStore shipTrajectoryStore,
             RiskStreamPublisher riskStreamPublisher,
-            ApplicationEventPublisher applicationEventPublisher
+            ApplicationEventPublisher applicationEventPublisher,
+            ShipKinematicQualityChecker kinematicChecker
 
     ) {
         this.shipDomainEngine = shipDomainEngine;
@@ -66,6 +69,7 @@ public class ShipDispatcher {
         this.shipTrajectoryStore = shipTrajectoryStore;
         this.riskStreamPublisher = riskStreamPublisher;
         this.applicationEventPublisher = applicationEventPublisher;
+        this.kinematicChecker = kinematicChecker;
     }
 
     public void dispatch(ShipStatus message) {
@@ -90,15 +94,18 @@ public class ShipDispatcher {
             return null;
         }
 
-        if (!shipStateStore.update(message)) {
+        ShipStatus prevState = shipStateStore.get(message.getId());
+        ShipStatus qualified = kinematicChecker.check(message, prevState);
+
+        if (!shipStateStore.update(qualified)) {
             return null;
         }
 
         Set<String> removedIds = shipStateStore.triggerCleanupIfNeeded();
         removedIds.forEach(shipTrajectoryStore::remove);
-        shipTrajectoryStore.append(message);
+        shipTrajectoryStore.append(qualified);
 
-        return new ShipDispatchContext(message, shipStateStore.getOwnShip(), shipStateStore.getAll());
+        return new ShipDispatchContext(qualified, shipStateStore.getOwnShip(), shipStateStore.getAll());
     }
 
     private Map<String, CvPredictionResult> batchPredict(String ownShipId, Collection<ShipStatus> allShips) {

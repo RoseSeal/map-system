@@ -1,17 +1,20 @@
 package com.whut.map.map_service.pipeline;
 
 import com.whut.map.map_service.config.properties.EncounterProperties;
+import com.whut.map.map_service.config.properties.AisQualityProperties;
 import com.whut.map.map_service.config.properties.ShipStateProperties;
 import com.whut.map.map_service.pipeline.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.pipeline.assembler.riskobject.OwnShipAssembler;
 import com.whut.map.map_service.pipeline.assembler.riskobject.RiskObjectMetaAssembler;
 import com.whut.map.map_service.pipeline.assembler.riskobject.RiskVisualizationAssembler;
 import com.whut.map.map_service.pipeline.assembler.riskobject.TargetAssembler;
+import com.whut.map.map_service.domain.QualityFlag;
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.dto.RiskObjectDto;
 import com.whut.map.map_service.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.event.RiskFrame;
+import com.whut.map.map_service.engine.ShipKinematicQualityChecker;
 import com.whut.map.map_service.engine.collision.CpaTcpaBatchCalculator;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.encounter.EncounterClassifier;
@@ -30,8 +33,10 @@ import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 class ShipDispatcherTest {
 
@@ -93,7 +98,8 @@ class ShipDispatcherTest {
                 shipStateStore,
                 new com.whut.map.map_service.store.ShipTrajectoryStore(),
                 publisher,
-                eventPublisher
+                eventPublisher,
+                new ShipKinematicQualityChecker(new AisQualityProperties())
         );
 
         dispatcher.dispatch(targetShip);
@@ -140,7 +146,8 @@ class ShipDispatcherTest {
                 shipStateStore,
                 new com.whut.map.map_service.store.ShipTrajectoryStore(),
                 publisher,
-                eventPublisher
+                eventPublisher,
+                new ShipKinematicQualityChecker(new AisQualityProperties())
         );
 
         dispatcher.refreshAfterCleanup();
@@ -164,7 +171,62 @@ class ShipDispatcherTest {
                 (ShipStateStore) null,
                 (com.whut.map.map_service.store.ShipTrajectoryStore) null,
                 publisher,
-                eventPublisher
+                eventPublisher,
+                new ShipKinematicQualityChecker(new AisQualityProperties())
+        );
+    }
+
+    @Test
+    void dispatchPersistsKinematicConfidenceAndFlags() {
+        RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
+        RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
+        ShipStateStore shipStateStore = shipStateStore();
+        com.whut.map.map_service.store.ShipTrajectoryStore trajectoryStore = new com.whut.map.map_service.store.ShipTrajectoryStore();
+        ShipStatus ownShip = ship("ownShip", ShipRole.OWN_SHIP, 120.0000, 30.0000, 8.0, OffsetDateTime.parse("2026-04-12T09:00:00+08:00"));
+        ShipStatus previousTarget = ship("target-1", ShipRole.TARGET_SHIP, 120.0000, 30.0000, 6.0, OffsetDateTime.parse("2026-04-12T09:00:00+08:00"));
+        previousTarget.setConfidence(0.95);
+        shipStateStore.update(ownShip);
+        shipStateStore.update(previousTarget);
+
+        ShipStatus targetUpdate = ship("target-1", ShipRole.TARGET_SHIP, 120.1000, 30.0000, 20.0, OffsetDateTime.parse("2026-04-12T09:00:30+08:00"));
+        targetUpdate.setConfidence(0.95);
+        targetUpdate.setCog(220.0);
+        targetUpdate.setHeading(220.0);
+        targetUpdate.setQualityFlags(Set.of(QualityFlag.MISSING_HEADING));
+
+        ShipDispatcher dispatcher = new ShipDispatcher(
+                new RecordingShipDomainEngine(ShipDomainResult.builder().shapeType(ShipDomainResult.SHAPE_ELLIPSE).build()),
+                new RecordingCvPredictionEngine(),
+                new StubCpaTcpaBatchCalculator(Map.of()),
+                new EncounterClassifier(new EncounterProperties()),
+                new StubRiskAssessmentEngine(RiskAssessmentResult.empty()),
+                riskObjectAssembler(),
+                shipStateStore,
+                trajectoryStore,
+                publisher,
+                eventPublisher,
+                new ShipKinematicQualityChecker(new AisQualityProperties())
+        );
+
+        dispatcher.dispatch(targetUpdate);
+
+        ShipStatus stored = shipStateStore.get("target-1");
+        assertThat(stored).isNotNull();
+        assertThat(stored.getConfidence()).isCloseTo(0.2, within(1e-9));
+        assertThat(stored.getQualityFlags()).containsExactlyInAnyOrder(
+                QualityFlag.MISSING_HEADING,
+                QualityFlag.POSITION_JUMP,
+                QualityFlag.SOG_JUMP,
+                QualityFlag.COG_JUMP
+        );
+
+        List<ShipStatus> history = trajectoryStore.getHistory("target-1");
+        assertThat(history).hasSize(1);
+        assertThat(history.getFirst().getQualityFlags()).containsExactlyInAnyOrder(
+                QualityFlag.MISSING_HEADING,
+                QualityFlag.POSITION_JUMP,
+                QualityFlag.SOG_JUMP,
+                QualityFlag.COG_JUMP
         );
     }
 

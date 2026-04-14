@@ -1,6 +1,7 @@
 package com.whut.map.map_service.engine.trajectoryprediction;
 
 import com.whut.map.map_service.config.properties.TrajectoryPredictionProperties;
+import com.whut.map.map_service.domain.QualityFlag;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
@@ -148,8 +149,19 @@ public class CvPredictionEngine {
         if (point == null || point.getMsgTime() == null) {
             return false;
         }
+        if (hasRotContaminatingFlag(point)) {
+            return false;
+        }
         double cog = point.getCog();
         return !Double.isNaN(cog) && cog >= 0.0 && cog < 360.0;
+    }
+
+    private boolean hasRotContaminatingFlag(ShipStatus point) {
+        if (point.getQualityFlags() == null || point.getQualityFlags().isEmpty()) {
+            return false;
+        }
+        return point.getQualityFlags().contains(QualityFlag.COG_JUMP)
+                || point.getQualityFlags().contains(QualityFlag.POSITION_JUMP);
     }
 
     private double linearRegressionSlope(double[] xs, double[] ys) {

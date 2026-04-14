@@ -1,6 +1,7 @@
 package com.whut.map.map_service.engine.trajectoryprediction;
 
 import com.whut.map.map_service.config.properties.TrajectoryPredictionProperties;
+import com.whut.map.map_service.domain.QualityFlag;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.util.GeoUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -262,5 +264,41 @@ class CvPredictionEngineTest {
         CvPredictionResult.PredictedPoint first = result.getTrajectory().get(0);
         CvPredictionResult.PredictedPoint second = result.getTrajectory().get(1);
         assertThat(second.getLongitude()).isGreaterThan(first.getLongitude());
+    }
+
+    @Test
+    void predictIgnoresHistoryPointsFlaggedAsCogJump() {
+        OffsetDateTime t0 = OffsetDateTime.parse("2026-04-12T09:00:00+08:00");
+        OffsetDateTime t1 = t0.plusSeconds(30);
+        OffsetDateTime t2 = t0.plusSeconds(60);
+
+        ShipStatus h0 = ShipStatus.builder().id("123").msgTime(t0).cog(84.0).build();
+        ShipStatus h1 = ShipStatus.builder()
+                .id("123")
+                .msgTime(t1)
+                .cog(87.0)
+                .qualityFlags(Set.of(QualityFlag.COG_JUMP))
+                .build();
+        ShipStatus current = ShipStatus.builder()
+                .id("123")
+                .longitude(114.0)
+                .latitude(30.0)
+                .sog(8.0)
+                .cog(90.0)
+                .msgTime(t2)
+                .build();
+
+        CvPredictionResult result = engine.consume(current, List.of(h0, h1, current));
+
+        CvPredictionResult.PredictedPoint p1 = result.getTrajectory().get(0);
+        CvPredictionResult.PredictedPoint p2 = result.getTrajectory().get(1);
+        double[] velocity = GeoUtils.toVelocity(current.getSog(), current.getCog());
+        double[] cvP1 = GeoUtils.displace(current.getLatitude(), current.getLongitude(), velocity[0] * 30, velocity[1] * 30);
+        double[] cvP2 = GeoUtils.displace(current.getLatitude(), current.getLongitude(), velocity[0] * 60, velocity[1] * 60);
+
+        assertThat(p1.getLongitude()).isCloseTo(cvP1[1], within(1e-9));
+        assertThat(p1.getLatitude()).isCloseTo(cvP1[0], within(1e-9));
+        assertThat(p2.getLongitude()).isCloseTo(cvP2[1], within(1e-9));
+        assertThat(p2.getLatitude()).isCloseTo(cvP2[0], within(1e-9));
     }
 }
