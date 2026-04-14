@@ -16,10 +16,11 @@ export type RGBAColor = [number, number, number, number];
 // ============================================================
 
 export type RiskLevel = 'SAFE' | 'CAUTION' | 'WARNING' | 'ALARM';
+export type EncounterType = 'HEAD_ON' | 'OVERTAKING' | 'CROSSING' | 'UNDEFINED';
 export type SpeechMode = 'direct' | 'preview';
 export type ConnectionType = 'risk' | 'chat';
-export type TrackingStatus = 'tracking';
-export type PredictionType = 'linear';
+export type TrackingStatus = 'tracking' | 'stale';
+export type PredictionType = 'linear' | 'cv';
 export type SafetyDomainShape = 'ellipse';
 export type PlatformHealthStatus = 'NORMAL' | 'DEGRADED' | 'NUC';
 export type GovernanceMode = 'adaptive';
@@ -98,6 +99,7 @@ export interface RiskAssessment {
   cpa_metrics: CpaMetrics;
   graphic_cpa_line?: GraphicCpaLine;
   ozt_sector?: OztSector;
+  encounter_type?: EncounterType;
   risk_score?: number;
   risk_confidence?: number;
 }

@@ -4,10 +4,13 @@ import com.whut.map.map_service.config.properties.EncounterProperties;
 import com.whut.map.map_service.domain.ShipRole;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.encounter.EncounterClassifier;
+import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
+import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -70,6 +73,33 @@ class LlmRiskContextAssemblerTest {
         assertThat(context.getTargets()).hasSize(1);
         // relBearing = (0 - 180 + 360) % 360 = 180 (Target is directly behind ship body)
         assertThat(context.getTargets().get(0).getRelativeBearingDeg()).isCloseTo(180.0, within(5.0));
+    }
+
+    @Test
+    void assemblePopulatesRiskScoreAndDomainPenetrationFromAssessment() {
+        ShipStatus ownShip = ship("own-1", ShipRole.OWN_SHIP, 120.0000, 30.0000);
+        ShipStatus target = ship("target-1", ShipRole.TARGET_SHIP, 120.1000, 30.1000);
+
+        TargetRiskAssessment assessment = TargetRiskAssessment.builder()
+                .targetId("target-1")
+                .riskLevel("WARNING")
+                .riskScore(0.78)
+                .domainPenetration(0.41)
+                .build();
+        RiskAssessmentResult riskResult = RiskAssessmentResult.builder()
+                .targetAssessments(Map.of("target-1", assessment))
+                .build();
+
+        LlmRiskContext context = assembler.assemble(
+                ownShip,
+                List.of(ownShip, target),
+                java.util.Map.of(),
+                riskResult
+        );
+
+        assertThat(context.getTargets()).hasSize(1);
+        assertThat(context.getTargets().get(0).getRiskScore()).isEqualTo(0.78);
+        assertThat(context.getTargets().get(0).getDomainPenetration()).isEqualTo(0.41);
     }
 
     private ShipStatus ship(String id, ShipRole role, double longitude, double latitude) {

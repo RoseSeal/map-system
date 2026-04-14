@@ -8,6 +8,7 @@ import com.whut.map.map_service.dto.RiskObjectDto;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
+import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import org.springframework.stereotype.Component;
@@ -46,15 +47,35 @@ public class RiskObjectAssembler {
         }
 
         String snapshotTimestamp = riskObjectMetaAssembler.buildSnapshotTimestamp(allShips, ownShip);
+        double trustFactor = computeAvgConfidence(riskResult);
 
         return RiskObjectDto.builder()
                 .riskObjectId(riskObjectMetaAssembler.buildRiskObjectId(ownShip, snapshotTimestamp))
                 .timestamp(snapshotTimestamp)
-                .governance(riskObjectMetaAssembler.buildGovernance())
+                .governance(riskObjectMetaAssembler.buildGovernance(trustFactor))
                 .ownShip(ownShipAssembler.assemble(ownShip, domainResult))
                 .targets(targetAssembler.assembleTargets(
                         ownShip, allShips, cpaResults, riskResult, cvResults, encounterResults))
                 .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext())
                 .build();
+    }
+
+    private double computeAvgConfidence(RiskAssessmentResult riskResult) {
+        if (riskResult == null
+                || riskResult.getTargetAssessments() == null
+                || riskResult.getTargetAssessments().isEmpty()) {
+            return 0.0;
+        }
+
+        double sum = 0.0;
+        int count = 0;
+        for (TargetRiskAssessment assessment : riskResult.getTargetAssessments().values()) {
+            if (assessment == null || Double.isNaN(assessment.getRiskConfidence())) {
+                continue;
+            }
+            sum += assessment.getRiskConfidence();
+            count += 1;
+        }
+        return count == 0 ? 0.0 : sum / count;
     }
 }

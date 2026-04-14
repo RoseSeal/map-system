@@ -2,6 +2,7 @@ package com.whut.map.map_service.pipeline;
 
 import com.whut.map.map_service.config.properties.EncounterProperties;
 import com.whut.map.map_service.config.properties.AisQualityProperties;
+import com.whut.map.map_service.config.properties.RiskObjectMetaProperties;
 import com.whut.map.map_service.config.properties.ShipStateProperties;
 import com.whut.map.map_service.pipeline.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.pipeline.assembler.riskobject.OwnShipAssembler;
@@ -465,8 +466,9 @@ class ShipDispatcherTest {
     }
 
     private RiskObjectAssembler riskObjectAssembler() {
+        RiskObjectMetaProperties metaProperties = new RiskObjectMetaProperties();
         return new RiskObjectAssembler(
-                new RiskObjectMetaAssembler(),
+                new RiskObjectMetaAssembler(metaProperties),
                 new OwnShipAssembler(),
                 new TargetAssembler(new RiskVisualizationAssembler())
         );

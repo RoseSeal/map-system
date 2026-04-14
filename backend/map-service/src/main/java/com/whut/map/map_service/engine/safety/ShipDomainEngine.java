@@ -2,6 +2,7 @@ package com.whut.map.map_service.engine.safety;
 
 import com.whut.map.map_service.config.properties.ShipDomainProperties;
 import com.whut.map.map_service.domain.ShipStatus;
+import com.whut.map.map_service.util.AisProtocolConstants;
 import com.whut.map.map_service.util.MathUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,8 +12,6 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class ShipDomainEngine {
-    private static final double AIS_SOG_NOT_AVAILABLE_KN = 102.3;
-
     private final ShipDomainProperties shipDomainProperties;
 
     private ShipDomainResult calculate(ShipStatus shipStatus) {
@@ -22,7 +21,7 @@ public class ShipDomainEngine {
         }
 
         double sog = shipStatus.getSog();
-        if (Double.isNaN(sog) || sog < 0 || sog >= AIS_SOG_NOT_AVAILABLE_KN) {
+        if (!AisProtocolConstants.isValidSog(sog)) {
             sog = referenceSpeedKn;
         }
 

@@ -3,6 +3,7 @@ package com.whut.map.map_service.engine.trajectoryprediction;
 import com.whut.map.map_service.config.properties.TrajectoryPredictionProperties;
 import com.whut.map.map_service.domain.QualityFlag;
 import com.whut.map.map_service.domain.ShipStatus;
+import com.whut.map.map_service.util.AisProtocolConstants;
 import com.whut.map.map_service.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +21,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CvPredictionEngine {
 
-    private static final double AIS_SOG_NOT_AVAILABLE_KN = 102.3;
     private static final double EPS = 1e-9;
     private final TrajectoryPredictionProperties props;
 
@@ -32,8 +32,8 @@ public class CvPredictionEngine {
         double sog = ship.getSog();
         double cog = ship.getCog();
 
-        boolean invalidSog = Double.isNaN(sog) || sog < 0 || sog >= AIS_SOG_NOT_AVAILABLE_KN;
-        boolean invalidCog = Double.isNaN(cog) || cog < 0 || cog >= 360.0;
+        boolean invalidSog = !AisProtocolConstants.isValidSog(sog);
+        boolean invalidCog = !AisProtocolConstants.isValidCog(cog);
 
         if (invalidSog || (sog > 0 && invalidCog)) {
             return CvPredictionResult.builder()
@@ -152,8 +152,7 @@ public class CvPredictionEngine {
         if (hasRotContaminatingFlag(point)) {
             return false;
         }
-        double cog = point.getCog();
-        return !Double.isNaN(cog) && cog >= 0.0 && cog < 360.0;
+        return AisProtocolConstants.isValidCog(point.getCog());
     }
 
     private boolean hasRotContaminatingFlag(ShipStatus point) {

@@ -1,7 +1,7 @@
 # Frontend Design Reference
 
 > 文档状态：current
-> 最后更新：2026-04-13
+> 最后更新：2026-04-14
 > 基线来源：`docs/ARCHITECTURE.md`、`docs/EVENT_SCHEMA.md`
 
 This document describes the frontend architecture, rendering model, and operational guidance for the Map System.
@@ -64,7 +64,7 @@ Primary render unit: `RiskObject` (`RISK_UPDATE` payload)
 Key fields:
 - `risk_object_id`, `timestamp`, `governance.mode`, `governance.trust_factor`
 - `own_ship`: `position`, `dynamics` (`sog`, `cog`, `hdg`, `rot`), `platform_health`, `future_trajectory`, `safety_domain`
-- `targets[*]`: `risk_level`, `cpa_metrics`, `graphic_cpa_line`, `ozt_sector`
+- `targets[*]`: `risk_level`, `cpa_metrics`, `graphic_cpa_line`, `ozt_sector`, `encounter_type`, `risk_score`, `risk_confidence`, `predicted_trajectory`
 - `environment_context.safety_contour_val`
 
 Risk levels: `SAFE`, `CAUTION`, `WARNING`, `ALARM`
@@ -106,23 +106,19 @@ Frontend supports `light / dark` switchable themes. Toggle is managed in fronten
 
 ### 9.1 Risk Score Rendering Continuity
 
-`risk_score` is a continuous display signal, but backend scoring may still contain intentional rule boundaries. A representative case is the CPA crossing point: once a target transitions from approaching to diverging, backend `tcpaScore` may drop sharply by design.
+`risk_score` is a continuous backend auxiliary signal, but it is not yet treated as an operator-facing display metric in the current frontend. A representative backend behavior is the CPA crossing point: once a target transitions from approaching to diverging, backend `tcpaScore` may drop sharply by design.
 
-This discontinuity should be handled at the frontend rendering layer rather than forcing backend risk semantics to become animation-oriented.
+Current frontend policy:
+- Use `risk_score` only as a secondary sort key within the same `risk_level` group.
+- Treat a missing `risk_score` as `0.0` for sort purposes.
+- Do not display `risk_score` as text, progress, color intensity, chip strength, glow strength, or any other operator-visible metric.
 
-Frontend responsibilities:
-- Treat backend `risk_score` as the authoritative instantaneous value.
-- Apply short-window visual smoothing when rendering charts, cards, or list ordering indicators derived from `risk_score`.
-- Prefer interpolation / easing for displayed values, not mutation of the underlying store payload.
-- Keep alarm logic, threshold logic, and protocol state based on raw backend values, not smoothed values.
-
-Implementation guidance:
-- Suitable targets include progress bars, chip intensity, marker glow, panel transitions, and secondary ranking visuals.
-- Suitable techniques include lerp, spring easing, or fixed-duration tweening over a short interval.
-- Do not delay or soften discrete backend fields such as `risk_level`, `ozt_sector.is_active`, or warning trigger conditions.
+Deferred direction:
+- After the backend scoring model is validated against real traffic data, `risk_score` may be promoted to a presentation-layer display signal for visual intensity or animation strength.
+- If that promotion happens later, frontend smoothing should remain presentation-only and must not alter alert timing, threshold logic, or categorical state.
 
 Constraint:
-- Smoothing is a presentation concern only. It must not change business semantics, alert timing, or operator-visible categorical state.
+- Until that future promotion is explicitly approved, `risk_score` remains a sorting aid only.
 
 ### 9.2 Stepwise Backend Field Adoption
 
@@ -154,17 +150,25 @@ Frontend responsibilities:
 Constraint:
 - Do not add style branches, icon changes, or color overrides keyed on `prediction_type`. Doing so would couple the renderer to backend algorithm internals, requiring frontend changes on every future model upgrade.
 
-### 9.4 `risk_score` — Sort Signal Only, Not a Display Value
+### 9.4 `risk_confidence` Consumption Boundary
 
-`risk_score` (0.0–1.0) is a continuous auxiliary field used for secondary ordering of targets within the same `risk_level` group. It is not a calibrated operator-facing metric.
+`risk_confidence` is a per-target assessment confidence emitted by the backend. It is not the same field as top-level `governance.trust_factor`.
 
 Frontend responsibilities:
-- Use `risk_score` exclusively as a tiebreaker in `TargetsPanel` sort order (descending within the same `risk_level`).
-- Treat a missing `risk_score` as 0.0 for sort purposes.
+- Accept and store the field in the contract layer.
+- Keep any consumption secondary and non-blocking.
+- If consumed in UI, prefer low-confidence hinting such as a subtle badge, muted secondary styling, or diagnostic text in an inspection/debug surface.
 
 Constraint:
-- Do not display `risk_score` as a numeric value, progress bar, chip intensity, or any operator-visible indicator on target cards or list items.
-- This constraint holds until the backend scoring model has been validated against real traffic data and the field is explicitly promoted to a primary display signal. That decision belongs to the backend design, not to the frontend.
+- Do not let `risk_confidence` suppress, delay, or override backend `risk_level`.
+- Do not treat `risk_confidence` as the global system trust signal; that role belongs to `governance.trust_factor`.
+- Backend fallback semantics: when no valid target assessments are available, `governance.trust_factor` may be `0.0`; frontend must interpret this as "no current global confidence basis", not as a hidden risk-level override.
+
+### 9.5 Voice Interaction TODO
+
+Pending frontend work:
+- Add a cancel-transcription action while voice capture is in `transcribing` state, so an accidental recording can be abandoned from the UI without waiting for Whisper to finish.
+- This is a frontend interaction safeguard. It does not currently imply backend cancellation semantics for an already submitted Whisper job.
 
 ## 10. Local Frontend Development
 

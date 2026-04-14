@@ -20,6 +20,8 @@ public class LlmRiskTargetContext {
     private double speedKn;
     private double courseDeg;
     private Double confidence;
+    private Double riskScore;
+    private Double domainPenetration;
     private String ruleExplanation;
     private EncounterType encounterType;
 }

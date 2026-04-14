@@ -1,13 +1,16 @@
 package com.whut.map.map_service.pipeline.assembler.riskobject;
 
+import com.whut.map.map_service.domain.QualityFlag;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.engine.encounter.EncounterType;
+import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -94,5 +97,80 @@ class TargetAssemblerTest {
         assertThat(targetMap).containsKey("risk_assessment");
         Map<String, Object> riskAssessment = (Map<String, Object>) targetMap.get("risk_assessment");
         assertThat(riskAssessment).containsEntry("encounter_type", "CROSSING");
+    }
+
+    @Test
+    void assembleTargetUsesStaleTrackingStatusWhenTimestampMissing() {
+        TargetAssembler assembler = new TargetAssembler(new RiskVisualizationAssembler());
+
+        ShipStatus ownShip = ShipStatus.builder().id("own").build();
+        ShipStatus targetShip = ShipStatus.builder()
+                .id("target-1")
+                .sog(10.0)
+                .cog(45.0)
+                .longitude(120.0)
+                .latitude(30.0)
+                .qualityFlags(Set.of(QualityFlag.MISSING_TIMESTAMP))
+                .build();
+
+        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, null);
+
+        assertThat(targetMap).containsEntry("tracking_status", "stale");
+    }
+
+    @Test
+    void assembleTargetUsesTrackingStatusByDefault() {
+        TargetAssembler assembler = new TargetAssembler(new RiskVisualizationAssembler());
+
+        ShipStatus ownShip = ShipStatus.builder().id("own").build();
+        ShipStatus targetShip = ShipStatus.builder()
+                .id("target-1")
+                .sog(10.0)
+                .cog(45.0)
+                .longitude(120.0)
+                .latitude(30.0)
+                .qualityFlags(Set.of(QualityFlag.MISSING_HEADING))
+                .build();
+
+        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, null);
+
+        assertThat(targetMap).containsEntry("tracking_status", "tracking");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void assembleTargetBuildsOztSectorByEncounterType() {
+        TargetAssembler assembler = new TargetAssembler(new RiskVisualizationAssembler());
+
+        ShipStatus ownShip = ShipStatus.builder().id("own").build();
+        ShipStatus targetShip = ShipStatus.builder()
+                .id("target-1")
+                .sog(10.0)
+                .cog(45.0)
+                .longitude(120.0)
+                .latitude(30.0)
+                .build();
+        TargetRiskAssessment assessment = TargetRiskAssessment.builder()
+                .targetId("target-1")
+                .riskLevel("WARNING")
+                .build();
+        EncounterClassificationResult encounterResult = EncounterClassificationResult.builder()
+                .targetId("target-1")
+                .encounterType(EncounterType.HEAD_ON)
+                .build();
+
+        Map<String, Object> targetMap = assembler.assembleTarget(
+                ownShip,
+                targetShip,
+                null,
+                assessment,
+                null,
+                encounterResult
+        );
+
+        Map<String, Object> riskAssessment = (Map<String, Object>) targetMap.get("risk_assessment");
+        Map<String, Object> oztSector = (Map<String, Object>) riskAssessment.get("ozt_sector");
+        assertThat(oztSector).containsEntry("start_angle_deg", 25.0);
+        assertThat(oztSector).containsEntry("end_angle_deg", 65.0);
     }
 }

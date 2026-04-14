@@ -1,11 +1,15 @@
 package com.whut.map.map_service.pipeline.assembler.riskobject;
 
+import com.whut.map.map_service.domain.QualityFlag;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.safety.ShipDomainResult;
+import com.whut.map.map_service.pipeline.assembler.AssemblerProtocolConstants;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class OwnShipAssembler {
@@ -21,12 +25,18 @@ public class OwnShipAssembler {
         dynamics.put("hdg", normalizedHeading(ownShip));
         dynamics.put("rot", 0.0);
 
+        Set<QualityFlag> flags = ownShip.getQualityFlags();
+        boolean hasFlags = flags != null && !flags.isEmpty();
+
         Map<String, Object> platformHealth = new LinkedHashMap<>();
-        platformHealth.put("status", "NORMAL");
-        platformHealth.put("description", "");
+        platformHealth.put("status", hasFlags ? AssemblerProtocolConstants.HEALTH_STATUS_DEGRADED
+                : AssemblerProtocolConstants.HEALTH_STATUS_NORMAL);
+        platformHealth.put("description", hasFlags
+                ? flags.stream().map(QualityFlag::name).sorted().collect(Collectors.joining(", "))
+                : "");
 
         Map<String, Object> futureTrajectory = new LinkedHashMap<>();
-        futureTrajectory.put("prediction_type", "linear");
+        futureTrajectory.put("prediction_type", AssemblerProtocolConstants.PREDICTION_TYPE_LINEAR);
 
         Map<String, Object> dimensions = new LinkedHashMap<>();
         dimensions.put("fore_nm", domainResult.getForeNm());

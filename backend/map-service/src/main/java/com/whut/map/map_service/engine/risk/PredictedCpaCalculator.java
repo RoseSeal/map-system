@@ -2,6 +2,7 @@ package com.whut.map.map_service.engine.risk;
 
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.util.AisProtocolConstants;
 import com.whut.map.map_service.util.GeoUtils;
 import org.springframework.stereotype.Component;
 
@@ -9,9 +10,6 @@ import java.util.List;
 
 @Component
 public class PredictedCpaCalculator {
-
-    private static final double MAX_VALID_SOG_KNOTS = 102.3;
-    private static final double FULL_CIRCLE_DEGREES = 360.0;
 
     public PredictedCpaCalculator() {
     }
@@ -48,8 +46,8 @@ public class PredictedCpaCalculator {
     }
 
     private boolean isOwnShipMotionInvalid(double ownSog, double ownCog) {
-        return Double.isNaN(ownSog) || ownSog < 0 || ownSog >= MAX_VALID_SOG_KNOTS
-                || Double.isNaN(ownCog) || ownCog < 0 || ownCog >= FULL_CIRCLE_DEGREES;
+        return !AisProtocolConstants.isValidSog(ownSog)
+            || !AisProtocolConstants.isValidCog(ownCog);
     }
 
     private double[] findMinDistanceAndTcpa(

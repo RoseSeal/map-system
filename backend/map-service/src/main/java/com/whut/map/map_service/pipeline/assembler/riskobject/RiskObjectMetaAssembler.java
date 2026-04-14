@@ -1,5 +1,6 @@
 package com.whut.map.map_service.pipeline.assembler.riskobject;
 
+import com.whut.map.map_service.config.properties.RiskObjectMetaProperties;
 import com.whut.map.map_service.domain.ShipStatus;
 import org.springframework.stereotype.Component;
 
@@ -10,6 +11,12 @@ import java.util.Map;
 
 @Component
 public class RiskObjectMetaAssembler {
+
+    private final RiskObjectMetaProperties properties;
+
+    public RiskObjectMetaAssembler(RiskObjectMetaProperties properties) {
+        this.properties = properties;
+    }
 
     public String buildSnapshotTimestamp(Collection<ShipStatus> allShips, ShipStatus fallback) {
         OffsetDateTime latest = fallback == null ? null : fallback.getMsgTime();
@@ -30,13 +37,13 @@ public class RiskObjectMetaAssembler {
         return ownShip.getId() + "-" + snapshotTimestamp;
     }
 
-    public Map<String, Object> buildGovernance() {
-        return Map.of("mode", "adaptive", "trust_factor", 0.99);
+    public Map<String, Object> buildGovernance(double trustFactor) {
+        return Map.of("mode", properties.getGovernanceMode(), "trust_factor", trustFactor);
     }
 
     public Map<String, Object> buildEnvironmentContext() {
         return Map.of(
-                "safety_contour_val", 10.0,
+                "safety_contour_val", properties.getSafetyContourVal(),
                 "active_alerts", List.of()
         );
     }

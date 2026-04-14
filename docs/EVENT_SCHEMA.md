@@ -133,7 +133,7 @@ data: {"event_id":"server-event-xxx", ...payload}
   "event_id": "server-event-xxx",
   "risk_object_id": "123456789-2026-04-01T03:21:15Z",
   "timestamp": "2026-04-01T03:21:15Z",
-  "governance": { "mode": "adaptive", "trust_factor": 0.99 },
+  "governance": { "mode": "adaptive", "trust_factor": 0.9 },
   "own_ship": {
     "id": "123456789",
     "position": { "lon": 114.3, "lat": 30.5 },
@@ -493,8 +493,8 @@ SSE 与 WebSocket chat 下行共用：
 | RiskLevel | `SAFE` / `CAUTION` / `WARNING` / `ALARM` |
 | SpeechMode | `direct` / `preview` |
 | Connection | `risk` / `chat` |
-| TrackingStatus | `tracking` |
-| PredictionType | `linear` |
+| TrackingStatus | `tracking` / `stale` |
+| PredictionType | `linear` / `cv` |
 | SafetyDomainShape | `ellipse` |
 | RiskSseEventType | `RISK_UPDATE` / `EXPLANATION` / `ERROR` |
 | ChatDownlinkType | `PONG` / `CHAT_REPLY` / `SPEECH_TRANSCRIPT` / `CLEAR_HISTORY_ACK` / `ERROR` |

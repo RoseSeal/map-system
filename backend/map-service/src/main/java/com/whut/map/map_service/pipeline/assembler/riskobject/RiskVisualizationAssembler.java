@@ -1,6 +1,7 @@
 package com.whut.map.map_service.pipeline.assembler.riskobject;
 
 import com.whut.map.map_service.domain.ShipStatus;
+import com.whut.map.map_service.engine.encounter.EncounterType;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import org.springframework.stereotype.Component;
@@ -23,15 +24,28 @@ public class RiskVisualizationAssembler {
         return graphicCpaLine;
     }
 
-    public Map<String, Object> buildOztSector(ShipStatus targetShip, String riskLevel) {
+    public Map<String, Object> buildOztSector(ShipStatus targetShip, String riskLevel, EncounterType encounterType) {
         if (!RiskConstants.WARNING.equals(riskLevel) && !RiskConstants.ALARM.equals(riskLevel)) {
             return null;
         }
 
+        double halfAngle = resolveOztHalfAngle(encounterType);
         Map<String, Object> oztSector = new LinkedHashMap<>();
-        oztSector.put("start_angle_deg", targetShip.getCog() - 10.0);
-        oztSector.put("end_angle_deg", targetShip.getCog() + 10.0);
+        oztSector.put("start_angle_deg", targetShip.getCog() - halfAngle);
+        oztSector.put("end_angle_deg", targetShip.getCog() + halfAngle);
         oztSector.put("is_active", true);
         return oztSector;
+    }
+
+    private double resolveOztHalfAngle(EncounterType encounterType) {
+        if (encounterType == null) {
+            return 10.0;
+        }
+        return switch (encounterType) {
+            case HEAD_ON -> 20.0;
+            case OVERTAKING -> 8.0;
+            case CROSSING -> 12.0;
+            default -> 10.0;  // covers UNDEFINED: conservative fallback when encounter geometry is indeterminate
+        };
     }
 }

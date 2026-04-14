@@ -92,6 +92,8 @@ public class LlmRiskContextAssembler {
                     .speedKn(ship.getSog())
                     .courseDeg(ship.getCog())
                     .confidence(ship.getConfidence())
+                    .riskScore(assessment == null ? null : assessment.getRiskScore())
+                    .domainPenetration(assessment == null ? null : assessment.getDomainPenetration())
                     .ruleExplanation(assessment == null ? null : assessment.getExplanationText())
                     .encounterType(enc.getEncounterType())
                     .build());

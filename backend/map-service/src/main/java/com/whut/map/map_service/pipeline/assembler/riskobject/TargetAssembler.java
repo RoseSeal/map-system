@@ -1,12 +1,15 @@
 package com.whut.map.map_service.pipeline.assembler.riskobject;
 
+import com.whut.map.map_service.domain.QualityFlag;
 import com.whut.map.map_service.domain.ShipStatus;
 import com.whut.map.map_service.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
+import com.whut.map.map_service.engine.encounter.EncounterType;
 import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.engine.risk.RiskConstants;
 import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.pipeline.assembler.AssemblerProtocolConstants;
 import com.whut.map.map_service.util.GeoUtils;
 import org.springframework.stereotype.Component;
 
@@ -15,11 +18,10 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 public class TargetAssembler {
-    private static final String TRACKING_STATUS = "tracking";
-
     private final RiskVisualizationAssembler riskVisualizationAssembler;
 
     public TargetAssembler(RiskVisualizationAssembler riskVisualizationAssembler) {
@@ -87,18 +89,19 @@ public class TargetAssembler {
             riskAssessment.put("graphic_cpa_line", graphicCpaLine);
         }
 
-        Map<String, Object> oztSector = riskVisualizationAssembler.buildOztSector(targetShip, riskLevel);
+        EncounterType encounterType = encounterResult == null ? null : encounterResult.getEncounterType();
+        Map<String, Object> oztSector = riskVisualizationAssembler.buildOztSector(targetShip, riskLevel, encounterType);
         if (oztSector != null) {
             riskAssessment.put("ozt_sector", oztSector);
         }
 
-        if (encounterResult != null) {
-            riskAssessment.put("encounter_type", encounterResult.getEncounterType().name());
+        if (encounterType != null) {
+            riskAssessment.put("encounter_type", encounterType.name());
         }
 
         Map<String, Object> target = new LinkedHashMap<>();
         target.put("id", targetShip.getId());
-        target.put("tracking_status", TRACKING_STATUS);
+        target.put("tracking_status", resolveTrackingStatus(targetShip.getQualityFlags()));
         target.put("position", position);
         target.put("vector", vector);
         target.put("risk_assessment", riskAssessment);
@@ -120,9 +123,16 @@ public class TargetAssembler {
             points.add(point);
         }
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("prediction_type", "cv");
+        result.put("prediction_type", AssemblerProtocolConstants.PREDICTION_TYPE_CV);
         result.put("horizon_seconds", cvResult.getHorizonSeconds());
         result.put("points", points);
         return result;
+    }
+
+    private String resolveTrackingStatus(Set<QualityFlag> flags) {
+        if (flags != null && flags.contains(QualityFlag.MISSING_TIMESTAMP)) {
+            return AssemblerProtocolConstants.TRACKING_STATUS_STALE;
+        }
+        return AssemblerProtocolConstants.TRACKING_STATUS_TRACKING;
     }
 }

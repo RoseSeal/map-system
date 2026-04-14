@@ -2,6 +2,7 @@ package com.whut.map.map_service.engine.encounter;
 
 import com.whut.map.map_service.config.properties.EncounterProperties;
 import com.whut.map.map_service.domain.ShipStatus;
+import com.whut.map.map_service.util.AisProtocolConstants;
 import com.whut.map.map_service.util.GeoUtils;
 import org.springframework.stereotype.Component;
 
@@ -10,9 +11,6 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class EncounterClassifier {
-
-    // AIS COG 无效哨兵：360.0 = "not available"（ITU-R M.1371）
-    private static final double COG_NOT_AVAILABLE = 360.0;
 
     private final EncounterProperties props;
 
@@ -87,7 +85,7 @@ public class EncounterClassifier {
     }
 
     private static boolean isInvalidCog(double cog) {
-        return Double.isNaN(cog) || cog < 0.0 || cog >= COG_NOT_AVAILABLE;
+        return !AisProtocolConstants.isValidCog(cog);
     }
 
     private static EncounterClassificationResult build(
