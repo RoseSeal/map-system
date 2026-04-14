@@ -1,7 +1,7 @@
 package com.whut.map.map_service.llm.dto;
 
-import com.whut.map.map_service.domain.RiskLevel;
-import com.whut.map.map_service.engine.encounter.EncounterType;
+import com.whut.map.map_service.shared.domain.RiskLevel;
+import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import lombok.Builder;
 import lombok.Data;
 

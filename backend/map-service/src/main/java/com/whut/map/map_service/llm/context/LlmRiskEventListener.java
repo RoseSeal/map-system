@@ -1,11 +1,11 @@
 package com.whut.map.map_service.llm.context;
 
-import com.whut.map.map_service.dto.sse.ExplanationPayload;
-import com.whut.map.map_service.event.RiskAssessmentCompletedEvent;
+import com.whut.map.map_service.shared.dto.sse.ExplanationPayload;
+import com.whut.map.map_service.risk.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.llm.service.LlmErrorCode;
 import com.whut.map.map_service.llm.service.LlmTriggerService;
-import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
+import com.whut.map.map_service.risk.transport.RiskStreamPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;

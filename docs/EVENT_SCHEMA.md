@@ -8,7 +8,7 @@
 | 版本 | 日期 | 摘要 |
 |------|------|------|
 | v1 | 2026-03-04 | risk/chat 复用单 WebSocket，speech 作为 chat 子类型 |
-| v1 archived | 2026-04-01 | v1 停止生效，归档至 `docs/event-schema-history/SCHEMA_V1.md` |
+| v1 archived | 2026-04-01 | v1 停止生效，归档至 `docs/history/v0.5-mvp/event-schema/SCHEMA_V1.md` |
 | v2-draft | 2026-04-01 | 确认 risk/chat 拆连接，定义 SSE + WebSocket 双协议结构 |
 | v2 | 2026-04-01 | 协议已落地，文档按当前实现修订 |
 | v2 | 2026-04-08 | CHAT/SPEECH payload 新增可选字段 `selected_target_ids`，用于选中目标定向注入 |
@@ -72,7 +72,6 @@
 - 它通过 risk SSE 通道下发
 - 前端收到后应展示为风险卡片/解释卡片
 - 当前阶段它不携带 `conversation_id`
-- 后续若用户选择解释卡片作为补充上下文，再由前端在新的 chat 请求中显式引用
 
 ### 3.4 SSE 重连语义
 
@@ -165,7 +164,8 @@ data: {"event_id":"server-event-xxx", ...payload}
         "risk_score": 0.85,
         "risk_confidence": 0.9,
         "graphic_cpa_line": { "own_pos": [114.3, 30.5], "target_pos": [114.31, 30.51] },
-        "ozt_sector": { "start_angle_deg": 35.0, "end_angle_deg": 55.0, "is_active": true }
+        "ozt_sector": { "start_angle_deg": 35.0, "end_angle_deg": 55.0, "is_active": true },
+        "encounter_type": "CROSSING"
       }
     }
   ],
@@ -180,6 +180,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 - `simulation_layer` 不再出现在 risk payload 中
 - `target.predicted_trajectory` 为可选字段；存在时结构固定为 `{ prediction_type, horizon_seconds, points[] }`
 - CTR 升级后 `target.predicted_trajectory.prediction_type` 仍保持 `"cv"`
+- `target.risk_assessment.encounter_type` 为可选字段；取值为 `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED`
 
 ### 4.4 `ERROR` payload（risk）
 
@@ -495,6 +496,7 @@ SSE 与 WebSocket chat 下行共用：
 | Connection | `risk` / `chat` |
 | TrackingStatus | `tracking` / `stale` |
 | PredictionType | `linear` / `cv` |
+| EncounterType | `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED` |
 | SafetyDomainShape | `ellipse` |
 | RiskSseEventType | `RISK_UPDATE` / `EXPLANATION` / `ERROR` |
 | ChatDownlinkType | `PONG` / `CHAT_REPLY` / `SPEECH_TRANSCRIPT` / `CLEAR_HISTORY_ACK` / `ERROR` |
@@ -513,6 +515,5 @@ SSE 与 WebSocket chat 下行共用：
 ## 9. 实施备注
 
 - 当前生效协议即本文档
-- v1 已归档到 [docs/event-schema-history/SCHEMA_V1.md](/home/xin/workspace/map-system/docs/event-schema-history/SCHEMA_V1.md)
+- v1 已归档到 [docs/history/v0.5-mvp/event-schema/SCHEMA_V1.md](history/v0.5-mvp/event-schema/SCHEMA_V1.md)
 - v2 已切换完成，前后端不得回退或混用 v1/v2 字段名
-- 若后续引入“解释卡片作为 chat 补充上下文”，应通过新的显式 payload 字段建模，不应把 `EXPLANATION` 事件本身重新并入 chat 会话流

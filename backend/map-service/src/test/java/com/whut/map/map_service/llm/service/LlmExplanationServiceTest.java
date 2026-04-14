@@ -1,7 +1,7 @@
 package com.whut.map.map_service.llm.service;
 
 import com.whut.map.map_service.llm.config.LlmProperties;
-import com.whut.map.map_service.domain.RiskLevel;
+import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.llm.client.LlmClient;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;

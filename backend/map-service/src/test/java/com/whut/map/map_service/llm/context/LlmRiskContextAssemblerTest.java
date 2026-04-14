@@ -1,11 +1,11 @@
 package com.whut.map.map_service.llm.context;
 
-import com.whut.map.map_service.config.properties.EncounterProperties;
-import com.whut.map.map_service.domain.ShipRole;
-import com.whut.map.map_service.domain.ShipStatus;
-import com.whut.map.map_service.engine.encounter.EncounterClassifier;
-import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
-import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
+import com.whut.map.map_service.risk.config.EncounterProperties;
+import com.whut.map.map_service.shared.domain.ShipRole;
+import com.whut.map.map_service.shared.domain.ShipStatus;
+import com.whut.map.map_service.risk.engine.encounter.EncounterClassifier;
+import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
+import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import org.junit.jupiter.api.Test;
 

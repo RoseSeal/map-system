@@ -200,7 +200,7 @@
 
 历史设计文档已归档到：
 
-- [llm-history/llm-module-v1.md](/home/xin/workspace/map-system/docs/llm-history/llm-module-v1.md)
-- [llm-history/llm-module-v2.md](/home/xin/workspace/map-system/docs/llm-history/llm-module-v2.md)
+- [history/v0.5-mvp/llm-design/llm-module-v1.md](history/v0.5-mvp/llm-design/llm-module-v1.md)
+- [history/v0.5-mvp/llm-design/llm-module-v2.md](history/v0.5-mvp/llm-design/llm-module-v2.md)
 
 归档文档用于保留原始思路，不再作为当前实现真值。

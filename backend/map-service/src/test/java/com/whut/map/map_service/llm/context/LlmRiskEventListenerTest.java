@@ -1,21 +1,21 @@
 package com.whut.map.map_service.llm.context;
 
-import com.whut.map.map_service.config.properties.EncounterProperties;
-import com.whut.map.map_service.domain.ShipRole;
-import com.whut.map.map_service.domain.ShipStatus;
-import com.whut.map.map_service.dto.sse.ExplanationPayload;
-import com.whut.map.map_service.engine.collision.CpaTcpaResult;
-import com.whut.map.map_service.engine.encounter.EncounterClassifier;
-import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
-import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
-import com.whut.map.map_service.event.RiskAssessmentCompletedEvent;
+import com.whut.map.map_service.risk.config.EncounterProperties;
+import com.whut.map.map_service.shared.domain.ShipRole;
+import com.whut.map.map_service.shared.domain.ShipStatus;
+import com.whut.map.map_service.shared.dto.sse.ExplanationPayload;
+import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.risk.engine.encounter.EncounterClassifier;
+import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
+import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
+import com.whut.map.map_service.risk.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.llm.service.LlmExplanationService;
 import com.whut.map.map_service.llm.service.LlmTriggerService;
-import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
+import com.whut.map.map_service.risk.transport.RiskStreamPublisher;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

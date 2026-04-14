@@ -1,7 +1,7 @@
 package com.whut.map.map_service.llm.context;
 
 import com.whut.map.map_service.llm.config.LlmProperties;
-import com.whut.map.map_service.domain.RiskLevel;
+import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;

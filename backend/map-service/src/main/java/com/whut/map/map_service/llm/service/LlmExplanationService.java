@@ -10,7 +10,7 @@ import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.llm.prompt.PromptScene;
 import com.whut.map.map_service.llm.prompt.PromptTemplateService;
-import com.whut.map.map_service.util.GeoUtils;
+import com.whut.map.map_service.shared.util.GeoUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

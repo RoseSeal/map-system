@@ -1,16 +1,16 @@
 package com.whut.map.map_service.llm.context;
 
-import com.whut.map.map_service.domain.RiskLevel;
-import com.whut.map.map_service.domain.ShipStatus;
-import com.whut.map.map_service.engine.collision.CpaTcpaResult;
-import com.whut.map.map_service.engine.encounter.EncounterClassificationResult;
-import com.whut.map.map_service.engine.encounter.EncounterClassifier;
-import com.whut.map.map_service.engine.risk.RiskAssessmentResult;
-import com.whut.map.map_service.engine.risk.TargetRiskAssessment;
+import com.whut.map.map_service.shared.domain.RiskLevel;
+import com.whut.map.map_service.shared.domain.ShipStatus;
+import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
+import com.whut.map.map_service.risk.engine.encounter.EncounterClassifier;
+import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
+import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
-import com.whut.map.map_service.util.GeoUtils;
+import com.whut.map.map_service.shared.util.GeoUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

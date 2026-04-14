@@ -164,12 +164,6 @@ Constraint:
 - Do not treat `risk_confidence` as the global system trust signal; that role belongs to `governance.trust_factor`.
 - Backend fallback semantics: when no valid target assessments are available, `governance.trust_factor` may be `0.0`; frontend must interpret this as "no current global confidence basis", not as a hidden risk-level override.
 
-### 9.5 Voice Interaction TODO
-
-Pending frontend work:
-- Add a cancel-transcription action while voice capture is in `transcribing` state, so an accidental recording can be abandoned from the UI without waiting for Whisper to finish.
-- This is a frontend interaction safeguard. It does not currently imply backend cancellation semantics for an already submitted Whisper job.
-
 ## 10. Local Frontend Development
 
 ```bash

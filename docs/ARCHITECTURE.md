@@ -163,12 +163,12 @@ ChatWebSocketHandler
 
 ### P3
 
-- [ ] 本船安全领域（动态四参数椭圆模型）
-- [ ] 目标船航迹预测（CV 模型 + 历史轨迹存储）
-- [ ] 会遇态势识别（对遇/追越/交叉分类）
-- [ ] 多因子风险评估增强（域侵入 + 预测 CPA + 会遇修正 → 加权综合评分）
-- [ ] AIS 数据质量校验（Mapper 层来源校验 + qualityFlags + confidence 消费）
-- [ ] Mock 清理与管线集成（消除 assembler 硬编码，端到端串联引擎输出）
+- [x] 本船安全领域（动态四参数椭圆模型）
+- [x] 目标船航迹预测（CV 模型 + 历史轨迹存储）
+- [x] 会遇态势识别（对遇/追越/交叉分类）
+- [x] 多因子风险评估增强（域侵入 + 预测 CPA + 会遇修正 → 加权综合评分）
+- [x] AIS 数据质量校验（Mapper 层来源校验 + qualityFlags + confidence 消费）
+- [x] Mock 清理与管线集成（消除 assembler 硬编码，端到端串联引擎输出）
 - [ ] JSON 指令驱动动画
 - [ ] 显式实现 agent loop
 - [ ] 法律法规 RAG
@@ -201,7 +201,7 @@ ChatWebSocketHandler
 
 ### P3 - 功能扩展
 
-- **Engine 增强**（详见 `docs/engine-enhancement/ENGINE_ENHANCEMENT_PLAN.md`）：
+- **Engine 增强**（已完成，详见 `docs/engine-enhancement/ENGINE_ENHANCEMENT_PLAN.md`）：
   - 本船安全领域：动态四参数椭圆模型，替代 assembler 硬编码尺寸。
   - 目标船航迹预测：CV 恒速模型 + 历史轨迹存储，输出预测轨迹点序列。
   - 会遇态势识别：对遇/追越/交叉三类分类，参考内河避碰规则。
