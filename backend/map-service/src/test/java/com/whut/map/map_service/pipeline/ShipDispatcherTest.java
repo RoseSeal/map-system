@@ -27,6 +27,7 @@ import com.whut.map.map_service.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.store.DerivedTargetStateStore;
 import com.whut.map.map_service.store.ShipStateStore;
+import com.whut.map.map_service.store.TargetDerivedSnapshot;
 import com.whut.map.map_service.transport.risk.RiskStreamPublisher;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEvent;
@@ -238,6 +239,54 @@ class ShipDispatcherTest {
     }
 
     @Test
+    void dispatchIncrementalUsesQualifiedTargetForRiskConfidence() {
+        RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
+        RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
+        ShipStateStore shipStateStore = shipStateStore();
+        com.whut.map.map_service.store.ShipTrajectoryStore trajectoryStore = new com.whut.map.map_service.store.ShipTrajectoryStore();
+        DerivedTargetStateStore derivedStore = new DerivedTargetStateStore();
+        ConfidenceEchoRiskAssessmentEngine riskAssessmentEngine = new ConfidenceEchoRiskAssessmentEngine();
+
+        ShipStatus ownShip = ship("ownShip", ShipRole.OWN_SHIP, 120.0000, 30.0000, 8.0, OffsetDateTime.parse("2026-04-12T09:00:00+08:00"));
+        ShipStatus initialTarget = ship("target-1", ShipRole.TARGET_SHIP, 120.0000, 30.0000, 6.0, OffsetDateTime.parse("2026-04-12T09:00:00+08:00"));
+        initialTarget.setConfidence(0.95);
+        shipStateStore.update(ownShip);
+        shipStateStore.update(initialTarget);
+        trajectoryStore.append(initialTarget);
+
+        ShipDispatcher dispatcher = new ShipDispatcher(
+                new RecordingShipDomainEngine(ShipDomainResult.builder().shapeType(ShipDomainResult.SHAPE_ELLIPSE).build()),
+                new RecordingCvPredictionEngine(),
+                new StubCpaTcpaBatchCalculator(Map.of()),
+                new EncounterClassifier(new EncounterProperties()),
+                riskAssessmentEngine,
+                riskObjectAssembler(),
+                shipStateStore,
+                trajectoryStore,
+                publisher,
+                eventPublisher,
+                new ShipKinematicQualityChecker(new AisQualityProperties()),
+                derivedStore
+        );
+
+        dispatcher.dispatch(ownShip);
+
+        ShipStatus targetUpdate = ship("target-1", ShipRole.TARGET_SHIP, 120.1000, 30.0000, 20.0, OffsetDateTime.parse("2026-04-12T09:00:30+08:00"));
+        targetUpdate.setConfidence(0.95);
+        targetUpdate.setCog(220.0);
+        targetUpdate.setHeading(220.0);
+        dispatcher.dispatch(targetUpdate);
+
+        TargetDerivedSnapshot snapshot = derivedStore.get("target-1");
+        assertThat(snapshot).isNotNull();
+        assertThat(snapshot.riskAssessment().getRiskConfidence()).isCloseTo(0.2, within(1e-9));
+
+        List<Map<String, Object>> targets = (List<Map<String, Object>>) publisher.publishedFrame.riskObject().getTargets();
+        Map<String, Object> riskAssessment = castMap(targets.getFirst().get("risk_assessment"));
+        assertThat((Double) riskAssessment.get("risk_confidence")).isCloseTo(0.2, within(1e-9));
+    }
+
+    @Test
     void dispatchFallsBackToFullWhenDerivedCacheIsMissing() {
         RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
         RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
@@ -320,6 +369,99 @@ class ShipDispatcherTest {
         assertThat(shipDomainEngine.consumeCount).isEqualTo(1);
         assertThat(riskAssessmentEngine.consumeCount).isZero();
         assertThat(riskAssessmentEngine.buildTargetAssessmentCount).isEqualTo(2);
+    }
+
+    @Test
+    void refreshAfterCleanupRebuildsDerivedSnapshotsFromCurrentStore() {
+        RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
+        RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
+        ShipStateStore shipStateStore = shipStateStore();
+        com.whut.map.map_service.store.ShipTrajectoryStore trajectoryStore = new com.whut.map.map_service.store.ShipTrajectoryStore();
+        DerivedTargetStateStore derivedStore = new DerivedTargetStateStore();
+
+        ShipStatus ownShip = ship("ownShip", ShipRole.OWN_SHIP, 120.0000, 30.0000, 8.0, OffsetDateTime.parse("2026-04-12T09:00:00+08:00"));
+        ShipStatus liveTarget = ship("target-1", ShipRole.TARGET_SHIP, 120.0100, 30.0100, 12.0, OffsetDateTime.parse("2026-04-12T09:00:05+08:00"));
+        shipStateStore.update(ownShip);
+        shipStateStore.update(liveTarget);
+        trajectoryStore.append(liveTarget);
+        derivedStore.put("stale-target", new TargetDerivedSnapshot("stale-target", null, null, null, null));
+
+        ShipDispatcher dispatcher = new ShipDispatcher(
+                new RecordingShipDomainEngine(ShipDomainResult.builder().shapeType(ShipDomainResult.SHAPE_ELLIPSE).build()),
+                new RecordingCvPredictionEngine(),
+                new StubCpaTcpaBatchCalculator(Map.of()),
+                new EncounterClassifier(new EncounterProperties()),
+                new StubRiskAssessmentEngine(RiskAssessmentResult.empty()),
+                riskObjectAssembler(),
+                shipStateStore,
+                trajectoryStore,
+                publisher,
+                eventPublisher,
+                new ShipKinematicQualityChecker(new AisQualityProperties()),
+                derivedStore
+        );
+
+        dispatcher.refreshAfterCleanup();
+
+        assertThat(derivedStore.getAll()).containsOnlyKeys("target-1");
+        assertThat(derivedStore.get("target-1")).isNotNull();
+        assertThat(publisher.publishedFrame).isNotNull();
+    }
+
+    @Test
+    void dispatchKeepsConfidenceAndFlagsStableForNormalSequentialFrames() {
+        RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
+        RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
+        ShipStateStore shipStateStore = shipStateStore();
+        com.whut.map.map_service.store.ShipTrajectoryStore trajectoryStore = new com.whut.map.map_service.store.ShipTrajectoryStore();
+        DerivedTargetStateStore derivedStore = new DerivedTargetStateStore();
+
+        ShipStatus ownShip = ship("ownShip", ShipRole.OWN_SHIP, 120.0000, 30.0000, 8.0, OffsetDateTime.parse("2026-04-12T09:00:00+08:00"));
+        shipStateStore.update(ownShip);
+
+        ShipDispatcher dispatcher = new ShipDispatcher(
+                new RecordingShipDomainEngine(ShipDomainResult.builder().shapeType(ShipDomainResult.SHAPE_ELLIPSE).build()),
+                new RecordingCvPredictionEngine(),
+                new StubCpaTcpaBatchCalculator(Map.of()),
+                new EncounterClassifier(new EncounterProperties()),
+                new StubRiskAssessmentEngine(RiskAssessmentResult.empty()),
+                riskObjectAssembler(),
+                shipStateStore,
+                trajectoryStore,
+                publisher,
+                eventPublisher,
+                new ShipKinematicQualityChecker(new AisQualityProperties()),
+                derivedStore
+        );
+
+        ShipStatus frame1 = ship("target-1", ShipRole.TARGET_SHIP, 120.0100, 30.0100, 12.0, OffsetDateTime.parse("2026-04-12T09:00:00+08:00"));
+        frame1.setConfidence(0.95);
+        frame1.setHeading(90.0);
+        dispatcher.dispatch(frame1);
+
+        ShipStatus frame2 = ship("target-1", ShipRole.TARGET_SHIP, 120.0102, 30.0100, 12.3, OffsetDateTime.parse("2026-04-12T09:00:10+08:00"));
+        frame2.setConfidence(0.95);
+        frame2.setCog(94.0);
+        frame2.setHeading(94.0);
+        dispatcher.dispatch(frame2);
+
+        ShipStatus frame3 = ship("target-1", ShipRole.TARGET_SHIP, 120.0104, 30.0101, 12.5, OffsetDateTime.parse("2026-04-12T09:00:20+08:00"));
+        frame3.setConfidence(0.95);
+        frame3.setCog(97.0);
+        frame3.setHeading(97.0);
+        dispatcher.dispatch(frame3);
+
+        ShipStatus stored = shipStateStore.get("target-1");
+        assertThat(stored).isNotNull();
+        assertThat(stored.getConfidence()).isCloseTo(0.95, within(1e-9));
+        assertThat(stored.getQualityFlags()).isEmpty();
+
+        List<ShipStatus> history = trajectoryStore.getHistory("target-1");
+        assertThat(history).hasSize(3);
+        assertThat(history).allSatisfy(item -> {
+            assertThat(item.getConfidence()).isCloseTo(0.95, within(1e-9));
+            assertThat(item.getQualityFlags() == null || item.getQualityFlags().isEmpty()).isTrue();
+        });
     }
 
     private RiskObjectAssembler riskObjectAssembler() {
@@ -442,7 +584,7 @@ class ShipDispatcherTest {
         }
     }
 
-    private static final class StubRiskAssessmentEngine extends RiskAssessmentEngine {
+    private static class StubRiskAssessmentEngine extends RiskAssessmentEngine {
         private final RiskAssessmentResult result;
         private ShipDomainResult lastDomainResult;
         private int consumeCount;
@@ -490,6 +632,29 @@ class ShipDispatcherTest {
                     .riskScore(0.0)
                     .riskConfidence(1.0)
                     .build();
+        }
+    }
+
+    private static final class ConfidenceEchoRiskAssessmentEngine extends StubRiskAssessmentEngine {
+
+        ConfidenceEchoRiskAssessmentEngine() {
+            super(RiskAssessmentResult.empty());
+        }
+
+        @Override
+        public TargetRiskAssessment buildTargetAssessment(
+                String targetId,
+                CpaTcpaResult cpaResult,
+                ShipStatus ownShip,
+                ShipStatus targetShip,
+                ShipDomainResult domainResult,
+                com.whut.map.map_service.engine.trajectoryprediction.CvPredictionResult predictionResult,
+                com.whut.map.map_service.engine.encounter.EncounterClassificationResult encounterResult
+        ) {
+            TargetRiskAssessment assessment = super.buildTargetAssessment(
+                    targetId, cpaResult, ownShip, targetShip, domainResult, predictionResult, encounterResult);
+            assessment.setRiskConfidence(targetShip.getConfidence() == null ? 1.0 : targetShip.getConfidence());
+            return assessment;
         }
     }
 }

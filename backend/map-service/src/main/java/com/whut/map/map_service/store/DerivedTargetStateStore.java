@@ -2,6 +2,7 @@ package com.whut.map.map_service.store;
 
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,7 +23,7 @@ public class DerivedTargetStateStore {
     }
 
     public Map<String, TargetDerivedSnapshot> getAll() {
-        return snapshots;
+        return Collections.unmodifiableMap(snapshots);
     }
     
     public void clear() {

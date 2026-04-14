@@ -96,7 +96,7 @@ public class ShipDispatcher {
         boolean incremental = shouldUseIncrementalPath(context, role);
         
         if (incremental) {
-            outputs = dispatchIncrementalForTarget(context, message);
+            outputs = dispatchIncrementalForTarget(context, context.message());
         } else {
             outputs = dispatchFull(context);
         }
@@ -114,16 +114,16 @@ public class ShipDispatcher {
 
         publishRiskSnapshot(snapshot);
         
+        int targetCount = Math.max(0, context.allShips().size() - (context.hasOwnShip() ? 1 : 0));
         long pubTime = System.currentTimeMillis() - pubStart;
         log.info("Dispatcher Time: Total={}ms, Prep={}ms, Deriv={}ms (incr={}), Assemble={}ms, Publish={}ms, Targets={}", 
-            System.currentTimeMillis() - start, prepTime, derivTime, incremental, assemTime, pubTime, context.allShips().size());
+            System.currentTimeMillis() - start, prepTime, derivTime, incremental, assemTime, pubTime, targetCount);
             
         logTargetCpa(context, outputs.cpaResults());
     }
     
     
     public void refreshAfterCleanup() {
-        derivedTargetStateStore.clear();
         ShipDispatchContext context = new ShipDispatchContext(
                 null, shipStateStore.getOwnShip(), shipStateStore.getAll(), Set.of());
         if (!context.hasOwnShip()) return;
@@ -276,7 +276,8 @@ public class ShipDispatcher {
             boolean triggerExplanations
     ) {
         if (!context.hasOwnShip()) {
-            log.debug("Skipping RiskObject broadcast until ownShip is available, incoming id={}", context.message().getId());
+            String incomingId = context.message() != null ? context.message().getId() : "<refresh>";
+            log.debug("Skipping RiskObject broadcast until ownShip is available, incoming id={}", incomingId);
             return null;
         }
 
