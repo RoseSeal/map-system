@@ -1,0 +1,330 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  chatErrorFixture,
+  chatGlobalErrorFixture,
+  chatReplyFixture,
+  speechTranscriptFixture,
+} from '../test/fixtures';
+
+const chatSubscribers = vi.hoisted(() => ({
+  onChatReply: undefined as ((payload: unknown) => void) | undefined,
+  onSpeechTranscript: undefined as ((payload: unknown) => void) | undefined,
+  onError: undefined as ((payload: unknown) => void) | undefined,
+  onClearHistoryAck: undefined as ((payload: unknown) => void) | undefined,
+}));
+
+const chatWsServiceMock = vi.hoisted(() => ({
+  send: vi.fn(),
+  sendClearHistory: vi.fn(),
+  onChatReply: vi.fn((cb: (payload: unknown) => void) => {
+    chatSubscribers.onChatReply = cb;
+    return vi.fn();
+  }),
+  onSpeechTranscript: vi.fn((cb: (payload: unknown) => void) => {
+    chatSubscribers.onSpeechTranscript = cb;
+    return vi.fn();
+  }),
+  onError: vi.fn((cb: (payload: unknown) => void) => {
+    chatSubscribers.onError = cb;
+    return vi.fn();
+  }),
+  onClearHistoryAck: vi.fn((cb: (payload: unknown) => void) => {
+    chatSubscribers.onClearHistoryAck = cb;
+    return vi.fn();
+  }),
+}));
+
+vi.mock('../services/chatWsService', () => ({
+  chatWsService: chatWsServiceMock,
+}));
+
+import { useRiskStore } from './useRiskStore';
+import { useAiCenterStore } from './useAiCenterStore';
+
+describe('useAiCenterStore', () => {
+  beforeEach(() => {
+    useRiskStore.getState().reset();
+    useAiCenterStore.getState().reset();
+    chatWsServiceMock.send.mockImplementation(() => 'generated-event-id');
+  });
+
+  it('sendTextMessage rejects empty text and pending conversation requests', () => {
+    const store = useAiCenterStore.getState();
+
+    expect(store.sendTextMessage('   ')).toBe(false);
+    expect(chatWsServiceMock.send).not.toHaveBeenCalled();
+
+    chatWsServiceMock.send.mockReturnValueOnce('user-event-1');
+    expect(store.sendTextMessage('First message')).toBe(true);
+    expect(store.sendTextMessage('Second message')).toBe(false);
+    expect(chatWsServiceMock.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('sendTextMessage sends CHAT payload and includes selected target ids', () => {
+    const riskStore = useRiskStore.getState();
+    const aiStore = useAiCenterStore.getState();
+
+    riskStore.selectTarget('TGT-ALARM');
+    chatWsServiceMock.send.mockReturnValueOnce('user-event-1');
+
+    expect(aiStore.sendTextMessage('  Assess closest risk  ')).toBe(true);
+
+    const conversationId = useAiCenterStore.getState().conversationId;
+    expect(chatWsServiceMock.send).toHaveBeenCalledWith('CHAT', {
+      conversation_id: conversationId,
+      content: 'Assess closest risk',
+      selected_target_ids: ['TGT-ALARM'],
+    });
+
+    const state = useAiCenterStore.getState();
+    expect(state.chatInput).toBe('');
+    expect(state.chatMessages).toHaveLength(1);
+    expect(state.chatMessages[0].request_type).toBe('CHAT');
+    expect(state.pendingChatEventIds['user-event-1']).toBe(true);
+  });
+
+  it('sendTextMessage returns false when websocket send fails', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce(null);
+
+    expect(store.sendTextMessage('message')).toBe(false);
+    expect(useAiCenterStore.getState().chatMessages).toHaveLength(0);
+  });
+
+  it('sendSpeechMessage validates input and handles preview vs direct mode', () => {
+    const store = useAiCenterStore.getState();
+
+    expect(store.sendSpeechMessage({ audioData: ' ', audioFormat: 'pcm', mode: 'preview' })).toBe(false);
+    expect(store.sendSpeechMessage({ audioData: 'abc', audioFormat: ' ', mode: 'preview' })).toBe(false);
+
+    chatWsServiceMock.send.mockReturnValueOnce('voice-event-preview');
+    expect(store.sendSpeechMessage({
+      audioData: '  base64-audio  ',
+      audioFormat: 'pcm16',
+      mode: 'preview',
+    })).toBe(true);
+
+    let state = useAiCenterStore.getState();
+    expect(state.chatMessages).toHaveLength(0);
+    expect(state.pendingChatEventIds['voice-event-preview']).toBe(true);
+    expect(state.voiceCaptureState).toBe('transcribing');
+    expect(state.activeVoiceEventId).toBe('voice-event-preview');
+    expect(state.activeVoiceMode).toBe('preview');
+
+    useAiCenterStore.getState().reset();
+    chatWsServiceMock.send.mockReturnValueOnce('voice-event-direct');
+
+    expect(useAiCenterStore.getState().sendSpeechMessage({
+      audioData: 'base64-audio',
+      audioFormat: 'pcm16',
+      mode: 'direct',
+    })).toBe(true);
+
+    state = useAiCenterStore.getState();
+    expect(state.chatMessages).toHaveLength(1);
+    expect(state.chatMessages[0].request_type).toBe('SPEECH');
+    expect(state.chatMessages[0].message_type).toBe('speech_request');
+    expect(state.voiceCaptureState).toBe('transcribing');
+    expect(state.activeVoiceEventId).toBe('voice-event-direct');
+  });
+
+  it('appendSpeechTranscript updates input in preview mode', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('voice-event-1');
+
+    store.sendSpeechMessage({
+      audioData: 'base64-audio',
+      audioFormat: 'pcm16',
+      mode: 'preview',
+    });
+
+    const conversationId = useAiCenterStore.getState().conversationId;
+    store.appendSpeechTranscript({
+      ...speechTranscriptFixture,
+      conversation_id: conversationId,
+      reply_to_event_id: 'voice-event-1',
+      transcript: 'preview transcript',
+    });
+
+    const state = useAiCenterStore.getState();
+    expect(state.chatInput).toBe('preview transcript');
+    expect(state.chatMessages).toHaveLength(0);
+    expect(state.pendingChatEventIds['voice-event-1']).toBe(false);
+  });
+
+  it('appendSpeechTranscript updates target message in direct mode', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('voice-event-2');
+
+    store.sendSpeechMessage({
+      audioData: 'base64-audio',
+      audioFormat: 'pcm16',
+      mode: 'direct',
+    });
+
+    const conversationId = useAiCenterStore.getState().conversationId;
+    store.appendSpeechTranscript({
+      ...speechTranscriptFixture,
+      conversation_id: conversationId,
+      reply_to_event_id: 'voice-event-2',
+      transcript: 'direct transcript',
+    });
+
+    const state = useAiCenterStore.getState();
+    expect(state.chatMessages).toHaveLength(1);
+    expect(state.chatMessages[0].content).toBe('direct transcript');
+    expect(state.chatMessages[0].status).toBe('sent');
+    expect(state.chatMessages[0].transcript_language).toBe('en');
+  });
+
+  it('appendChatReply appends assistant message and deduplicates repeated events', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('user-event-1');
+
+    store.sendTextMessage('Need recommendation');
+    const conversationId = useAiCenterStore.getState().conversationId;
+
+    const payload = {
+      ...chatReplyFixture,
+      event_id: 'assistant-event-1',
+      conversation_id: conversationId,
+      reply_to_event_id: 'user-event-1',
+    };
+
+    store.appendChatReply(payload);
+    store.appendChatReply(payload);
+
+    const state = useAiCenterStore.getState();
+    const assistantMessages = state.chatMessages.filter((message) => message.role === 'assistant');
+    expect(assistantMessages).toHaveLength(1);
+
+    const userMessage = state.chatMessages.find((message) => message.event_id === 'user-event-1');
+    expect(userMessage?.status).toBe('replied');
+    expect(state.pendingChatEventIds['user-event-1']).toBe(false);
+  });
+
+  it('appendChatReply ignores payload from a different conversation', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('user-event-2');
+
+    store.sendTextMessage('Current conversation message');
+    const before = useAiCenterStore.getState().chatMessages.length;
+
+    store.appendChatReply({
+      ...chatReplyFixture,
+      event_id: 'assistant-event-x',
+      conversation_id: 'another-conversation',
+      reply_to_event_id: 'user-event-2',
+    });
+
+    expect(useAiCenterStore.getState().chatMessages).toHaveLength(before);
+  });
+
+  it('appendChatError marks target message error and preserves edge-case stability', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('user-event-1');
+    store.sendTextMessage('Will fail');
+
+    store.appendChatError({
+      ...chatErrorFixture,
+      reply_to_event_id: 'user-event-1',
+    });
+
+    let state = useAiCenterStore.getState();
+    const failedMessage = state.chatMessages.find((message) => message.event_id === 'user-event-1');
+    expect(failedMessage?.status).toBe('error');
+    expect(state.pendingChatEventIds['user-event-1']).toBe(false);
+    expect(state.chatErrorByEventId['user-event-1']).toBe('Assistant response timed out');
+
+    store.appendChatError(chatGlobalErrorFixture);
+    state = useAiCenterStore.getState();
+    expect(state.latestChatError?.event_id).toBe('chat-error-2');
+
+    store.appendChatError({
+      ...chatErrorFixture,
+      event_id: 'chat-error-missing',
+      reply_to_event_id: 'missing-user-event',
+    });
+    expect(useAiCenterStore.getState().latestChatError?.event_id).toBe('chat-error-2');
+  });
+
+  it('supports voice capture state transitions and mismatch guard', () => {
+    const store = useAiCenterStore.getState();
+
+    store.setVoiceCaptureRecording();
+    expect(useAiCenterStore.getState().voiceCaptureState).toBe('recording');
+
+    store.setVoiceCaptureTranscribing('voice-event-1', 'preview');
+    expect(useAiCenterStore.getState().voiceCaptureState).toBe('transcribing');
+
+    store.setVoiceCaptureSent('another-event');
+    expect(useAiCenterStore.getState().voiceCaptureState).toBe('transcribing');
+
+    store.setVoiceCaptureSent('voice-event-1');
+    expect(useAiCenterStore.getState().voiceCaptureState).toBe('sent');
+
+    store.setVoiceCaptureError('microphone error', 'voice-event-1');
+    expect(useAiCenterStore.getState().voiceCaptureState).toBe('error');
+    expect(useAiCenterStore.getState().voiceCaptureError).toBe('microphone error');
+
+    store.resetVoiceCapture();
+    expect(useAiCenterStore.getState().voiceCaptureState).toBe('idle');
+    expect(useAiCenterStore.getState().voiceCaptureError).toBeNull();
+  });
+
+  it('reset restores complete initial state', () => {
+    const store = useAiCenterStore.getState();
+
+    store.setSpeechEnabled(true);
+    store.setSpeechUnlocked(true);
+    store.setSpeechSupported(true);
+    store.setChatInput('draft input');
+    store.markMessageSpoken('msg-key', 'spoken text');
+    store.setVoiceCaptureRecording();
+
+    chatWsServiceMock.send.mockReturnValueOnce('user-event-reset');
+    store.sendTextMessage('message before reset');
+
+    store.reset();
+
+    const state = useAiCenterStore.getState();
+    expect(state.chatMessages).toHaveLength(0);
+    expect(state.chatInput).toBe('');
+    expect(state.pendingChatEventIds).toEqual({});
+    expect(state.chatErrorByEventId).toEqual({});
+    expect(state.latestChatError).toBeNull();
+    expect(state.speechEnabled).toBe(false);
+    expect(state.speechUnlocked).toBe(false);
+    expect(state.speechSupported).toBe(false);
+    expect(state.spokenMessages).toEqual({});
+    expect(state.lastSpokenAt).toEqual({});
+    expect(state.voiceCaptureState).toBe('idle');
+    expect(state.voiceCaptureError).toBeNull();
+    expect(state.activeVoiceEventId).toBeNull();
+    expect(state.activeVoiceMode).toBeNull();
+  });
+
+  it('processes websocket subscription callbacks registered at initialization', () => {
+    expect(typeof chatSubscribers.onChatReply).toBe('function');
+    expect(typeof chatSubscribers.onSpeechTranscript).toBe('function');
+    expect(typeof chatSubscribers.onError).toBe('function');
+
+    chatWsServiceMock.send.mockReturnValueOnce('voice-event-subscription');
+    useAiCenterStore.getState().sendSpeechMessage({
+      audioData: 'base64-audio',
+      audioFormat: 'pcm16',
+      mode: 'direct',
+    });
+
+    const conversationId = useAiCenterStore.getState().conversationId;
+
+    chatSubscribers.onSpeechTranscript?.({
+      ...speechTranscriptFixture,
+      conversation_id: conversationId,
+      reply_to_event_id: 'voice-event-subscription',
+      transcript: 'subscription transcript',
+    });
+
+    expect(useAiCenterStore.getState().voiceCaptureState).toBe('sent');
+  });
+});

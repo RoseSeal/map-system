@@ -51,6 +51,7 @@ interface AiCenterState {
   setSpeechUnlocked: (unlocked: boolean) => void;
   setSpeechSupported: (supported: boolean) => void;
   markMessageSpoken: (messageKey: string, text: string) => void;
+  reset: () => void;
   resetConversation: () => void;
   setVoiceCaptureSupported: (supported: boolean) => void;
   setVoiceCaptureRecording: () => void;
@@ -347,6 +348,10 @@ export const useAiCenterStore = create<AiCenterState>()(
           [messageKey]: Date.now(),
         },
       }));
+    },
+
+    reset: () => {
+      set(initialState());
     },
 
     resetConversation: () => {
