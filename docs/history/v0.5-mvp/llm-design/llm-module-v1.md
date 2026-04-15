@@ -2,7 +2,7 @@
 
 > 文档状态：archived / superseded
 > 归档日期：2026-04-03
-> 说明：本文档保留早期 v1 设计表述，当前实现真值以 `docs/ARCHITECTURE.md`、`docs/EVENT_SCHEMA.md` 为准；后续规划以 `docs/LLM_ROADMAP.md` 为准。
+> 说明：本文档保留早期 v1 设计表述，当前实现真值以 `docs/ARCHITECTURE.md`、`docs/EVENT_SCHEMA.md` 为准；后续待办与规划以 `docs/TODO.md` 和 `docs/ARCHITECTURE.md` 为准。
 
 ## 1. 版本定位
 

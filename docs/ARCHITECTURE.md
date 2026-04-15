@@ -60,9 +60,9 @@
 | `LlmRiskContext`（`llm/dto/`） | 投喂给 LLM 的风险上下文结构体 |
 | `RiskContextHolder`（`llm/context/`） | 持有最近一次风险快照，由 `ShipDispatcher` 在每次计算完成后更新 |
 | `RiskContextFormatter`（`llm/context/`） | 将 `LlmRiskContext` 格式化为 LLM 可读摘要 |
-| `ConversationMemory`（`service/llm/`） | 按 `conversationId` 维护多轮对话历史，含 TTL 过期与滑动窗口截断 |
+| `ConversationMemory`（`llm/memory/`） | 按 `conversationId` 维护多轮对话历史，含 TTL 过期与滑动窗口截断 |
 | `PromptTemplateService`（`llm/prompt/`） | 从 `classpath:prompts/` 加载 system prompt 模板 |
-| `LlmTriggerService`（`service/llm/`） | 判断是否触发风险解释，结果通过回调交付，不持有 transport 层引用 |
+| `LlmTriggerService`（`llm/service/`） | 判断是否触发风险解释，结果通过回调交付，不持有 transport 层引用 |
 
 ### 4.2 副服务
 
@@ -128,7 +128,7 @@ ChatWebSocketHandler
 - Chat 会话由客户端 `conversation_id` 锚定，后端未绑定 WebSocket session 或用户身份；该实现适用于当前单操作者前端模型，不提供多客户端会话隔离保证。
 - `service.llm` 包依赖收口完成：仅依赖 `llm.*`、`domain.*` 和 `config.properties`，不持有 `dto.websocket`、`engine.risk` 或 `transport` 层引用；transport 层负责协议校验与错误码映射。
 - ASR 已通过 `whisper.cpp` 接入，当前采用后端统一编排的非流式方案。
-- 动画指令、规则引擎、多智能体 / RAG 仍处于规划阶段。
+- 动画指令、规则引擎、多智能体 / GraphRAG 仍处于规划阶段。
 - `listener-service` 当前不在主运行链路中。
 
 ## 七、功能完成状态
@@ -171,7 +171,7 @@ ChatWebSocketHandler
 - [x] Mock 清理与管线集成（消除 assembler 硬编码，端到端串联引擎输出）
 - [ ] JSON 指令驱动动画
 - [ ] 显式实现 agent loop
-- [ ] 法律法规 RAG
+- [ ] 法律法规与历史危险场景 GraphRAG
 
 ### P4
 - [ ] 带唤醒词的纯语音交互
@@ -201,7 +201,7 @@ ChatWebSocketHandler
 
 ### P3 - 功能扩展
 
-- **Engine 增强**（已完成，详见 `docs/engine-enhancement/ENGINE_ENHANCEMENT_PLAN.md`）：
+- **Engine 增强**（已完成，详见 `docs/history/v0.7-engine-enhancement/ENGINE_ENHANCEMENT_PLAN.md`）：
   - 本船安全领域：动态四参数椭圆模型，替代 assembler 硬编码尺寸。
   - 目标船航迹预测：CV 恒速模型 + 历史轨迹存储，输出预测轨迹点序列。
   - 会遇态势识别：对遇/追越/交叉三类分类，参考内河避碰规则。
@@ -210,7 +210,7 @@ ChatWebSocketHandler
   - Mock 清理与管线集成：消除 assembler 全部硬编码，端到端串联引擎输出。
 - 引入 JSON 指令驱动动画，用于前端联动与解释增强。
 - 显式实现 agent loop，承接后续更复杂的任务编排。
-- 接入法律法规 RAG，提升解释与建议的规则依据。
+- 接入法律法规与历史危险场景 GraphRAG，为解释与建议提供规则依据、相似案例参考与可追溯推理链。
 
 ### P4 - 体验增强
 
