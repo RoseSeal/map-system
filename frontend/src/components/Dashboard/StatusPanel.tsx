@@ -1,49 +1,23 @@
-﻿/**
+/**
  * Status Panel Component (Compact HUD Mode)
- * Displays own ship status, trust factor, connection state, and speech controls
+ * Displays own ship status, trust factor, and connection state.
+ * Global settings (theme, speech) are handled by ToolbarOverlay.
  */
 
 import {
   useRiskStore,
-  useAiCenterStore,
   selectOwnShip,
   selectGovernance,
   selectIsConnected,
   selectIsLowTrust,
-  selectSpeechEnabled,
-  selectSpeechSupported,
 } from '../../store';
-import { useThemeStore } from '../../store/useThemeStore';
 import { COLORS } from '../../config';
-import { speechService } from '../../services/speechService';
 
 export function StatusPanel() {
   const ownShip = useRiskStore(selectOwnShip);
   const governance = useRiskStore(selectGovernance);
   const isConnected = useRiskStore(selectIsConnected);
   const isLowTrust = useRiskStore(selectIsLowTrust);
-  const speechEnabled = useAiCenterStore(selectSpeechEnabled);
-  const speechSupported = useAiCenterStore(selectSpeechSupported);
-  const setSpeechEnabled = useAiCenterStore((state) => state.setSpeechEnabled);
-  const setSpeechUnlocked = useAiCenterStore((state) => state.setSpeechUnlocked);
-
-  const { isDarkMode, toggleTheme } = useThemeStore();
-
-  const handleSpeechToggle = () => {
-    if (!speechSupported) {
-      return;
-    }
-
-    if (speechEnabled) {
-      setSpeechEnabled(false);
-      speechService.stop();
-      return;
-    }
-
-    const unlocked = speechService.unlock();
-    setSpeechUnlocked(unlocked);
-    setSpeechEnabled(unlocked);
-  };
 
   if (!ownShip || !governance) {
     return (
@@ -113,50 +87,6 @@ export function StatusPanel() {
               {mapHealthStatus(ownShip.platform_health.status)}
             </span>
           </div>
-        </div>
-      </div>
-
-      <div className="pt-2 border-t border-slate-300 dark:border-white/10 space-y-2">
-        {/* 系统主题切换 */}
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400">系统主题</div>
-            <div className="text-[10px] text-slate-400 dark:text-slate-500">
-              切换亮色与深色模式
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="px-2.5 py-1 rounded text-[10px] font-medium border transition-colors border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-slate-900/70 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500"
-          >
-            {isDarkMode ? '深色' : '亮色'}
-          </button>
-        </div>
-
-        {/* 语音播报切换 */}
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400">语音播报</div>
-            <div className="text-[10px] text-slate-400 dark:text-slate-500">
-              {speechSupported ? '开启后自动播报风险评估' : '当前不支持语音播报'}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleSpeechToggle}
-            disabled={!speechSupported}
-            className={[
-              'px-2.5 py-1 rounded text-[10px] font-medium border transition-colors',
-              speechSupported
-                ? speechEnabled
-                  ? 'border-cyan-600/40 dark:border-cyan-500/40 bg-cyan-50 dark:bg-cyan-500/15 text-cyan-700 dark:text-cyan-200 hover:bg-cyan-100 dark:hover:bg-cyan-500/25'
-                  : 'border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-slate-900/70 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500'
-                : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-900/40 text-slate-400 dark:text-slate-600 cursor-not-allowed',
-            ].join(' ')}
-          >
-            {speechEnabled ? '已开启' : '开启播报'}
-          </button>
         </div>
       </div>
     </div>

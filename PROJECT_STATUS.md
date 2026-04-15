@@ -12,7 +12,7 @@
 | Step | Plan | Implementation |
 | --- | --- |
 | Overview plan | completed | not applicable |
-| Step 1: test framework and baseline | pending | pending |
+| Step 1: test framework and baseline | completed | completed |
 | Step 2: frontend architecture docs and component cleanup | pending | pending |
 | Step 3: presentation enhancements | pending | pending |
 | Step 4: interaction enhancements | pending | pending |

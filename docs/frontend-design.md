@@ -1,170 +1,224 @@
-# Frontend Design Reference
+# 前端设计参考文档
 
-> 文档状态：current
-> 最后更新：2026-04-14
+> 文档状态：当前 (Current)
+> 最后更新：2026-04-15
 > 基线来源：`docs/ARCHITECTURE.md`、`docs/EVENT_SCHEMA.md`
 
-This document describes the frontend architecture, rendering model, and operational guidance for the Map System.
+本文档描述了 Map System 前端的架构设计、渲染模型及运行指南。
 
-## 1. Project Background
+## 1. 项目背景
 
-The frontend is a WebGL-based situational awareness UI for the Map System maritime risk warning platform.
+前端是一个基于 WebGL 的态势感知界面，专为 Map System 海上风险预警平台设计。
 
-Core goals:
-- Render a 2.5D maritime chart (S-57 ENC) in real time.
-- Visualize dynamic vessel risk information (CPA, OZT, Safety Domain, predicted trajectory).
-- Support LLM-based risk explanation and voice interaction via chat panel.
+核心目标：
+- 实时渲染 2.5D 海图（S-57 ENC）。
+- 可视化动态船舶风险信息（CPA、OZT、安全域、预测轨迹）。
+- 通过聊天面板支持基于 LLM 的风险解释及语音交互。
 
-Primary frontend path: `frontend/`
+主要前端路径：`frontend/`
 
-## 2. Architecture Model
+## 2. 架构模型
 
-The system follows a Fat Backend + Thin Frontend model:
-- Backend (`map-service`) handles MQTT ingestion, risk calculation, LLM orchestration, and streaming.
-- Frontend focuses on rendering and interaction.
+系统遵循“重后端 + 轻前端”模式：
+- 后端 (`map-service`) 负责 MQTT 数据接入、风险计算、LLM 编排及流式数据推送。
+- 前端专注于数据渲染与用户交互。
 
-Transport:
-- Risk stream: SSE `/api/v2/risk` — `RISK_UPDATE`, `EXPLANATION`, `ERROR`
-- Chat stream: WebSocket `/api/v2/chat` — `CHAT`, `SPEECH`, `CHAT_REPLY`, `SPEECH_TRANSCRIPT`, `ERROR`
+传输协议：
+- 风险流：SSE `/api/v2/risk` — `RISK_UPDATE`（风险更新）, `EXPLANATION`（解释）, `ERROR`（错误）
+- 聊天流：WebSocket `/api/v2/chat` — `CHAT`, `SPEECH`, `CHAT_REPLY`, `SPEECH_TRANSCRIPT`, `ERROR`
 
-See `docs/EVENT_SCHEMA.md` for full protocol definitions.
+完整协议定义请参阅 `docs/EVENT_SCHEMA.md`。
 
-## 3. Frontend Technology Stack
+## 3. 前端技术栈
 
-- React 18 (functional components + hooks)
+- React 18（函数式组件 + Hooks）
 - Vite 5
-- TypeScript (strict typing)
-- Zustand (state management)
+- TypeScript（严格类型检查）
+- Zustand（状态管理）
 - MapLibre GL JS 4+
-- Deck.gl 9+ (MapboxOverlay integration)
+- Deck.gl 9+（MapboxOverlay 集成）
 - Tailwind CSS 3+
 
-## 4. Repository Structure
+## 4. 目录结构
 
 ```text
 frontend/
   src/
     components/
+      Dashboard/        ← 态势 HUD 与 AI 中心组件
+      Map/              ← 地图渲染核心
+      Overlays/         ← 全局工具与浮层
     config/
-      constants.ts
+      constants.ts      ← 常量配置
     services/
       riskSseService.ts       ← SSE 客户端（风险流）
       chatWsService.ts        ← WebSocket 客户端（聊天流）
     store/
-      useRiskStore.ts
+      useRiskStore.ts         ← 态势数据存储
+      useAiCenterStore.ts     ← 聊天与语音状态存储
     types/
       schema.d.ts             ← 协议类型定义（以 EVENT_SCHEMA.md 为准）
     utils/
 ```
 
-## 5. Data Layers and Contract Model
+## 5. 组件职责地图
 
-Primary render unit: `RiskObject` (`RISK_UPDATE` payload)
+| 组件 | 职责 | 不属于其职责 |
+| --- | --- | --- |
+| `RiskExplanationPanel` | AI 中心容器，整合态势日志区与对话区 | 不进行 Store 业务计算，不聚合地图连接状态 |
+| `TargetsPanel` | 风险目标列表、目标选择、触发 AI 中心打开 | 不展示聊天消息，不维护解释缓存 |
+| `ChatMessageList` | 渲染消息列表与局部重试入口 | 不持有消息状态，不负责发送逻辑 |
+| `ChatComposer` | 文本输入、语音入口、目标 Chip 展示 | 不直接操作服务层，不持有录音实现 |
+| `StatusPanel` | 本船 HUD、平台健康、可信度与连接状态展示 | 不承载主题切换与播报设置 |
+| `ToolbarOverlay` | 主题切换、语音播报开关 | 不展示船舶数据，不承担态势 HUD 职能 |
 
-Key fields:
+## 6. 语音状态机与消息生命周期
+
+### 6.1 语音采集状态 (Voice Capture State)
+
+`voiceCaptureState` 在 `useAiCenterStore` 中维护，流转如下：
+
+```text
+idle -> recording -> transcribing -> sent -> idle
+                 \-> error -------> idle
+recording --cancel--> idle
+```
+
+- `cancel`: 仅发生在本地录音阶段（录音时长过短或用户主动取消）。
+- `transcribing`: 后端正在通过 Whisper 进行转录，此时不可取消。
+- `sent`: 转录结果已回填至输入框或已作为消息发送。
+
+### 6.2 聊天消息生命周期 (Message Lifecycle)
+
+以 `AiCenterChatMessage.status` 为核心状态主线：
+
+```text
+user send -> pending -> replied
+                  \-> error
+
+speech preview transcript -> sent
+assistant reply            -> sent
+```
+
+- `pending`: 用户消息已通过 WebSocket 发送，等待后端响应。
+- `replied`: 已收到 `CHAT_REPLY`，对话回合完成。
+- `error`: 发送失败、连接断开或响应超时。
+
+## 7. 连接管理
+
+前端当前维护两条独立连接：
+- **风险 SSE**: 通过 `useRiskStore.isConnected` 反映连接状态。
+- **聊天 WS**: 通过 `chatWsService.getState()` 反映连接状态。
+
+**计划项（Step 3）**: 将实现统一的连接展示模型，在 UI 上聚合展示双连接的整体健康度。
+
+## 8. 数据层与契约模型
+
+主要渲染单元：`RiskObject` (`RISK_UPDATE` 载荷)
+
+核心字段说明：
 - `risk_object_id`, `timestamp`, `governance.mode`, `governance.trust_factor`
-- `own_ship`: `position`, `dynamics` (`sog`, `cog`, `hdg`, `rot`), `platform_health`, `future_trajectory`, `safety_domain`
-- `targets[*]`: `risk_level`, `cpa_metrics`, `graphic_cpa_line`, `ozt_sector`, `encounter_type`, `risk_score`, `risk_confidence`, `predicted_trajectory`
+- `own_ship`: `position`（位置）, `dynamics`（动力学数据：`sog`, `cog`, `hdg`, `rot`）, `platform_health`（平台健康）, `future_trajectory`（预测轨迹）, `safety_domain`（安全域）
+- `targets[*]`: `risk_level`（风险等级）, `cpa_metrics`（CPA 指标）, `graphic_cpa_line`（CPA 线）, `ozt_sector`（OZT 扇区）, `encounter_type`（会遇类型）, `risk_score`（风险评分）, `risk_confidence`（评估置信度）, `predicted_trajectory`（预测轨迹）
 - `environment_context.safety_contour_val`
 
-Risk levels: `SAFE`, `CAUTION`, `WARNING`, `ALARM`
+风险等级定义：`SAFE`（安全）, `CAUTION`（注意）, `WARNING`（警告）, `ALARM`（警报）
 
-Platform health states: `NORMAL`, `DEGRADED`, `NUC`
+平台健康状态：`NORMAL`（正常）, `DEGRADED`（降级）, `NUC`（失控）
 
-Explanation event: `EXPLANATION` payload delivered on the risk SSE channel, separate from `RISK_UPDATE`. Rendered as a risk explanation card.
+解释事件：`EXPLANATION` 载荷通过风险 SSE 通道分发，独立于 `RISK_UPDATE`。渲染为风险解释卡片。
 
-## 6. Rendering Rules
+## 9. 渲染规则
 
-Map and overlay layering order:
-1. MapLibre base map (bottom) — S-57 ENC tiles from `/api/s57/tiles/{z}/{x}/{y}.pbf`
-2. Deck.gl dynamic overlays (middle) — vessel models, CPA lines, OZT sectors, safety domains
-3. React UI overlays (top) — dashboard panels, chat panel, theme toggle
+地图与叠加层的层级顺序（从底至顶）：
+1. MapLibre 基础地图：从 `/api/s57/tiles/{z}/{x}/{y}.pbf` 加载 S-57 ENC 矢量切片。
+2. Deck.gl 动态叠加层：渲染船舶模型、CPA 线、OZT 扇区、安全域及轨迹。
+3. React UI 叠加层：面板组件（Dashboard Panels）、聊天面板、主题切换控件。
 
-S-57 map style guidance:
-- Land (`LNDARE`): base fill plus optional 3D extrusion
-- Depth areas (`DEPARE`): shallow/deep color split by depth value
-- Restricted zones (`RESARE`): transparent red warning fill
-- Additional chart layers: `COALNE`, `DEPCNT`, `SOUNDG`
+S-57 海图样式指南：
+- 陆地 (`LNDARE`): 基础填充，支持可选 3D 挤压。
+- 水深区域 (`DEPARE`): 根据水深值进行深浅色分色。
+- 受限区域 (`RESARE`): 半透明红色警示填充。
+- 辅助海图层: `COALNE`, `DEPCNT`, `SOUNDG`。
 
-Behavioral display thresholds:
-- Show safety domain when risk level >= `CAUTION`
-- Show CPA line when `graphic_cpa_line` is present in target's `risk_assessment`
-- Show OZT sector when `ozt_sector.is_active` is true
-- Show low-trust warning when `trust_factor < 0.4`
+行为触发阈值：
+- 当风险等级 >= `CAUTION` 时，显示安全域。
+- 当目标 `risk_assessment` 中存在 `graphic_cpa_line` 时，显示 CPA 线。
+- 当 `ozt_sector.is_active` 为 true 时，显示 OZT 扇区。
+- 当 `trust_factor < 0.4` 时，显示低置信度警告。
 
-## 7. Theme Support
+## 10. 主题支持
 
-Frontend supports `light / dark` switchable themes. Toggle is managed in frontend state; no backend dependency.
+前端支持“亮色 (Light)”与“深色 (Dark)”主题切换。主题状态通过 `useThemeStore` 在前端本地管理，不依赖后端。
 
-## 8. Voice Interaction
+## 11. 语音交互
 
-- TTS: Browser-native `SpeechSynthesis` for LLM reply playback.
-- ASR: Audio captured by `MediaRecorder`, sent as `SPEECH` WebSocket message (Base64, `webm` format) to backend. Backend orchestrates `whisper.cpp` transcription.
-- Two modes: `direct` (transcribe + LLM reply) and `preview` (transcribe only, result returned in input field).
+- TTS（语音合成）：使用浏览器原生 `SpeechSynthesis` 播放 LLM 回复。
+- ASR（语音识别）：由 `MediaRecorder` 采集音频，作为 `SPEECH` WebSocket 消息（Base64 编码，`webm` 格式）发送至后端。后端编排 `whisper.cpp` 进行转录。
+- 模式说明：分为 `direct`（转录并触发 LLM 回复）和 `preview`（仅转录，结果回填至输入框）。
 
-## 9. Frontend Integration Guidance
+## 12. 前端集成指南
 
-### 9.1 Risk Score Rendering Continuity
+### 12.1 风险评分 (risk_score) 渲染连续性
 
-`risk_score` is a continuous backend auxiliary signal, but it is not yet treated as an operator-facing display metric in the current frontend. A representative backend behavior is the CPA crossing point: once a target transitions from approaching to diverging, backend `tcpaScore` may drop sharply by design.
+`risk_score` 是后端生成的连续辅助信号，但在当前版本中，前端不将其作为面向操作员的核心指标展示。典型行为如 CPA 交越点：当目标从接近转为远离时，后端 `tcpaScore` 可能会大幅下降。
 
-Current frontend policy:
-- Use `risk_score` only as a secondary sort key within the same `risk_level` group.
-- Treat a missing `risk_score` as `0.0` for sort purposes.
-- Do not display `risk_score` as text, progress, color intensity, chip strength, glow strength, or any other operator-visible metric.
+当前前端策略：
+- 仅将 `risk_score` 作为同一 `risk_level` 组内的次级排序键。
+- 排序时将缺失的 `risk_score` 视为 `0.0`。
+- 不以文本、进度条、颜色强度、发光强度或其他视觉指标展示 `risk_score`。
 
-Deferred direction:
-- After the backend scoring model is validated against real traffic data, `risk_score` may be promoted to a presentation-layer display signal for visual intensity or animation strength.
-- If that promotion happens later, frontend smoothing should remain presentation-only and must not alter alert timing, threshold logic, or categorical state.
+后续演进方向：
+- 在后端评分模型通过真实交通数据验证后，`risk_score` 可能被提升为面向表现层的展示信号，用于视觉强度或动画增强。
+- 届时任何前端平滑逻辑必须仅限于表现层，不得修改警报时机、阈值逻辑或分类状态。
 
-Constraint:
-- Until that future promotion is explicitly approved, `risk_score` remains a sorting aid only.
+约束：
+- 在获得明确批准前，`risk_score` 仅限用于内部排序辅助。
 
-### 9.2 Stepwise Backend Field Adoption
+### 12.2 后端字段的分步采用
 
-Step 2 and Step 3 may extend the frontend schema ahead of stable UI usage, for example `targets[*].predicted_trajectory` and `targets[*].risk_assessment.encounter_type`.
+在引擎增强阶段（如 Step 2 和 Step 3），前端可能会提前扩展 Schema（例如 `targets[*].predicted_trajectory` 和 `targets[*].risk_assessment.encounter_type`）。
 
-Frontend responsibilities:
-- Accept new optional protocol fields in TypeScript schema and store ingestion as soon as the backend begins emitting them.
-- Avoid deep UI coupling to fields whose semantics are still expected to evolve in later engine steps.
-- Prefer thin compatibility work first: schema updates, safe parsing, optional-field guards, and internal render hooks.
-- Defer production-facing visualization and interaction logic for evolving Step 2/3 engine outputs until Step 4 risk semantics are stable.
+前端职责：
+- 一旦后端开始输出新字段，立即在 TypeScript Schema 及 Store 接入层支持相关可选字段。
+- 避免 UI 层深度耦合语义尚在演进中的字段。
+- 优先进行轻量化兼容：Schema 更新、安全解析、可选字段防护及内部渲染 Hook 预留。
+- 将面向生产的最终可视化及交互逻辑推迟至 Step 4 风险语义稳定后执行。
 
-Implementation guidance:
-- It is acceptable to add debug-only panels or non-blocking inspection views for intermediate fields.
-- Map layers, target cards, ranking logic, and operator-facing summaries should not depend on intermediate fields unless the backend contract for those fields is already stable.
-- Cleanup-path omissions, temporary fallback values, and staging-only asymmetries are expected during engine enhancement steps and should not force premature frontend coupling.
+实施建议：
+- 允许增加仅供调试使用的面板或非阻塞的查看视图，用于检查中间字段。
+- 地图层、目标卡片、排序逻辑及操作员摘要不应依赖中间字段，除非该字段的后端契约已标记为稳定。
 
-Constraint:
-- Frontend compatibility must not be mistaken for frontend commitment. Accepting a field in the contract layer does not require immediate visual consumption.
+约束：
+- 前端兼容不代表前端承诺。在契约层接受字段并不要求立即在 UI 中进行视觉消费。
 
-### 9.3 Trajectory Rendering Style — No Branch on `prediction_type`
+### 12.3 轨迹渲染样式 — 不区分 prediction_type
 
-`target.predicted_trajectory.points` may be produced by either the CV (linear) or CTR (constant turn rate) model. The backend communicates which model was used via `prediction_type`, but the frontend must not branch on this field for rendering style.
+`target.predicted_trajectory.points` 可能由 CV（线性）或 CTR（恒定转弯率）模型生成。后端通过 `prediction_type` 告知模型类型，但前端在渲染样式上不得根据该字段进行分支处理。
 
-Frontend responsibilities:
-- Render `PathLayer` with a uniform style regardless of `prediction_type` value.
-- Treat all trajectory point arrays identically: connect them in sequence, apply the standard fade-opacity scheme.
-- Curved appearance emerges naturally from point spatial distribution when the backend CTR model is active; no renderer change is required.
+前端职责：
+- 使用统一的样式渲染 `PathLayer`，不区分 `prediction_type` 取值。
+- 对所有轨迹点阵列进行一致处理：按顺序连接，应用标准的透明度衰减方案。
+- 当后端 CTR 模型激活时，曲线效果应通过点的空间分布自然呈现，无需前端修改渲染器。
 
-Constraint:
-- Do not add style branches, icon changes, or color overrides keyed on `prediction_type`. Doing so would couple the renderer to backend algorithm internals, requiring frontend changes on every future model upgrade.
+约束：
+- 不得根据 `prediction_type` 增加样式分支、图标变更或颜色覆盖。否则将导致渲染器与后端算法实现细节耦合，增加后续算法升级时的前端维护成本。
 
-### 9.4 `risk_confidence` Consumption Boundary
+### 12.4 风险评估置信度 (risk_confidence) 消费边界
 
-`risk_confidence` is a per-target assessment confidence emitted by the backend. It is not the same field as top-level `governance.trust_factor`.
+`risk_confidence` 是后端针对每个目标输出的评估置信度，这不同于顶层的全局系统可信度字段 `governance.trust_factor`。
 
-Frontend responsibilities:
-- Accept and store the field in the contract layer.
-- Keep any consumption secondary and non-blocking.
-- If consumed in UI, prefer low-confidence hinting such as a subtle badge, muted secondary styling, or diagnostic text in an inspection/debug surface.
+前端职责：
+- 在契约层接受并存储该字段。
+- 确保任何基于此字段的消费都是次要且非阻塞的。
+- 若在 UI 展示，应倾向于低置信度提示（如微调角标、弱化样式或诊断文本），仅作为辅助参考。
 
-Constraint:
-- Do not let `risk_confidence` suppress, delay, or override backend `risk_level`.
-- Do not treat `risk_confidence` as the global system trust signal; that role belongs to `governance.trust_factor`.
-- Backend fallback semantics: when no valid target assessments are available, `governance.trust_factor` may be `0.0`; frontend must interpret this as "no current global confidence basis", not as a hidden risk-level override.
+约束：
+- 不允许 `risk_confidence` 抑制、延迟或覆盖后端的 `risk_level`。
+- 不得将 `risk_confidence` 视为全局系统信任信号（该职能归属于 `governance.trust_factor`）。
+- 后端降级语义：当无有效目标评估可用时，`governance.trust_factor` 可能为 `0.0`；前端必须将其解释为“当前缺乏全局可信度基础”，而非隐藏的风险等级覆盖。
 
-## 10. Local Frontend Development
+## 13. 本地开发指南
 
 ```bash
 cd frontend
@@ -172,18 +226,18 @@ npm install
 npm run dev
 ```
 
-Backend must be running at `http://localhost:8080` for SSE and WebSocket connections to succeed.
-Whisper service runs at `http://localhost:8081` (Docker, orchestrated by backend — not called directly by frontend).
+后端必须运行在 `http://localhost:8080` 以确保 SSE 和 WebSocket 连接成功。
+Whisper 服务运行在 `http://localhost:8081`（通过 Docker 由后端编排，前端不直接调用）。
 
-## 11. Acceptance Checklist
+## 14. 验收清单
 
-- Frontend compiles and launches without errors.
-- SSE connection to `/api/v2/risk` established; `RISK_UPDATE` events received and rendered.
-- WebSocket connection to `/api/v2/chat` established; `CHAT` and `SPEECH` messages functional.
-- S-57 tiles load from `/api/s57/tiles/{z}/{x}/{y}.pbf`.
-- Land/depth/coastline layers render correctly.
-- Dynamic vessel overlays render and update on each `RISK_UPDATE`.
-- Risk overlays (safety domain, OZT, CPA line) follow threshold rules.
-- `EXPLANATION` events render as risk explanation cards.
-- Light/dark theme toggle functions correctly.
-- No critical console errors in browser.
+- 前端可正常编译并启动，无编译错误。
+- 成功建立至 `/api/v2/risk` 的 SSE 连接，可接收并渲染 `RISK_UPDATE` 事件。
+- 成功建立至 `/api/v2/chat` 的 WebSocket 连接，`CHAT` 与 `SPEECH` 消息功能正常。
+- 能够从 `/api/s57/tiles/{z}/{x}/{y}.pbf` 成功加载 S-57 切片。
+- 陆地、水深及海岸线图层显示正确。
+- 动态船舶叠加层在每次 `RISK_UPDATE` 时可准确更新。
+- 风险叠加层（安全域、OZT、CPA 线）遵循既定的阈值触发规则。
+- `EXPLANATION` 事件可正确渲染为风险解释卡片。
+- 亮色/深色主题切换功能正常。
+- 浏览器控制台无严重错误日志。

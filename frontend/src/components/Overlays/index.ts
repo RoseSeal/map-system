@@ -1,1 +1,1 @@
-export { CompassOverlay } from './CompassOverlay';
+export { ToolbarOverlay } from './ToolbarOverlay';

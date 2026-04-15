@@ -1,10 +1,10 @@
-﻿/**
+/**
  * Unmanned Fleet Risk Warning System
  * Phase 2: 2.5D Dynamic Risk Awareness Dashboard
  */
 
 import { useEffect } from 'react';
-import { MapContainer, StatusPanel, TargetsPanel, CompassOverlay, RiskExplanationPanel } from './components';
+import { MapContainer, StatusPanel, TargetsPanel, RiskExplanationPanel, ToolbarOverlay } from './components';
 import { chatWsService, riskSseService } from './services';
 import { useAiSpeechBroadcast } from './hooks/useAiSpeechBroadcast';
 
@@ -30,8 +30,8 @@ function App() {
           <StatusPanel />
         </div>
 
-        <div className="absolute top-4 right-16 pointer-events-auto">
-          <CompassOverlay />
+        <div className="absolute top-4 right-4 pointer-events-auto">
+          <ToolbarOverlay />
         </div>
 
         <RiskExplanationPanel />
