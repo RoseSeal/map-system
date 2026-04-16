@@ -497,6 +497,30 @@ interface ChatRequestPayload {
 
 ---
 
+## Step 5：视觉风格精修
+
+### 目标
+将前端布局从“散落悬浮挂件”升级为“专业控制台”模式，提升界面的秩序感与沉浸感。
+
+### 文档定位
+Step 5 的详细视觉方案单独记录在 [`visual-optimization.md`](./visual-optimization.md)。该文档作为 Step 5 的补充设计说明使用，不替代本总计划中的范围、排序和验收定义。
+
+### 核心变更
+- **右侧侧边栏全屏化**：`RiskExplanationPanel` 高度改为 100%，消除上下缝隙。
+- **左侧 HUD 聚拢**：`StatusPanel` 与 `TargetsPanel` 严格对齐，形成监控信息簇。
+- **设置项抽屉化**：将主题切换与语音播报移入隐藏式抽屉或侧边栏二级区域。
+- **设计规范精修**：强化等宽字体使用，统一半透明边框与 Quart Out 动效。
+
+### 执行时机
+Step 5 在 Step 4 完成并通过评审后启动；Step 4 编码期间不并行引入该步骤，以避免将视觉重构与交互改动混合交付。
+
+### 验收
+- 整体布局呈现清晰的“左监控、右执行”分区。
+- 地图视野干扰最小化。
+- 所有功能逻辑与 Step 4 完成时保持一致，无任何功能性回归。
+
+---
+
 ## 三、各步骤交付物汇总
 
 | 步骤 | 主要交付物 |
@@ -505,6 +529,7 @@ interface ChatRequestPayload {
 | Step 2 | 删除 `CompassOverlay`；新增 `ToolbarOverlay`（主题/语音）；`frontend-design.md` 新增章节（组件职责 + 状态机 + 扩展点 + 抽屉策略） |
 | Step 3 | TargetsPanel + RiskExplanationPanel 展示增强、StatusPanel 双连接状态增强 |
 | Step 4 | 取消录音（前端本地）、编辑最后一条用户消息（前后端联动，失败恢复编辑态并保留草稿）、解释上下文注入（后端缓存支持） |
+| Step 5 | 全屏侧边栏布局、设置抽屉、统一的视觉规范方案 |
 
 ---
 

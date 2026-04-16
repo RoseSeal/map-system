@@ -4,10 +4,32 @@ import type { AiCenterChatMessage } from '../../types/aiCenter';
 interface ChatMessageListProps {
   messages: AiCenterChatMessage[];
   onRetry: (message: AiCenterChatMessage) => void;
+  editingMessageEventId?: string | null;
+  editingDraft?: string;
+  editingSubmitPending?: boolean;
+  editingSubmitError?: string | null;
+  onStartEditingLastUserMessage?: () => void;
+  onUpdateEditingDraft?: (value: string) => void;
+  onConfirmEditingLastUserMessage?: () => void;
+  onCancelEditingLastUserMessage?: () => void;
+  onClearEditingSubmitError?: () => void;
 }
 
-export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
+export function ChatMessageList({
+  messages,
+  onRetry,
+  editingMessageEventId = null,
+  editingDraft = '',
+  editingSubmitPending = false,
+  editingSubmitError = null,
+  onStartEditingLastUserMessage,
+  onUpdateEditingDraft,
+  onConfirmEditingLastUserMessage,
+  onCancelEditingLastUserMessage,
+  onClearEditingSubmitError,
+}: ChatMessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const editableMessage = getEditableLastUserMessage(messages);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -34,6 +56,15 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
         const showError = isUser && message.status === 'error' && message.error_message;
         const showRetry = showError && message.request_type !== 'SPEECH';
         const showInterruptPlaceholder = isUser && message.status === 'pending';
+        const showEditButton = Boolean(
+          isUser
+            && editableMessage
+            && editableMessage.event_id === message.event_id
+            && !editingMessageEventId
+            && !editingSubmitPending
+            && onStartEditingLastUserMessage,
+        );
+        const isEditing = isUser && editingMessageEventId === message.event_id;
 
         return (
           <div
@@ -51,13 +82,57 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
                     : 'bg-slate-100 dark:bg-slate-900/80 border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-100',
                 ].join(' ')}
               >
-                {isSpeechMessage && (
-                  <div className="mb-1 flex items-center justify-end gap-1.5 text-[10px] uppercase tracking-[0.14em] text-cyan-200/70">
-                    <span>VOICE</span>
-                    {message.speech_mode && <span>{message.speech_mode}</span>}
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={editingDraft}
+                      onChange={(event) => onUpdateEditingDraft?.(event.target.value)}
+                      rows={4}
+                      disabled={editingSubmitPending}
+                      className="w-full resize-none rounded-lg border border-cyan-300/60 bg-white/80 px-3 py-2 text-sm text-slate-800 outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-70 dark:border-cyan-400/30 dark:bg-slate-900/70 dark:text-slate-100"
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={onConfirmEditingLastUserMessage}
+                        disabled={editingSubmitPending}
+                        className="rounded-md border border-cyan-500/30 px-2.5 py-1 text-[11px] text-cyan-700 transition-colors hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:text-cyan-200"
+                      >
+                        确认
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onCancelEditingLastUserMessage}
+                        disabled={editingSubmitPending}
+                        className="rounded-md border border-slate-300 px-2.5 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-slate-800/60"
+                      >
+                        取消
+                      </button>
+                    </div>
+                    {editingSubmitError && (
+                      <div className="flex items-center justify-between gap-2 rounded-md border border-red-500/20 bg-red-50/80 px-2 py-1 text-[11px] text-red-600 dark:bg-red-500/10 dark:text-red-200">
+                        <span>{editingSubmitError}</span>
+                        <button
+                          type="button"
+                          onClick={onClearEditingSubmitError}
+                          className="rounded border border-red-500/20 px-1.5 py-0.5 text-[10px] text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-200"
+                        >
+                          关闭
+                        </button>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <>
+                    {isSpeechMessage && (
+                      <div className="mb-1 flex items-center justify-end gap-1.5 text-[10px] uppercase tracking-[0.14em] text-cyan-200/70">
+                        <span>VOICE</span>
+                        {message.speech_mode && <span>{message.speech_mode}</span>}
+                      </div>
+                    )}
+                    <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                  </>
                 )}
-                <div className="whitespace-pre-wrap break-words">{message.content}</div>
               </div>
 
               <div className={`flex items-center gap-2 text-[10px] ${isUser ? 'justify-end text-slate-500' : 'justify-start text-slate-500'}`}>
@@ -74,6 +149,17 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
                 >
                   <span className="h-3 w-3 rounded-full border-2 border-cyan-500/60 dark:border-cyan-400/60 border-t-transparent animate-spin" />
                   <span>处理中</span>
+                </button>
+              )}
+
+              {showEditButton && (
+                <button
+                  type="button"
+                  onClick={onStartEditingLastUserMessage}
+                  disabled={editingSubmitPending}
+                  className="inline-flex items-center rounded-md border border-cyan-500/20 px-2 py-1 text-[11px] text-cyan-700 transition-colors hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:text-cyan-200"
+                >
+                  编辑
                 </button>
               )}
 
@@ -99,6 +185,20 @@ export function ChatMessageList({ messages, onRetry }: ChatMessageListProps) {
       })}
     </div>
   );
+}
+
+function getEditableLastUserMessage(messages: AiCenterChatMessage[]): AiCenterChatMessage | null {
+  if (messages.length < 2) {
+    return null;
+  }
+
+  const userMessage = messages[messages.length - 2];
+  const assistantMessage = messages[messages.length - 1];
+  if (userMessage.role !== 'user' || userMessage.request_type !== 'CHAT' || assistantMessage.role !== 'assistant') {
+    return null;
+  }
+
+  return userMessage;
 }
 
 function formatStatus(message: AiCenterChatMessage): string {

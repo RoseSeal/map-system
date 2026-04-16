@@ -10,9 +10,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -22,6 +25,7 @@ public class LlmRiskEventListener {
     private final LlmRiskContextAssembler llmRiskContextAssembler;
     private final RiskContextHolder riskContextHolder;
     private final LlmTriggerService llmTriggerService;
+    private final ExplanationCache explanationCache;
     private final RiskStreamPublisher riskStreamPublisher;
 
     @EventListener
@@ -37,6 +41,7 @@ public class LlmRiskEventListener {
                 event.riskResult()
         );
         riskContextHolder.update(event.snapshotVersion(), context);
+        explanationCache.refreshTargetState(buildCurrentTargetIds(event), buildCurrentNonSafeTargetIds(context));
 
         if (!event.triggerExplanations()) {
             return;
@@ -44,7 +49,15 @@ public class LlmRiskEventListener {
 
         llmTriggerService.triggerExplanationsIfNeeded(
                 context,
-                explanation -> riskStreamPublisher.publishExplanation(buildExplanationPayload(explanation, event.riskObjectId())),
+                explanation -> {
+                    ExplanationPayload payload = buildExplanationPayload(explanation, event.riskObjectId());
+                    if (!explanationCache.shouldAccept(explanation.getTargetId())) {
+                        log.debug("Drop stale explanation for targetId={}", explanation.getTargetId());
+                        return;
+                    }
+                    explanationCache.put(explanation.getTargetId(), explanation.getText(), payload.getTimestamp());
+                    riskStreamPublisher.publishExplanation(payload);
+                },
                 (target, error) -> riskStreamPublisher.publishError(
                         mapExplanationErrorCode(error == null ? null : error.errorCode()),
                         error == null ? "LLM explanation request failed." : error.errorMessage(),
@@ -63,6 +76,30 @@ public class LlmRiskEventListener {
                 .text(explanation.getText())
                 .timestamp(explanation.getTimestamp() != null ? explanation.getTimestamp() : Instant.now().toString())
                 .build();
+    }
+
+    private Set<String> buildCurrentTargetIds(RiskAssessmentCompletedEvent event) {
+        if (event.allShips() == null || event.ownShip() == null || !StringUtils.hasText(event.ownShip().getId())) {
+            return Set.of();
+        }
+        String ownId = event.ownShip().getId();
+        return event.allShips().stream()
+                .filter(ship -> ship != null && StringUtils.hasText(ship.getId()) && !ship.getId().equals(ownId))
+                .map(ship -> ship.getId())
+                .collect(Collectors.toSet());
+    }
+
+    private Set<String> buildCurrentNonSafeTargetIds(com.whut.map.map_service.llm.dto.LlmRiskContext context) {
+        if (context == null || context.getTargets() == null) {
+            return Set.of();
+        }
+        return context.getTargets().stream()
+                .filter(target -> target != null
+                        && target.getRiskLevel() != null
+                        && target.getRiskLevel() != com.whut.map.map_service.shared.domain.RiskLevel.SAFE
+                        && StringUtils.hasText(target.getTargetId()))
+                .map(target -> target.getTargetId())
+                .collect(Collectors.toSet());
     }
 
     private String mapExplanationErrorCode(LlmErrorCode errorCode) {

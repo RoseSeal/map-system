@@ -225,6 +225,119 @@ describe('useAiCenterStore', () => {
     expect(useAiCenterStore.getState().chatMessages).toHaveLength(before);
   });
 
+  it('confirmEditingLastUserMessage sends edit payload without appending a new user message', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send
+      .mockReturnValueOnce('user-event-1')
+      .mockReturnValueOnce('edit-event-1');
+
+    store.sendTextMessage('Original question');
+    const conversationId = useAiCenterStore.getState().conversationId;
+    store.appendChatReply({
+      ...chatReplyFixture,
+      event_id: 'assistant-event-1',
+      conversation_id: conversationId,
+      reply_to_event_id: 'user-event-1',
+    });
+
+    expect(store.startEditingLastUserMessage()).toBe(true);
+    store.updateEditingDraft('Edited question');
+
+    expect(store.confirmEditingLastUserMessage()).toBe(true);
+    expect(chatWsServiceMock.send).toHaveBeenLastCalledWith('CHAT', {
+      conversation_id: conversationId,
+      content: 'Edited question',
+      edit_last_user_message: true,
+    });
+
+    const state = useAiCenterStore.getState();
+    expect(state.chatMessages).toHaveLength(2);
+    expect(state.chatMessages[0].content).toBe('Original question');
+    expect(state.editingMessageEventId).toBeNull();
+    expect(state.editingSubmitEventId).toBe('edit-event-1');
+    expect(state.pendingChatEventIds['edit-event-1']).toBe(true);
+  });
+
+  it('appendChatReply replaces the last turn after an edit submit succeeds', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send
+      .mockReturnValueOnce('user-event-1')
+      .mockReturnValueOnce('edit-event-1');
+
+    store.sendTextMessage('Original question');
+    const conversationId = useAiCenterStore.getState().conversationId;
+    store.appendChatReply({
+      ...chatReplyFixture,
+      event_id: 'assistant-event-1',
+      conversation_id: conversationId,
+      reply_to_event_id: 'user-event-1',
+      content: 'Original answer',
+    });
+
+    store.startEditingLastUserMessage();
+    store.updateEditingDraft('Edited question');
+    store.confirmEditingLastUserMessage();
+    store.appendChatReply({
+      ...chatReplyFixture,
+      event_id: 'assistant-event-2',
+      conversation_id: conversationId,
+      reply_to_event_id: 'edit-event-1',
+      content: 'Edited answer',
+    });
+
+    const state = useAiCenterStore.getState();
+    expect(state.chatMessages).toHaveLength(2);
+    expect(state.chatMessages[0]).toMatchObject({
+      event_id: 'user-event-1',
+      content: 'Edited question',
+      status: 'replied',
+    });
+    expect(state.chatMessages[1]).toMatchObject({
+      event_id: 'assistant-event-2',
+      content: 'Edited answer',
+      provider: 'gemini',
+    });
+    expect(state.editingDraft).toBe('');
+    expect(state.editingSubmitEventId).toBeNull();
+    expect(state.pendingChatEventIds['edit-event-1']).toBe(false);
+  });
+
+  it('appendChatError restores editing state and preserves the draft after edit submit failure', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send
+      .mockReturnValueOnce('user-event-1')
+      .mockReturnValueOnce('edit-event-1');
+
+    store.sendTextMessage('Original question');
+    const conversationId = useAiCenterStore.getState().conversationId;
+    store.appendChatReply({
+      ...chatReplyFixture,
+      event_id: 'assistant-event-1',
+      conversation_id: conversationId,
+      reply_to_event_id: 'user-event-1',
+      content: 'Original answer',
+    });
+
+    store.startEditingLastUserMessage();
+    store.updateEditingDraft('Edited question');
+    store.confirmEditingLastUserMessage();
+    store.appendChatError({
+      ...chatErrorFixture,
+      reply_to_event_id: 'edit-event-1',
+      error_message: 'Edit failed',
+    });
+
+    const state = useAiCenterStore.getState();
+    expect(state.chatMessages).toHaveLength(2);
+    expect(state.chatMessages[0].content).toBe('Original question');
+    expect(state.chatMessages[1].content).toBe('Original answer');
+    expect(state.editingMessageEventId).toBe('user-event-1');
+    expect(state.editingDraft).toBe('Edited question');
+    expect(state.editingSubmitEventId).toBeNull();
+    expect(state.editingSubmitError).toBe('Edit failed');
+    expect(state.pendingChatEventIds['edit-event-1']).toBe(false);
+  });
+
   it('appendChatError marks target message error and preserves edge-case stability', () => {
     const store = useAiCenterStore.getState();
     chatWsServiceMock.send.mockReturnValueOnce('user-event-1');
@@ -284,6 +397,7 @@ describe('useAiCenterStore', () => {
     store.setSpeechUnlocked(true);
     store.setSpeechSupported(true);
     store.setChatInput('draft input');
+    store.startEditingLastUserMessage();
     store.markMessageSpoken('msg-key', 'spoken text');
     store.setVoiceCaptureRecording();
 
@@ -295,6 +409,11 @@ describe('useAiCenterStore', () => {
     const state = useAiCenterStore.getState();
     expect(state.chatMessages).toHaveLength(0);
     expect(state.chatInput).toBe('');
+    expect(state.editingMessageEventId).toBeNull();
+    expect(state.editingDraft).toBe('');
+    expect(state.editingBaselineUserContent).toBeNull();
+    expect(state.editingSubmitEventId).toBeNull();
+    expect(state.editingSubmitError).toBeNull();
     expect(state.pendingChatEventIds).toEqual({});
     expect(state.chatErrorByEventId).toEqual({});
     expect(state.latestChatError).toBeNull();

@@ -107,6 +107,7 @@ describe('chatWsService', () => {
       conversation_id: 'conversation-1',
       content: 'hello',
       selected_target_ids: ['TGT-1'],
+      edit_last_user_message: true,
     });
 
     const speechEventId = chatWsService.send('SPEECH', {
@@ -133,6 +134,7 @@ describe('chatWsService', () => {
         conversation_id: 'conversation-1',
         content: 'hello',
         selected_target_ids: ['TGT-1'],
+        edit_last_user_message: true,
         event_id: '11111111-1111-1111-1111-111111111111',
       },
     });

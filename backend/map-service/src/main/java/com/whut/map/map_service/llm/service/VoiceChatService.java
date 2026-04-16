@@ -110,7 +110,8 @@ public class VoiceChatService {
                 request.conversationId(),
                 request.eventId(),
                 content,
-                request.selectedTargetIds()
+                request.selectedTargetIds(),
+                false
         );
     }
 

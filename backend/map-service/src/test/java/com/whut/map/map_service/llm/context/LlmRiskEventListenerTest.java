@@ -31,11 +31,13 @@ class LlmRiskEventListenerTest {
     void listenerUpdatesRiskContextHolderUsingEventVersion() {
         RiskContextHolder holder = new RiskContextHolder();
         RecordingLlmTriggerService triggerService = new RecordingLlmTriggerService();
+        ExplanationCache explanationCache = new ExplanationCache();
         RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
         LlmRiskEventListener listener = new LlmRiskEventListener(
                 new LlmRiskContextAssembler(new EncounterClassifier(new EncounterProperties())),
                 holder,
                 triggerService,
+                explanationCache,
                 publisher
         );
 
@@ -49,12 +51,14 @@ class LlmRiskEventListenerTest {
         assertThat(triggerService.lastContext).isNull();
         assertThat(publisher.lastExplanation).isNull();
         assertThat(publisher.lastErrorCode).isNull();
+        assertThat(explanationCache.shouldAccept("target-1")).isTrue();
     }
 
     @Test
     void listenerPublishesExplanationPayloadWhenTriggerServiceReturnsExplanation() {
         RiskContextHolder holder = new RiskContextHolder();
         RecordingLlmTriggerService triggerService = new RecordingLlmTriggerService();
+        ExplanationCache explanationCache = new ExplanationCache();
         triggerService.explanationToSend = LlmExplanation.builder()
                 .source(LlmExplanation.SOURCE_LLM)
                 .provider("gemini")
@@ -68,6 +72,7 @@ class LlmRiskEventListenerTest {
                 new LlmRiskContextAssembler(new EncounterClassifier(new EncounterProperties())),
                 holder,
                 triggerService,
+                explanationCache,
                 publisher
         );
 
@@ -80,9 +85,74 @@ class LlmRiskEventListenerTest {
         assertThat(publisher.lastExplanation.getTargetId()).isEqualTo("target-1");
         assertThat(publisher.lastExplanation.getProvider()).isEqualTo("gemini");
         assertThat(publisher.lastExplanation.getText()).isEqualTo("Keep clear.");
+        assertThat(explanationCache.getText("target-1")).isEqualTo("Keep clear.");
+    }
+
+    @Test
+    void listenerDropsLateExplanationWhenTargetDisappears() {
+        RiskContextHolder holder = new RiskContextHolder();
+        RecordingLlmTriggerService triggerService = new RecordingLlmTriggerService();
+        triggerService.autoDispatch = false;
+        ExplanationCache explanationCache = new ExplanationCache();
+        RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
+        LlmRiskEventListener listener = new LlmRiskEventListener(
+                new LlmRiskContextAssembler(new EncounterClassifier(new EncounterProperties())),
+                holder,
+                triggerService,
+                explanationCache,
+                publisher
+        );
+
+        listener.onRiskAssessmentCompleted(riskEvent(8L, true));
+        listener.onRiskAssessmentCompleted(riskEventWithoutTarget(9L));
+        triggerService.dispatchStoredExplanation(LlmExplanation.builder()
+                .source(LlmExplanation.SOURCE_LLM)
+                .provider("gemini")
+                .targetId("target-1")
+                .riskLevel("WARNING")
+                .text("Too late.")
+                .timestamp("2026-04-11T09:35:00Z")
+                .build());
+
+        assertThat(publisher.explanationPublishCount).isZero();
+        assertThat(explanationCache.getText("target-1")).isNull();
+    }
+
+    @Test
+    void listenerDropsLateExplanationWhenTargetBecomesSafe() {
+        RiskContextHolder holder = new RiskContextHolder();
+        RecordingLlmTriggerService triggerService = new RecordingLlmTriggerService();
+        triggerService.autoDispatch = false;
+        ExplanationCache explanationCache = new ExplanationCache();
+        RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
+        LlmRiskEventListener listener = new LlmRiskEventListener(
+                new LlmRiskContextAssembler(new EncounterClassifier(new EncounterProperties())),
+                holder,
+                triggerService,
+                explanationCache,
+                publisher
+        );
+
+        listener.onRiskAssessmentCompleted(riskEvent(8L, true));
+        listener.onRiskAssessmentCompleted(riskEventWithRiskLevel(9L, false, "SAFE"));
+        triggerService.dispatchStoredExplanation(LlmExplanation.builder()
+                .source(LlmExplanation.SOURCE_LLM)
+                .provider("gemini")
+                .targetId("target-1")
+                .riskLevel("WARNING")
+                .text("Too late.")
+                .timestamp("2026-04-11T09:35:00Z")
+                .build());
+
+        assertThat(publisher.explanationPublishCount).isZero();
+        assertThat(explanationCache.getText("target-1")).isNull();
     }
 
     private RiskAssessmentCompletedEvent riskEvent(long version, boolean triggerExplanations) {
+        return riskEventWithRiskLevel(version, triggerExplanations, "WARNING");
+    }
+
+    private RiskAssessmentCompletedEvent riskEventWithRiskLevel(long version, boolean triggerExplanations, String riskLevel) {
         ShipStatus ownShip = ShipStatus.builder()
                 .id("own-1")
                 .role(ShipRole.OWN_SHIP)
@@ -113,7 +183,7 @@ class LlmRiskEventListenerTest {
                 RiskAssessmentResult.builder()
                         .targetAssessments(Map.of("target-1", TargetRiskAssessment.builder()
                                 .targetId("target-1")
-                                .riskLevel("WARNING")
+                                .riskLevel(riskLevel)
                                 .cpaDistanceMeters(500.0)
                                 .tcpaSeconds(240.0)
                                 .approaching(true)
@@ -125,9 +195,34 @@ class LlmRiskEventListenerTest {
         );
     }
 
+    private RiskAssessmentCompletedEvent riskEventWithoutTarget(long version) {
+        ShipStatus ownShip = ShipStatus.builder()
+                .id("own-1")
+                .role(ShipRole.OWN_SHIP)
+                .longitude(120.0)
+                .latitude(30.0)
+                .sog(12.0)
+                .cog(90.0)
+                .heading(90.0)
+                .build();
+        return new RiskAssessmentCompletedEvent(
+                version,
+                ownShip,
+                List.of(ownShip),
+                Map.of(),
+                RiskAssessmentResult.builder()
+                        .targetAssessments(Map.of())
+                        .build(),
+                "risk-1",
+                false
+        );
+    }
+
     private static final class RecordingLlmTriggerService extends LlmTriggerService {
         private LlmRiskContext lastContext;
         private LlmExplanation explanationToSend;
+        private boolean autoDispatch = true;
+        private Consumer<LlmExplanation> storedExplanationConsumer;
 
         RecordingLlmTriggerService() {
             super(new LlmProperties(), null);
@@ -140,8 +235,15 @@ class LlmRiskEventListenerTest {
                 BiConsumer<LlmRiskTargetContext, LlmExplanationService.LlmExplanationError> onError
         ) {
             this.lastContext = context;
-            if (explanationToSend != null) {
+            this.storedExplanationConsumer = onExplanation;
+            if (autoDispatch && explanationToSend != null) {
                 onExplanation.accept(explanationToSend);
+            }
+        }
+
+        void dispatchStoredExplanation(LlmExplanation explanation) {
+            if (storedExplanationConsumer != null) {
+                storedExplanationConsumer.accept(explanation);
             }
         }
     }
@@ -149,6 +251,7 @@ class LlmRiskEventListenerTest {
     private static final class RecordingRiskStreamPublisher extends RiskStreamPublisher {
         private ExplanationPayload lastExplanation;
         private String lastErrorCode;
+        private int explanationPublishCount;
 
         RecordingRiskStreamPublisher() {
             super(null, null);
@@ -157,6 +260,7 @@ class LlmRiskEventListenerTest {
         @Override
         public void publishExplanation(ExplanationPayload payload) {
             this.lastExplanation = payload;
+            this.explanationPublishCount++;
         }
 
         @Override

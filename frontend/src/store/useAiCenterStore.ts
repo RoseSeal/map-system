@@ -24,6 +24,11 @@ interface AiCenterState {
   conversationId: string;
   chatMessages: AiCenterChatMessage[];
   chatInput: string;
+  editingMessageEventId: string | null;
+  editingDraft: string;
+  editingBaselineUserContent: string | null;
+  editingSubmitEventId: string | null;
+  editingSubmitError: string | null;
   pendingChatEventIds: Record<string, boolean>;
   chatErrorByEventId: Record<string, string | null>;
   latestChatError: ChatErrorPayload | null;
@@ -47,6 +52,11 @@ interface AiCenterState {
   setChatInput: (value: string) => void;
   sendTextMessage: (content: string) => boolean;
   sendSpeechMessage: (options: SendSpeechMessageOptions) => boolean;
+  startEditingLastUserMessage: () => boolean;
+  updateEditingDraft: (value: string) => void;
+  cancelEditingLastUserMessage: () => void;
+  confirmEditingLastUserMessage: () => boolean;
+  clearEditingSubmitError: () => void;
   appendChatReply: (payload: ChatReplyPayload) => void;
   appendSpeechTranscript: (payload: SpeechTranscriptPayload) => void;
   appendChatError: (payload: ChatErrorPayload) => void;
@@ -72,6 +82,11 @@ const initialState = () => ({
   conversationId: createConversationId(),
   chatMessages: [] as AiCenterChatMessage[],
   chatInput: '',
+  editingMessageEventId: null as string | null,
+  editingDraft: '',
+  editingBaselineUserContent: null as string | null,
+  editingSubmitEventId: null as string | null,
+  editingSubmitError: null as string | null,
   pendingChatEventIds: {} as Record<string, boolean>,
   chatErrorByEventId: {} as Record<string, string | null>,
   latestChatError: null as ChatErrorPayload | null,
@@ -137,6 +152,7 @@ export const useAiCenterStore = create<AiCenterState>()(
           ...state.chatErrorByEventId,
           [eventId]: null,
         },
+        ...createClearedEditingState(),
       }));
 
       return true;
@@ -192,9 +208,90 @@ export const useAiCenterStore = create<AiCenterState>()(
         voiceCaptureError: null,
         activeVoiceEventId: eventId,
         activeVoiceMode: mode,
+        ...createClearedEditingState(),
       }));
 
       return true;
+    },
+
+    startEditingLastUserMessage: () => {
+      const state = get();
+      if (hasPendingConversationRequest(state) || state.editingMessageEventId || state.editingSubmitEventId) {
+        return false;
+      }
+
+      const editableTurn = getLastEditableTurn(state.chatMessages);
+      if (!editableTurn) {
+        return false;
+      }
+
+      set({
+        editingMessageEventId: editableTurn.userMessage.event_id,
+        editingDraft: editableTurn.userMessage.content,
+        editingBaselineUserContent: editableTurn.userMessage.content,
+        editingSubmitEventId: null,
+        editingSubmitError: null,
+      });
+      return true;
+    },
+
+    updateEditingDraft: (value: string) => {
+      set({
+        editingDraft: value,
+      });
+    },
+
+    cancelEditingLastUserMessage: () => {
+      set({
+        ...createClearedEditingState(),
+      });
+    },
+
+    confirmEditingLastUserMessage: () => {
+      const state = get();
+      const content = state.editingDraft.trim();
+      if (!content || hasPendingConversationRequest(state) || !state.editingMessageEventId) {
+        return false;
+      }
+
+      const editableTurn = getLastEditableTurn(state.chatMessages);
+      if (!editableTurn || editableTurn.userMessage.event_id !== state.editingMessageEventId) {
+        return false;
+      }
+
+      const conversationId = state.conversationId;
+      const selectedTargetIds = useRiskStore.getState().selectedTargetIds;
+      const eventId = chatWsService.send('CHAT', {
+        conversation_id: conversationId,
+        content,
+        ...(selectedTargetIds.length > 0 && { selected_target_ids: selectedTargetIds }),
+        edit_last_user_message: true,
+      });
+
+      if (!eventId) {
+        return false;
+      }
+
+      set((currentState) => ({
+        editingMessageEventId: null,
+        editingSubmitEventId: eventId,
+        editingSubmitError: null,
+        pendingChatEventIds: {
+          ...currentState.pendingChatEventIds,
+          [eventId]: true,
+        },
+        chatErrorByEventId: {
+          ...currentState.chatErrorByEventId,
+          [eventId]: null,
+        },
+      }));
+      return true;
+    },
+
+    clearEditingSubmitError: () => {
+      set({
+        editingSubmitError: null,
+      });
     },
 
     appendChatReply: (payload: ChatReplyPayload) => {
@@ -202,12 +299,74 @@ export const useAiCenterStore = create<AiCenterState>()(
         if (payload.conversation_id !== state.conversationId) {
           return state;
         }
+        const isEditingSubmit = payload.reply_to_event_id === state.editingSubmitEventId;
         if (state.chatMessages.some((message) => message.event_id === payload.event_id)) {
           return {
             pendingChatEventIds: {
               ...state.pendingChatEventIds,
               [payload.reply_to_event_id]: false,
             },
+            chatErrorByEventId: {
+              ...state.chatErrorByEventId,
+              [payload.reply_to_event_id]: null,
+            },
+          };
+        }
+
+        if (isEditingSubmit) {
+          const editableTurn = getLastEditableTurn(state.chatMessages);
+          const nextContent = state.editingDraft.trim();
+          if (!editableTurn || !nextContent) {
+            return {
+              pendingChatEventIds: {
+                ...state.pendingChatEventIds,
+                [payload.reply_to_event_id]: false,
+              },
+              chatErrorByEventId: {
+                ...state.chatErrorByEventId,
+                [payload.reply_to_event_id]: null,
+              },
+              editingSubmitEventId: null,
+            };
+          }
+
+          const nextMessages = state.chatMessages.map((message, index) => {
+            if (index === editableTurn.userIndex) {
+              return {
+                ...message,
+                content: nextContent,
+                status: 'replied' as const,
+                error_code: undefined,
+                error_message: undefined,
+              };
+            }
+            if (index === editableTurn.assistantIndex) {
+              return {
+                ...message,
+                event_id: payload.event_id,
+                content: payload.content,
+                status: 'sent' as const,
+                reply_to_event_id: payload.reply_to_event_id,
+                provider: payload.provider,
+                timestamp: payload.timestamp,
+                error_code: undefined,
+                error_message: undefined,
+              };
+            }
+            return message;
+          });
+
+          return {
+            chatMessages: nextMessages,
+            pendingChatEventIds: {
+              ...state.pendingChatEventIds,
+              [payload.reply_to_event_id]: false,
+            },
+            chatErrorByEventId: {
+              ...state.chatErrorByEventId,
+              [payload.reply_to_event_id]: null,
+            },
+            ...createClearedEditingState(),
           };
         }
 
@@ -293,6 +452,26 @@ export const useAiCenterStore = create<AiCenterState>()(
       const targetEventId = payload.reply_to_event_id;
 
       set((state) => {
+        if (targetEventId && targetEventId === state.editingSubmitEventId) {
+          const editableTurn = getLastEditableTurn(state.chatMessages);
+          return {
+            latestChatError: payload,
+            pendingChatEventIds: {
+              ...state.pendingChatEventIds,
+              [targetEventId]: false,
+            },
+            chatErrorByEventId: {
+              ...state.chatErrorByEventId,
+              [targetEventId]: payload.error_message,
+            },
+            editingMessageEventId: editableTurn?.userMessage.event_id ?? state.editingMessageEventId,
+            editingDraft: state.editingDraft,
+            editingBaselineUserContent: editableTurn?.userMessage.content ?? state.editingBaselineUserContent,
+            editingSubmitEventId: null,
+            editingSubmitError: payload.error_message,
+          };
+        }
+
         if (targetEventId) {
           const targetMessageExists = state.chatMessages.some((message) => message.event_id === targetEventId);
           if (!targetMessageExists) {
@@ -385,6 +564,7 @@ export const useAiCenterStore = create<AiCenterState>()(
         voiceCaptureError: null,
         activeVoiceEventId: null,
         activeVoiceMode: null,
+        ...createClearedEditingState(),
       }));
     },
 
@@ -461,13 +641,15 @@ export const selectSpeechSupported = (state: AiCenterState) => state.speechSuppo
 export const selectSpeechUnlocked = (state: AiCenterState) => state.speechUnlocked;
 export const selectChatMessages = (state: AiCenterState) => state.chatMessages;
 export const selectChatInput = (state: AiCenterState) => state.chatInput;
+export const selectEditingMessageEventId = (state: AiCenterState) => state.editingMessageEventId;
+export const selectEditingDraft = (state: AiCenterState) => state.editingDraft;
+export const selectEditingSubmitEventId = (state: AiCenterState) => state.editingSubmitEventId;
+export const selectEditingSubmitError = (state: AiCenterState) => state.editingSubmitError;
 export const selectConversationId = (state: AiCenterState) => state.conversationId;
 export const selectPendingChatEventIds = (state: AiCenterState) => state.pendingChatEventIds;
 export const selectChatErrorByEventId = (state: AiCenterState) => state.chatErrorByEventId;
 export const selectLatestChatError = (state: AiCenterState) => state.latestChatError;
-export const selectIsChatSending = (state: AiCenterState) => state.chatMessages.some(
-  (message) => message.role === 'user' && state.pendingChatEventIds[message.event_id],
-);
+export const selectIsChatSending = (state: AiCenterState) => hasPendingConversationRequest(state);
 export const selectSpokenMessages = (state: AiCenterState) => state.spokenMessages;
 export const selectLastSpokenAt = (state: AiCenterState) => state.lastSpokenAt;
 export const selectIsChatFocused = (state: AiCenterState) => state.isChatFocused;
@@ -546,10 +728,40 @@ function createUserChatMessage(options: {
   };
 }
 
-function hasPendingConversationRequest(state: Pick<AiCenterState, 'chatMessages' | 'pendingChatEventIds'>): boolean {
-  return state.chatMessages.some(
-    (message) => message.role === 'user' && state.pendingChatEventIds[message.event_id],
-  );
+function createClearedEditingState() {
+  return {
+    editingMessageEventId: null,
+    editingDraft: '',
+    editingBaselineUserContent: null,
+    editingSubmitEventId: null,
+    editingSubmitError: null,
+  };
+}
+
+function getLastEditableTurn(messages: AiCenterChatMessage[]) {
+  if (messages.length < 2) {
+    return null;
+  }
+
+  const userIndex = messages.length - 2;
+  const assistantIndex = messages.length - 1;
+  const userMessage = messages[userIndex];
+  const assistantMessage = messages[assistantIndex];
+
+  if (userMessage.role !== 'user' || userMessage.request_type !== 'CHAT' || assistantMessage.role !== 'assistant') {
+    return null;
+  }
+
+  return {
+    userIndex,
+    assistantIndex,
+    userMessage,
+    assistantMessage,
+  };
+}
+
+function hasPendingConversationRequest(state: Pick<AiCenterState, 'pendingChatEventIds'>): boolean {
+  return Object.values(state.pendingChatEventIds).some(Boolean);
 }
 
 initializeAiCenterStoreSubscriptions();

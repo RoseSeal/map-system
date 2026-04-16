@@ -9,6 +9,10 @@ import {
   selectExplanationsByTargetId,
   selectChatMessages,
   selectChatInput,
+  selectEditingDraft,
+  selectEditingMessageEventId,
+  selectEditingSubmitError,
+  selectEditingSubmitEventId,
   selectIsChatSending,
 } from '../../store';
 import { getRiskColor } from '../../config';
@@ -34,11 +38,20 @@ export function RiskExplanationPanel() {
   const aiCenterOpenRequestVersion = useAiCenterStore(selectAiCenterOpenRequestVersion);
   const chatMessages = useAiCenterStore(selectChatMessages);
   const chatInput = useAiCenterStore(selectChatInput);
+  const editingMessageEventId = useAiCenterStore(selectEditingMessageEventId);
+  const editingDraft = useAiCenterStore(selectEditingDraft);
+  const editingSubmitEventId = useAiCenterStore(selectEditingSubmitEventId);
+  const editingSubmitError = useAiCenterStore(selectEditingSubmitError);
   const isChatSending = useAiCenterStore(selectIsChatSending);
   const isChatFocused = useAiCenterStore((state) => state.isChatFocused);
 
   const setChatInput = useAiCenterStore((state) => state.setChatInput);
   const sendTextMessage = useAiCenterStore((state) => state.sendTextMessage);
+  const startEditingLastUserMessage = useAiCenterStore((state) => state.startEditingLastUserMessage);
+  const updateEditingDraft = useAiCenterStore((state) => state.updateEditingDraft);
+  const confirmEditingLastUserMessage = useAiCenterStore((state) => state.confirmEditingLastUserMessage);
+  const cancelEditingLastUserMessage = useAiCenterStore((state) => state.cancelEditingLastUserMessage);
+  const clearEditingSubmitError = useAiCenterStore((state) => state.clearEditingSubmitError);
   const resetConversation = useAiCenterStore((state) => state.resetConversation);
   const setIsChatFocused = useAiCenterStore((state) => state.setIsChatFocused);
 
@@ -310,7 +323,19 @@ export function RiskExplanationPanel() {
               </button>
             </div>
 
-            <ChatMessageList messages={chatMessages} onRetry={handleRetry} />
+            <ChatMessageList
+              messages={chatMessages}
+              onRetry={handleRetry}
+              editingMessageEventId={editingMessageEventId}
+              editingDraft={editingDraft}
+              editingSubmitPending={Boolean(editingSubmitEventId)}
+              editingSubmitError={editingSubmitError}
+              onStartEditingLastUserMessage={startEditingLastUserMessage}
+              onUpdateEditingDraft={updateEditingDraft}
+              onConfirmEditingLastUserMessage={confirmEditingLastUserMessage}
+              onCancelEditingLastUserMessage={cancelEditingLastUserMessage}
+              onClearEditingSubmitError={clearEditingSubmitError}
+            />
             <ChatComposer
               value={chatInput}
               disabled={isChatSending}
@@ -328,6 +353,7 @@ export function RiskExplanationPanel() {
               onSend={handleSendChat}
               onStartVoiceRecording={handleStartVoiceRecording}
               onStopVoiceRecording={handleStopVoiceRecording}
+              onCancelVoiceRecording={cancelVoiceCapture}
               onFocus={() => setIsChatFocused(true)}
               onBlur={() => setIsChatFocused(false)}
             />

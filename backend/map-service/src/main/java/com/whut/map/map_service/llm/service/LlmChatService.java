@@ -3,6 +3,7 @@ package com.whut.map.map_service.llm.service;
 import com.whut.map.map_service.llm.config.LlmExecutorConfig;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.client.LlmClient;
+import com.whut.map.map_service.llm.context.ExplanationCache;
 import com.whut.map.map_service.llm.context.RiskContextFormatter;
 import com.whut.map.map_service.llm.context.RiskContextHolder;
 import com.whut.map.map_service.llm.dto.ChatRole;
@@ -37,6 +38,7 @@ public class LlmChatService {
     private final PromptTemplateService promptTemplateService;
     private final RiskContextHolder riskContextHolder;
     private final RiskContextFormatter riskContextFormatter;
+    private final ExplanationCache explanationCache;
     private final ConversationMemory conversationMemory;
     @Qualifier(LlmExecutorConfig.LLM_EXECUTOR)
     private final ExecutorService llmExecutor;
@@ -76,10 +78,24 @@ public class LlmChatService {
                     .whenComplete((responseText, throwable) -> {
                         try {
                             if (throwable == null) {
-                                conversationMemory.append(conversationId,
-                                        new LlmChatMessage(ChatRole.USER, request.content()));
-                                conversationMemory.append(conversationId,
-                                        new LlmChatMessage(ChatRole.ASSISTANT, responseText));
+                                LlmChatMessage userMessage = new LlmChatMessage(ChatRole.USER, request.content());
+                                LlmChatMessage assistantMessage = new LlmChatMessage(ChatRole.ASSISTANT, responseText);
+                                if (request.editLastUserMessage()) {
+                                    boolean replaced = conversationMemory.replaceLastTurn(
+                                            conversationId,
+                                            userMessage,
+                                            assistantMessage
+                                    );
+                                    if (!replaced) {
+                                        log.warn("Conversation edit fallback to append due to missing last turn, conversationId={}",
+                                                conversationId);
+                                        conversationMemory.append(conversationId, userMessage);
+                                        conversationMemory.append(conversationId, assistantMessage);
+                                    }
+                                } else {
+                                    conversationMemory.append(conversationId, userMessage);
+                                    conversationMemory.append(conversationId, assistantMessage);
+                                }
                                 onSuccess.accept(new ChatReplyResult(responseText, resolveProviderName()));
                                 return;
                             }
@@ -125,6 +141,9 @@ public class LlmChatService {
 
         int historyStartIndex = messages.size();
         List<LlmChatMessage> history = conversationMemory.getHistory(request.conversationId());
+        if (request.editLastUserMessage() && conversationMemory.peekLastTurn(request.conversationId()) != null && history.size() >= 2) {
+            history = history.subList(0, history.size() - 2);
+        }
         messages.addAll(history);
         int historyEndIndex = messages.size();
         messages.add(new LlmChatMessage(ChatRole.USER, request.content()));
@@ -135,7 +154,7 @@ public class LlmChatService {
     private String resolveRiskContext(LlmChatRequest request) {
         var context = riskContextHolder.getCurrent();
         var updatedAt = riskContextHolder.getUpdatedAt();
-        return riskContextFormatter.formatConsolidated(context, request.selectedTargetIds(), updatedAt);
+        return riskContextFormatter.formatConsolidated(context, request.selectedTargetIds(), updatedAt, explanationCache);
     }
 
     private String resolveProviderName() {

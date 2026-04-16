@@ -41,6 +41,22 @@ public class ConversationMemory {
         return entry.snapshot();
     }
 
+    public List<LlmChatMessage> peekLastTurn(String conversationId) {
+        ConversationEntry entry = store.get(conversationId);
+        if (entry == null) {
+            return null;
+        }
+        return entry.peekLastTurn();
+    }
+
+    public boolean replaceLastTurn(String conversationId, LlmChatMessage newUser, LlmChatMessage newAssistant) {
+        ConversationEntry entry = store.get(conversationId);
+        if (entry == null) {
+            return false;
+        }
+        return entry.replaceLastTurn(newUser, newAssistant);
+    }
+
     public ConversationPermit tryAcquire(String conversationId) {
         ConversationEntry entry = getOrCreateEntry(conversationId);
         return entry.tryAcquire() ? new ConversationPermit(entry::release) : null;
@@ -137,6 +153,31 @@ public class ConversationMemory {
         synchronized List<LlmChatMessage> snapshot() {
             lastAccessTimeMillis = System.currentTimeMillis();
             return List.copyOf(messages);
+        }
+
+        synchronized List<LlmChatMessage> peekLastTurn() {
+            if (messages.size() < 2) {
+                return null;
+            }
+            List<LlmChatMessage> list = List.copyOf(messages);
+            return list.subList(list.size() - 2, list.size());
+        }
+
+        synchronized boolean replaceLastTurn(LlmChatMessage newUser, LlmChatMessage newAssistant) {
+            if (messages.size() < 2) {
+                return false;
+            }
+
+            List<LlmChatMessage> mutable = new java.util.ArrayList<>(messages);
+            mutable.remove(mutable.size() - 1);
+            mutable.remove(mutable.size() - 1);
+            mutable.add(newUser);
+            mutable.add(newAssistant);
+
+            messages.clear();
+            messages.addAll(mutable);
+            lastAccessTimeMillis = System.currentTimeMillis();
+            return true;
         }
     }
 

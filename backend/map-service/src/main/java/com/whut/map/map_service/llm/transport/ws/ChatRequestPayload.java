@@ -25,4 +25,7 @@ public class ChatRequestPayload {
 
     @JsonProperty("selected_target_ids")
     private List<String> selectedTargetIds;
+
+    @JsonProperty("edit_last_user_message")
+    private Boolean editLastUserMessage;
 }

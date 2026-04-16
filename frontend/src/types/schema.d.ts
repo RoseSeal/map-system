@@ -182,6 +182,7 @@ export interface ChatRequestPayload {
   event_id: string;
   content: string;
   selected_target_ids?: string[];
+  edit_last_user_message?: boolean;
 }
 
 export interface SpeechRequestPayload {

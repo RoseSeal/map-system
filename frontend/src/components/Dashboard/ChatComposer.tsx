@@ -24,6 +24,7 @@ interface ChatComposerProps {
   onSend: () => void;
   onStartVoiceRecording: () => void;
   onStopVoiceRecording: (mode: SpeechMode) => void;
+  onCancelVoiceRecording?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
 }
@@ -45,6 +46,7 @@ export function ChatComposer({
   onSend,
   onStartVoiceRecording,
   onStopVoiceRecording,
+  onCancelVoiceRecording,
   onFocus,
   onBlur,
 }: ChatComposerProps) {
@@ -172,6 +174,16 @@ export function ChatComposer({
                 >
                   停止并预览
                 </button>
+                {onCancelVoiceRecording && (
+                  <button
+                    type="button"
+                    onMouseDown={handleMouseDown}
+                    onClick={onCancelVoiceRecording}
+                    className="px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-slate-800/60 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60 transition-colors"
+                  >
+                    取消
+                  </button>
+                )}
               </div>
             </>
           ) : (

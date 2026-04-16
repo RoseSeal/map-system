@@ -110,7 +110,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 payload.getConversationId(),
                 payload.getEventId(),
                 payload.getContent(),
-                payload.getSelectedTargetIds()
+                payload.getSelectedTargetIds(),
+                payload.getEditLastUserMessage() != null && payload.getEditLastUserMessage()
         );
 
         llmChatService.handleChat(

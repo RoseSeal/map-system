@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -216,6 +217,60 @@ class RiskContextFormatterTest {
                 .contains("【用户关注目标】")
                 .contains("目标船 safe-1: 风险等级 SAFE")
                 .contains("共追踪 1 艘目标船，当前注入 1 艘，未注入 0 艘。");
+    }
+
+    @Test
+    void formatConsolidatedInjectsExplanationTextForSelectedNonSafeTarget() {
+        LlmProperties properties = new LlmProperties();
+        RiskContextFormatter formatter = new RiskContextFormatter(properties);
+        ExplanationCache explanationCache = new ExplanationCache();
+        explanationCache.refreshTargetState(Set.of("warning-1"), Set.of("warning-1"));
+        explanationCache.put("warning-1", "建议右转避让。", "2026-04-09T11:00:00Z");
+
+        LlmRiskContext context = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())
+                .targets(List.of(
+                        detailedTarget("warning-1", RiskLevel.WARNING, 0.9, 0.4, 240, true,
+                                121.2, 31.2, 8.0, 90.0, null)
+                ))
+                .build();
+
+        String result = formatter.formatConsolidated(
+                context,
+                List.of("warning-1"),
+                Instant.parse("2026-04-09T10:40:00Z"),
+                explanationCache);
+
+        assertThat(result)
+                .contains("目标船 warning-1: 风险等级 WARNING")
+                .contains("（AI 解释，生成于 2026-04-09T11:00:00Z）：建议右转避让。");
+    }
+
+    @Test
+    void formatConsolidatedDoesNotInjectExplanationForSafeTarget() {
+        LlmProperties properties = new LlmProperties();
+        RiskContextFormatter formatter = new RiskContextFormatter(properties);
+        ExplanationCache explanationCache = new ExplanationCache();
+        explanationCache.refreshTargetState(Set.of("safe-1"), Set.of());
+        explanationCache.put("safe-1", "不会显示。", "2026-04-09T11:05:00Z");
+
+        LlmRiskContext context = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())
+                .targets(List.of(
+                        detailedTarget("safe-1", RiskLevel.SAFE, 3.0, 2.5, 500, false,
+                                121.0, 31.0, 10.0, 180.0, null)
+                ))
+                .build();
+
+        String result = formatter.formatConsolidated(
+                context,
+                List.of("safe-1"),
+                Instant.parse("2026-04-09T10:45:00Z"),
+                explanationCache);
+
+        assertThat(result)
+                .contains("目标船 safe-1: 风险等级 SAFE")
+                .doesNotContain("AI 解释");
     }
 
     private LlmRiskTargetContext target(

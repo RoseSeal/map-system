@@ -3,6 +3,7 @@ package com.whut.map.map_service.llm.service;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.llm.client.LlmClient;
+import com.whut.map.map_service.llm.context.ExplanationCache;
 import com.whut.map.map_service.llm.context.RiskContextFormatter;
 import com.whut.map.map_service.llm.context.RiskContextHolder;
 import com.whut.map.map_service.llm.dto.ChatRole;
@@ -40,6 +41,7 @@ class LlmChatServiceTest {
                     promptTemplateService,
                     riskContextHolder,
                     riskContextFormatter,
+                    new ExplanationCache(),
                     conversationMemory,
                     executor
             );
@@ -80,6 +82,7 @@ class LlmChatServiceTest {
                     promptTemplateService,
                     riskContextHolder,
                     riskContextFormatter,
+                    new ExplanationCache(),
                     new ConversationMemory(properties),
                     executor
             );
@@ -108,10 +111,11 @@ class LlmChatServiceTest {
                     promptTemplateService,
                     riskContextHolder,
                     riskContextFormatter,
+                    new ExplanationCache(),
                     new ConversationMemory(properties),
                     executor
             );
-            LlmChatRequest request = new LlmChatRequest("conversation-1", "event-1", "   ", List.of());
+            LlmChatRequest request = new LlmChatRequest("conversation-1", "event-1", "   ", List.of(), false);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -138,6 +142,7 @@ class LlmChatServiceTest {
                     promptTemplateService,
                     riskContextHolder,
                     riskContextFormatter,
+                    new ExplanationCache(),
                     new ConversationMemory(properties),
                     executor
             );
@@ -197,6 +202,7 @@ class LlmChatServiceTest {
                     promptTemplateService,
                     holder,
                     new RiskContextFormatter(properties),
+                    new ExplanationCache(),
                     new ConversationMemory(properties),
                     executor
             );
@@ -244,6 +250,7 @@ class LlmChatServiceTest {
                     promptTemplateService,
                     holder,
                     new RiskContextFormatter(properties),
+                    new ExplanationCache(),
                     new ConversationMemory(properties),
                     executor
             );
@@ -294,8 +301,8 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = new LlmChatService(
                     llmClient, properties, promptTemplateService, holder,
-                    new RiskContextFormatter(properties), new ConversationMemory(properties), executor);
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "它距离多少", List.of("target-1"));
+                    new RiskContextFormatter(properties), new ExplanationCache(), new ConversationMemory(properties), executor);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "它距离多少", List.of("target-1"), false);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -339,8 +346,8 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = new LlmChatService(
                     llmClient, properties, promptTemplateService, holder,
-                    new RiskContextFormatter(properties), new ConversationMemory(properties), executor);
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of("nonexistent"));
+                    new RiskContextFormatter(properties), new ExplanationCache(), new ConversationMemory(properties), executor);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of("nonexistent"), false);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -352,6 +359,100 @@ class LlmChatServiceTest {
                     .contains("共追踪 1 艘目标船，当前注入 1 艘，未注入 0 艘。");
             assertThat(llmClient.lastMessages.get(2))
                     .isEqualTo(new LlmChatMessage(ChatRole.USER, "hello"));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void editLastUserMessageReplacesLastTurnAndBuildsPromptWithoutPreviousTurn() throws Exception {
+        LlmProperties properties = buildProperties(true, 1000L, "zhipu");
+        StubLlmClient llmClient = new StubLlmClient();
+        llmClient.response = "assistant-2-edited";
+        ConversationMemory conversationMemory = new ConversationMemory(properties);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            ConversationMemory.ConversationPermit permit = conversationMemory.tryAcquire("conversation-1");
+            permit.close();
+            conversationMemory.append("conversation-1", new LlmChatMessage(ChatRole.USER, "hello"));
+            conversationMemory.append("conversation-1", new LlmChatMessage(ChatRole.ASSISTANT, "assistant-1"));
+            conversationMemory.append("conversation-1", new LlmChatMessage(ChatRole.USER, "follow up"));
+            conversationMemory.append("conversation-1", new LlmChatMessage(ChatRole.ASSISTANT, "assistant-2"));
+
+            LlmChatService service = new LlmChatService(
+                    llmClient,
+                    properties,
+                    promptTemplateService,
+                    riskContextHolder,
+                    riskContextFormatter,
+                    new ExplanationCache(),
+                    conversationMemory,
+                    executor
+            );
+
+            CapturingChatCallback callback = new CapturingChatCallback();
+            service.handleChat(
+                    new LlmChatRequest("conversation-1", "edit-1", "edited follow up", null, true),
+                    callback::captureReply,
+                    callback::captureError
+            );
+
+            callback.await();
+            assertThat(llmClient.lastMessages).containsExactly(
+                    new LlmChatMessage(ChatRole.SYSTEM, promptTemplateService.getSystemPrompt(PromptScene.CHAT)),
+                    new LlmChatMessage(ChatRole.USER, "hello"),
+                    new LlmChatMessage(ChatRole.ASSISTANT, "assistant-1"),
+                    new LlmChatMessage(ChatRole.USER, "edited follow up")
+            );
+            assertThat(conversationMemory.getHistory("conversation-1")).containsExactly(
+                    new LlmChatMessage(ChatRole.USER, "hello"),
+                    new LlmChatMessage(ChatRole.ASSISTANT, "assistant-1"),
+                    new LlmChatMessage(ChatRole.USER, "edited follow up"),
+                    new LlmChatMessage(ChatRole.ASSISTANT, "assistant-2-edited")
+            );
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void editLastUserMessageFailureKeepsExistingConversationTurn() throws Exception {
+        LlmProperties properties = buildProperties(true, 1000L, "zhipu");
+        StubLlmClient llmClient = new StubLlmClient();
+        llmClient.failure = new IllegalStateException("boom");
+        ConversationMemory conversationMemory = new ConversationMemory(properties);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            ConversationMemory.ConversationPermit permit = conversationMemory.tryAcquire("conversation-1");
+            permit.close();
+            conversationMemory.append("conversation-1", new LlmChatMessage(ChatRole.USER, "hello"));
+            conversationMemory.append("conversation-1", new LlmChatMessage(ChatRole.ASSISTANT, "assistant-1"));
+
+            LlmChatService service = new LlmChatService(
+                    llmClient,
+                    properties,
+                    promptTemplateService,
+                    riskContextHolder,
+                    riskContextFormatter,
+                    new ExplanationCache(),
+                    conversationMemory,
+                    executor
+            );
+
+            CapturingChatCallback callback = new CapturingChatCallback();
+            service.handleChat(
+                    new LlmChatRequest("conversation-1", "edit-1", "edited hello", null, true),
+                    callback::captureReply,
+                    callback::captureError
+            );
+
+            callback.await();
+            assertThat(callback.reply()).isNull();
+            assertThat(callback.errorCode()).isEqualTo(LlmErrorCode.LLM_FAILED);
+            assertThat(conversationMemory.getHistory("conversation-1")).containsExactly(
+                    new LlmChatMessage(ChatRole.USER, "hello"),
+                    new LlmChatMessage(ChatRole.ASSISTANT, "assistant-1")
+            );
         } finally {
             executor.shutdownNow();
         }
@@ -370,6 +471,7 @@ class LlmChatServiceTest {
                     promptTemplateService,
                     riskContextHolder,
                     riskContextFormatter,
+                    new ExplanationCache(),
                     conversationMemory,
                     executor
             );
@@ -384,7 +486,8 @@ class LlmChatServiceTest {
                     first.conversationId(),
                     "user-2",
                     "follow up",
-                    null
+                    null,
+                    false
             );
             llmClient.response = "assistant-2";
             CapturingChatCallback secondCallback = new CapturingChatCallback();
@@ -414,6 +517,7 @@ class LlmChatServiceTest {
                     promptTemplateService,
                     riskContextHolder,
                     riskContextFormatter,
+                    new ExplanationCache(),
                     new ConversationMemory(properties),
                     executor
             );
@@ -423,8 +527,8 @@ class LlmChatServiceTest {
             llmClient.awaitStarted();
 
             CapturingChatCallback secondCallback = new CapturingChatCallback();
-            service.handleChat(
-                    new LlmChatRequest("conversation-1", "user-2", "second", null),
+                service.handleChat(
+                    new LlmChatRequest("conversation-1", "user-2", "second", null, false),
                     secondCallback::captureReply,
                     secondCallback::captureError
             );
@@ -449,7 +553,7 @@ class LlmChatServiceTest {
     }
 
     private LlmChatRequest buildRequest() {
-        return new LlmChatRequest("conversation-1", "user-1", "hello", null);
+        return new LlmChatRequest("conversation-1", "user-1", "hello", null, false);
     }
 
     private static final class CapturingChatCallback {

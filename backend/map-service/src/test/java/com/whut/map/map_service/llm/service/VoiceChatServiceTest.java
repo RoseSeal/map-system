@@ -3,6 +3,7 @@ package com.whut.map.map_service.llm.service;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.config.WhisperProperties;
 import com.whut.map.map_service.llm.client.WhisperClient;
+import com.whut.map.map_service.llm.context.ExplanationCache;
 import com.whut.map.map_service.llm.context.RiskContextFormatter;
 import com.whut.map.map_service.llm.context.RiskContextHolder;
 import com.whut.map.map_service.llm.memory.ConversationMemory;
@@ -199,6 +200,7 @@ class VoiceChatServiceTest {
                     new com.whut.map.map_service.llm.prompt.PromptTemplateService(),
                     new RiskContextHolder(),
                     new RiskContextFormatter(new LlmProperties()),
+                    new ExplanationCache(),
                     new ConversationMemory(new LlmProperties()),
                     executor
             );

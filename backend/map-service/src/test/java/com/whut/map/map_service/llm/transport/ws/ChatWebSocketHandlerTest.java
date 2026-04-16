@@ -3,8 +3,11 @@ package com.whut.map.map_service.llm.transport.ws;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whut.map.map_service.llm.config.WhisperProperties;
+import com.whut.map.map_service.llm.service.LlmChatRequest;
+import com.whut.map.map_service.llm.service.LlmChatService;
 import com.whut.map.map_service.llm.transport.ws.validation.AudioValidator;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -22,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class ChatWebSocketHandlerTest {
 
@@ -161,6 +167,44 @@ class ChatWebSocketHandlerTest {
         assertThat(response.path("payload").path("error_code").asText()).isEqualTo(ChatErrorCode.INVALID_SPEECH_REQUEST.getValue());
         assertThat(response.path("payload").path("error_message").asText()).isEqualTo("mode is required.");
         assertThat(response.path("payload").path("reply_to_event_id").asText()).isEqualTo("event-4");
+    }
+
+    @Test
+    void chatPayloadPassesEditLastUserMessageFlagToChatService() throws Exception {
+        LlmChatService llmChatService = mock(LlmChatService.class);
+        ChatWebSocketHandler handler = new ChatWebSocketHandler(
+                objectMapper,
+                whisperProperties(),
+                llmChatService,
+                null,
+                null,
+                new AudioValidator(whisperProperties())
+        );
+        RecordingWebSocketSession session = new RecordingWebSocketSession();
+
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("""
+                {
+                  "type": "CHAT",
+                  "source": "client",
+                  "payload": {
+                    "conversation_id": "conversation-1",
+                    "event_id": "event-5",
+                    "content": "edited content",
+                    "edit_last_user_message": true
+                  }
+                }
+                """));
+
+        ArgumentCaptor<LlmChatRequest> captor = ArgumentCaptor.forClass(LlmChatRequest.class);
+        verify(llmChatService).handleChat(
+                captor.capture(),
+                any(),
+                any()
+        );
+        LlmChatRequest request = captor.getValue();
+        assertThat(request.editLastUserMessage()).isTrue();
+        assertThat(request.content()).isEqualTo("edited content");
     }
 
     private WhisperProperties whisperProperties() {

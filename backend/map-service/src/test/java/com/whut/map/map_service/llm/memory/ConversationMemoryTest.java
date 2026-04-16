@@ -52,6 +52,51 @@ class ConversationMemoryTest {
     }
 
     @Test
+    void peekLastTurnReturnsLastCompleteTurnAndReplaceLastTurnSwapsPair() {
+        ConversationMemory memory = new ConversationMemory(properties(3, 30));
+        String conversationId = "conversation-1";
+        ConversationMemory.ConversationPermit permit = memory.tryAcquire(conversationId);
+        permit.close();
+        memory.append(conversationId, new LlmChatMessage(ChatRole.USER, "u1"));
+        memory.append(conversationId, new LlmChatMessage(ChatRole.ASSISTANT, "a1"));
+        memory.append(conversationId, new LlmChatMessage(ChatRole.USER, "u2"));
+        memory.append(conversationId, new LlmChatMessage(ChatRole.ASSISTANT, "a2"));
+
+        assertThat(memory.peekLastTurn(conversationId)).containsExactly(
+                new LlmChatMessage(ChatRole.USER, "u2"),
+                new LlmChatMessage(ChatRole.ASSISTANT, "a2")
+        );
+
+        assertThat(memory.replaceLastTurn(
+                conversationId,
+                new LlmChatMessage(ChatRole.USER, "u2-edit"),
+                new LlmChatMessage(ChatRole.ASSISTANT, "a2-edit")
+        )).isTrue();
+
+        assertThat(memory.getHistory(conversationId)).containsExactly(
+                new LlmChatMessage(ChatRole.USER, "u1"),
+                new LlmChatMessage(ChatRole.ASSISTANT, "a1"),
+                new LlmChatMessage(ChatRole.USER, "u2-edit"),
+                new LlmChatMessage(ChatRole.ASSISTANT, "a2-edit")
+        );
+    }
+
+    @Test
+    void replaceLastTurnReturnsFalseWhenNoCompleteTurnExists() {
+        ConversationMemory memory = new ConversationMemory(properties(2, 30));
+        String conversationId = "conversation-1";
+        ConversationMemory.ConversationPermit permit = memory.tryAcquire(conversationId);
+        permit.close();
+
+        assertThat(memory.peekLastTurn(conversationId)).isNull();
+        assertThat(memory.replaceLastTurn(
+                conversationId,
+                new LlmChatMessage(ChatRole.USER, "u1"),
+                new LlmChatMessage(ChatRole.ASSISTANT, "a1")
+        )).isFalse();
+    }
+
+    @Test
     void clearDropsConversationAndPreventsRevivalFromLateAppend() {
         ConversationMemory memory = new ConversationMemory(properties(2, 30));
         String conversationId = "conversation-1";

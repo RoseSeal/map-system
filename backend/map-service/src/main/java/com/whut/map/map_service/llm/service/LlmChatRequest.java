@@ -6,7 +6,8 @@ public record LlmChatRequest(
         String conversationId,
         String eventId,
         String content,
-        List<String> selectedTargetIds
+        List<String> selectedTargetIds,
+        boolean editLastUserMessage
 ) {
     public LlmChatRequest {
         selectedTargetIds = selectedTargetIds == null ? List.of() : List.copyOf(selectedTargetIds);

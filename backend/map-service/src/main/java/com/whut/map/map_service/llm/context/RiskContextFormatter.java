@@ -107,6 +107,15 @@ public class RiskContextFormatter {
     }
 
     public String formatConsolidated(LlmRiskContext context, List<String> selectedTargetIds, Instant updatedAt) {
+        return formatConsolidated(context, selectedTargetIds, updatedAt, null);
+    }
+
+    public String formatConsolidated(
+            LlmRiskContext context,
+            List<String> selectedTargetIds,
+            Instant updatedAt,
+            ExplanationCache explanationCache
+    ) {
         if (context == null || context.getOwnShip() == null) {
             return null;
         }
@@ -147,7 +156,7 @@ public class RiskContextFormatter {
         } else {
             for (LlmRiskTargetContext target : summaryTargets) {
                 if (selectedSet.contains(target.getTargetId())) {
-                    appendTargetDetail(builder, target);
+                    appendTargetDetail(builder, target, explanationCache);
                 } else {
                     appendTarget(builder, target);
                 }
@@ -158,7 +167,7 @@ public class RiskContextFormatter {
             builder.append("-----").append('\n');
             builder.append("【用户关注目标】").append('\n');
             for (LlmRiskTargetContext target : extraSelectedTargets) {
-                appendTargetDetail(builder, target);
+                appendTargetDetail(builder, target, explanationCache);
             }
         }
 
@@ -174,6 +183,10 @@ public class RiskContextFormatter {
     }
 
     private void appendTargetDetail(StringBuilder builder, LlmRiskTargetContext target) {
+        appendTargetDetail(builder, target, null);
+    }
+
+    private void appendTargetDetail(StringBuilder builder, LlmRiskTargetContext target, ExplanationCache explanationCache) {
         builder.append("目标船 ")
                 .append(defaultText(target.getTargetId()))
                 .append(": 风险等级 ")
@@ -199,6 +212,18 @@ public class RiskContextFormatter {
             builder.append(", 说明: ").append(target.getRuleExplanation());
         }
         builder.append('\n');
+
+        if (explanationCache != null && target.getRiskLevel() != RiskLevel.SAFE) {
+            String explanation = explanationCache.getText(target.getTargetId());
+            if (StringUtils.hasText(explanation)) {
+                String timestamp = explanationCache.getTimestamp(target.getTargetId());
+                builder.append("（AI 解释，生成于 ")
+                        .append(StringUtils.hasText(timestamp) ? timestamp : "未知")
+                        .append("）：")
+                        .append(explanation)
+                        .append('\n');
+            }
+        }
     }
 
     private void appendOwnShip(StringBuilder builder, LlmRiskOwnShipContext ownShip) {
