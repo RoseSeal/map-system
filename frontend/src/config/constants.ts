@@ -183,6 +183,8 @@ export const WS_CONFIG = {
 export const CHAT_CONFIG = {
   MAX_AUDIO_SIZE_BYTES: 10 * 1024 * 1024,
   VOICE_SENT_RESET_DELAY_MS: 2000,
+  CHAT_REQUEST_TIMEOUT_MS: 20000,
+  SPEECH_REQUEST_TIMEOUT_MS: 65000,
 } as const;
 
 // ============================================================

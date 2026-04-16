@@ -8,6 +8,7 @@ import type {
 } from '../types/schema';
 import type { AiCenterChatMessage } from '../types/aiCenter';
 import { chatWsService } from '../services/chatWsService';
+import { CHAT_CONFIG } from '../config/constants';
 import { useRiskStore } from './useRiskStore';
 import type { DisplayConnectionState } from '../types/connection';
 
@@ -18,6 +19,8 @@ interface SendSpeechMessageOptions {
   audioFormat: string;
   mode: SpeechMode;
 }
+
+type PendingRequestKind = 'chat' | 'speech';
 
 interface AiCenterState {
   aiCenterOpenRequestVersion: number;
@@ -106,6 +109,8 @@ const initialState = () => ({
   isChatFocused: false,
 });
 
+const pendingRequestTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
 export const useAiCenterStore = create<AiCenterState>()(
   subscribeWithSelector((set, get) => ({
     ...initialState(),
@@ -156,6 +161,7 @@ export const useAiCenterStore = create<AiCenterState>()(
         },
         ...createClearedEditingState(),
       }));
+      schedulePendingRequestTimeout(eventId, 'chat');
 
       return true;
     },
@@ -212,6 +218,7 @@ export const useAiCenterStore = create<AiCenterState>()(
         activeVoiceMode: mode,
         ...createClearedEditingState(),
       }));
+      schedulePendingRequestTimeout(eventId, 'speech');
 
       return true;
     },
@@ -313,6 +320,7 @@ export const useAiCenterStore = create<AiCenterState>()(
           },
         };
       });
+      schedulePendingRequestTimeout(eventId, 'chat');
       return true;
     },
 
@@ -323,6 +331,7 @@ export const useAiCenterStore = create<AiCenterState>()(
     },
 
     appendChatReply: (payload: ChatReplyPayload) => {
+      clearPendingRequestTimeout(payload.reply_to_event_id);
       set((state) => {
         if (payload.conversation_id !== state.conversationId) {
           return state;
@@ -436,6 +445,7 @@ export const useAiCenterStore = create<AiCenterState>()(
     },
 
     appendSpeechTranscript: (payload: SpeechTranscriptPayload) => {
+      clearPendingRequestTimeout(payload.reply_to_event_id);
       const transcript = payload.transcript.trim();
       if (!transcript) {
         return;
@@ -478,6 +488,9 @@ export const useAiCenterStore = create<AiCenterState>()(
 
     appendChatError: (payload: ChatErrorPayload) => {
       const targetEventId = payload.reply_to_event_id;
+      if (targetEventId) {
+        clearPendingRequestTimeout(targetEventId);
+      }
 
       set((state) => {
         if (targetEventId && targetEventId === state.editingSubmitEventId) {
@@ -522,7 +535,7 @@ export const useAiCenterStore = create<AiCenterState>()(
 
         if (targetEventId) {
           const targetMessageExists = state.chatMessages.some((message) => message.event_id === targetEventId);
-          if (!targetMessageExists) {
+          if (!targetMessageExists && state.activeVoiceEventId !== targetEventId) {
             return state;
           }
         }
@@ -559,6 +572,9 @@ export const useAiCenterStore = create<AiCenterState>()(
 
     setChatConnectionState: (state: DisplayConnectionState) => {
       set({ chatConnectionState: state });
+      if (state === 'disconnected') {
+        failAllPendingRequests('聊天连接已断开，请检查后端服务或网络连接。', 'CHAT_CHANNEL_UNAVAILABLE');
+      }
     },
 
     setSpeechEnabled: (enabled: boolean) => {
@@ -587,6 +603,7 @@ export const useAiCenterStore = create<AiCenterState>()(
     },
 
     reset: () => {
+      clearAllPendingRequestTimeouts();
       set(initialState());
     },
 
@@ -594,6 +611,7 @@ export const useAiCenterStore = create<AiCenterState>()(
       const oldConversationId = get().conversationId;
       const newConversationId = createConversationId();
       chatWsService.sendClearHistory(oldConversationId);
+      clearAllPendingRequestTimeouts();
 
       set((state) => ({
         conversationId: newConversationId,
@@ -785,6 +803,82 @@ function createClearedEditingState() {
     editingSubmitEventId: null,
     editingSubmitError: null,
   };
+}
+
+function schedulePendingRequestTimeout(eventId: string, kind: PendingRequestKind): void {
+  clearPendingRequestTimeout(eventId);
+
+  const timeoutMs = kind === 'speech'
+    ? CHAT_CONFIG.SPEECH_REQUEST_TIMEOUT_MS
+    : CHAT_CONFIG.CHAT_REQUEST_TIMEOUT_MS;
+
+  const timer = setTimeout(() => {
+    pendingRequestTimeouts.delete(eventId);
+
+    const store = useAiCenterStore.getState();
+    if (!store.pendingChatEventIds[eventId]) {
+      return;
+    }
+
+    const errorMessage = kind === 'speech'
+      ? '语音请求超时，请检查后端服务或网络连接。'
+      : 'AI 响应超时，请检查后端服务或网络连接。';
+    const errorCode = kind === 'speech' ? 'TRANSCRIPTION_TIMEOUT' : 'CHAT_REQUEST_TIMEOUT';
+
+    failPendingRequest(eventId, errorMessage, errorCode);
+  }, timeoutMs);
+
+  pendingRequestTimeouts.set(eventId, timer);
+}
+
+function clearPendingRequestTimeout(eventId: string | null | undefined): void {
+  if (!eventId) {
+    return;
+  }
+
+  const timer = pendingRequestTimeouts.get(eventId);
+  if (!timer) {
+    return;
+  }
+
+  clearTimeout(timer);
+  pendingRequestTimeouts.delete(eventId);
+}
+
+function clearAllPendingRequestTimeouts(): void {
+  pendingRequestTimeouts.forEach((timer) => clearTimeout(timer));
+  pendingRequestTimeouts.clear();
+}
+
+function failPendingRequest(eventId: string, errorMessage: string, errorCode: string): void {
+  const store = useAiCenterStore.getState();
+  if (!store.pendingChatEventIds[eventId]) {
+    clearPendingRequestTimeout(eventId);
+    return;
+  }
+
+  store.appendChatError({
+    event_id: `local-error-${crypto.randomUUID()}`,
+    connection: 'chat',
+    error_code: errorCode,
+    error_message: errorMessage,
+    reply_to_event_id: eventId,
+    timestamp: new Date().toISOString(),
+  });
+
+  if (useAiCenterStore.getState().activeVoiceEventId === eventId) {
+    useAiCenterStore.getState().setVoiceCaptureError(errorMessage, eventId);
+  }
+}
+
+function failAllPendingRequests(errorMessage: string, errorCode: string): void {
+  const pendingEventIds = Object.entries(useAiCenterStore.getState().pendingChatEventIds)
+    .filter(([, pending]) => pending)
+    .map(([eventId]) => eventId);
+
+  pendingEventIds.forEach((eventId) => {
+    failPendingRequest(eventId, errorMessage, errorCode);
+  });
 }
 
 function getLastEditableTurn(messages: AiCenterChatMessage[]) {

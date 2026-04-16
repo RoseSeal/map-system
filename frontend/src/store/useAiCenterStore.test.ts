@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   chatErrorFixture,
   chatGlobalErrorFixture,
   chatReplyFixture,
   speechTranscriptFixture,
 } from '../test/fixtures';
+import { CHAT_CONFIG } from '../config/constants';
 
 const chatSubscribers = vi.hoisted(() => ({
   onChatReply: undefined as ((payload: unknown) => void) | undefined,
@@ -48,9 +49,14 @@ import { useAiCenterStore } from './useAiCenterStore';
 
 describe('useAiCenterStore', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     useRiskStore.getState().reset();
     useAiCenterStore.getState().reset();
     chatWsServiceMock.send.mockImplementation(() => 'generated-event-id');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('sendTextMessage rejects empty text and pending conversation requests', () => {
@@ -373,6 +379,72 @@ describe('useAiCenterStore', () => {
       reply_to_event_id: 'missing-user-event',
     });
     expect(useAiCenterStore.getState().latestChatError?.event_id).toBe('chat-error-2');
+  });
+
+  it('marks pending text chat as failed when the local request timeout expires', () => {
+    vi.useFakeTimers();
+
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('user-event-timeout');
+
+    expect(store.sendTextMessage('Timeout me')).toBe(true);
+
+    vi.advanceTimersByTime(CHAT_CONFIG.CHAT_REQUEST_TIMEOUT_MS);
+
+    const state = useAiCenterStore.getState();
+    expect(state.pendingChatEventIds['user-event-timeout']).toBe(false);
+    expect(state.chatErrorByEventId['user-event-timeout']).toBe('AI 响应超时，请检查后端服务或网络连接。');
+    expect(state.latestChatError?.error_code).toBe('CHAT_REQUEST_TIMEOUT');
+    expect(state.chatMessages[0]).toMatchObject({
+      event_id: 'user-event-timeout',
+      status: 'error',
+      error_message: 'AI 响应超时，请检查后端服务或网络连接。',
+    });
+  });
+
+  it('clears the local request timeout after a successful chat reply', () => {
+    vi.useFakeTimers();
+
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('user-event-ok');
+
+    expect(store.sendTextMessage('Need reply')).toBe(true);
+
+    const conversationId = useAiCenterStore.getState().conversationId;
+    store.appendChatReply({
+      ...chatReplyFixture,
+      event_id: 'assistant-event-ok',
+      conversation_id: conversationId,
+      reply_to_event_id: 'user-event-ok',
+    });
+
+    vi.advanceTimersByTime(CHAT_CONFIG.CHAT_REQUEST_TIMEOUT_MS);
+
+    const state = useAiCenterStore.getState();
+    expect(state.pendingChatEventIds['user-event-ok']).toBe(false);
+    expect(state.chatMessages.find((message) => message.event_id === 'user-event-ok')?.status).toBe('replied');
+    expect(state.latestChatError).toBeNull();
+  });
+
+  it('fails pending preview speech when the websocket disconnects', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('voice-event-preview');
+
+    expect(store.sendSpeechMessage({
+      audioData: 'base64-audio',
+      audioFormat: 'pcm16',
+      mode: 'preview',
+    })).toBe(true);
+
+    chatSubscribers.onConnectionStateChange?.('disconnected');
+
+    const state = useAiCenterStore.getState();
+    expect(state.chatConnectionState).toBe('disconnected');
+    expect(state.pendingChatEventIds['voice-event-preview']).toBe(false);
+    expect(state.chatMessages).toHaveLength(0);
+    expect(state.latestChatError?.error_code).toBe('CHAT_CHANNEL_UNAVAILABLE');
+    expect(state.voiceCaptureState).toBe('error');
+    expect(state.voiceCaptureError).toBe('聊天连接已断开，请检查后端服务或网络连接。');
   });
 
   it('supports voice capture state transitions and mismatch guard', () => {

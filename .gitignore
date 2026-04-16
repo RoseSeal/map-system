@@ -47,4 +47,6 @@ __pycache__/
 # AI
 .codex
 AGENTS.md
+.gemini/
+.github/
 .claude/
