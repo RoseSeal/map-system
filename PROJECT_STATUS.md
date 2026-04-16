@@ -13,8 +13,8 @@
 | --- | --- |
 | Overview plan | completed | not applicable |
 | Step 1: test framework and baseline | completed | completed |
-| Step 2: frontend architecture docs and component cleanup | pending | pending |
-| Step 3: presentation enhancements | pending | pending |
+| Step 2: frontend architecture docs and component cleanup | completed | completed |
+| Step 3: presentation enhancements | completed | pending |
 | Step 4: interaction enhancements | pending | pending |
 
 ## 3. Update Rule

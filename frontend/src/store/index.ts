@@ -1,4 +1,4 @@
-﻿export {
+export {
   useRiskStore,
   selectOwnShip,
   selectTargets,
@@ -6,7 +6,7 @@
   selectEnvironment,
   selectExplanationsByTargetId,
   selectIsLowTrust,
-  selectIsConnected,
+  selectRiskConnectionState,
   selectRiskConnectionError,
   selectSelectedTargetIds,
   selectDroppedTargetNotices,
@@ -30,4 +30,5 @@ export {
   selectVoiceCaptureError,
   selectVoiceCaptureState,
   selectVoiceCaptureSupported,
+  selectChatConnectionState,
 } from './useAiCenterStore';

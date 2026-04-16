@@ -13,6 +13,7 @@ import {
 } from '../../store';
 import { getRiskColor } from '../../config';
 import { useVoiceCapture } from '../../hooks/useVoiceCapture';
+import { translateEncounterType } from '../../utils/riskDisplay';
 import type { AiCenterChatMessage } from '../../types/aiCenter';
 import type { ExplanationPayload, RiskLevel, RiskTarget } from '../../types/schema';
 import { ChatComposer } from './ChatComposer';
@@ -242,6 +243,7 @@ export function RiskExplanationPanel() {
                   const isSelected = selectedTargetIds.includes(target.id);
                   const riskColor = getRiskColor(explanation.risk_level);
                   const riskHex = `rgb(${riskColor.join(',')})`;
+                  const encounterTypeText = translateEncounterType(target.risk_assessment.encounter_type);
 
                   return (
                     <div
@@ -258,6 +260,11 @@ export function RiskExplanationPanel() {
                       <div className="flex justify-between items-center mb-2 gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="font-mono text-xs text-slate-700 dark:text-slate-200 truncate">ID: {target.id}</span>
+                          {encounterTypeText && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">
+                              {encounterTypeText}
+                            </span>
+                          )}
                           <span className="h-2 w-2 rounded-full bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></span>
                         </div>
                         <span

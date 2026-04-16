@@ -19,6 +19,11 @@ class MockEventSource {
   onopen: ((event: Event) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
 
+  readyState = 0; // CONNECTING
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSED = 2;
+
   closed = false;
   url: string;
 
@@ -41,6 +46,7 @@ class MockEventSource {
 
   close(): void {
     this.closed = true;
+    this.readyState = 2; // CLOSED
   }
 
   emit(type: string, payload: unknown): void {
@@ -88,7 +94,7 @@ describe('riskSseService', () => {
     riskSseService.connect('http://localhost:8080/api/v2/risk');
     MockEventSource.instances[0].onopen?.(new Event('open'));
 
-    expect(connectionSpy).toHaveBeenCalledWith(true, null);
+    expect(connectionSpy).toHaveBeenCalledWith('connected', null);
     off();
   });
 
@@ -139,19 +145,34 @@ describe('riskSseService', () => {
 
     expect(source.closed).toBe(true);
     expect(source.removedEventTypes).toEqual(expect.arrayContaining(['RISK_UPDATE', 'EXPLANATION', 'ERROR']));
-    expect(connectionSpy).toHaveBeenLastCalledWith(false, null);
+    expect(connectionSpy).toHaveBeenLastCalledWith('disconnected', null);
 
     off();
   });
 
-  it('emits abnormal disconnect status on error event', () => {
+  it('emits abnormal disconnect status on error event when closed', () => {
     const connectionSpy = vi.fn();
     const off = riskSseService.onConnectionStatusChange(connectionSpy);
 
     riskSseService.connect('http://localhost:8080/api/v2/risk');
-    MockEventSource.instances[0].onerror?.(new Event('error'));
+    const source = MockEventSource.instances[0];
+    source.readyState = 2; // CLOSED
+    source.onerror?.(new Event('error'));
 
-    expect(connectionSpy).toHaveBeenCalledWith(false, '风险态势连接中断');
+    expect(connectionSpy).toHaveBeenCalledWith('disconnected', '风险态势连接中断');
+    off();
+  });
+
+  it('emits reconnecting status on error event when connecting', () => {
+    const connectionSpy = vi.fn();
+    const off = riskSseService.onConnectionStatusChange(connectionSpy);
+
+    riskSseService.connect('http://localhost:8080/api/v2/risk');
+    const source = MockEventSource.instances[0];
+    source.readyState = 0; // CONNECTING
+    source.onerror?.(new Event('error'));
+
+    expect(connectionSpy).toHaveBeenCalledWith('reconnecting', null);
     off();
   });
 });

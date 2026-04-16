@@ -11,6 +11,7 @@ import type {
   SpeechTranscriptPayload,
 } from '../types/schema';
 import { BACKEND_CONFIG, WS_CONFIG } from '../config/constants';
+import type { DisplayConnectionState } from '../types/connection';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 type ChatReplyCallback = (payload: ChatReplyPayload) => void;
@@ -36,6 +37,7 @@ class ChatWsService {
   private errorCallbacks = new Set<ErrorCallback>();
   private clearHistoryAckCallbacks = new Set<ClearHistoryAckCallback>();
   private pongCallbacks = new Set<PongCallback>();
+  private connectionStateCallbacks = new Set<(state: DisplayConnectionState) => void>();
 
   connect(url: string = this.currentUrl): void {
     if (this.state === 'connected' || this.state === 'connecting') {
@@ -46,6 +48,7 @@ class ChatWsService {
     this.manuallyDisconnected = false;
     this.clearReconnectTimer();
     this.state = this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting';
+    this.notifyConnectionState();
 
     const socket = new WebSocket(url);
     this.socket = socket;
@@ -57,6 +60,7 @@ class ChatWsService {
       }
 
       this.state = 'connected';
+      this.notifyConnectionState();
       this.reconnectAttempts = 0;
       this.startHeartbeat();
     };
@@ -87,6 +91,7 @@ class ChatWsService {
 
       if (this.manuallyDisconnected) {
         this.state = 'disconnected';
+        this.notifyConnectionState();
         return;
       }
 
@@ -97,6 +102,7 @@ class ChatWsService {
   disconnect(): void {
     this.manuallyDisconnected = true;
     this.state = 'disconnected';
+    this.notifyConnectionState();
     this.clearReconnectTimer();
     this.stopHeartbeat();
 
@@ -169,8 +175,23 @@ class ChatWsService {
     };
   }
 
+  onConnectionStateChange(cb: (state: DisplayConnectionState) => void): () => void {
+    this.connectionStateCallbacks.add(cb);
+    return () => {
+      this.connectionStateCallbacks.delete(cb);
+    };
+  }
+
   getState(): ConnectionState {
     return this.state;
+  }
+
+  private notifyConnectionState(): void {
+    const display: DisplayConnectionState =
+      this.state === 'connected' ? 'connected'
+      : this.state === 'disconnected' ? 'disconnected'
+      : 'reconnecting'; // covers 'connecting' and 'reconnecting'
+    this.connectionStateCallbacks.forEach((cb) => cb(display));
   }
 
   private buildEnvelope(
@@ -265,6 +286,7 @@ class ChatWsService {
 
   private scheduleReconnect(): void {
     this.state = 'reconnecting';
+    this.notifyConnectionState();
     this.reconnectAttempts += 1;
 
     const delay = Math.min(

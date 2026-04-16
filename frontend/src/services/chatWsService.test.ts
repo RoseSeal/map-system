@@ -99,9 +99,9 @@ describe('chatWsService', () => {
 
     const randomSpy = vi.spyOn(globalThis.crypto, 'randomUUID');
     randomSpy
-      .mockReturnValueOnce('event-chat')
-      .mockReturnValueOnce('event-speech')
-      .mockReturnValueOnce('event-clear-history');
+      .mockReturnValueOnce('11111111-1111-1111-1111-111111111111')
+      .mockReturnValueOnce('22222222-2222-2222-2222-222222222222')
+      .mockReturnValueOnce('33333333-3333-3333-3333-333333333333');
 
     const chatEventId = chatWsService.send('CHAT', {
       conversation_id: 'conversation-1',
@@ -120,9 +120,9 @@ describe('chatWsService', () => {
       conversation_id: 'conversation-1',
     });
 
-    expect(chatEventId).toBe('event-chat');
-    expect(speechEventId).toBe('event-speech');
-    expect(clearHistoryEventId).toBe('event-clear-history');
+    expect(chatEventId).toBe('11111111-1111-1111-1111-111111111111');
+    expect(speechEventId).toBe('22222222-2222-2222-2222-222222222222');
+    expect(clearHistoryEventId).toBe('33333333-3333-3333-3333-333333333333');
 
     const [chatEnvelope, speechEnvelope, clearHistoryEnvelope] = socket.sentMessages.map((message) => JSON.parse(message));
 
@@ -133,7 +133,7 @@ describe('chatWsService', () => {
         conversation_id: 'conversation-1',
         content: 'hello',
         selected_target_ids: ['TGT-1'],
-        event_id: 'event-chat',
+        event_id: '11111111-1111-1111-1111-111111111111',
       },
     });
 
@@ -145,7 +145,7 @@ describe('chatWsService', () => {
         audio_data: 'base64-data',
         audio_format: 'pcm16',
         mode: 'direct',
-        event_id: 'event-speech',
+        event_id: '22222222-2222-2222-2222-222222222222',
       },
     });
 
@@ -154,7 +154,7 @@ describe('chatWsService', () => {
       source: 'client',
       payload: {
         conversation_id: 'conversation-1',
-        event_id: 'event-clear-history',
+        event_id: '33333333-3333-3333-3333-333333333333',
       },
     });
   });
@@ -294,5 +294,23 @@ describe('chatWsService', () => {
     const secondSocket = MockWebSocket.instances[1];
     secondSocket.triggerOpen();
     expect(chatWsService.getState()).toBe('connected');
+  });
+
+  it('notifies connection state changes to subscribers', () => {
+    const stateSpy = vi.fn();
+    chatWsService.onConnectionStateChange(stateSpy);
+
+    chatWsService.connect('ws://localhost:8080/api/v2/chat');
+    expect(stateSpy).toHaveBeenLastCalledWith('reconnecting');
+
+    const socket = MockWebSocket.instances[0];
+    socket.triggerOpen();
+    expect(stateSpy).toHaveBeenLastCalledWith('connected');
+
+    socket.triggerClose();
+    expect(stateSpy).toHaveBeenLastCalledWith('reconnecting');
+
+    chatWsService.disconnect();
+    expect(stateSpy).toHaveBeenLastCalledWith('disconnected');
   });
 });

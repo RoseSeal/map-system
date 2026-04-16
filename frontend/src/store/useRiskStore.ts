@@ -11,6 +11,7 @@ import type {
 } from '../types/schema';
 import { PERFORMANCE } from '../config/constants';
 import { riskSseService } from '../services/riskSseService';
+import type { DisplayConnectionState } from '../types/connection';
 
 interface RiskState {
   latestRiskUpdate: RiskUpdatePayload | null;
@@ -23,7 +24,7 @@ interface RiskState {
   environment: EnvironmentContext | null;
   explanationsByTargetId: Record<string, ExplanationPayload>;
 
-  isConnected: boolean;
+  riskConnectionState: DisplayConnectionState;
   connectionError: string | null;
   lastError: SseErrorPayload | null;
 
@@ -33,7 +34,7 @@ interface RiskState {
 
   setRiskUpdate: (payload: RiskUpdatePayload) => void;
   upsertExplanation: (payload: ExplanationPayload) => void;
-  setConnectionStatus: (connected: boolean, error?: string | null) => void;
+  setRiskConnectionState: (state: DisplayConnectionState, error?: string | null) => void;
   setRiskError: (payload: SseErrorPayload) => void;
   clearRiskError: () => void;
   selectTarget: (targetId: string | null) => void;
@@ -51,7 +52,7 @@ const initialState = {
   governance: null,
   environment: null,
   explanationsByTargetId: {} as Record<string, ExplanationPayload>,
-  isConnected: false,
+  riskConnectionState: 'disconnected' as DisplayConnectionState,
   connectionError: null,
   lastError: null as SseErrorPayload | null,
   isLowTrust: false,
@@ -83,7 +84,7 @@ export const useRiskStore = create<RiskState>()(
           explanationsByTargetId,
           selectedTargetIds,
           droppedTargetNotices: [...new Set([...state.droppedTargetNotices, ...droppedTargetNotices])],
-          isConnected: true,
+          riskConnectionState: 'connected',
           connectionError: null,
           isLowTrust: payload.governance.trust_factor < PERFORMANCE.LOW_TRUST_THRESHOLD,
         };
@@ -105,10 +106,10 @@ export const useRiskStore = create<RiskState>()(
       });
     },
 
-    setConnectionStatus: (connected: boolean, error: string | null = null) => {
+    setRiskConnectionState: (state: DisplayConnectionState, error: string | null = null) => {
       set({
-        isConnected: connected,
-        connectionError: connected ? null : error,
+        riskConnectionState: state,
+        connectionError: state === 'connected' ? null : error,
       });
     },
 
@@ -160,7 +161,7 @@ export const selectTargets = (state: RiskState) => state.targets;
 export const selectGovernance = (state: RiskState) => state.governance;
 export const selectEnvironment = (state: RiskState) => state.environment;
 export const selectIsLowTrust = (state: RiskState) => state.isLowTrust;
-export const selectIsConnected = (state: RiskState) => state.isConnected;
+export const selectRiskConnectionState = (state: RiskState) => state.riskConnectionState;
 export const selectRiskConnectionError = (state: RiskState) => state.connectionError;
 export const selectExplanationsByTargetId = (state: RiskState) => state.explanationsByTargetId;
 export const selectSelectedTargetIds = (state: RiskState) => state.selectedTargetIds;
@@ -186,8 +187,8 @@ function initializeRiskStoreSubscriptions(): void {
     useRiskStore.getState().setRiskError(payload);
   });
 
-  riskSseService.onConnectionStatusChange((connected, error) => {
-    useRiskStore.getState().setConnectionStatus(connected, error);
+  riskSseService.onConnectionStatusChange((state, error) => {
+    useRiskStore.getState().setRiskConnectionState(state, error);
   });
 }
 

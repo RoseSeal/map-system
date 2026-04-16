@@ -7,12 +7,13 @@ import {
   riskUpdateWithoutAlarmFixture,
   sseErrorFixture,
 } from '../test/fixtures';
+import type { DisplayConnectionState } from '../types/connection';
 
 const riskSubscribers = vi.hoisted(() => ({
   onRiskUpdate: undefined as ((payload: unknown) => void) | undefined,
   onExplanation: undefined as ((payload: unknown) => void) | undefined,
   onError: undefined as ((payload: unknown) => void) | undefined,
-  onConnectionStatusChange: undefined as ((connected: boolean, error?: string | null) => void) | undefined,
+  onConnectionStatusChange: undefined as ((state: DisplayConnectionState, error?: string | null) => void) | undefined,
 }));
 
 const riskSseServiceMock = vi.hoisted(() => ({
@@ -28,7 +29,7 @@ const riskSseServiceMock = vi.hoisted(() => ({
     riskSubscribers.onError = cb;
     return vi.fn();
   }),
-  onConnectionStatusChange: vi.fn((cb: (connected: boolean, error?: string | null) => void) => {
+  onConnectionStatusChange: vi.fn((cb: (state: DisplayConnectionState, error?: string | null) => void) => {
     riskSubscribers.onConnectionStatusChange = cb;
     return vi.fn();
   }),
@@ -55,7 +56,7 @@ describe('useRiskStore', () => {
     expect(state.targets).toHaveLength(2);
     expect(state.governance?.trust_factor).toBe(0.35);
     expect(state.environment?.safety_contour_val).toBe(15);
-    expect(state.isConnected).toBe(true);
+    expect(state.riskConnectionState).toBe('connected');
     expect(state.connectionError).toBeNull();
     expect(state.isLowTrust).toBe(true);
     expect(state.lastUpdateTime).toBeGreaterThan(0);
@@ -116,13 +117,13 @@ describe('useRiskStore', () => {
     riskSubscribers.onRiskUpdate?.(riskUpdateFixture);
     riskSubscribers.onExplanation?.(explanationForAlarmFixture);
     riskSubscribers.onError?.(sseErrorFixture);
-    riskSubscribers.onConnectionStatusChange?.(false, 'stream-down');
+    riskSubscribers.onConnectionStatusChange?.('disconnected', 'stream-down');
 
     const state = useRiskStore.getState();
     expect(state.targets).toHaveLength(2);
     expect(state.explanationsByTargetId['TGT-ALARM']?.provider).toBe('gemini');
     expect(state.lastError?.error_code).toBe('RISK_STREAM_INTERRUPTED');
-    expect(state.isConnected).toBe(false);
+    expect(state.riskConnectionState).toBe('disconnected');
     expect(state.connectionError).toBe('stream-down');
   });
 });

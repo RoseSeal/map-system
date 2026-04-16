@@ -9,6 +9,7 @@ import type {
 import type { AiCenterChatMessage } from '../types/aiCenter';
 import { chatWsService } from '../services/chatWsService';
 import { useRiskStore } from './useRiskStore';
+import type { DisplayConnectionState } from '../types/connection';
 
 export type VoiceCaptureState = 'idle' | 'recording' | 'transcribing' | 'sent' | 'error';
 
@@ -26,6 +27,8 @@ interface AiCenterState {
   pendingChatEventIds: Record<string, boolean>;
   chatErrorByEventId: Record<string, string | null>;
   latestChatError: ChatErrorPayload | null;
+
+  chatConnectionState: DisplayConnectionState;
 
   speechEnabled: boolean;
   speechUnlocked: boolean;
@@ -47,6 +50,7 @@ interface AiCenterState {
   appendChatReply: (payload: ChatReplyPayload) => void;
   appendSpeechTranscript: (payload: SpeechTranscriptPayload) => void;
   appendChatError: (payload: ChatErrorPayload) => void;
+  setChatConnectionState: (state: DisplayConnectionState) => void;
   setSpeechEnabled: (enabled: boolean) => void;
   setSpeechUnlocked: (unlocked: boolean) => void;
   setSpeechSupported: (supported: boolean) => void;
@@ -71,6 +75,7 @@ const initialState = () => ({
   pendingChatEventIds: {} as Record<string, boolean>,
   chatErrorByEventId: {} as Record<string, string | null>,
   latestChatError: null as ChatErrorPayload | null,
+  chatConnectionState: 'disconnected' as DisplayConnectionState,
   speechEnabled: false,
   speechUnlocked: false,
   speechSupported: false,
@@ -325,6 +330,10 @@ export const useAiCenterStore = create<AiCenterState>()(
       });
     },
 
+    setChatConnectionState: (state: DisplayConnectionState) => {
+      set({ chatConnectionState: state });
+    },
+
     setSpeechEnabled: (enabled: boolean) => {
       set({ speechEnabled: enabled });
     },
@@ -467,6 +476,7 @@ export const selectVoiceCaptureState = (state: AiCenterState) => state.voiceCapt
 export const selectVoiceCaptureError = (state: AiCenterState) => state.voiceCaptureError;
 export const selectActiveVoiceEventId = (state: AiCenterState) => state.activeVoiceEventId;
 export const selectActiveVoiceMode = (state: AiCenterState) => state.activeVoiceMode;
+export const selectChatConnectionState = (state: AiCenterState) => state.chatConnectionState;
 
 let hasInitializedAiCenterStoreSubscriptions = false;
 
@@ -503,6 +513,10 @@ function initializeAiCenterStoreSubscriptions(): void {
 
   chatWsService.onClearHistoryAck((payload) => {
     console.debug('[chatWsService] Clear history acknowledged', payload.conversation_id, payload.reply_to_event_id);
+  });
+
+  chatWsService.onConnectionStateChange((state) => {
+    useAiCenterStore.getState().setChatConnectionState(state);
   });
 }
 

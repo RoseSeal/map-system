@@ -2,12 +2,13 @@ import { render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { riskUpdateFixture } from '../../test/fixtures';
+import type { DisplayConnectionState } from '../../types/connection';
 
 const riskSubscribers = vi.hoisted(() => ({
   onRiskUpdate: undefined as ((payload: unknown) => void) | undefined,
   onExplanation: undefined as ((payload: unknown) => void) | undefined,
   onError: undefined as ((payload: unknown) => void) | undefined,
-  onConnectionStatusChange: undefined as ((connected: boolean, error?: string | null) => void) | undefined,
+  onConnectionStatusChange: undefined as ((state: DisplayConnectionState, error?: string | null) => void) | undefined,
 }));
 
 const riskSseServiceMock = vi.hoisted(() => ({
@@ -23,7 +24,7 @@ const riskSseServiceMock = vi.hoisted(() => ({
     riskSubscribers.onError = cb;
     return vi.fn();
   }),
-  onConnectionStatusChange: vi.fn((cb: (connected: boolean, error?: string | null) => void) => {
+  onConnectionStatusChange: vi.fn((cb: (state: DisplayConnectionState, error?: string | null) => void) => {
     riskSubscribers.onConnectionStatusChange = cb;
     return vi.fn();
   }),
@@ -36,6 +37,7 @@ const chatWsServiceMock = vi.hoisted(() => ({
   onSpeechTranscript: vi.fn(() => vi.fn()),
   onError: vi.fn(() => vi.fn()),
   onClearHistoryAck: vi.fn(() => vi.fn()),
+  onConnectionStateChange: vi.fn(() => vi.fn()),
 }));
 
 vi.mock('../../services/riskSseService', () => ({

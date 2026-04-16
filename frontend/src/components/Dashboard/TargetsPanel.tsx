@@ -6,6 +6,11 @@ import {
   selectExplanationsByTargetId,
 } from '../../store';
 import { getRiskColor } from '../../config';
+import {
+  translateEncounterType,
+  getRiskScoreBorderWidth,
+  getRiskConfidenceOpacity,
+} from '../../utils/riskDisplay';
 
 export function TargetsPanel() {
   const targets = useRiskStore(selectTargets);
@@ -42,6 +47,7 @@ export function TargetsPanel() {
           const riskHex = `rgb(${riskColor.join(',')})`;
           const isSelected = selectedTargetIds.includes(target.id);
           const explanation = explanationsByTargetId[target.id];
+          const encounterTypeText = translateEncounterType(target.risk_assessment.encounter_type);
 
           return (
             <div
@@ -58,14 +64,25 @@ export function TargetsPanel() {
                   ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-400 dark:border-slate-400 shadow-[inset_0_0_15px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_15px_rgba(255,255,255,0.05)]'
                   : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/60 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/60',
               ].join(' ')}
-              style={{ borderLeftColor: riskHex, borderLeftWidth: '3px' }}
+              style={{
+                borderLeftColor: riskHex,
+                borderLeftWidth: `${getRiskScoreBorderWidth(target.risk_assessment.risk_score)}px`,
+                opacity: getRiskConfidenceOpacity(target.risk_assessment.risk_confidence),
+              }}
             >
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs font-mono font-medium text-slate-700 dark:text-slate-200">
-                  ID: {target.id}
-                </span>
+              <div className="flex justify-between items-center mb-1.5 gap-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-mono font-medium text-slate-700 dark:text-slate-200 truncate">
+                    ID: {target.id}
+                  </span>
+                  {encounterTypeText && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">
+                      {encounterTypeText}
+                    </span>
+                  )}
+                </div>
                 <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
                   style={{ color: riskHex, backgroundColor: `rgba(${riskColor.join(',')}, 0.15)` }}
                 >
                   {translateRisk(target.risk_assessment.risk_level)}

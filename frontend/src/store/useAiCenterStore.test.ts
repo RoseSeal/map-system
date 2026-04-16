@@ -11,6 +11,7 @@ const chatSubscribers = vi.hoisted(() => ({
   onSpeechTranscript: undefined as ((payload: unknown) => void) | undefined,
   onError: undefined as ((payload: unknown) => void) | undefined,
   onClearHistoryAck: undefined as ((payload: unknown) => void) | undefined,
+  onConnectionStateChange: undefined as ((state: string) => void) | undefined,
 }));
 
 const chatWsServiceMock = vi.hoisted(() => ({
@@ -30,6 +31,10 @@ const chatWsServiceMock = vi.hoisted(() => ({
   }),
   onClearHistoryAck: vi.fn((cb: (payload: unknown) => void) => {
     chatSubscribers.onClearHistoryAck = cb;
+    return vi.fn();
+  }),
+  onConnectionStateChange: vi.fn((cb: (state: any) => void) => {
+    chatSubscribers.onConnectionStateChange = cb;
     return vi.fn();
   }),
 }));
@@ -326,5 +331,15 @@ describe('useAiCenterStore', () => {
     });
 
     expect(useAiCenterStore.getState().voiceCaptureState).toBe('sent');
+  });
+
+  it('updates chatConnectionState when connection status changes', () => {
+    expect(typeof chatSubscribers.onConnectionStateChange).toBe('function');
+
+    chatSubscribers.onConnectionStateChange?.('connected');
+    expect(useAiCenterStore.getState().chatConnectionState).toBe('connected');
+
+    chatSubscribers.onConnectionStateChange?.('reconnecting');
+    expect(useAiCenterStore.getState().chatConnectionState).toBe('reconnecting');
   });
 });

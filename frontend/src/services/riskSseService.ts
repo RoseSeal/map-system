@@ -4,11 +4,12 @@ import type {
   SseErrorPayload,
 } from '../types/schema';
 import { BACKEND_CONFIG } from '../config/constants';
+import type { DisplayConnectionState } from '../types/connection';
 
 type RiskUpdateCallback = (payload: RiskUpdatePayload) => void;
 type ExplanationCallback = (payload: ExplanationPayload) => void;
 type ErrorCallback = (payload: SseErrorPayload) => void;
-type ConnectionStatusCallback = (connected: boolean, error?: string | null) => void;
+type ConnectionStatusCallback = (state: DisplayConnectionState, error?: string | null) => void;
 
 const DEFAULT_RISK_SSE_URL: string = BACKEND_CONFIG.RISK_SSE_URL;
 
@@ -30,14 +31,18 @@ class RiskSseService {
     this.eventSource = eventSource;
 
     eventSource.onopen = () => {
-      this.connectionStatusCallbacks.forEach((cb) => cb(true, null));
+      this.connectionStatusCallbacks.forEach((cb) => cb('connected', null));
     };
     eventSource.addEventListener('RISK_UPDATE', this.handleRiskUpdate as EventListener);
     eventSource.addEventListener('EXPLANATION', this.handleExplanation as EventListener);
     eventSource.addEventListener('ERROR', this.handleErrorEvent as EventListener);
     eventSource.onerror = (event) => {
       console.error('[riskSseService] EventSource error', event);
-      this.connectionStatusCallbacks.forEach((cb) => cb(false, '风险态势连接中断'));
+      const connState: DisplayConnectionState = eventSource.readyState === EventSource.CLOSED
+        ? 'disconnected'
+        : 'reconnecting';
+      const error = connState === 'disconnected' ? '风险态势连接中断' : null;
+      this.connectionStatusCallbacks.forEach((cb) => cb(connState, error));
     };
   }
 
@@ -51,7 +56,7 @@ class RiskSseService {
     this.eventSource.removeEventListener('ERROR', this.handleErrorEvent as EventListener);
     this.eventSource.close();
     this.eventSource = null;
-    this.connectionStatusCallbacks.forEach((cb) => cb(false, null));
+    this.connectionStatusCallbacks.forEach((cb) => cb('disconnected', null));
   }
 
   onRiskUpdate(cb: RiskUpdateCallback): () => void {

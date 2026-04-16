@@ -9,16 +9,6 @@ Core goals:
 - Visualize dynamic vessel risk information (CPA, OZT, Safety Domain, predicted trajectory).
 - Support both mock-data mode and backend-connected mode.
 
-Current operating mode:
-- Active mode: mock-data mode.
-- Backend mode: planned, currently under reconstruction.
-- Development focus: frontend rendering and interaction behavior.
-- Data source during local runs: frontend mock generators and local state updates.
-
-Current project status:
-- The frontend currently runs in mock-data mode for day-to-day development.
-- The backend is under reconstruction and is documented as a future provider contract.
-
 README scope:
 - This file is quick start only.
 - It intentionally excludes backend startup instructions.
