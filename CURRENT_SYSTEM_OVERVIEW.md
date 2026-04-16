@@ -31,22 +31,22 @@ Project status tracker:
 - [PROJECT_STATUS.md](PROJECT_STATUS.md)
 
 At last update in status file:
-- Latest completed milestone: v0.8 engine enhancement
-- Active milestone: v0.9 frontend enhancement
+- Latest completed milestone: v0.9 frontend enhancement
+- Active milestone: none
 
 ### 2.3 Effective Artifact Counts (Code + Docs)
 
 Measured from current workspace:
-- `map-service` main Java files: 123
-- `map-service` test Java files: 36
+- `map-service` main Java files: 124
+- `map-service` test Java files: 37
 - `listener-service` main Java files: 8
 - `listener-service` test Java files: 1
-- Frontend source files (`ts`, `tsx`, `css`): 48
-- Frontend test files: 7
-- Markdown docs total: 36
+- Frontend source files (`ts`, `tsx`, `css`): 49
+- Frontend test files: 8
+- Markdown docs total: 44
 - Current root docs (non-history): 6
-- History docs: 25
-- Simulator top-level scripts: 5
+- History docs: 31
+- Simulator top-level scripts: 6
 - Repo utility scripts: 2
 
 ### 2.4 Top-Level Repository Structure
@@ -73,8 +73,9 @@ Risk flow:
 Chat and voice flow:
 1. Frontend sends `CHAT` or `SPEECH` over WebSocket `/api/v2/chat`
 2. For speech, backend calls Whisper service for transcript
-3. Backend builds context + conversation memory + LLM request
-4. Backend returns `CHAT_REPLY` and optional `SPEECH_TRANSCRIPT`
+3. Backend builds context + conversation memory + LLM request; when `selected_target_ids` are present it injects matched target detail and latest valid explanation text
+4. When `edit_last_user_message=true`, backend replaces the last completed `USER / ASSISTANT` turn only after new reply generation succeeds
+5. Backend returns `CHAT_REPLY` and optional `SPEECH_TRANSCRIPT`
 
 ### 3.2 Protocol Split (v2)
 
@@ -264,11 +265,16 @@ Role: chat, speech transcript orchestration, risk explanation generation, memory
 - Context holder and formatter:
   - [backend/map-service/src/main/java/com/whut/map/map_service/llm/context/RiskContextHolder.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/context/RiskContextHolder.java)
   - [backend/map-service/src/main/java/com/whut/map/map_service/llm/context/RiskContextFormatter.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/context/RiskContextFormatter.java)
+  - [backend/map-service/src/main/java/com/whut/map/map_service/llm/context/ExplanationCache.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/context/ExplanationCache.java)
 
 #### 5.5.4 Conversation Memory
 
 - Multi-turn memory and conversation permit locking:
   - [backend/map-service/src/main/java/com/whut/map/map_service/llm/memory/ConversationMemory.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/memory/ConversationMemory.java)
+
+Current semantics:
+- Stores paired `USER / ASSISTANT` history with TTL eviction and max-turn trimming
+- Supports non-destructive replacement of the last completed turn for `edit_last_user_message=true`
 
 #### 5.5.5 Services
 
@@ -289,6 +295,10 @@ Role: chat, speech transcript orchestration, risk explanation generation, memory
   - [backend/map-service/src/main/java/com/whut/map/map_service/llm/config/ChatWebSocketConfig.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/config/ChatWebSocketConfig.java)
 - Risk completion listener for context update + async explanation fan-out:
   - [backend/map-service/src/main/java/com/whut/map/map_service/llm/context/LlmRiskEventListener.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/context/LlmRiskEventListener.java)
+
+Current listener behavior:
+- Refreshes risk context snapshot after each risk assessment completion
+- Gates late explanations through `ExplanationCache` so only currently tracked non-`SAFE` targets continue to publish and remain injectable into chat context
 
 ### 5.6 Chart Module (`chart`)
 
@@ -377,14 +387,14 @@ Dependency and scripts:
 ### 7.1 Frontend Module Distribution
 
 Top-level source groups under `frontend/src`:
-- `components` (14 files)
+- `components` (13 files)
 - `services` (9 files)
 - `store` (6 files)
 - `test` (4 files)
-- `utils` (3 files)
+- `utils` (4 files)
 - `hooks` (3 files)
 - `config` (3 files)
-- `types` (2 files)
+- `types` (3 files)
 
 ### 7.2 Components
 
@@ -398,8 +408,9 @@ Dashboard and AI center:
 - [frontend/src/components/Dashboard/ChatMessageList.tsx](frontend/src/components/Dashboard/ChatMessageList.tsx)
 - [frontend/src/components/Dashboard/ChatComposer.tsx](frontend/src/components/Dashboard/ChatComposer.tsx)
 
-Overlays and global controls:
-- [frontend/src/components/Overlays/ToolbarOverlay.tsx](frontend/src/components/Overlays/ToolbarOverlay.tsx)
+Current workspace shell:
+- Left-side monitoring cluster is composed in [frontend/src/App.tsx](frontend/src/App.tsx) from `StatusPanel` + `TargetsPanel`
+- Right-side AI workspace shell, current settings foldout, and hover/focus visibility logic live in [frontend/src/components/Dashboard/RiskExplanationPanel.tsx](frontend/src/components/Dashboard/RiskExplanationPanel.tsx)
 
 ### 7.3 Services
 
@@ -437,6 +448,9 @@ Auto speech broadcast:
 
 LLM event normalization:
 - [frontend/src/utils/llmEventNormalizer.ts](frontend/src/utils/llmEventNormalizer.ts)
+
+Risk display helpers:
+- [frontend/src/utils/riskDisplay.ts](frontend/src/utils/riskDisplay.ts)
 
 ### 7.6 Types and Protocol Contracts
 
@@ -555,10 +569,11 @@ Current truth docs (authoritative for current system):
 - [docs/TODO.md](docs/TODO.md)
 
 Active planning docs:
-- [docs/v0.9-frontend-enhancement](docs/v0.9-frontend-enhancement)
+- none currently
 
 Historical docs (not current truth source):
 - [docs/history](docs/history)
+- [docs/history/v0.9-frontend-enhancement](docs/history/v0.9-frontend-enhancement)
 
 ## 11. Tests and Quality Coverage
 
@@ -591,9 +606,10 @@ Test files include:
 - [frontend/src/store/useAiCenterStore.test.ts](frontend/src/store/useAiCenterStore.test.ts)
 - [frontend/src/services/riskSseService.test.ts](frontend/src/services/riskSseService.test.ts)
 - [frontend/src/services/chatWsService.test.ts](frontend/src/services/chatWsService.test.ts)
+- [frontend/src/components/Dashboard/ChatComposer.test.tsx](frontend/src/components/Dashboard/ChatComposer.test.tsx)
+- [frontend/src/components/Dashboard/ChatMessageList.test.tsx](frontend/src/components/Dashboard/ChatMessageList.test.tsx)
 - [frontend/src/components/Dashboard/TargetsPanel.test.tsx](frontend/src/components/Dashboard/TargetsPanel.test.tsx)
 - [frontend/src/components/Dashboard/StatusPanel.test.tsx](frontend/src/components/Dashboard/StatusPanel.test.tsx)
-- [frontend/src/components/Overlays/ToolbarOverlay.test.tsx](frontend/src/components/Overlays/ToolbarOverlay.test.tsx)
 
 Testing setup and fixtures:
 - [frontend/src/test/setup.ts](frontend/src/test/setup.ts)

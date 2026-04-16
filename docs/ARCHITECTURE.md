@@ -1,7 +1,7 @@
 ﻿# 海图系统 (Map-System) — Architecture Overview v0.1
 
 > 用途：项目架构概览 / AI 上下文输入 / 对外介绍
-> 最后更新：2026-04-11
+> 最后更新：2026-04-16
 > 维护原则：仅记录稳定的架构事实、链路与关键决策
 
 ---
@@ -59,8 +59,9 @@
 | `LlmChatMessage`（`llm/dto/`） | 多角色消息模型（`SYSTEM / USER / ASSISTANT`） |
 | `LlmRiskContext`（`llm/dto/`） | 投喂给 LLM 的风险上下文结构体 |
 | `RiskContextHolder`（`llm/context/`） | 持有最近一次风险快照，由 `ShipDispatcher` 在每次计算完成后更新 |
-| `RiskContextFormatter`（`llm/context/`） | 将 `LlmRiskContext` 格式化为 LLM 可读摘要 |
-| `ConversationMemory`（`llm/memory/`） | 按 `conversationId` 维护多轮对话历史，含 TTL 过期与滑动窗口截断 |
+| `ExplanationCache`（`llm/context/`） | 按 `targetId` 缓存最近一条有效解释文本，并在目标消失或降为 SAFE 时驱逐 |
+| `RiskContextFormatter`（`llm/context/`） | 将 `LlmRiskContext` 格式化为 LLM 可读摘要；对选中目标可补充最近有效解释文本 |
+| `ConversationMemory`（`llm/memory/`） | 按 `conversationId` 维护多轮对话历史，含 TTL 过期、滑动窗口截断与最后一轮替换能力 |
 | `PromptTemplateService`（`llm/prompt/`） | 从 `classpath:prompts/` 加载 system prompt 模板 |
 | `LlmTriggerService`（`llm/service/`） | 判断是否触发风险解释，结果通过回调交付，不持有 transport 层引用 |
 
@@ -113,7 +114,9 @@ ChatWebSocketHandler
   │      │  transcript
   │      ▼
   └──→ LlmChatService / VoiceChatService
-         │  从 ConversationMemory 读取历史，注入风险上下文，调用 LlmClient
+         │  从 ConversationMemory 读取历史，按 `selected_target_ids`
+         │  注入风险上下文与最近有效 explanation，调用 LlmClient
+         │  `edit_last_user_message=true` 时成功后替换最后一轮
          │  结果写回 ConversationMemory
          │  `CHAT_REPLY` / `SPEECH_TRANSCRIPT` / `ERROR`
          ▼
@@ -124,7 +127,8 @@ ChatWebSocketHandler
 
 - 已具备多源消息接入、风险计算、SSE 风险推送、WebSocket 问答交互、TTS 播报与 ASR 语音输入能力。
 - 实时事件协议已完成 v2 整理，`risk` 与 `chat` 分别通过 SSE 与 WebSocket 承载；具体字段与事件类型以 `docs/EVENT_SCHEMA.md` 为准。
-- LLM 风险解释已从风险主链路中解绑，以异步事件下发；聊天链路支持多轮对话，由 `ConversationMemory` 维护历史，每次请求注入最新风险上下文。
+- LLM 风险解释已从风险主链路中解绑，以异步事件下发；聊天链路支持多轮对话，由 `ConversationMemory` 维护历史，每次请求注入最新风险上下文；当用户选中目标时，最近有效解释文本也会作为补充上下文注入。
+- Chat 支持在当前会话的最后一条文本用户消息上执行非破坏式重答：仅在新回复成功生成后才替换最后一组 `USER / ASSISTANT`，失败时保留旧轮次。
 - Chat 会话由客户端 `conversation_id` 锚定，后端未绑定 WebSocket session 或用户身份；该实现适用于当前单操作者前端模型，不提供多客户端会话隔离保证。
 - `service.llm` 包依赖收口完成：仅依赖 `llm.*`、`domain.*` 和 `config.properties`，不持有 `dto.websocket`、`engine.risk` 或 `transport` 层引用；transport 层负责协议校验与错误码映射。
 - ASR 已通过 `whisper.cpp` 接入，当前采用后端统一编排的非流式方案。

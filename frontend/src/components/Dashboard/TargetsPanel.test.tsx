@@ -68,7 +68,7 @@ describe('TargetsPanel smoke', () => {
     });
 
     expect(screen.getByText('周边目标')).toBeInTheDocument();
-    expect(screen.getByText('2 Tracked')).toBeInTheDocument();
+    expect(screen.getByText(/2\s+已追踪/)).toBeInTheDocument();
     expect(screen.getByText('警报')).toBeInTheDocument();
     expect(screen.getByText('注意')).toBeInTheDocument();
 

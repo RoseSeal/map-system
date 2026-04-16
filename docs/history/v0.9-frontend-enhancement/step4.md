@@ -1,8 +1,9 @@
 # Step 4：交互增强
 
-> 文档状态：active
+> 文档状态：completed
 > 最后更新：2026-04-16
 > 对齐文档：[`FRONTEND_ENHANCEMENT_PALN.md`](./FRONTEND_ENHANCEMENT_PALN.md)
+> 说明：本文保留 Step 4 的实施前分析、方案与验收记录；当前稳定事实以 `docs/frontend-design.md`、`docs/EVENT_SCHEMA.md`、`docs/ARCHITECTURE.md` 为准。
 
 ## 1. 摘要
 
@@ -20,26 +21,26 @@ Step 4 修补现有交互流的完备性缺口，涵盖三个独立子项：
 
 ### 2.1 4A 取消录音
 
-- `voiceRecorderService.cancelRecording()` 已实现（[voiceRecorderService.ts:108](../../frontend/src/services/voiceRecorderService.ts#L108)）：停止 `MediaRecorder`、释放媒体流、清空缓冲区。
-- `useVoiceCapture.ts` 已暴露 `cancelVoiceCapture()` 函数（[useVoiceCapture.ts:83](../../frontend/src/hooks/useVoiceCapture.ts#L83)）：调用上述方法后调用 `resetVoiceCapture()`，状态回退至 `idle`。
-- `ChatComposer.tsx` 在 `recording` 状态下（[ChatComposer.tsx:151](../../frontend/src/components/Dashboard/ChatComposer.tsx#L151)）仅渲染"停止并直发"和"停止并预览"两个按钮，无取消入口。
+- `voiceRecorderService.cancelRecording()` 已实现（[voiceRecorderService.ts:108](../../../frontend/src/services/voiceRecorderService.ts#L108)）：停止 `MediaRecorder`、释放媒体流、清空缓冲区。
+- `useVoiceCapture.ts` 已暴露 `cancelVoiceCapture()` 函数（[useVoiceCapture.ts:83](../../../frontend/src/hooks/useVoiceCapture.ts#L83)）：调用上述方法后调用 `resetVoiceCapture()`，状态回退至 `idle`。
+- `ChatComposer.tsx` 在 `recording` 状态下（[ChatComposer.tsx:151](../../../frontend/src/components/Dashboard/ChatComposer.tsx#L151)）仅渲染"停止并直发"和"停止并预览"两个按钮，无取消入口。
 - `ChatComposer` 有 `onStopVoiceRecording` 回调 prop，但无对应的 `onCancelVoiceRecording` prop。
 
 ### 2.2 4B 编辑最后一条用户消息
 
 - `ChatMessageList.tsx` 无最后一条 user 消息的"编辑"按钮，无"消息卡片切换为可编辑 textarea"的渲染分支。
-- `useAiCenterStore.ts`（[useAiCenterStore.ts:95](../../frontend/src/store/useAiCenterStore.ts#L95)）无最后一条 user 消息编辑态、编辑草稿或编辑提交逻辑。
+- `useAiCenterStore.ts`（[useAiCenterStore.ts:95](../../../frontend/src/store/useAiCenterStore.ts#L95)）无最后一条 user 消息编辑态、编辑草稿或编辑提交逻辑。
 - `schema.d.ts` 中 `ChatRequestPayload` 无 `edit_last_user_message` 字段。
-- 后端 `ChatRequestPayload.java`（[ChatRequestPayload.java](../../backend/map-service/src/main/java/com/whut/map/map_service/llm/transport/ws/ChatRequestPayload.java)）无 `editLastUserMessage` 字段。
-- `LlmChatRequest.java`（[LlmChatRequest.java](../../backend/map-service/src/main/java/com/whut/map/map_service/llm/service/LlmChatRequest.java)）为 record，无 `editLastUserMessage` 字段。
+- 后端 `ChatRequestPayload.java`（[ChatRequestPayload.java](../../../backend/map-service/src/main/java/com/whut/map/map_service/llm/transport/ws/ChatRequestPayload.java)）无 `editLastUserMessage` 字段。
+- `LlmChatRequest.java`（[LlmChatRequest.java](../../../backend/map-service/src/main/java/com/whut/map/map_service/llm/service/LlmChatRequest.java)）为 record，无 `editLastUserMessage` 字段。
 - `ConversationMemory.java` 提供 `append` / `getHistory` / `clear`，无"成功后替换最后一轮"能力。
-- `LlmChatService.java`（[LlmChatService.java](../../backend/map-service/src/main/java/com/whut/map/map_service/llm/service/LlmChatService.java)）在 `handleChat` 成功后追加 USER+ASSISTANT，无"编辑确认后替换最后一轮"路径。
+- `LlmChatService.java`（[LlmChatService.java](../../../backend/map-service/src/main/java/com/whut/map/map_service/llm/service/LlmChatService.java)）在 `handleChat` 成功后追加 USER+ASSISTANT，无"编辑确认后替换最后一轮"路径。
 
 ### 2.3 4C 解释上下文注入
 
-- `LlmRiskEventListener` 在 `onRiskAssessmentCompleted` 中发布 `EXPLANATION` SSE 事件（[LlmRiskEventListener.java](../../backend/map-service/src/main/java/com/whut/map/map_service/llm/context/LlmRiskEventListener.java)），但未将解释文本持久化至任何缓存。
-- `RiskContextFormatter.formatConsolidated`（[RiskContextFormatter.java:109](../../backend/map-service/src/main/java/com/whut/map/map_service/llm/context/RiskContextFormatter.java#L109)）注入选中目标的风险数据时，只读取 `LlmRiskTargetContext.ruleExplanation`（引擎规则文本），不含 LLM 生成的解释文本。
-- `LlmChatService.resolveRiskContext`（[LlmChatService.java:135](../../backend/map-service/src/main/java/com/whut/map/map_service/llm/service/LlmChatService.java#L135)）只传入当前风险上下文快照，无解释缓存注入。
+- `LlmRiskEventListener` 在 `onRiskAssessmentCompleted` 中发布 `EXPLANATION` SSE 事件（[LlmRiskEventListener.java](../../../backend/map-service/src/main/java/com/whut/map/map_service/llm/context/LlmRiskEventListener.java)），但未将解释文本持久化至任何缓存。
+- `RiskContextFormatter.formatConsolidated`（[RiskContextFormatter.java:109](../../../backend/map-service/src/main/java/com/whut/map/map_service/llm/context/RiskContextFormatter.java#L109)）注入选中目标的风险数据时，只读取 `LlmRiskTargetContext.ruleExplanation`（引擎规则文本），不含 LLM 生成的解释文本。
+- `LlmChatService.resolveRiskContext`（[LlmChatService.java:135](../../../backend/map-service/src/main/java/com/whut/map/map_service/llm/service/LlmChatService.java#L135)）只传入当前风险上下文快照，无解释缓存注入。
 
 ---
 
@@ -96,7 +97,7 @@ onCancelVoiceRecording?: () => void;
 
 按钮紧跟"停止并预览"之后，视觉样式保持中性（不使用警告色，区别于停止按钮的绿/黄色调）。
 
-**`RiskExplanationPanel.tsx`（`ChatComposer` 的调用处，[RiskExplanationPanel.tsx:314](../../frontend/src/components/Dashboard/RiskExplanationPanel.tsx#L314)）**：
+**`RiskExplanationPanel.tsx`（`ChatComposer` 的调用处，[RiskExplanationPanel.tsx:314](../../../frontend/src/components/Dashboard/RiskExplanationPanel.tsx#L314)）**：
 
 将 `useVoiceCapture()` 已暴露的 `cancelVoiceCapture` 传入 `onCancelVoiceRecording` prop。该函数已在 `useVoiceCapture.ts:83` 中实现，无需任何 store 或 service 层改动。
 
@@ -203,7 +204,7 @@ clearEditingSubmitError: () => set({ editingSubmitError: null }),
 export const selectEditingSubmitError = (state: AiCenterState) => state.editingSubmitError;
 ```
 
-**`ChatMessageList.tsx`**（[ChatMessageList.tsx:9](../../frontend/src/components/Dashboard/ChatMessageList.tsx#L9)，渲染消息列表的组件）：
+**`ChatMessageList.tsx`**（[ChatMessageList.tsx:9](../../../frontend/src/components/Dashboard/ChatMessageList.tsx#L9)，渲染消息列表的组件）：
 
 新增 props：
 
@@ -344,7 +345,7 @@ if (throwable == null) {
 
 **生命周期设计**：
 
-与前端 `explanationsByTargetId` 保持严格对齐。前端的驱逐逻辑（[useRiskStore.ts:70](../../frontend/src/store/useRiskStore.ts#L70)）：每次 `RISK_UPDATE` 到达时，对 `explanationsByTargetId` 做 filter，只保留仍在追踪列表中的 targetId。后端缓存采用相同逻辑：每次 `RiskAssessmentCompletedEvent` 到达时，驱逐不再出现在当前追踪集合中的条目。
+与前端 `explanationsByTargetId` 保持严格对齐。前端的驱逐逻辑（[useRiskStore.ts:70](../../../frontend/src/store/useRiskStore.ts#L70)）：每次 `RISK_UPDATE` 到达时，对 `explanationsByTargetId` 做 filter，只保留仍在追踪列表中的 targetId。后端缓存采用相同逻辑：每次 `RiskAssessmentCompletedEvent` 到达时，驱逐不再出现在当前追踪集合中的条目。
 
 解释进入缓存的时刻：通过统一校验后，与 `EXPLANATION` 事件发布同步写入缓存（upsert，覆盖旧值）。  
 解释离开缓存的时刻：目标从追踪列表消失，或目标当前风险等级降至 SAFE。  

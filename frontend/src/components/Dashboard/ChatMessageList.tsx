@@ -49,13 +49,14 @@ export function ChatMessageList({
   }
 
   return (
-    <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin transition-colors duration-300">
+    <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-4 scrollbar-thin transition-colors duration-300">
       {messages.map((message) => {
         const isUser = message.role === 'user';
         const isSpeechMessage = message.request_type === 'SPEECH' || message.message_type === 'speech_transcript';
         const showError = isUser && message.status === 'error' && message.error_message;
         const showRetry = showError && message.request_type !== 'SPEECH';
         const showInterruptPlaceholder = isUser && message.status === 'pending';
+        const isEditing = isUser && editingMessageEventId === message.event_id;
         const showEditButton = Boolean(
           isUser
             && editableMessage
@@ -64,122 +65,123 @@ export function ChatMessageList({
             && !editingSubmitPending
             && onStartEditingLastUserMessage,
         );
-        const isEditing = isUser && editingMessageEventId === message.event_id;
 
         return (
           <div
             key={message.event_id}
-            className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+            className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
           >
-            <div className={`max-w-[88%] space-y-1 ${isUser ? 'items-end' : 'items-start'}`}>
-              <div
-                className={[
-                  'rounded-2xl px-3 py-2 text-sm leading-6 shadow-sm border transition-colors',
-                  isUser
-                    ? showError
-                      ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-100'
-                      : 'bg-cyan-50 dark:bg-cyan-500/15 border-cyan-200 dark:border-cyan-500/25 text-cyan-800 dark:text-cyan-50'
-                    : 'bg-slate-100 dark:bg-slate-900/80 border-slate-300 dark:border-white/10 text-slate-800 dark:text-slate-100',
-                ].join(' ')}
-              >
-                {isEditing ? (
-                  <div className="space-y-2">
-                    <textarea
-                      value={editingDraft}
-                      onChange={(event) => onUpdateEditingDraft?.(event.target.value)}
-                      rows={4}
+            <div className="max-w-[92%] relative group">
+              {isEditing ? (
+                /* 编辑状态：不使用气泡包裹，直接展示输入框和按钮 */
+                <div className="w-full min-w-[280px] space-y-3 py-1">
+                  <textarea
+                    value={editingDraft}
+                    onChange={(event) => onUpdateEditingDraft?.(event.target.value)}
+                    rows={4}
+                    disabled={editingSubmitPending}
+                    autoFocus
+                    className="w-full resize-none rounded-xl border border-cyan-500/30 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm px-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 outline-none ring-1 ring-transparent focus:ring-cyan-500/40 transition-all disabled:cursor-not-allowed disabled:opacity-70 shadow-sm"
+                  />
+                  <div className="flex items-center justify-end gap-4">
+                    <button
+                      type="button"
+                      onClick={onCancelEditingLastUserMessage}
                       disabled={editingSubmitPending}
-                      className="w-full resize-none rounded-lg border border-cyan-300/60 bg-white/80 px-3 py-2 text-sm text-slate-800 outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-70 dark:border-cyan-400/30 dark:bg-slate-900/70 dark:text-slate-100"
-                    />
-                    <div className="flex items-center justify-end gap-2">
+                      className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-50"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onConfirmEditingLastUserMessage}
+                      disabled={editingSubmitPending}
+                      className="rounded-lg bg-cyan-600 px-4 py-1.5 text-[11px] font-bold text-white shadow-md hover:bg-cyan-500 active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      重新发送
+                    </button>
+                  </div>
+                  {editingSubmitError && (
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-red-500/20 bg-red-50/80 px-3 py-2 text-[10px] text-red-600 dark:bg-red-500/10 dark:text-red-200">
+                      <span>{editingSubmitError}</span>
                       <button
                         type="button"
-                        onClick={onConfirmEditingLastUserMessage}
-                        disabled={editingSubmitPending}
-                        className="rounded-md border border-cyan-500/30 px-2.5 py-1 text-[11px] text-cyan-700 transition-colors hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:text-cyan-200"
+                        onClick={onClearEditingSubmitError}
+                        className="font-bold opacity-60 hover:opacity-100"
                       >
-                        确认
-                      </button>
-                      <button
-                        type="button"
-                        onClick={onCancelEditingLastUserMessage}
-                        disabled={editingSubmitPending}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-slate-800/60"
-                      >
-                        取消
+                        ✕
                       </button>
                     </div>
-                    {editingSubmitError && (
-                      <div className="flex items-center justify-between gap-2 rounded-md border border-red-500/20 bg-red-50/80 px-2 py-1 text-[11px] text-red-600 dark:bg-red-500/10 dark:text-red-200">
-                        <span>{editingSubmitError}</span>
-                        <button
-                          type="button"
-                          onClick={onClearEditingSubmitError}
-                          className="rounded border border-red-500/20 px-1.5 py-0.5 text-[10px] text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-200"
-                        >
-                          关闭
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
+                  )}
+                </div>
+              ) : (
+                /* 非编辑状态：正常气泡展示 */
+                <>
+                  <div
+                    className={[
+                      'rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm border transition-all duration-300',
+                      isUser
+                        ? showError
+                          ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-100'
+                          : 'bg-cyan-50/80 dark:bg-cyan-500/10 border-cyan-100 dark:border-cyan-500/20 text-cyan-900 dark:text-cyan-50'
+                        : 'bg-white dark:bg-slate-900/60 border-slate-100 dark:border-white/5 text-slate-800 dark:text-slate-100',
+                    ].join(' ')}
+                  >
                     {isSpeechMessage && (
-                      <div className="mb-1 flex items-center justify-end gap-1.5 text-[10px] uppercase tracking-[0.14em] text-cyan-200/70">
-                        <span>VOICE</span>
-                        {message.speech_mode && <span>{message.speech_mode}</span>}
+                      <div className="mb-1.5 flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-cyan-600 dark:text-cyan-400/70 font-bold">
+                        <span className="w-1 h-1 rounded-full bg-current animate-pulse"></span>
+                        <span>VOICE TRANSCRIPT</span>
                       </div>
                     )}
                     <div className="whitespace-pre-wrap break-words">{message.content}</div>
-                  </>
-                )}
-              </div>
+                  </div>
 
-              <div className={`flex items-center gap-2 text-[10px] ${isUser ? 'justify-end text-slate-500' : 'justify-start text-slate-500'}`}>
-                <span>{isUser ? '我方' : 'AI 助手'}</span>
-                <span>{formatStatus(message)}</span>
-              </div>
-
-              {showInterruptPlaceholder && (
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex items-center gap-2 rounded-full border border-cyan-500/15 bg-slate-100 dark:bg-slate-900/70 px-2.5 py-1 text-[10px] text-slate-500 dark:text-slate-400 cursor-not-allowed transition-colors"
-                  title="主动中断能力预留，待后端协议支持"
-                >
-                  <span className="h-3 w-3 rounded-full border-2 border-cyan-500/60 dark:border-cyan-400/60 border-t-transparent animate-spin" />
-                  <span>处理中</span>
-                </button>
-              )}
-
-              {showEditButton && (
-                <button
-                  type="button"
-                  onClick={onStartEditingLastUserMessage}
-                  disabled={editingSubmitPending}
-                  className="inline-flex items-center rounded-md border border-cyan-500/20 px-2 py-1 text-[11px] text-cyan-700 transition-colors hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:text-cyan-200"
-                >
-                  编辑
-                </button>
-              )}
-
-              {showError && (
-                <div className="flex items-center gap-2 text-[11px] text-red-500 dark:text-red-300 transition-colors">
-                  <span>{message.error_message}</span>
-                  {showRetry ? (
+                  {/* 画笔图标：绝对定位在气泡右下角外部或内边缘 */}
+                  {showEditButton && (
                     <button
                       type="button"
-                      onClick={() => onRetry(message)}
-                      className="rounded border border-red-500/30 px-2 py-0.5 text-red-600 dark:text-red-200 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                      onClick={onStartEditingLastUserMessage}
+                      className="absolute -right-2 -bottom-2 p-1.5 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-100 dark:border-white/10 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:scale-110 transition-all opacity-0 group-hover:opacity-100 z-10"
+                      title="重新编辑并发送"
                     >
-                      重试
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
                     </button>
-                  ) : (
-                    <span className="text-red-600/80 dark:text-red-200/80">请重新录音</span>
                   )}
-                </div>
+                </>
               )}
             </div>
+
+            <div className={`mt-1.5 flex items-center gap-2 text-[10px] ${isUser ? 'justify-end pr-1' : 'justify-start pl-1'} text-slate-400 font-medium`}>
+              <span>{isUser ? '我方' : 'AI 助手'}</span>
+              <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
+              <span>{formatStatus(message)}</span>
+            </div>
+
+            {showInterruptPlaceholder && (
+              <div className="mt-2 flex items-center gap-2 rounded-full border border-cyan-500/10 bg-cyan-500/5 px-3 py-1 text-[10px] text-cyan-600 dark:text-cyan-400">
+                <span className="h-2 w-2 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                <span className="font-bold tracking-tight uppercase">Processing</span>
+              </div>
+            )}
+
+            {showError && (
+              <div className="mt-2 flex items-center gap-2 text-[10px] font-bold text-red-500 dark:text-red-400 bg-red-500/5 px-3 py-1 rounded-full border border-red-500/10">
+                <span>{message.error_message}</span>
+                {showRetry ? (
+                  <button
+                    type="button"
+                    onClick={() => onRetry(message)}
+                    className="ml-1 text-red-600 dark:text-red-300 underline underline-offset-2 hover:text-red-500"
+                  >
+                    重试
+                  </button>
+                ) : (
+                  <span className="opacity-60">请重新录音</span>
+                )}
+              </div>
+            )}
           </div>
         );
       })}
@@ -209,13 +211,13 @@ function formatStatus(message: AiCenterChatMessage): string {
   if (message.request_type === 'SPEECH' || message.message_type === 'speech_transcript') {
     switch (message.status) {
       case 'pending':
-        return '语音处理中';
+        return '正在转录';
       case 'sent':
-        return message.speech_mode === 'preview' ? '转录待确认' : '已发送';
+        return message.speech_mode === 'preview' ? '待确认' : '已发送';
       case 'error':
         return '发送失败';
       case 'replied':
-        return '已回复';
+        return '已完成';
       default:
         return '已发送';
     }
@@ -223,11 +225,11 @@ function formatStatus(message: AiCenterChatMessage): string {
 
   switch (message.status) {
     case 'pending':
-      return '等待回复';
+      return '正在处理';
     case 'error':
       return '发送失败';
     case 'replied':
-      return '已回复';
+      return '已完成';
     default:
       return '已发送';
   }

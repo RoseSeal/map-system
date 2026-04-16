@@ -2,7 +2,7 @@
 > schema_version: v2
 > 文档状态：current / 已实施
 > 生效日期：2026-04-01
-> 变更摘要：risk 改为 SSE，chat 保持 WebSocket，解释流并入 SSE 风险通道
+> 变更摘要：risk 改为 SSE，chat 保持 WebSocket，解释流并入 SSE 风险通道；CHAT 上行支持最后一轮非破坏式重答
 
 ## 变更记录
 | 版本 | 日期 | 摘要 |
@@ -12,6 +12,7 @@
 | v2-draft | 2026-04-01 | 确认 risk/chat 拆连接，定义 SSE + WebSocket 双协议结构 |
 | v2 | 2026-04-01 | 协议已落地，文档按当前实现修订 |
 | v2 | 2026-04-08 | CHAT/SPEECH payload 新增可选字段 `selected_target_ids`，用于选中目标定向注入 |
+| v2 | 2026-04-16 | CHAT payload 新增 `edit_last_user_message`；`selected_target_ids` 语义扩展为可注入最近有效解释文本 |
 
 ## 1. 文档定位
 
@@ -296,7 +297,8 @@ data: {"event_id":"server-event-xxx", ...payload}
     "conversation_id": "conversation-xxx",
     "event_id": "client-event-xxx",
     "content": "请评估当前风险",
-    "selected_target_ids": ["413999001"]
+    "selected_target_ids": ["413999001"],
+    "edit_last_user_message": false
   }
 }
 ```
@@ -308,7 +310,13 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `conversation_id` | `string` | 客户端会话 ID |
 | `event_id` | `string` | 当前用户请求事件 ID |
 | `content` | `string` | 用户问题文本 |
-| `selected_target_ids` | `string[]` | 可选，用户选中的目标船 ID 列表；存在时后端注入选中目标的完整数据 |
+| `selected_target_ids` | `string[]` | 可选，用户选中的目标船 ID 列表；存在时后端注入选中目标的风险详情；若存在最近有效解释文本且目标当前仍被追踪且非 SAFE，则一并注入 |
+| `edit_last_user_message` | `boolean` | 可选；`true` 表示本次请求用于编辑并重答当前会话最后一组 `USER / ASSISTANT` 轮次 |
+
+补充语义：
+
+- `edit_last_user_message` 不传或为 `false` 时，按普通追加会话处理。
+- `edit_last_user_message=true` 时，服务端先基于编辑后的文本生成新回复；仅在生成成功后替换最后一组 `USER / ASSISTANT`，失败时保留旧轮次不破坏会话历史。
 
 ### 6.2 `SPEECH`
 
@@ -336,7 +344,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `audio_data` | `string` | Base64 音频内容 |
 | `audio_format` | `string` | 音频格式 |
 | `mode` | `string` | `direct` / `preview` |
-| `selected_target_ids` | `string[]` | 可选，用户选中的目标船 ID 列表；`direct` 模式下透传至 LLM 链路 |
+| `selected_target_ids` | `string[]` | 可选，用户选中的目标船 ID 列表；`direct` 模式下透传至 LLM 链路，并沿用 CHAT 的选中目标上下文注入语义 |
 
 约束：
 

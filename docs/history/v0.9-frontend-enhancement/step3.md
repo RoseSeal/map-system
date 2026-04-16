@@ -1,8 +1,9 @@
 # Step 3：展示增强
 
-> 文档状态：active
+> 文档状态：completed
 > 最后更新：2026-04-16
 > 对齐文档：[`FRONTEND_ENHANCEMENT_PALN.md`](./FRONTEND_ENHANCEMENT_PALN.md)
+> 说明：本文保留 Step 3 的实施前分析、方案与验收记录；当前稳定事实以 `docs/frontend-design.md`、`docs/EVENT_SCHEMA.md`、`docs/ARCHITECTURE.md` 为准。
 
 ## 1. 摘要
 

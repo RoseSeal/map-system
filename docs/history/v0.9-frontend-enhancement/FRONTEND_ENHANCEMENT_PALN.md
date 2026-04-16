@@ -1,7 +1,9 @@
 # Frontend 增强实现规划 v0.9
 
+> 文档状态：archived / completed
+> 归档日期：2026-04-16
 > 最后更新：2026-04-15
-> 后续演进方向（agent loop、Generative UI、编辑任意历史消息等）已提取至 [`docs/TODO.md`](../TODO.md)。
+> 后续演进方向（agent loop、Generative UI、编辑任意历史消息等）已提取至 [`docs/TODO.md`](../../TODO.md)。
 
 ---
 

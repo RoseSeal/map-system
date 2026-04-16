@@ -27,6 +27,7 @@ interface AiCenterState {
   editingMessageEventId: string | null;
   editingDraft: string;
   editingBaselineUserContent: string | null;
+  editingBaselineAssistantMessage: AiCenterChatMessage | null;
   editingSubmitEventId: string | null;
   editingSubmitError: string | null;
   pendingChatEventIds: Record<string, boolean>;
@@ -85,6 +86,7 @@ const initialState = () => ({
   editingMessageEventId: null as string | null,
   editingDraft: '',
   editingBaselineUserContent: null as string | null,
+  editingBaselineAssistantMessage: null as AiCenterChatMessage | null,
   editingSubmitEventId: null as string | null,
   editingSubmitError: null as string | null,
   pendingChatEventIds: {} as Record<string, boolean>,
@@ -229,6 +231,7 @@ export const useAiCenterStore = create<AiCenterState>()(
         editingMessageEventId: editableTurn.userMessage.event_id,
         editingDraft: editableTurn.userMessage.content,
         editingBaselineUserContent: editableTurn.userMessage.content,
+        editingBaselineAssistantMessage: { ...editableTurn.assistantMessage },
         editingSubmitEventId: null,
         editingSubmitError: null,
       });
@@ -272,19 +275,44 @@ export const useAiCenterStore = create<AiCenterState>()(
         return false;
       }
 
-      set((currentState) => ({
-        editingMessageEventId: null,
-        editingSubmitEventId: eventId,
-        editingSubmitError: null,
-        pendingChatEventIds: {
-          ...currentState.pendingChatEventIds,
-          [eventId]: true,
-        },
-        chatErrorByEventId: {
-          ...currentState.chatErrorByEventId,
-          [eventId]: null,
-        },
-      }));
+      set((currentState) => {
+        const editableTurn = getLastEditableTurn(currentState.chatMessages);
+        let nextMessages = currentState.chatMessages;
+        if (editableTurn) {
+          nextMessages = currentState.chatMessages.map((message, index) => {
+            if (index === editableTurn.userIndex) {
+              return {
+                ...message,
+                content,
+                status: 'pending' as const,
+              };
+            }
+            if (index === editableTurn.assistantIndex) {
+              return {
+                ...message,
+                status: 'pending' as const,
+                content: '正在重新生成回复...',
+              };
+            }
+            return message;
+          });
+        }
+
+        return {
+          chatMessages: nextMessages,
+          editingMessageEventId: null,
+          editingSubmitEventId: eventId,
+          editingSubmitError: null,
+          pendingChatEventIds: {
+            ...currentState.pendingChatEventIds,
+            [eventId]: true,
+          },
+          chatErrorByEventId: {
+            ...currentState.chatErrorByEventId,
+            [eventId]: null,
+          },
+        };
+      });
       return true;
     },
 
@@ -464,9 +492,29 @@ export const useAiCenterStore = create<AiCenterState>()(
               ...state.chatErrorByEventId,
               [targetEventId]: payload.error_message,
             },
+            chatMessages: editableTurn
+              ? state.chatMessages.map((message, index) => {
+                  if (index === editableTurn.userIndex) {
+                    return {
+                      ...message,
+                      content: state.editingBaselineUserContent ?? message.content,
+                      status: 'replied' as const,
+                      error_code: undefined,
+                      error_message: undefined,
+                    };
+                  }
+                  if (index === editableTurn.assistantIndex && state.editingBaselineAssistantMessage) {
+                    return {
+                      ...state.editingBaselineAssistantMessage,
+                    };
+                  }
+                  return message;
+                })
+              : state.chatMessages,
             editingMessageEventId: editableTurn?.userMessage.event_id ?? state.editingMessageEventId,
             editingDraft: state.editingDraft,
-            editingBaselineUserContent: editableTurn?.userMessage.content ?? state.editingBaselineUserContent,
+            editingBaselineUserContent: state.editingBaselineUserContent,
+            editingBaselineAssistantMessage: state.editingBaselineAssistantMessage,
             editingSubmitEventId: null,
             editingSubmitError: payload.error_message,
           };
@@ -733,6 +781,7 @@ function createClearedEditingState() {
     editingMessageEventId: null,
     editingDraft: '',
     editingBaselineUserContent: null,
+    editingBaselineAssistantMessage: null,
     editingSubmitEventId: null,
     editingSubmitError: null,
   };

@@ -39,7 +39,7 @@ describe('ChatMessageList', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '编辑' }));
+    fireEvent.click(screen.getByRole('button', { name: '重新编辑并发送' }));
 
     expect(onStartEditingLastUserMessage).toHaveBeenCalledTimes(1);
   });
@@ -65,9 +65,9 @@ describe('ChatMessageList', () => {
     );
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Edited again' } });
-    fireEvent.click(screen.getByRole('button', { name: '确认' }));
+    fireEvent.click(screen.getByRole('button', { name: '重新发送' }));
     fireEvent.click(screen.getByRole('button', { name: '取消' }));
-    fireEvent.click(screen.getByRole('button', { name: '关闭' }));
+    fireEvent.click(screen.getByRole('button', { name: '✕' }));
 
     expect(onUpdateEditingDraft).toHaveBeenCalledWith('Edited again');
     expect(onConfirmEditingLastUserMessage).toHaveBeenCalledTimes(1);

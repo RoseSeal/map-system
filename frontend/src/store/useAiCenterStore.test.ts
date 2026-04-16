@@ -252,7 +252,14 @@ describe('useAiCenterStore', () => {
 
     const state = useAiCenterStore.getState();
     expect(state.chatMessages).toHaveLength(2);
-    expect(state.chatMessages[0].content).toBe('Original question');
+    expect(state.chatMessages[0]).toMatchObject({
+      content: 'Edited question',
+      status: 'pending',
+    });
+    expect(state.chatMessages[1]).toMatchObject({
+      content: '正在重新生成回复...',
+      status: 'pending',
+    });
     expect(state.editingMessageEventId).toBeNull();
     expect(state.editingSubmitEventId).toBe('edit-event-1');
     expect(state.pendingChatEventIds['edit-event-1']).toBe(true);
@@ -331,6 +338,8 @@ describe('useAiCenterStore', () => {
     expect(state.chatMessages).toHaveLength(2);
     expect(state.chatMessages[0].content).toBe('Original question');
     expect(state.chatMessages[1].content).toBe('Original answer');
+    expect(state.chatMessages[0].status).toBe('replied');
+    expect(state.chatMessages[1].status).toBe('sent');
     expect(state.editingMessageEventId).toBe('user-event-1');
     expect(state.editingDraft).toBe('Edited question');
     expect(state.editingSubmitEventId).toBeNull();

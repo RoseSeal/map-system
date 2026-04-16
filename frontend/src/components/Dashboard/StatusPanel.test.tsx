@@ -28,9 +28,9 @@ describe('StatusPanel', () => {
     (useAiCenterStore as any).mockReturnValue('disconnected');
     
     render(<StatusPanel />);
-    expect(screen.getByText('实时消息')).toBeDefined();
-    expect(screen.getByText('AI 助手')).toBeDefined();
-    expect(screen.getByText('等待数据初始化...')).toBeDefined();
+    expect(screen.getByText('STREAM')).toBeDefined();
+    expect(screen.getByText('AI-WS')).toBeDefined();
+    expect(screen.getByText('INITIALIZING TELEMETRY...')).toBeDefined();
   });
 
   it('renders own ship data when available', () => {
@@ -60,10 +60,10 @@ describe('StatusPanel', () => {
     });
 
     render(<StatusPanel />);
-    expect(screen.getByText('本船状态')).toBeDefined();
+    expect(screen.getByText('本船态势')).toBeDefined();
     expect(screen.getByText('10.0')).toBeDefined();
-    expect(screen.getByText('实时消息')).toBeDefined();
-    expect(screen.getByText('AI 助手')).toBeDefined();
+    expect(screen.getByText('STREAM')).toBeDefined();
+    expect(screen.getByText('AI-WS')).toBeDefined();
   });
 
   it('renders low confidence warning when isLowTrust is true', () => {
@@ -93,7 +93,7 @@ describe('StatusPanel', () => {
     });
 
     render(<StatusPanel />);
-    expect(screen.getByText(/低置信度/)).toBeDefined();
+    expect(screen.getByText(/Trust Level Warning/)).toBeDefined();
     expect(screen.getByText(/45%/)).toBeDefined();
   });
 });

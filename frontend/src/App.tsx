@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from 'react';
-import { MapContainer, StatusPanel, TargetsPanel, RiskExplanationPanel, ToolbarOverlay } from './components';
+import { MapContainer, StatusPanel, TargetsPanel, RiskExplanationPanel } from './components';
 import { chatWsService, riskSseService } from './services';
 import { useAiSpeechBroadcast } from './hooks/useAiSpeechBroadcast';
 
@@ -25,21 +25,18 @@ function App() {
     <div className="relative w-screen h-screen overflow-hidden bg-slate-300 dark:bg-gray-900 transition-colors duration-300">
       <MapContainer />
 
+      {/* 叠加层容器 */}
       <div className="absolute inset-0 pointer-events-none z-50">
-        <div className="absolute top-4 left-4 pointer-events-auto">
+        {/* 左侧态势监控信息簇 */}
+        <div className="absolute top-4 left-4 flex flex-col gap-4 pointer-events-auto max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-hide">
           <StatusPanel />
-        </div>
-
-        <div className="absolute top-4 right-4 pointer-events-auto">
-          <ToolbarOverlay />
-        </div>
-
-        <RiskExplanationPanel />
-
-        <div className="absolute bottom-4 left-4 pointer-events-auto">
           <TargetsPanel />
         </div>
 
+        {/* 右侧 AI 工作区 (自包含布局与动画) */}
+        <RiskExplanationPanel />
+
+        {/* 右下角图例 */}
         <div className="absolute bottom-4 right-4 pointer-events-auto">
           <Legend />
         </div>
