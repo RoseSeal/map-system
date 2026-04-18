@@ -63,20 +63,22 @@
 
 补丁标题栏中原出现固定 provider 文案。当前系统可在 `gemini` 与 `zhipu` 间切换，且前端头部没有稳定的当前模型真值来源，因此本次只展示通用 `LLM` 标识，不宣称具体模型。
 
-## 4. 天气条占位的后续接线信息
+## 4. 天气条占位的后续接线信息（历史参考）
 
 ### 4.1 当前保留方式
 
-`StatusPanel` 底部天气条本次保留为纯展示占位，用于预留 `v1.0 weather` 视觉入口。当前实现不从 store 读取真实天气字段，也不根据 `active_alerts` 推断天气语义。
+`StatusPanel` 底部天气条在视觉补丁初次落地时曾保留为纯展示占位，用于预留 `v1.0 weather` 视觉入口。该段描述的是当时的占位状态，而不是当前运行真值。
 
 ### 4.2 为什么暂不接真实数据
 
-当前前端类型真值 [`../../frontend/src/types/schema.d.ts`](../../frontend/src/types/schema.d.ts) 中，`EnvironmentContext` 仅定义：
+在该参考稿对应的时间点，前端类型真值 [`../../frontend/src/types/schema.d.ts`](../../frontend/src/types/schema.d.ts) 中，`EnvironmentContext` 仅定义：
 
 - `safety_contour_val`
 - `active_alerts`
 
-仓库当前并不存在稳定的 `environment_context.weather` 子结构。因此，在 weather track 真正扩展协议前，天气条只能作为占位，不应伪装为实时天气。
+当时仓库尚不存在稳定的 `environment_context.weather` 子结构。因此，在 weather track 真正扩展协议前，天气条只能作为占位，不应伪装为实时天气。
+
+weather Step 1 完成后，该占位信息已被真实接线替代；当前天气展示真值以 [`./weather/step1.md`](./weather/step1.md) 与 [`./weather/WEATHER_PLAN.md`](./weather/WEATHER_PLAN.md) 为准。
 
 ### 4.3 后续实现最低所需字段
 
@@ -132,7 +134,7 @@
 
 ## 6. 与现有 v1.0 规划文档的关系
 
-- 天气条只是 weather track 的视觉占位，不代表 weather topic、引擎修正或 LLM 接线已经完成，见 [`./weather/WEATHER_PLAN.md`](./weather/WEATHER_PLAN.md)。
+- 天气条在本参考稿对应阶段只是 weather track 的视觉占位；该状态已随着 weather Step 1 完成而失效。当前 weather 真值见 [`./weather/step1.md`](./weather/step1.md) 与 [`./weather/WEATHER_PLAN.md`](./weather/WEATHER_PLAN.md)。
 - 被移除的 agent 工具区只是一种视觉提案，不代表 agent loop、tool registry、`ADVISORY` 事件或证据链已经进入前端稳定消费，见 [`./agent/AGENT_LOOP_PLAN.md`](./agent/AGENT_LOOP_PLAN.md)。
 - 若后续希望恢复工具轨迹区，应先在 [`../TODO.md`](../TODO.md) 或新的 milestone / step 文档中挂入 owner，再开始实现。
 - 本文只保存“当时补丁想表达什么，以及后续真实实现至少需要什么”，防止该信息随着 UI 落地裁剪而丢失。

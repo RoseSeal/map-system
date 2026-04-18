@@ -94,6 +94,8 @@ v1.0 引入 `environment_context.hydrology` 子字段。**此契约与天气 tra
 
 定义枚举 `EnvAlertCode`，本 track 贡献项：
 
+注：该枚举已由 weather track Step 1 首次写入天气类告警；hydrology 在后续 step 仅做追加，不重定义顶层结构。
+
 - `SHOAL_PROXIMITY`：本船在 `safety_contour_val` 内或紧邻浅区
 - `OBSTRUCTION_NEARBY`：距离已知 OBSTRN `< 0.5 nm`（阈值可配）
 - `DEPTH_DATA_MISSING`：查询点位落在 ENC 覆盖范围外
