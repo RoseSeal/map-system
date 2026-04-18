@@ -2,6 +2,7 @@ package com.whut.map.map_service.risk.pipeline.assembler;
 
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
 import com.whut.map.map_service.shared.domain.ShipRole;
+import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.shared.dto.RiskObjectDto;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
@@ -11,6 +12,7 @@ import com.whut.map.map_service.risk.pipeline.assembler.riskobject.OwnShipAssemb
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskObjectMetaAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskVisualizationAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.TargetAssembler;
+import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -20,8 +22,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class RiskObjectAssemblerTest {
 
+    private static final WeatherAlertProperties WEATHER_ALERT_PROPERTIES = new WeatherAlertProperties();
+
     private final RiskObjectAssembler assembler = new RiskObjectAssembler(
-            new RiskObjectMetaAssembler(new RiskObjectMetaProperties()),
+            new RiskObjectMetaAssembler(
+                    new RiskObjectMetaProperties(),
+                    new WeatherContextHolder(),
+                    WEATHER_ALERT_PROPERTIES
+            ),
             new OwnShipAssembler(),
             new TargetAssembler(new RiskVisualizationAssembler())
     );

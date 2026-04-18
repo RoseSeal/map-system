@@ -1,7 +1,8 @@
 # Weather Step 1：MQTT topic + 后端承载 + 前端视觉基础
 
 > 文档状态：active
-> 最后更新：2026-04-17
+> 最后更新：2026-04-18
+> 执行状态：completed
 > 所属 track：[`WEATHER_PLAN.md`](./WEATHER_PLAN.md)
 > 目标：建立从 simulator 到前端的端到端气象信号链路，交付首个可演示场景（低能见度 + 雾 overlay），但暂不改动风险引擎与 LLM。
 
@@ -9,7 +10,7 @@
 
 ## 1. Summary
 
-Step 1 是"点亮信号"，不是"业务消费"。重点是把 `usv/Weather` 这条新 topic 从 simulator 贯通到前端视觉层，让后续 Step 2（引擎消费）与 Step 3（LLM 消费）都有可用的数据源；本步骤不改 `RiskAssessmentEngine`、不改 `LlmRiskContext`、不注册 agent tool。
+Step 1 是"点亮信号"，不是"业务消费"。重点是先把 simulator 通过 `usv/Weather` 提供的 weather feed 贯通到前端视觉层，让后续 Step 2（引擎消费）与 Step 3（LLM 消费）都有可用的数据源；本步骤不改 `RiskAssessmentEngine`、不改 `LlmRiskContext`、不注册 agent tool。
 
 验收可以通过 `--scene fog` 模拟器命令直接得到"雾化海图 + `StatusPanel` 显示 'FOG, 能见度 0.8 nm' + SSE 带 `LOW_VISIBILITY` alert"三件事。
 
@@ -59,20 +60,20 @@ Step 1 是"点亮信号"，不是"业务消费"。重点是把 `usv/Weather` 这
   }
   ```
 - `useRiskStore` 的 `environment` 字段已原封接入，无需改消费代码
-- `MapContainer` 新增 fog overlay 层：`<div>` 绝对定位铺满地图容器，`background: rgba(210, 215, 220, X)`，`X` 根据 `visibility_nm` 线性映射 `[0.0 → 0.65, 10.0 → 0.0]`
+- `MapContainer` 新增 fog overlay 地图渲染层：雾色 `#d2d7dc`，`fill-opacity` 根据 `visibility_nm` 线性映射 `[0.0 → 0.65, 10.0 → 0.0]`
 - `StatusPanel` 新增右下角气象摘要标签：`"FOG · vis 0.8 nm · wind SW 12kn"`
-- fog overlay 必须在地图图层之上、但在 HUD / 风险符号层之下（zIndex 控制）
+- fog overlay 采用方案 1：在 `MapContainer` 内作为独立地图渲染层实现，和底图 / ENC / 风险符号处于同一渲染平面；其层级必须高于底图与 ENC、低于目标船 / 轨迹 / 告警符号与外层 HUD
 
 ---
 
 ## 3. Out of Scope
 
-- 风险引擎修正：Step 2
-- LLM `LlmRiskContext` 扩展：Step 3
-- agent tool 注册：Step 3
-- 降雨粒子层、风场箭头、水流矢量：Step 3（与 advisory 消费一起做，避免两次前端迭代）
-- 真实气象 API 接入
-- 气象时序保留 / 回放
+- deferred：风险引擎修正，转 Step 2
+- deferred：LLM `LlmRiskContext` 扩展，转 Step 3
+- deferred：agent tool 注册，转 Step 3
+- deferred：降雨粒子层、风场箭头、水流矢量，移交 [`../visual/VISUAL_UPGRADE_PLAN.md`](../visual/VISUAL_UPGRADE_PLAN.md) 继续迭代；不再作为 weather Step 3 的真值范围
+- post-`v1.0` 且当前无 owner：真实气象 API 接入；已回收到 [`../../TODO.md`](../../TODO.md)
+- post-`v1.0` 且当前无 owner：气象时序保留 / 回放；已回收到 [`../../TODO.md`](../../TODO.md)
 
 ---
 
@@ -80,7 +81,7 @@ Step 1 是"点亮信号"，不是"业务消费"。重点是把 `usv/Weather` 这
 
 ### 4.1 MQTT payload 契约
 
-Simulator 发布的 JSON payload 固定 schema（字段与 §3.2 一致）：
+Simulator 发布的 JSON payload 固定 schema 如下：
 
 ```json
 {
@@ -132,7 +133,7 @@ if (weather.surfaceCurrent().speedKn() != null && weather.surfaceCurrent().speed
 
 - opacity 线性映射，但 cap 在 0.65，避免彻底遮蔽
 - 雾色 `#d2d7dc`（带轻微蓝灰），深色主题下观感更贴近真实雾
-- 在目标船 / 轨迹 / 告警符号层之下，通过 MapLibre 的 `beforeId` 参数或独立 React 层叠加 + pointerEvents none 实现
+- 作为 `MapContainer` 内的独立地图渲染层实现，插入在底图 / ENC 之上、目标船 / 轨迹 / 告警符号之下；不采用独立 React DOM overlay，避免与外层 HUD 争抢 z-index
 - 验收必须点击测试：fog 生效时，`TargetsPanel` 目标点选不受影响
 
 ---
@@ -164,17 +165,23 @@ if (weather.surfaceCurrent().speedKn() != null && weather.surfaceCurrent().speed
 
 ## 6. Deferred
 
-- 降雨 / 风场 / 水流粒子层：Step 3
+- 降雨 / 风场 / 水流矢量等增强天气视觉效果：转 [`../visual/VISUAL_UPGRADE_PLAN.md`](../visual/VISUAL_UPGRADE_PLAN.md)
 - 引擎消费：Step 2
 - LLM 消费与 advisory：Step 3
-- 气象历史回放、导出、多源融合：后续 milestone
 
 ---
 
-## 7. 需同步修改的文档
+## 7. Recovered To TODO
+
+- 真实气象 API 接入：不在 `v1.0` Step 1–3 当前实现链内，已回收到 [`../../TODO.md`](../../TODO.md)
+- 气象历史回放、导出、多源融合：当前无明确 step owner，已回收到 [`../../TODO.md`](../../TODO.md)
+
+---
+
+## 8. 需同步修改的文档
 
 - [`../../EVENT_SCHEMA.md`](../../EVENT_SCHEMA.md)：Step 1 发版时扩展 `environment_context.weather` 字段与 `active_alerts` 枚举
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)：新增 MQTT `usv/Weather` 订阅链路在"数据来源"段补条目
-- [`../../TODO.md`](../../TODO.md) 第 2 节"环境语义模型"：追加 Step 1 进度注记（不移除）
-- [`WEATHER_PLAN.md`](./WEATHER_PLAN.md) §4 Step 1 状态：更新为"已完成"
+- Step 1 / Step 2 / Step 3 主线不写入 [`../../TODO.md`](../../TODO.md)；但本步骤中明确排除且未挂入现有实现链的 post-`v1.0` 项，应同步回收到 TODO
+- [`WEATHER_PLAN.md`](./WEATHER_PLAN.md) §4 Step 1 段：补充"已完成"状态注记或等价完成标记，避免只有 step doc 记录完成状态
 - [`../hydrology/HYDROLOGY_PLAN.md`](../hydrology/HYDROLOGY_PLAN.md) §3.3：`EnvAlertCode` 枚举点首次由天气 track 填充，需在枚举定义类里注明 hydrology 后续将追加

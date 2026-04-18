@@ -42,6 +42,40 @@ const CONTOUR_MIN = 5;
 const CONTOUR_MAX = 30;
 const CONTOUR_DEBOUNCE_MS = 300;
 const SAFETY_CONTOUR_PRESETS = [5, 10, 15, 20, 25, 30] as const;
+const WEATHER_FOG_SOURCE_ID = 'weather-fog-source';
+const WEATHER_FOG_LAYER_ID = 'weather-fog-layer';
+const WEATHER_FOG_COLOR = '#d2d7dc';
+const WEATHER_FOG_MAX_OPACITY = 0.65;
+const WEATHER_CLEAR_VISIBILITY_NM = 10.0;
+const DECK_LAYER_ID_HINTS = new Set([
+  'safety-domain',
+  'trajectory-fade',
+  'target-trajectories-fade',
+  'cpa-lines',
+  'own-ship',
+  'selected-target-highlight',
+  'targets',
+]);
+
+const WEATHER_FOG_POLYGON = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [-180, -85],
+          [-180, 85],
+          [180, 85],
+          [180, -85],
+          [-180, -85],
+        ]],
+      },
+      properties: {},
+    },
+  ],
+};
 
 function roundContourValue(value: number): number {
   return Number(value.toFixed(1));
@@ -117,6 +151,10 @@ export function MapContainer() {
 
   const liveSafetyContourVal = environment?.safety_contour_val ?? 10;
   const effectiveSafetyContourVal = localSafetyContourOverride ?? liveSafetyContourVal;
+  const fogOpacity = useMemo(
+    () => calculateFogOpacity(environment?.weather?.visibility_nm ?? null),
+    [environment?.weather?.visibility_nm],
+  );
   const safetyContourOptions = useMemo(
     () => buildSafetyContourOptions(liveSafetyContourVal),
     [liveSafetyContourVal],
@@ -188,6 +226,7 @@ export function MapContainer() {
       ensureObstructionIcons(map.current);
       addS57Sources(map.current, effectiveSafetyContourVal);
       addS57Layers(map.current);
+      ensureFogOverlayLayer(map.current, true);
       applyMapTheme(map.current, effectiveSafetyContourVal, isDarkMode);
       syncPitchVisibility();
       lastReloadedContourRef.current = effectiveSafetyContourVal;
@@ -224,9 +263,19 @@ export function MapContainer() {
     ensureObstructionIcons(map.current);
     addS57Sources(map.current, debouncedSafetyContourVal);
     addS57Layers(map.current);
+    ensureFogOverlayLayer(map.current, true);
     applyMapTheme(map.current, effectiveSafetyContourVal, isDarkMode);
     lastReloadedContourRef.current = debouncedSafetyContourVal;
   }, [debouncedSafetyContourVal, effectiveSafetyContourVal, isDarkMode, mapLoaded]);
+
+  useEffect(() => {
+    if (!mapLoaded || !map.current) {
+      return;
+    }
+
+    ensureFogOverlayLayer(map.current, false);
+    map.current.setPaintProperty(WEATHER_FOG_LAYER_ID, 'fill-opacity', fogOpacity);
+  }, [fogOpacity, mapLoaded]);
 
   const buildDeckLayers = useCallback(() => {
     const layers: Layer[] = [];
@@ -425,7 +474,10 @@ export function MapContainer() {
   useEffect(() => {
     if (!deckOverlay.current) return;
     deckOverlay.current.setProps({ layers: buildDeckLayers() });
-  }, [buildDeckLayers]);
+    if (map.current && mapLoaded) {
+      ensureFogOverlayLayer(map.current, false);
+    }
+  }, [buildDeckLayers, mapLoaded]);
 
   useEffect(() => {
     if (!map.current || !ownShip) return;
@@ -549,4 +601,56 @@ function buildCPALineData(targets: RiskTarget[]): { source: LonLat; target: LonL
       source: target.risk_assessment.graphic_cpa_line!.own_pos,
       target: target.risk_assessment.graphic_cpa_line!.target_pos,
     }));
+}
+
+function ensureFogOverlayLayer(mapInstance: maplibregl.Map, allowMoveToTopWhenNoAnchor: boolean): void {
+  const beforeId = findDeckLayerAnchor(mapInstance);
+
+  if (!mapInstance.getSource(WEATHER_FOG_SOURCE_ID)) {
+    mapInstance.addSource(WEATHER_FOG_SOURCE_ID, {
+      type: 'geojson',
+      data: WEATHER_FOG_POLYGON,
+    });
+  }
+
+  if (!mapInstance.getLayer(WEATHER_FOG_LAYER_ID)) {
+    mapInstance.addLayer({
+      id: WEATHER_FOG_LAYER_ID,
+      type: 'fill',
+      source: WEATHER_FOG_SOURCE_ID,
+      paint: {
+        'fill-color': WEATHER_FOG_COLOR,
+        'fill-opacity': 0,
+      },
+    }, beforeId);
+    return;
+  }
+
+  if (beforeId) {
+    mapInstance.moveLayer(WEATHER_FOG_LAYER_ID, beforeId);
+    return;
+  }
+
+  if (allowMoveToTopWhenNoAnchor) {
+    mapInstance.moveLayer(WEATHER_FOG_LAYER_ID);
+  }
+}
+
+function findDeckLayerAnchor(mapInstance: maplibregl.Map): string | undefined {
+  const styleLayers = mapInstance.getStyle()?.layers ?? [];
+  for (const layer of styleLayers) {
+    if (layer.id.startsWith('deckgl') || DECK_LAYER_ID_HINTS.has(layer.id)) {
+      return layer.id;
+    }
+  }
+  return undefined;
+}
+
+function calculateFogOpacity(visibilityNm: number | null): number {
+  if (visibilityNm == null || Number.isNaN(visibilityNm)) {
+    return 0;
+  }
+
+  const clampedVisibility = Math.min(WEATHER_CLEAR_VISIBILITY_NM, Math.max(0, visibilityNm));
+  return ((WEATHER_CLEAR_VISIBILITY_NM - clampedVisibility) / WEATHER_CLEAR_VISIBILITY_NM) * WEATHER_FOG_MAX_OPACITY;
 }

@@ -243,6 +243,7 @@ function generateRiskObject(): RiskUpdatePayload {
     environment_context: {
       safety_contour_val: 10.0,
       active_alerts: [],
+      weather: null,
     },
   };
 }

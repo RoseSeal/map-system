@@ -130,9 +130,32 @@ export interface RiskTarget {
   risk_assessment: RiskAssessment;
 }
 
+export type WeatherCode = 'CLEAR' | 'FOG' | 'RAIN' | 'SNOW' | 'STORM';
+
+export interface WeatherWind {
+  speed_kn: number | null;
+  direction_from_deg: number | null;
+}
+
+export interface WeatherSurfaceCurrent {
+  speed_kn: number | null;
+  set_deg: number | null;
+}
+
+export interface WeatherContext {
+  weather_code: WeatherCode | null;
+  visibility_nm: number | null;
+  precipitation_mm_per_hr: number | null;
+  wind: WeatherWind;
+  surface_current: WeatherSurfaceCurrent;
+  sea_state: number | null;
+  updated_at: string;
+}
+
 export interface EnvironmentContext {
   safety_contour_val: number;
   active_alerts: string[];
+  weather?: WeatherContext | null;
 }
 
 // ============================================================

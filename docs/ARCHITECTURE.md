@@ -1,7 +1,7 @@
 ﻿# 海图系统 (Map-System) — Architecture Overview v0.1
 
 > 用途：项目架构概览 / AI 上下文输入 / 对外介绍
-> 最后更新：2026-04-16
+> 最后更新：2026-04-18
 > 维护原则：仅记录稳定的架构事实、链路与关键决策
 
 ---
@@ -40,6 +40,7 @@
 | 模块 | 职责 |
 | --- | --- |
 | MQTT Listener | 订阅外部输入消息，触发处理链入口 |
+| `WeatherMqttConfig` + `WeatherMessageHandler` | 订阅 `usv/Weather`，维护共享 `WeatherContextHolder` 快照供 SSE/风险元数据消费 |
 | `RiskSseController` | 提供 `/api/v2/risk` SSE 风险事件入口 |
 | `ChatWebSocketHandler` | 提供 `/api/v2/chat` 双向问答与语音交互入口 |
 
@@ -76,30 +77,33 @@
 ### 5.1 链路 A：风险评估主链路
 
 ```text
-Python Simulator / 外部输入源
-  │  MQTT payload
-  ▼
-MQTT Listener
-  │  原始消息
-  ▼
-Mapper (normalize)
-  │  ShipStatus（内部可信格式）
-  ▼
-ShipDispatcher
-  │  按 ShipRole 分发
-  ▼
-CpaTcpaEngine
-  │  CPA / TCPA 计算结果
-  ▼
-RiskObjectAssembler
-  │  风险 DTO（含置信度、危险等级）
-  ▼
-RiskStreamPublisher ──→ RiskSseController ──→ 2.5D Frontend（`RISK_UPDATE`）
+Python Simulator / 外部输入源（`usv/AisMessage` + `usv/Weather`）
+  ├──→ MQTT Listener（AIS）
+  │      │  原始消息
+  │      ▼
+  │    Mapper (normalize)
+  │      │  ShipStatus（内部可信格式）
+  │      ▼
+  │    ShipDispatcher
+  │      │  按 ShipRole 分发
+  │      ▼
+  │    CpaTcpaEngine
+  │      │  CPA / TCPA 计算结果
+  │      ▼
+  │    RiskObjectAssembler（读取 `WeatherContextHolder`）
+  │      │  风险 DTO（含置信度、危险等级）
+  │      ▼
+  │    RiskStreamPublisher ──→ RiskSseController ──→ 2.5D Frontend（`RISK_UPDATE`）
+  │      │
+  │      └──→ LlmClient（异步 fan-out，带超时降级）
+  │             │  风险解释事件
+  │             ▼
+  │           RiskStreamPublisher ──→ RiskSseController ──→ 2.5D Frontend（`EXPLANATION` / `ERROR`）
   │
-  └──→ LlmClient（异步 fan-out，带超时降级）
-         │  风险解释事件
+  └──→ WeatherMessageHandler（Weather MQTT）
+         │  `usv/Weather`
          ▼
-       RiskStreamPublisher ──→ RiskSseController ──→ 2.5D Frontend（`EXPLANATION` / `ERROR`）
+       WeatherContextHolder
 ```
 
 ### 5.2 链路 B：用户与 LLM 对话链路

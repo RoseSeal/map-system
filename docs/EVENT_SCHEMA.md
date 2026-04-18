@@ -13,6 +13,7 @@
 | v2 | 2026-04-01 | 协议已落地，文档按当前实现修订 |
 | v2 | 2026-04-08 | CHAT/SPEECH payload 新增可选字段 `selected_target_ids`，用于选中目标定向注入 |
 | v2 | 2026-04-16 | CHAT payload 新增 `edit_last_user_message`；`selected_target_ids` 语义扩展为可注入最近有效解释文本 |
+| v2 | 2026-04-18 | `RISK_UPDATE.environment_context` 新增 `weather` 字段；`active_alerts` 增补天气告警枚举 |
 
 ## 1. 文档定位
 
@@ -170,7 +171,19 @@ data: {"event_id":"server-event-xxx", ...payload}
       }
     }
   ],
-  "environment_context": { "safety_contour_val": 10.0, "active_alerts": [] }
+  "environment_context": {
+    "safety_contour_val": 10.0,
+    "active_alerts": ["LOW_VISIBILITY"],
+    "weather": {
+      "weather_code": "FOG",
+      "visibility_nm": 0.8,
+      "precipitation_mm_per_hr": 0.0,
+      "wind": { "speed_kn": 3.2, "direction_from_deg": 225.0 },
+      "surface_current": { "speed_kn": 0.4, "set_deg": 90.0 },
+      "sea_state": 2,
+      "updated_at": "2026-04-18T10:22:15Z"
+    }
+  }
 }
 ```
 
@@ -182,6 +195,8 @@ data: {"event_id":"server-event-xxx", ...payload}
 - `target.predicted_trajectory` 为可选字段；存在时结构固定为 `{ prediction_type, horizon_seconds, points[] }`
 - CTR 升级后 `target.predicted_trajectory.prediction_type` 仍保持 `"cv"`
 - `target.risk_assessment.encounter_type` 为可选字段；取值为 `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED`
+- `environment_context.weather` 为可选字段；无实时天气源或超过陈旧阈值时取 `null`
+- `environment_context.active_alerts` 可包含天气告警枚举：`LOW_VISIBILITY` / `HIGH_WIND` / `HEAVY_PRECIPITATION` / `STRONG_CURRENT_SET`
 
 ### 4.4 `ERROR` payload（risk）
 

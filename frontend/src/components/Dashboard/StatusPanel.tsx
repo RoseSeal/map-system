@@ -11,6 +11,7 @@ import {
 } from '../../store';
 import { useThemeStore } from '../../store/useThemeStore';
 import type { DisplayConnectionState } from '../../types/connection';
+import type { EnvironmentContext } from '../../types/schema';
 
 function ConnectionDot({ label, state }: { label: string; state: DisplayConnectionState }) {
   const color = state === 'connected'
@@ -71,13 +72,29 @@ function RiskStrip() {
   );
 }
 
-function EnvironmentStrip({ activeAlertCount }: { activeAlertCount: number }) {
-  const label = activeAlertCount > 0 ? '环境告警' : '天气未接入';
+function EnvironmentStrip({ environment }: { environment: EnvironmentContext | null }) {
+  const activeAlertCount = environment?.active_alerts.length ?? 0;
+  const weather = environment?.weather ?? null;
+  const hasWeather = weather != null;
+
+  const weatherTag = hasWeather ? formatWeatherSummaryTag(weather) : '气象未接入';
+
+  const label = hasWeather
+    ? '实时气象'
+    : activeAlertCount > 0
+      ? '环境告警'
+      : '天气未接入';
   const note = activeAlertCount > 0
     ? `活动告警 ${activeAlertCount} 项`
-    : '暂无实时天气源';
-  const color = activeAlertCount > 0 ? 'var(--risk-warning)' : 'var(--ink-700)';
-  const icon = activeAlertCount > 0 ? '⚠' : '∅';
+    : hasWeather
+      ? '气象信号正常'
+      : '暂无实时天气源';
+  const color = hasWeather
+    ? 'var(--risk-safe)'
+    : activeAlertCount > 0
+      ? 'var(--risk-warning)'
+      : 'var(--ink-700)';
+  const icon = hasWeather ? 'Wx' : activeAlertCount > 0 ? '⚠' : '∅';
 
   return (
     <div
@@ -99,16 +116,35 @@ function EnvironmentStrip({ activeAlertCount }: { activeAlertCount: number }) {
         </div>
       </div>
       <span
-        className="rounded-full px-1.5 py-0.5 font-mono text-[8px]"
+        title={weatherTag}
+        className="max-w-[68%] truncate rounded-full px-1.5 py-0.5 font-mono text-[8px]"
         style={{
           background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
           color: 'var(--ink-500)',
         }}
       >
-        v1.0 天气
+        {weatherTag}
       </span>
     </div>
   );
+}
+
+function formatWeatherSummaryTag(weather: NonNullable<EnvironmentContext['weather']>): string {
+  const weatherCode = weather.weather_code ?? '--';
+  const visibility = weather.visibility_nm == null ? '--' : weather.visibility_nm.toFixed(1);
+  const windDirection = toCardinalDirection(weather.wind.direction_from_deg);
+  const windSpeed = weather.wind.speed_kn == null ? '--' : Math.round(weather.wind.speed_kn).toString();
+  return `${weatherCode} · vis ${visibility} nm · wind ${windDirection} ${windSpeed}kn`;
+}
+
+function toCardinalDirection(directionFromDeg: number | null): string {
+  if (directionFromDeg == null || Number.isNaN(directionFromDeg)) {
+    return '--';
+  }
+
+  const cardinal = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const normalized = ((directionFromDeg % 360) + 360) % 360;
+  return cardinal[Math.round(normalized / 45) % cardinal.length];
 }
 
 export function StatusPanel() {
@@ -333,7 +369,7 @@ export function StatusPanel() {
         </div>
       </div>
 
-      <EnvironmentStrip activeAlertCount={environment?.active_alerts.length ?? 0} />
+      <EnvironmentStrip environment={environment} />
       <RiskStrip />
     </div>
   );

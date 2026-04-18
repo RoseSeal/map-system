@@ -10,6 +10,7 @@ import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskObjectMet
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskVisualizationAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.TargetAssembler;
 import com.whut.map.map_service.shared.domain.QualityFlag;
+import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.shared.domain.ShipRole;
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.shared.dto.RiskObjectDto;
@@ -26,6 +27,7 @@ import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainEngine;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionEngine;
+import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
 import com.whut.map.map_service.tracking.store.DerivedTargetStateStore;
 import com.whut.map.map_service.tracking.store.ShipStateStore;
 import com.whut.map.map_service.tracking.store.TargetDerivedSnapshot;
@@ -467,8 +469,9 @@ class ShipDispatcherTest {
 
     private RiskObjectAssembler riskObjectAssembler() {
         RiskObjectMetaProperties metaProperties = new RiskObjectMetaProperties();
+        WeatherAlertProperties weatherAlertProperties = new WeatherAlertProperties();
         return new RiskObjectAssembler(
-                new RiskObjectMetaAssembler(metaProperties),
+            new RiskObjectMetaAssembler(metaProperties, new WeatherContextHolder(), weatherAlertProperties),
                 new OwnShipAssembler(),
                 new TargetAssembler(new RiskVisualizationAssembler())
         );

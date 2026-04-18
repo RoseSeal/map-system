@@ -57,6 +57,7 @@ export const riskUpdateFixture: RiskUpdatePayload = {
   environment_context: {
     safety_contour_val: 15,
     active_alerts: ['traffic_density_high'],
+    weather: null,
   },
 };
 
