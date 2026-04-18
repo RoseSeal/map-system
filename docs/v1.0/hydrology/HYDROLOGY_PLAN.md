@@ -22,7 +22,7 @@
 
 以下是 v1.0 水文 track 要补齐的边界：
 
-- **视觉层停留在 2D flat 填充**。水深分带是平铺色块，没有 fill-extrusion / 体积感 / 光晕；危险浅区仅靠浅水色区分，没有专题高亮。TODO.md 第 4 节已明确"2.5D 海图视觉增强与水文专题渲染"项，需要 v1.0 内交付。
+- **视觉层停留在 2D flat 填充**。水深分带是平铺色块，没有 fill-extrusion / 体积感 / 光晕；危险浅区仅靠浅水色区分，没有专题高亮。该缺口已由本 track 的 Step 1 承接，需要在 `v1.0` 内交付。
 - **`enc_obstrn` 未出图**：障碍物表已存在且白名单允许（[`S57TileRepository.java:24-31`](../../../backend/map-service/src/main/java/com/whut/map/map_service/chart/repository/S57TileRepository.java#L24-L31)），但实现缺口分散于四处：`getTableName()` 无 `OBSTRN` 映射（[`S57TileRepository.java:34-42`](../../../backend/map-service/src/main/java/com/whut/map/map_service/chart/repository/S57TileRepository.java#L34-L42)）、`buildMultiLayerSQL` composite tile 未拼装（[`S57TileRepository.java:249-307`](../../../backend/map-service/src/main/java/com/whut/map/map_service/chart/repository/S57TileRepository.java#L249-L307)）、前端无 source 定义（[`layerStyles.ts:74-105`](../../../frontend/src/config/layerStyles.ts#L74-L105)）、前端无 layer 定义（[`layerStyles.ts:247-256`](../../../frontend/src/config/layerStyles.ts#L247-L256)）。Step 1 需覆盖后端 table 映射、SQL 拼装与前端 source/layer 配置，是 Step 1 中工作量最大的单项。
 - **风险引擎未消费水文**：[`RiskAssessmentEngine.consume`](../../../backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/risk/RiskAssessmentEngine.java#L42) 签名只接收 `ShipStatus / CPA / Domain / CvPrediction / Encounter`，没有水文参数。本船进入浅区或 OBSTRN 邻近时风险分不变。
 - **LLM 未消费水文**：`LlmRiskContext`（[`LlmRiskContext.java`](../../../backend/map-service/src/main/java/com/whut/map/map_service/llm/dto/LlmRiskContext.java)）只有 `ownShip` 与 `targets` 字段，没有 hydrology 结构；agent loop 的 `AgentToolRegistry` 也无水文查询工具。
@@ -42,7 +42,7 @@
 
 ### 2.2 Release impact
 
-水文 track 不阻塞 `v1.0` 主版本完成（主版本收口以 agent 主线为准）。若 Step 2 / Step 3 未在 `v1.0` 内收口，未完项回收到 [`../../TODO.md`](../../TODO.md)。
+水文 track 不阻塞 `v1.0` 主版本完成（主版本收口以 agent 主线为准）。Step 1–3 已属于当前规划链，因而不写入 [`../../TODO.md`](../../TODO.md)；若 `v1.0` 关闭时 Step 2 / Step 3 仍未完成，应先迁移到后续 milestone / step 链，只有失去明确 owner 的剩余项才回收至 TODO。
 
 ### 2.3 Non-goals
 
@@ -138,15 +138,18 @@ v1.0 引入 `environment_context.hydrology` 子字段。**此契约与天气 tra
 
 ### Step 1：2.5D 视觉升级 + OBSTRN 出图 + safety contour 交互
 
+**状态**：已完成（2026-04-18）
+
 **目标**：在现有 MVT 链路上完成前端专题视觉升级，并让 `enc_obstrn` 首次可见。
 
 **主要工作**：
 
 - 后端：`getTableName()` 补充 `OBSTRN` 映射（[`S57TileRepository.java:34-42`](../../../backend/map-service/src/main/java/com/whut/map/map_service/chart/repository/S57TileRepository.java#L34-L42)）；`buildMultiLayerSQL`（[`S57TileRepository.java:249-307`](../../../backend/map-service/src/main/java/com/whut/map/map_service/chart/repository/S57TileRepository.java#L249-L307)）补充 `OBSTRN` 图层拼装
-- 前端：[`layerStyles.ts`](../../../frontend/src/config/layerStyles.ts) 新增 `enc_obstrn` VectorSource 与 symbol layer 定义（含 `CATOBS` 分类 icon 与红色警戒圈）
+- 后端：`S57Controller.generateCompositeTile()` 的 fallback layer 列表同步追加 `OBSTRN`，避免 composite 查询异常时障碍物整层消失
+- 前端：Step 1 保持现有单图层 vector source 渲染链路，不切换到 composite tile；[`layerStyles.ts`](../../../frontend/src/config/layerStyles.ts) 新增 `enc_obstrn` VectorSource 与 symbol layer 定义（含 `CATOBS` 分类 icon 与红色警戒圈）
 - `enc_depare` 从 `fill` 升级到 `fill-extrusion`，深值负高度映射
 - 危险浅区（`drval1 < safety_contour_val`）体积发光层
-- 前端新增 safety contour 滑块 UI（[`MapContainer.tsx`](../../../frontend/src/components/Map/MapContainer.tsx) 状态上提），滑动时瓦片 URL 变化触发重拉
+- 前端新增 safety contour 滑块 UI（[`MapContainer.tsx`](../../../frontend/src/components/Map/MapContainer.tsx) 状态上提），采用“本地 override + 恢复实时值”语义；滑动时瓦片 URL 变化触发重拉
 - 视觉不得压制 ALARM / WARNING 告警符号：专题渲染层级应在风险图层之下
 
 **验收**：`enc_obstrn` 中至少一个已知障碍物可见；safety contour 滑动在 3 秒内刷新瓦片；危险浅区在 2.5D 视角下有明显体积区分
@@ -158,7 +161,9 @@ v1.0 引入 `environment_context.hydrology` 子字段。**此契约与天气 tra
 **主要工作**：
 
 - 新建 `com.whut.map.map_service.chart.service.HydrologyContextService`，复用 `JdbcTemplate` 对 `enc_depare / enc_obstrn` 做 ST_DWithin 查询
+- 把 Step 1 的 safety contour slider 值写回后端，收敛为服务端可见配置，并作为 `HydrologyContextService` 查询输入
 - 扩展 `RiskObjectMetaAssembler` 把 hydrology 摘要注入 `environment_context`
+- 至少一条 LLM 可消费上下文链路接入该值：优先进入 `environment_context.hydrology` 并被 LLM 消费，或等价进入 agent / LLM 上下文摘要
 - 填充 `active_alerts`：`SHOAL_PROXIMITY / OBSTRUCTION_NEARBY / DEPTH_DATA_MISSING`
 - 查询结果按本船位置缓存（同一 RiskObject 内多次调用只查一次）
 - 前端 `[useRiskStore.ts:83](../../../frontend/src/store/useRiskStore.ts#L83)` 的 `environment` 类型扩展 `hydrology` 可选字段
@@ -197,7 +202,11 @@ v1.0 引入 `environment_context.hydrology` 子字段。**此契约与天气 tra
 
 若出现冲突，降级策略：`fill-extrusion` 仅在 pitch > 45° 时启用，平视保持 flat fill。
 
-### 5.3 `active_alerts` 与天气 track 的约束
+### 5.3 前端渲染链路的后续收敛
+
+Step 1 明确保持现有单图层 vector source 方案，以控制改动面。若后续需要统一切到 composite tile 作为前端主渲染链路，应在独立后续事项中完成，不与 Step 1 的可见化目标混做。
+
+### 5.4 `active_alerts` 与天气 track 的约束
 
 两条 track 共写 `active_alerts` 数组。**共享约束**：
 
@@ -205,11 +214,11 @@ v1.0 引入 `environment_context.hydrology` 子字段。**此契约与天气 tra
 - 枚举定义单点放置于 `com.whut.map.map_service.shared.domain.EnvAlertCode`，两 track 同时 import
 - 追加顺序无保证（不得依赖）
 
-### 5.4 需要同步更新的真值文档
+### 5.5 需要同步更新的真值文档
 
 以下文档在 Step 实施前需同步更新：
 
-- [`../../TODO.md`](../../TODO.md) 第 2 节"水文环境上下文模块"、第 4 节"2.5D 海图视觉增强与水文专题渲染"：Step 2/1 完成后从 TODO 移除
+- [`../../TODO.md`](../../TODO.md) 仅跟踪未挂入 Step 1–3 的后续 backlog；hydrology 主线事项不重复记录于 TODO。当前已回收到 TODO 的未挂载项包括 composite tile 主渲染链路收敛、`FAIRWY` / `RESARE` 出图与 `DEPCNT` 深值标签补全
 - [`../../EVENT_SCHEMA.md`](../../EVENT_SCHEMA.md) `environment_context` 段：Step 2 发版时扩展 `hydrology` 字段与 `active_alerts` 枚举
 - [`../weather/WEATHER_PLAN.md`](../weather/WEATHER_PLAN.md) §3.2：顶层 `environment_context` 结构变更时双边同步
 - [`../agent/AGENT_LOOP_PLAN.md`](../agent/AGENT_LOOP_PLAN.md) §3.8：Step 3 完成后将 `QueryBathymetryTool` 纳入工具目录真值

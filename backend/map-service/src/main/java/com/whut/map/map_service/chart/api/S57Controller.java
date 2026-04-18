@@ -57,11 +57,13 @@ public class S57Controller {
             @PathVariable int z,
             @PathVariable int x,
             @PathVariable int y,
-            @PathVariable String layer) {
+            @PathVariable String layer,
+            @RequestParam(required = false) Double safety_contour) {
 
-        log.info("Single layer tile request: layer={}, z={}, x={}, y={}", layer, z, x, y);
+        log.info("Single layer tile request: layer={}, z={}, x={}, y={}, safety_contour={}",
+                layer, z, x, y, safety_contour);
 
-        byte[] tile = s57TileRepository.getTile(layer.toUpperCase(), z, x, y, null);
+        byte[] tile = s57TileRepository.getTile(layer.toUpperCase(), z, x, y, safety_contour);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("application/vnd.mapbox-vector-tile"));
@@ -80,7 +82,7 @@ public class S57Controller {
         }
 
         // Fallback: try individual layers if composite fails
-        String[] layers = {"DEPARE", "LNDARE", "COALNE", "DEPCNT", "SOUNDG"};
+        String[] layers = {"DEPARE", "LNDARE", "COALNE", "DEPCNT", "SOUNDG", "OBSTRN"};
         for (String layer : layers) {
             byte[] layerTile = s57TileRepository.getTile(layer, z, x, y, safetyContour);
             if (layerTile != null && layerTile.length > 0) {
@@ -159,6 +161,20 @@ public class S57Controller {
                 "attributes", Map.of(
                         "DEPTH", "Depth value (meters)",
                         "QUASOU", "Quality of sounding"
+                )
+        ));
+
+        // OBSTRN - Obstructions
+        layers.add(Map.of(
+                "id", "OBSTRN",
+                "type", "symbol",
+                "minzoom", 12,
+                "maxzoom", 22,
+                "description", "Obstructions",
+                "geometryType", "point",
+                "attributes", Map.of(
+                        "CATOBS", "Category of obstruction",
+                        "VALSOU", "Value of sounding or least depth (meters)"
                 )
         ));
 

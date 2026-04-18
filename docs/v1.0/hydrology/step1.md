@@ -1,7 +1,7 @@
 # Hydrology Step 1：2.5D 视觉升级 + OBSTRN 出图 + safety contour 交互
 
 > 文档状态：active
-> 最后更新：2026-04-17
+> 最后更新：2026-04-18
 > 所属 track：[`HYDROLOGY_PLAN.md`](./HYDROLOGY_PLAN.md)
 > 目标：在不破坏现有交互与告警视觉优先级的前提下，把现有 2D flat 水深渲染升级到驾驶台级 2.5D 效果，并让 `enc_obstrn` 首次可见。
 
@@ -23,13 +23,17 @@ Step 1 只改前端与 MVT 拼装，不动后端引擎与 LLM。重点有三：
 
 ### 2.1 后端修改（最小）
 
+- 扩展 [`S57TileRepository.getTableName`](../../../backend/map-service/src/main/java/com/whut/map/map_service/chart/repository/S57TileRepository.java#L34)，补充 `OBSTRN -> enc_obstrn` 映射，保证单图层调试端点与 composite fallback 都能取到障碍物数据
 - 扩展 [`S57TileRepository.buildMultiLayerSQL`](../../../backend/map-service/src/main/java/com/whut/map/map_service/chart/repository/S57TileRepository.java#L249)，新增 `obstrn_mvt` CTE，拼接到 composite tile 输出
+- 更新 [`S57Controller.generateCompositeTile`](../../../backend/map-service/src/main/java/com/whut/map/map_service/chart/api/S57Controller.java#L75) 的 fallback layer 列表，把 `OBSTRN` 纳入降级路径，避免 composite 失败时障碍物整层消失
+- 扩展单图层调试端点 [`S57Controller.getSingleLayerTile`](../../../backend/map-service/src/main/java/com/whut/map/map_service/chart/api/S57Controller.java#L55) 支持可选 `safety_contour` 查询参数，使现有单图层 `DEPCNT` source 能随 slider 重拉
 - 确认 `enc_obstrn` 表实际 schema（至少 `CATOBS`、`VALSOU` 两列可用于前端分级着色）
 - 无需修改 `environment_context`（本步骤不触碰 SSE payload）
 
 ### 2.2 前端渲染改动
 
 - `s57Service.ts` 不变；style.json 与图层定义可由前端直接扩展，无需新增后端接口
+- Step 1 保持现有单图层 vector source 链路，不切换到 composite tile 作为前端主渲染路径；`OBSTRN` 以新增独立 source/layer 的方式接入
 - 新增 MapLibre 图层：
   - `obstrn-symbol`：点符号（wreck / rock / pile / unknown 四类 icon）+ 红色警戒圈
   - `depare-extrusion`：替换现有 `depth-areas-*` 三层，使用 `fill-extrusion-base/height` 将 `drval1` 映射到负 height（例：`height = -drval1 * 2`）
@@ -39,7 +43,9 @@ Step 1 只改前端与 MVT 拼装，不动后端引擎与 LLM。重点有三：
 ### 2.3 交互改动
 
 - `MapContainer` 内部挂载 safety contour slider（默认位于右上角次级工具栏，不进入主 HUD）
-- 滑动值节流（300 ms debounce）后重建 `SOURCE` 或手动 reload，触发 MVT 重拉（URL 参数变化自然 invalidate 缓存）
+- slider 初始值从 `environment.safety_contour_val` 读取；用户手动修改后，以本地 override 为准，不被后续 SSE 自动覆盖
+- 提供“恢复实时值”入口，允许用户清除本地 override，重新跟随 SSE 下发的 `environment.safety_contour_val`
+- 滑动值节流（300 ms debounce）后重建实际依赖服务端 contour 的 source（Step 1 实现收敛到 `DEPCNT`），其余 `DEPARE` / `OBSTRN` 图层由前端 filter / paint 即时更新
 - 滑块区间 `[5m, 30m]`，默认从 `environment.safety_contour_val` 初始化
 
 ---
@@ -75,6 +81,11 @@ obstrn_mvt AS (
 
 最终 `SELECT` 行里追加 `|| obstrn_mvt.tile`。同步更新 `S57Controller.getLayerMetadata` 返回值新增 `OBSTRN` 条目，便于前端感知可用图层。
 
+同时补齐两处配套修改：
+
+- `S57TileRepository.getTableName()` 增加 `OBSTRN` 映射，保证 `/api/s57/tiles/{z}/{x}/{y}/OBSTRN.pbf` 可用
+- `S57Controller.generateCompositeTile()` 的 fallback layer 列表追加 `OBSTRN`，避免 composite 查询异常时前端完全失去障碍物出图能力
+
 ### 4.2 `fill-extrusion` 参数选型
 
 - `fill-extrusion-base` 固定 `0`
@@ -90,8 +101,9 @@ obstrn_mvt AS (
 
 ### 4.4 safety contour slider 状态所属
 
-- 短期（Step 1）：以前端 local state 持有，不回写后端
-- 未来（Step 2）：同一值可作为 `HydrologyContextService` 查询参数的一部分（"本船进入哪档安全深度以内"），届时再决定是否经 `environment_context` 来回
+- 短期（Step 1）：以前端 local override 持有；初始值来自 SSE `environment.safety_contour_val`，用户修改后不被后续 SSE 自动覆盖
+- Step 1 必须提供“恢复实时值”入口，清除 local override 后重新跟随服务端值
+- 未来（Step 2）：slider 值写回后端，成为 `HydrologyContextService` 查询参数的一部分，并至少体现在 `environment_context.hydrology` / LLM 可消费上下文之一；届时前后端再收敛为单一真值
 
 ---
 
@@ -117,6 +129,7 @@ obstrn_mvt AS (
 ### 5.4 回归
 
 - 现有 `useRiskStore.test.ts` 与其它前端测试全部通过
+- backend 补充或更新至少一条 controller/repository 级测试，覆盖 `OBSTRN` layer metadata 或 tile 生成路径
 - `S57Controller.getLayerMetadata` 响应新增 `OBSTRN` 条目，但已有字段不变
 
 ---
@@ -125,17 +138,24 @@ obstrn_mvt AS (
 
 - `environment_context.hydrology` 注入：Step 2
 - `active_alerts` 填充：Step 2
+- safety contour slider 写回后端并进入环境/LLM 上下文消费：Step 2
 - `RiskAssessmentEngine` 消费水文 penalty：Step 3
 - agent tool 注册：Step 3
-- 航道 `FAIRWY` / 受限区 `RESARE` 出图：留到 v1.0 后续 step 或后续 milestone
-- `enc_depcnt` 深值标签（目前仅虚线无数值）：视觉优先级偏低，不在 Step 1 交付
 
 ---
 
-## 7. 需同步修改的文档
+## 7. Recovered To TODO
+
+- 前端主渲染链路切换到 composite tile：不属于 Step 1–3 当前实现链，已回收到 [`../../TODO.md`](../../TODO.md)
+- 航道 `FAIRWY` / 受限区 `RESARE` 出图：当前未挂入 `HYDROLOGY_PLAN.md` 的 Step 1–3，已回收到 [`../../TODO.md`](../../TODO.md)
+- `enc_depcnt` 深值标签（目前仅虚线无数值）：当前未挂入明确后续 step，已回收到 [`../../TODO.md`](../../TODO.md)
+
+---
+
+## 8. 需同步修改的文档
 
 本步骤实施完成时：
 
 - [`HYDROLOGY_PLAN.md`](./HYDROLOGY_PLAN.md) §4 Step 1 状态更新为"已完成"
-- [`../../TODO.md`](../../TODO.md) 第 4 节"2.5D 海图视觉增强与水文专题渲染"追加进度注记（不移除，因 Step 2/3 未完成）
+- Step 1 属于 hydrology 现有规划链内事项，本身不写入 [`../../TODO.md`](../../TODO.md)；但本步骤中明确排除且未挂入 Step 2 / Step 3 的后续项，应同步回收到 TODO
 - 不需要修改 [`../../EVENT_SCHEMA.md`](../../EVENT_SCHEMA.md)（本步骤无协议变更）

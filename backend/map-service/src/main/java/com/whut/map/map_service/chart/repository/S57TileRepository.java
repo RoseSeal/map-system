@@ -7,6 +7,7 @@ import org.locationtech.jts.geom.Envelope;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -38,6 +39,7 @@ public class S57TileRepository {
             case "DEPCNT" -> "enc_depare";  // DEPCNT is derived from DEPARE boundaries
             case "COALNE" -> "enc_coalne";
             case "SOUNDG" -> "enc_soundg";
+            case "OBSTRN" -> "enc_obstrn";
             default -> null;
         };
     }
@@ -163,6 +165,10 @@ public class S57TileRepository {
             case "LNDARE" -> """
                 , t."CATLND" as catlnd
                 """;
+            case "OBSTRN" -> """
+                , t."CATOBS" as catobs
+                , t."VALSOU" as valsou
+                """;
             default -> "";
         };
     }
@@ -227,10 +233,11 @@ public class S57TileRepository {
      */
     public byte[] getCompositeTile(int z, int x, int y, Double safetyContour) {
         Envelope env = TileUtils.tileToEnvelope(x, y, z);
+        boolean includeObstructionLayer = isTableAvailable("enc_obstrn");
 
         // Generate each layer separately and combine using proper MVT format
         // Each layer is a separate ST_AsMVT call with different layer name
-        String sql = buildMultiLayerSQL(safetyContour, env);
+        String sql = buildMultiLayerSQL(safetyContour, env, includeObstructionLayer);
 
         try {
             byte[] result = jdbcTemplate.queryForObject(sql, byte[].class);
@@ -246,19 +253,38 @@ public class S57TileRepository {
      * Build SQL for multi-layer MVT tile
      * Uses UNION ALL to combine all features, then generates single MVT with layer names
      */
-    private String buildMultiLayerSQL(Double safetyContour, Envelope env) {
+    private String buildMultiLayerSQL(Double safetyContour, Envelope env, boolean includeObstructionLayer) {
         double minX = env.getMinX();
         double minY = env.getMinY();
         double maxX = env.getMaxX();
         double maxY = env.getMaxY();
 
-        String boundsExpr = String.format(java.util.Locale.US,
+        String boundsExpr = String.format(Locale.US,
                 "ST_MakeEnvelope(%f, %f, %f, %f, 3857)", minX, minY, maxX, maxY);
+        String obstructionCte = includeObstructionLayer
+                ? """
+            ,
+            obstrn_mvt AS (
+                SELECT COALESCE(ST_AsMVT(q.*, 'OBSTRN', 4096, 'geom'), ''::bytea) AS tile FROM (
+                    SELECT ST_AsMVTGeom(ST_Transform(t.geometry, 3857), bounds.geom, 4096, 256, true) AS geom,
+                        t."CATOBS" as catobs, t."VALSOU" as valsou
+                    FROM enc_obstrn t, bounds
+                    WHERE ST_Intersects(ST_Transform(t.geometry, 3857), bounds.geom)
+                ) q
+            )
+            """
+                : "";
+        String tileConcat = includeObstructionLayer
+                ? "depare_mvt.tile || lndare_mvt.tile || coalne_mvt.tile || depcnt_mvt.tile || soundg_mvt.tile || obstrn_mvt.tile"
+                : "depare_mvt.tile || lndare_mvt.tile || coalne_mvt.tile || depcnt_mvt.tile || soundg_mvt.tile";
+        String tileSources = includeObstructionLayer
+                ? "depare_mvt, lndare_mvt, coalne_mvt, depcnt_mvt, soundg_mvt, obstrn_mvt"
+                : "depare_mvt, lndare_mvt, coalne_mvt, depcnt_mvt, soundg_mvt";
 
         // Generate proper multi-layer MVT using separate ST_AsMVT calls combined with ||
         // The key is that each layer MUST have data, otherwise the concat fails
         // Use a WITH clause to pre-compute bounds and each layer's MVT
-        return String.format(java.util.Locale.US, """
+        return String.format(Locale.US, """
             WITH bounds AS (
                 SELECT %1$s AS geom
             ),
@@ -302,8 +328,23 @@ public class S57TileRepository {
                     WHERE ST_Intersects(ST_Transform(t.geometry, 3857), bounds.geom)
                 ) q
             )
-            SELECT depare_mvt.tile || lndare_mvt.tile || coalne_mvt.tile || depcnt_mvt.tile || soundg_mvt.tile
-            FROM depare_mvt, lndare_mvt, coalne_mvt, depcnt_mvt, soundg_mvt
-            """, boundsExpr);
+            %2$s
+            SELECT %3$s
+            FROM %4$s
+            """, boundsExpr, obstructionCte, tileConcat, tileSources);
+    }
+
+    private boolean isTableAvailable(String tableName) {
+        try {
+            Boolean exists = jdbcTemplate.queryForObject(
+                    "SELECT to_regclass(?) IS NOT NULL",
+                    Boolean.class,
+                    tableName
+            );
+            return Boolean.TRUE.equals(exists);
+        } catch (Exception e) {
+            log.warn("Failed to inspect table availability: table={}, error={}", tableName, e.getMessage());
+            return false;
+        }
     }
 }
