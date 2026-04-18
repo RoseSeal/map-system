@@ -1,13 +1,13 @@
-﻿/**
+/**
  * MapContainer Component
  * Main map visualization with MapLibre GL JS and Deck.gl overlay
  */
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { Layer, Position } from '@deck.gl/core';
-import { IconLayer, PathLayer, PolygonLayer, LineLayer, ScatterplotLayer } from '@deck.gl/layers';
+import { IconLayer, LineLayer, PathLayer, PolygonLayer, ScatterplotLayer } from '@deck.gl/layers';
 
 import {
   useRiskStore,
@@ -24,12 +24,46 @@ import {
   getRiskColor,
   VISUALIZATION,
 } from '../../config';
-import { applyMapTheme, s57Sources, s57Layers } from '../../config/layerStyles';
+import {
+  addS57Layers,
+  addS57Sources,
+  applyMapTheme,
+  ensureObstructionIcons,
+  removeS57Sources,
+  syncHydrologyLayerVisibility,
+} from '../../config/layerStyles';
 import {
   generateEllipsePolygon,
   generateLinearTrajectory,
 } from '../../utils';
-import type { LonLat, RiskTarget, OwnShip, RGBAColor } from '../../types/schema';
+import type { LonLat, OwnShip, RGBAColor, RiskTarget } from '../../types/schema';
+
+const CONTOUR_MIN = 5;
+const CONTOUR_MAX = 30;
+const CONTOUR_DEBOUNCE_MS = 300;
+const SAFETY_CONTOUR_PRESETS = [5, 10, 15, 20, 25, 30] as const;
+
+function roundContourValue(value: number): number {
+  return Number(value.toFixed(1));
+}
+
+function buildSafetyContourOptions(liveSafetyContourVal: number): number[] {
+  const options = new Set<number>(SAFETY_CONTOUR_PRESETS);
+
+  if (Number.isFinite(liveSafetyContourVal)) {
+    options.add(roundContourValue(liveSafetyContourVal));
+  }
+
+  return [...options].sort((left, right) => left - right);
+}
+
+function findClosestContourIndex(value: number, options: number[]): number {
+  return options.reduce((closestIndex, option, index) => (
+    Math.abs(option - value) < Math.abs(options[closestIndex] - value)
+      ? index
+      : closestIndex
+  ), 0);
+}
 
 const VESSEL_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
@@ -68,7 +102,10 @@ export function MapContainer() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const deckOverlay = useRef<MapboxOverlay | null>(null);
+  const lastReloadedContourRef = useRef<number | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [localSafetyContourOverride, setLocalSafetyContourOverride] = useState<number | null>(null);
+  const [debouncedSafetyContourVal, setDebouncedSafetyContourVal] = useState<number>(10);
 
   const ownShip = useRiskStore(selectOwnShip);
   const targets = useRiskStore(selectTargets);
@@ -77,12 +114,34 @@ export function MapContainer() {
   const selectedTargetIds = useRiskStore((state) => state.selectedTargetIds);
   const selectTarget = useRiskStore((state) => state.selectTarget);
   const { isDarkMode } = useThemeStore();
-  const safetyContourVal = environment?.safety_contour_val ?? 10;
+
+  const liveSafetyContourVal = environment?.safety_contour_val ?? 10;
+  const effectiveSafetyContourVal = localSafetyContourOverride ?? liveSafetyContourVal;
+  const safetyContourOptions = useMemo(
+    () => buildSafetyContourOptions(liveSafetyContourVal),
+    [liveSafetyContourVal],
+  );
+  const safetyContourIndex = findClosestContourIndex(effectiveSafetyContourVal, safetyContourOptions);
+  const glassClass = isDarkMode ? 'glass-vision-dark' : 'glass-vision';
+
+  useEffect(() => {
+    setDebouncedSafetyContourVal(effectiveSafetyContourVal);
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSafetyContourVal(effectiveSafetyContourVal);
+    }, CONTOUR_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [effectiveSafetyContourVal]);
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    map.current = new maplibregl.Map({
+    const mapInstance = new maplibregl.Map({
       container: mapContainer.current,
       style: {
         version: 8,
@@ -104,42 +163,70 @@ export function MapContainer() {
       minPitch: MAP_CONSTRAINTS.minPitch,
       maxPitch: MAP_CONSTRAINTS.maxPitch,
     });
+    map.current = mapInstance;
 
-    map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
+    const syncPitchVisibility = () => {
+      if (!map.current) {
+        return;
+      }
+      syncHydrologyLayerVisibility(map.current);
+    };
+
+    mapInstance.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     deckOverlay.current = new MapboxOverlay({
       interleaved: true,
       layers: [],
     });
-    map.current.addControl(deckOverlay.current as unknown as maplibregl.IControl);
+    mapInstance.addControl(deckOverlay.current as unknown as maplibregl.IControl);
 
-    map.current.on('load', () => {
-      if (!map.current) return;
+    mapInstance.on('load', () => {
+      if (!map.current) {
+        return;
+      }
 
-      Object.entries(s57Sources).forEach(([sourceId, sourceSpec]) => {
-        map.current!.addSource(sourceId, sourceSpec);
-      });
-
-      s57Layers.forEach((layer) => {
-        map.current!.addLayer(layer);
-      });
-
-      applyMapTheme(map.current!, safetyContourVal, isDarkMode);
-
+      ensureObstructionIcons(map.current);
+      addS57Sources(map.current, effectiveSafetyContourVal);
+      addS57Layers(map.current);
+      applyMapTheme(map.current, effectiveSafetyContourVal, isDarkMode);
+      syncPitchVisibility();
+      lastReloadedContourRef.current = effectiveSafetyContourVal;
       setMapLoaded(true);
     });
 
+    mapInstance.on('pitchend', syncPitchVisibility);
+
     return () => {
-      map.current?.remove();
+      mapInstance.off('pitchend', syncPitchVisibility);
+      mapInstance.remove();
       map.current = null;
     };
   }, []);
 
   useEffect(() => {
-    if (!mapLoaded || !map.current) return;
+    if (!mapLoaded || !map.current) {
+      return;
+    }
 
-    applyMapTheme(map.current, safetyContourVal, isDarkMode);
-  }, [isDarkMode, mapLoaded, safetyContourVal]);
+    applyMapTheme(map.current, effectiveSafetyContourVal, isDarkMode);
+  }, [effectiveSafetyContourVal, isDarkMode, mapLoaded]);
+
+  useEffect(() => {
+    if (!mapLoaded || !map.current) {
+      return;
+    }
+
+    if (lastReloadedContourRef.current === debouncedSafetyContourVal) {
+      return;
+    }
+
+    removeS57Sources(map.current);
+    ensureObstructionIcons(map.current);
+    addS57Sources(map.current, debouncedSafetyContourVal);
+    addS57Layers(map.current);
+    applyMapTheme(map.current, effectiveSafetyContourVal, isDarkMode);
+    lastReloadedContourRef.current = debouncedSafetyContourVal;
+  }, [debouncedSafetyContourVal, effectiveSafetyContourVal, isDarkMode, mapLoaded]);
 
   const buildDeckLayers = useCallback(() => {
     const layers: Layer[] = [];
@@ -358,11 +445,83 @@ export function MapContainer() {
   }, [ownShip]);
 
   return (
-    <div
-      ref={mapContainer}
-      className="w-full h-full"
-      style={{ minHeight: '100vh' }}
-    />
+    <div className="relative h-full w-full" style={{ minHeight: '100vh' }}>
+      <div
+        ref={mapContainer}
+        className="h-full w-full"
+        style={{ minHeight: '100vh' }}
+      />
+
+      <div className="pointer-events-none absolute right-4 top-20 z-20">
+        <div className={`${glassClass} pointer-events-auto w-[240px] rounded-[18px] px-4 py-3`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--ink-500)' }}>
+                Hydrology
+              </div>
+              <div className="mt-1 text-[13px] font-semibold" style={{ color: 'var(--ink-900)' }}>
+                Safety Contour
+              </div>
+            </div>
+            <div
+              className="rounded-full px-2 py-0.5 font-mono text-[11px]"
+              style={{
+                background: localSafetyContourOverride === null
+                  ? 'color-mix(in oklch, var(--risk-safe) 12%, transparent)'
+                  : 'color-mix(in oklch, var(--risk-warning) 12%, transparent)',
+                color: localSafetyContourOverride === null ? 'var(--risk-safe)' : 'var(--risk-warning)',
+              }}
+            >
+              {effectiveSafetyContourVal.toFixed(1)}m
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <input
+              aria-label="Safety contour value"
+              type="range"
+              min={0}
+              max={Math.max(0, safetyContourOptions.length - 1)}
+              step={1}
+              value={safetyContourIndex}
+              onChange={(event) => {
+                const nextOption = safetyContourOptions[Number(event.target.value)];
+                if (nextOption !== undefined) {
+                  setLocalSafetyContourOverride(nextOption);
+                }
+              }}
+              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-transparent"
+            />
+            <div className="mt-1 flex justify-between text-[10px] font-mono" style={{ color: 'var(--ink-500)' }}>
+              <span>{safetyContourOptions[0]?.toFixed(1) ?? CONTOUR_MIN.toFixed(1)}m</span>
+              <span>{safetyContourOptions[safetyContourOptions.length - 1]?.toFixed(1) ?? CONTOUR_MAX.toFixed(1)}m</span>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="text-[10px]" style={{ color: 'var(--ink-500)' }}>
+              {localSafetyContourOverride === null
+                ? `实时值 ${liveSafetyContourVal.toFixed(1)}m`
+                : `已覆盖实时值 ${liveSafetyContourVal.toFixed(1)}m`}
+            </div>
+            <button
+              type="button"
+              disabled={localSafetyContourOverride === null}
+              onClick={() => {
+                setLocalSafetyContourOverride(null);
+              }}
+              className="rounded-full px-2.5 py-1 text-[10px] font-medium transition disabled:cursor-default disabled:opacity-40"
+              style={{
+                background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                color: 'var(--ink-700)',
+              }}
+            >
+              恢复实时值
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

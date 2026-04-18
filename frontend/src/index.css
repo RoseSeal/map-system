@@ -2,7 +2,114 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MapLibre GL override to ensure full viewport */
+:root {
+  --risk-safe: oklch(0.76 0.11 158);
+  --risk-caution: oklch(0.82 0.12 85);
+  --risk-warning: oklch(0.72 0.15 55);
+  --risk-alarm: oklch(0.66 0.18 22);
+
+  --accent: oklch(0.62 0.13 220);
+  --accent-soft: oklch(0.94 0.03 220);
+
+  --ink-900: oklch(0.24 0.02 240);
+  --ink-700: oklch(0.42 0.02 240);
+  --ink-500: oklch(0.58 0.015 240);
+  --ink-300: oklch(0.78 0.01 240);
+  --ink-100: oklch(0.94 0.006 240);
+}
+
+.dark {
+  --ink-900: oklch(0.96 0.01 220);
+  --ink-700: oklch(0.8 0.02 220);
+  --ink-500: oklch(0.62 0.02 220);
+  --ink-300: oklch(0.4 0.02 240);
+  --ink-100: oklch(0.22 0.02 240);
+}
+
+.glass-vision {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: saturate(180%) blur(30px);
+  -webkit-backdrop-filter: saturate(180%) blur(30px);
+  border: 0.5px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 0 0 0.5px rgba(15, 23, 42, 0.04),
+    0 10px 30px -8px rgba(15, 23, 42, 0.12),
+    0 30px 60px -20px rgba(15, 23, 42, 0.18);
+}
+
+.glass-vision-dark {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: saturate(180%) blur(30px);
+  -webkit-backdrop-filter: saturate(180%) blur(30px);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.07) inset,
+    0 10px 30px -8px rgba(0, 0, 0, 0.45),
+    0 30px 60px -20px rgba(0, 0, 0, 0.65);
+}
+
+@keyframes softRise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anim-rise {
+  animation: softRise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes softPulse {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.anim-soft-pulse {
+  animation: softPulse 2.6s ease-in-out infinite;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+
+.scrollbar-apple::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.scrollbar-apple::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-apple::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.22);
+  border-radius: 999px;
+}
+
+.scrollbar-apple::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.42);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
 .maplibregl-map {
   position: absolute;
   top: 0;
@@ -11,40 +118,30 @@
   height: 100%;
 }
 
-/* Smooth scrollbar for panels */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(31, 41, 55, 0.5);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(107, 114, 128, 0.5);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(107, 114, 128, 0.8);
-}
-
-/* Reset */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   height: 100%;
   overflow: hidden;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family:
+    'Inter',
+    'Noto Sans SC',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'ss01', 'cv11', 'tnum';
 }

@@ -1,147 +1,247 @@
 import {
-  useRiskStore,
-  useAiCenterStore,
-  selectTargets,
-  selectSelectedTargetIds,
   selectExplanationsByTargetId,
+  selectSelectedTargetIds,
+  selectTargets,
+  useAiCenterStore,
+  useRiskStore,
 } from '../../store';
-import { getRiskColor } from '../../config';
-import {
-  translateEncounterType,
-  getRiskScoreBorderWidth,
-  getRiskConfidenceOpacity,
-} from '../../utils/riskDisplay';
+import { useThemeStore } from '../../store/useThemeStore';
+import { translateEncounterType } from '../../utils/riskDisplay';
+import { CpaArc } from './CpaArc';
+
+const riskColors: Record<string, string> = {
+  SAFE: 'oklch(0.76 0.11 158)',
+  CAUTION: 'oklch(0.82 0.12 85)',
+  WARNING: 'oklch(0.72 0.15 55)',
+  ALARM: 'oklch(0.66 0.18 22)',
+};
+
+const riskLabels: Record<string, string> = {
+  SAFE: '安全',
+  CAUTION: '注意',
+  WARNING: '警告',
+  ALARM: '警报',
+};
+
+const levelScore: Record<string, number> = {
+  ALARM: 4,
+  WARNING: 3,
+  CAUTION: 2,
+  SAFE: 1,
+};
 
 export function TargetsPanel() {
   const targets = useRiskStore(selectTargets);
   const explanationsByTargetId = useRiskStore(selectExplanationsByTargetId);
-  const selectTarget = useRiskStore((state) => state.selectTarget);
   const selectedTargetIds = useRiskStore(selectSelectedTargetIds);
+  const selectTarget = useRiskStore((state) => state.selectTarget);
   const requestAiCenterOpen = useAiCenterStore((state) => state.requestAiCenterOpen);
+  const { isDarkMode } = useThemeStore();
 
   if (targets.length === 0) {
     return null;
   }
 
   const sortedTargets = [...targets].sort((a, b) => {
-    const levelScore = { ALARM: 4, WARNING: 3, CAUTION: 2, SAFE: 1 };
-    const levelDiff = (levelScore[b.risk_assessment.risk_level] || 0) - (levelScore[a.risk_assessment.risk_level] || 0);
+    const levelDiff = (levelScore[b.risk_assessment.risk_level] ?? 0)
+      - (levelScore[a.risk_assessment.risk_level] ?? 0);
+
     if (levelDiff !== 0) {
       return levelDiff;
     }
+
     return (b.risk_assessment.risk_score ?? 0) - (a.risk_assessment.risk_score ?? 0);
   });
 
+  const counts = targets.reduce<Record<string, number>>((accumulator, target) => {
+    const level = target.risk_assessment.risk_level;
+    accumulator[level] = (accumulator[level] ?? 0) + 1;
+    return accumulator;
+  }, {});
+
+  const glassClass = isDarkMode ? 'glass-vision-dark' : 'glass-vision';
+
   return (
-    <div className="bg-white/95 dark:bg-slate-950/80 backdrop-blur-xl rounded-xl p-3 text-slate-800 dark:text-white w-[280px] border border-slate-200 dark:border-white/5 shadow-2xl pointer-events-auto max-h-[60vh] flex flex-col transition-all duration-300">
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2 mb-3">
-        <h2 className="text-xs font-bold tracking-widest text-slate-800 dark:text-slate-200 uppercase">周边目标</h2>
-        <span className="bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold">
-          {targets.length} 已追踪
-        </span>
+    <div
+      className={`${glassClass} anim-rise flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[22px]`}
+      style={{ animationDelay: '60ms' }}
+    >
+      <div className="shrink-0 px-5 pb-3 pt-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              style={{ color: 'var(--accent)' }}
+            >
+              <circle cx="12" cy="12" r="9" />
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 3v2M12 19v2M3 12h2M19 12h2" />
+            </svg>
+            <span className="text-[13px] font-semibold" style={{ color: 'var(--ink-700)' }}>
+              周边目标
+            </span>
+          </div>
+          <span
+            className="tnum rounded-full px-2 py-0.5 font-mono text-[10px]"
+            style={{
+              background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
+              color: 'var(--ink-700)',
+            }}
+          >
+            {targets.length} 已追踪
+          </span>
+        </div>
+
+        <div
+          className="flex h-1 overflow-hidden rounded-full"
+          style={{ background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)' }}
+        >
+          {(['SAFE', 'CAUTION', 'WARNING', 'ALARM'] as const).map((level) => (
+            counts[level] ? (
+              <div
+                key={level}
+                className="h-full transition-all duration-500"
+                style={{ flex: counts[level], background: riskColors[level] }}
+              />
+            ) : null
+          ))}
+        </div>
       </div>
 
-      <div className="overflow-y-auto pr-1 space-y-2.5 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+      <div className="scrollbar-apple flex-1 min-h-0 space-y-2 overflow-y-auto px-3 pb-3">
         {sortedTargets.map((target) => {
-          const riskColor = getRiskColor(target.risk_assessment.risk_level);
-          const riskHex = `rgb(${riskColor.join(',')})`;
+          const {
+            cpa_metrics: cpaMetrics,
+            encounter_type: encounterType,
+            risk_confidence: riskConfidence,
+            risk_level: riskLevel,
+          } = target.risk_assessment;
           const isSelected = selectedTargetIds.includes(target.id);
-          const explanation = explanationsByTargetId[target.id];
-          const encounterTypeText = translateEncounterType(target.risk_assessment.encounter_type);
-
-          const isLowConfidence = target.risk_assessment.risk_confidence !== undefined && target.risk_assessment.risk_confidence < 0.5;
+          const hasExplanation = Boolean(explanationsByTargetId[target.id]);
+          const lowConfidence = riskConfidence !== undefined && riskConfidence < 0.5;
+          const color = riskColors[riskLevel] ?? riskColors.SAFE;
+          const encounterLabel = translateEncounterType(encounterType);
 
           return (
-            <div
+            <button
               key={target.id}
+              type="button"
               onClick={() => {
                 selectTarget(target.id);
-                if (explanation) {
+                if (hasExplanation) {
                   requestAiCenterOpen();
                 }
               }}
-              className={[
-                'group p-3 rounded-lg border cursor-pointer transition-all duration-300 ease-in-out',
-                isSelected
-                  ? 'bg-slate-100 dark:bg-cyan-500/10 border-slate-300 dark:border-cyan-500/30 shadow-inner'
-                  : 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-100 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10',
-              ].join(' ')}
+              className="group w-full rounded-2xl p-3 text-left transition-all duration-300 ease-out"
               style={{
-                borderLeftColor: riskHex,
-                borderLeftWidth: `${getRiskScoreBorderWidth(target.risk_assessment.risk_score)}px`,
-                opacity: getRiskConfidenceOpacity(target.risk_assessment.risk_confidence),
+                background: isSelected
+                  ? `color-mix(in oklch, ${color} 9%, ${isDarkMode ? 'rgba(15,23,42,0.7)' : 'rgba(255,255,255,0.92)'})`
+                  : isDarkMode
+                    ? 'rgba(255,255,255,0.03)'
+                    : 'rgba(255,255,255,0.5)',
+                border: `0.5px solid ${isSelected
+                  ? `color-mix(in oklch, ${color} 40%, transparent)`
+                  : isDarkMode
+                    ? 'rgba(255,255,255,0.05)'
+                    : 'rgba(15,23,42,0.05)'}`,
+                boxShadow: isSelected
+                  ? `0 3px 12px -4px color-mix(in oklch, ${color} 28%, transparent)`
+                  : 'none',
+                transform: isSelected ? 'translateY(-1px)' : '',
               }}
             >
-              <div className="flex justify-between items-center mb-2 gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-200 truncate">
-                    ID: {target.id}
-                  </span>
-                  {target.risk_assessment.risk_level !== 'SAFE' && encounterTypeText && (
-                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tighter">
-                      {encounterTypeText}
+              <div className="flex items-start gap-3">
+                <CpaArc
+                  tcpa_sec={cpaMetrics.tcpa_sec}
+                  dcpa_nm={cpaMetrics.dcpa_nm}
+                  riskLevel={riskLevel}
+                />
+
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span
+                        className="tnum truncate font-mono text-[12px] font-semibold"
+                        style={{ color: 'var(--ink-900)' }}
+                      >
+                        {target.id}
+                      </span>
+                      {riskLevel !== 'SAFE' && encounterLabel && (
+                        <span
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[8px] font-medium"
+                          style={{
+                            background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                            color: 'var(--ink-500)',
+                          }}
+                        >
+                          {encounterLabel}
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide"
+                      style={{
+                        color,
+                        background: `color-mix(in oklch, ${color} 14%, transparent)`,
+                      }}
+                    >
+                      {riskLabels[riskLevel] ?? riskLevel}
                     </span>
+                  </div>
+
+                  <div className="flex gap-3 text-[10px]">
+                    <span style={{ color: 'var(--ink-500)' }}>
+                      {cpaMetrics.dcpa_nm.toFixed(2)}
+                      <span className="ml-0.5">nm</span>
+                    </span>
+                    <span
+                      className="tnum font-mono"
+                      style={{
+                        color: cpaMetrics.tcpa_sec < 300 ? 'var(--risk-warning)' : 'var(--ink-500)',
+                      }}
+                    >
+                      {(cpaMetrics.tcpa_sec / 60).toFixed(1)}
+                      <span className="ml-0.5">min</span>
+                    </span>
+                  </div>
+
+                  {(lowConfidence || hasExplanation) && (
+                    <div className="mt-1.5 flex items-center gap-2">
+                      {hasExplanation && (
+                        <span
+                          className="flex items-center gap-1 text-[9px] font-medium"
+                          style={{ color: 'var(--accent)' }}
+                        >
+                          <span
+                            className="anim-soft-pulse"
+                            style={{
+                              display: 'inline-block',
+                              width: 5,
+                              height: 5,
+                              borderRadius: 999,
+                              background: 'var(--accent)',
+                            }}
+                          />
+                          AI 评估
+                        </span>
+                      )}
+                      {lowConfidence && (
+                        <span className="text-[9px]" style={{ color: 'var(--risk-warning)' }}>
+                          低置信 {((riskConfidence ?? 0) * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
-                <span
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded tracking-tighter shrink-0"
-                  style={{ color: riskHex, backgroundColor: `rgba(${riskColor.join(',')}, 0.15)` }}
-                >
-                  {translateRisk(target.risk_assessment.risk_level)}
-                </span>
               </div>
-
-              {/* 低置信度提示框 */}
-              {isLowConfidence && (
-                <div className="mb-2 bg-orange-500/10 border border-orange-500/20 rounded px-1.5 py-1 flex items-center gap-2 animate-pulse">
-                  <span className="w-1 h-1 rounded-full bg-orange-500"></span>
-                  <span className="text-[8px] text-orange-600 dark:text-orange-400 font-bold uppercase tracking-tight">
-                    低置信度评估 ({(target.risk_assessment.risk_confidence! * 100).toFixed(0)}%)
-                  </span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-                <div className="flex justify-between border-r border-slate-200 dark:border-white/5 pr-2">
-                  <span className="text-slate-400 uppercase text-[8px] font-bold">距离</span>
-                  <span className="text-slate-700 dark:text-slate-300 font-mono font-medium">
-                    {target.risk_assessment.cpa_metrics.dcpa_nm.toFixed(2)}<span className="text-[8px] ml-0.5">nm</span>
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400 uppercase text-[8px] font-bold">碰撞时间</span>
-                  <span className={`font-mono font-medium ${target.risk_assessment.cpa_metrics.tcpa_sec < 300 ? 'text-orange-500 dark:text-orange-400 font-bold' : 'text-slate-700 dark:text-slate-300'}`}>
-                    {(target.risk_assessment.cpa_metrics.tcpa_sec / 60).toFixed(1)}<span className="text-[8px] ml-0.5">min</span>
-                  </span>
-                </div>
-              </div>
-
-              {explanation && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 h-[1px] bg-slate-200 dark:bg-white/5"></div>
-                  <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-cyan-500/10 border border-cyan-500/20">
-                    <span className="relative flex h-1 w-1">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1 w-1 bg-cyan-500"></span>
-                    </span>
-                    <span className="text-[8px] text-cyan-600 dark:text-cyan-400 font-bold uppercase">AI 已激活</span>
-                  </span>
-                </div>
-              )}
-            </div>
+            </button>
           );
         })}
       </div>
     </div>
   );
-}
-
-function translateRisk(level: string): string {
-  switch (level) {
-    case 'SAFE': return '安全';
-    case 'CAUTION': return '注意';
-    case 'WARNING': return '警告';
-    case 'ALARM': return '警报';
-    default: return level;
-  }
 }

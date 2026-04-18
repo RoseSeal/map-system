@@ -149,7 +149,10 @@ export const MVT_CONFIG = {
 export const LAYER_IDS = {
   LAND_BASE: 'land-base',
   LAND_3D: 'land-3d',
-  WATER_DEPTH: 'water-depth',
+  WATER_DEPTH_FLAT: 'water-depth-flat',
+  WATER_DEPTH_EXTRUSION: 'depare-extrusion',
+  SHOAL_GLOW: 'shoal-glow',
+  OBSTRUCTION_SYMBOL: 'obstrn-symbol',
   RESTRICTED: 'restricted',
 } as const;
 
@@ -157,7 +160,7 @@ export const LAYER_IDS = {
 export const LAYER_ZOOM = {
   LAND_3D_MIN: 10,  // Lowered from 13 to show 3D earlier
   RESTRICTED_MIN: 10,
-  DEPTH_POINTS_MIN: 13,
+  DEPTH_POINTS_MIN: 14,
 } as const;
 
 /** 3D extrusion settings */
@@ -165,6 +168,8 @@ export const EXTRUSION = {
   LAND_HEIGHT: 80,  // Increased from 20 for more dramatic 3D effect
   LAND_BASE: 0,
   LAND_OPACITY: 0.95,
+  DEPTH_EXAGGERATION: 2,
+  HYDROLOGY_PITCH_THRESHOLD: 25,
 } as const;
 
 // ============================================================

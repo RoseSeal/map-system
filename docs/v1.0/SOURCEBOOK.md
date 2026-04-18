@@ -11,15 +11,16 @@
 - [`../../CURRENT_SYSTEM_OVERVIEW.md`](../../CURRENT_SYSTEM_OVERVIEW.md)：当前系统实现导览、模块定位与文档分层入口。
 - [`../README.md`](../README.md)：`docs/` 下当前真值 / 规划 / 历史归档的边界说明。
 - [`README.md`](./README.md)：`v1.0` 里程碑总览与 track 边界说明。
+- [`VISUAL_UPGRADE_REFERENCE.md`](./VISUAL_UPGRADE_REFERENCE.md)：2026-04-18 前端视觉补丁的采纳与裁剪记录；用于追溯天气条占位与 agent 工具区未落地原因。
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md)：系统稳定架构边界、主链路与模块职责。
 - [`../EVENT_SCHEMA.md`](../EVENT_SCHEMA.md)：当前 `risk` SSE 与 `chat` WebSocket 协议真值。
 - [`../frontend-design.md`](../frontend-design.md)：前端当前架构、AI 工作区边界、协议消费方式与交互约束。
 - [`../ADR_AND_REVIEW_FINDINGS.md`](../ADR_AND_REVIEW_FINDINGS.md)：已沉淀的实现结论、review finding 与 trade-off。
-- [`../TODO.md`](../TODO.md)：尚未冻结为 milestone 的原始 backlog 来源。
+- [`../TODO.md`](../TODO.md)：仅记录“未实现且未挂到当前有效实施链”的 backlog；已进入 `v1.0` 各 track plan / step 的事项不再重复登记。
 
 ## 2. 与 v1.0 直接相关的原始需求来源
 
-- [`../TODO.md`](../TODO.md)：当前已明确列出 `Agent Loop`、`GraphRAG`、结构化 `Advisory`、上下文质量、advisory schema、时序稳定性、多目标聚合、解释卡片回注与前端 Generative UI，以及环境语义、水文专题、天气专题等后续项。
+- [`../TODO.md`](../TODO.md)：当前不再重复列出已挂载于 `v1.0` 的 agent / hydrology / weather 主线事项；与本里程碑直接相关的已挂载工作应分别以 [`agent/AGENT_LOOP_PLAN.md`](./agent/AGENT_LOOP_PLAN.md)、[`hydrology/HYDROLOGY_PLAN.md`](./hydrology/HYDROLOGY_PLAN.md)、[`weather/WEATHER_PLAN.md`](./weather/WEATHER_PLAN.md) 为准。
 - [`../EVENT_SCHEMA.md`](../EVENT_SCHEMA.md)：当前协议尚未定义 agent/advisory 专用事件；后续若扩展，必须以现有 `CHAT_REPLY` / `EXPLANATION` / `ERROR` 边界为起点。
 - [`../frontend-design.md`](../frontend-design.md)：当前前端已具备 AI 工作区壳层、解释卡片、消息编辑与目标选择交互，但尚无结构化 advisory、水文专题、天气专题的稳定消费契约。
 - [`../ADR_AND_REVIEW_FINDINGS.md`](../ADR_AND_REVIEW_FINDINGS.md)：包含对上下文注入、解释缓存、消息编辑与前端消费边界的稳定结论，可直接作为 `v1.0` 各 track 的约束材料。
@@ -144,6 +145,6 @@
 ## 9. 可由本文继续派生的后续文档
 
 - `scope` 稿：明确 `v1.0` 的 in-scope / out-of-scope。
-- step 拆分稿：把 agent loop、advisory schema、GraphRAG、前端消费拆成可验收步骤。
+- step-plan 补齐稿：继续为 `agent` Step 0–5、`hydrology` Step 2–3、`weather` Step 2–3 补齐可执行 step 文档。
 - advisory 协议草稿：确定是否扩展现有事件还是新增事件类型。
 - 外部知识建模稿：明确 GraphRAG 所需语料、实体关系与引用策略。

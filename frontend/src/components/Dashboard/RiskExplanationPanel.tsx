@@ -1,42 +1,72 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
-  useRiskStore,
-  useAiCenterStore,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
   selectAiCenterOpenRequestVersion,
-  selectSelectedTargetIds,
-  selectDroppedTargetNotices,
-  selectTargets,
-  selectExplanationsByTargetId,
-  selectChatMessages,
   selectChatInput,
+  selectChatMessages,
+  selectDroppedTargetNotices,
   selectEditingDraft,
   selectEditingMessageEventId,
   selectEditingSubmitError,
   selectEditingSubmitEventId,
+  selectExplanationsByTargetId,
   selectIsChatSending,
+  selectSelectedTargetIds,
   selectSpeechEnabled,
   selectSpeechSupported,
+  selectTargets,
+  useAiCenterStore,
+  useRiskStore,
 } from '../../store';
 import { useThemeStore } from '../../store/useThemeStore';
-import { speechService } from '../../services/speechService';
-import { getRiskColor } from '../../config';
-import { useVoiceCapture } from '../../hooks/useVoiceCapture';
-import { translateEncounterType } from '../../utils/riskDisplay';
 import type { AiCenterChatMessage } from '../../types/aiCenter';
 import type { ExplanationPayload, RiskLevel, RiskTarget } from '../../types/schema';
+import { translateEncounterType } from '../../utils/riskDisplay';
+import { useVoiceCapture } from '../../hooks/useVoiceCapture';
+import { speechService } from '../../services/speechService';
 import { ChatComposer } from './ChatComposer';
 import { ChatMessageList } from './ChatMessageList';
+import { CpaArc } from './CpaArc';
 
-const PANEL_WIDTH = 380; // Slightly widened as per plan
+const PANEL_WIDTH = 420;
+
+const riskColors: Record<RiskLevel, string> = {
+  SAFE: 'oklch(0.76 0.11 158)',
+  CAUTION: 'oklch(0.82 0.12 85)',
+  WARNING: 'oklch(0.72 0.15 55)',
+  ALARM: 'oklch(0.66 0.18 22)',
+};
+
+const riskLabels: Record<RiskLevel, string> = {
+  SAFE: '安全',
+  CAUTION: '注意',
+  WARNING: '警告',
+  ALARM: '警报',
+};
+
+function shouldShowRiskCard(level: RiskLevel) {
+  return level === 'CAUTION' || level === 'WARNING' || level === 'ALARM';
+}
+
+function getRiskPriority(level: RiskLevel) {
+  return level === 'ALARM' ? 3 : level === 'WARNING' ? 2 : level === 'CAUTION' ? 1 : 0;
+}
 
 export function RiskExplanationPanel() {
   const targets = useRiskStore(selectTargets);
   const explanationsByTargetId = useRiskStore(selectExplanationsByTargetId);
   const selectedTargetIds = useRiskStore(selectSelectedTargetIds);
   const droppedTargetNotices = useRiskStore(selectDroppedTargetNotices);
+  const lastSseError = useRiskStore((state) => state.lastError);
   const selectTarget = useRiskStore((state) => state.selectTarget);
   const deselectTarget = useRiskStore((state) => state.deselectTarget);
   const clearDroppedTargetNotices = useRiskStore((state) => state.clearDroppedTargetNotices);
+  const clearRiskError = useRiskStore((state) => state.clearRiskError);
 
   const aiCenterOpenRequestVersion = useAiCenterStore(selectAiCenterOpenRequestVersion);
   const chatMessages = useAiCenterStore(selectChatMessages);
@@ -46,8 +76,8 @@ export function RiskExplanationPanel() {
   const editingSubmitEventId = useAiCenterStore(selectEditingSubmitEventId);
   const editingSubmitError = useAiCenterStore(selectEditingSubmitError);
   const isChatSending = useAiCenterStore(selectIsChatSending);
-  const isChatFocused = useAiCenterStore((state) => state.isChatFocused);
   const speechEnabled = useAiCenterStore(selectSpeechEnabled);
+
   const speechSupported = useAiCenterStore(selectSpeechSupported);
 
   const setChatInput = useAiCenterStore((state) => state.setChatInput);
@@ -58,42 +88,85 @@ export function RiskExplanationPanel() {
   const cancelEditingLastUserMessage = useAiCenterStore((state) => state.cancelEditingLastUserMessage);
   const clearEditingSubmitError = useAiCenterStore((state) => state.clearEditingSubmitError);
   const resetConversation = useAiCenterStore((state) => state.resetConversation);
-  const setIsChatFocused = useAiCenterStore((state) => state.setIsChatFocused);
   const setSpeechEnabled = useAiCenterStore((state) => state.setSpeechEnabled);
   const setSpeechUnlocked = useAiCenterStore((state) => state.setSpeechUnlocked);
 
   const { isDarkMode, toggleTheme } = useThemeStore();
-
   const {
-    voiceCaptureSupported,
-    voiceCaptureState,
-    voiceCaptureError,
     activeVoiceMode,
+    cancelVoiceCapture,
     handleStartVoiceRecording,
     handleStopVoiceRecording,
-    cancelVoiceCapture,
+    voiceCaptureError,
+    voiceCaptureState,
+    voiceCaptureSupported,
   } = useVoiceCapture();
 
-  const lastSseError = useRiskStore((state) => state.lastError);
-  const clearRiskError = useRiskStore((state) => state.clearRiskError);
-
-  const [isHovered, setIsHovered] = useState(false);
-  const [topSectionHeight, setTopSectionHeight] = useState(60);
+  const [isOpen, setIsOpen] = useState(false);
+  const [topSectionHeight, setTopSectionHeight] = useState(55);
   const [chatSendError, setChatSendError] = useState<string | null>(null);
   const [visibleSseError, setVisibleSseError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  const isDragging = useRef(false);
+
   useEffect(() => {
-    if (!lastSseError) return;
+    if (!lastSseError) {
+      return;
+    }
+
     setVisibleSseError(lastSseError.error_message);
-    const timer = setTimeout(() => {
+    const timerId = setTimeout(() => {
       setVisibleSseError(null);
       clearRiskError();
     }, 4000);
-    return () => clearTimeout(timer);
-  }, [lastSseError, clearRiskError]);
-  const isDragging = useRef(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+    return () => clearTimeout(timerId);
+  }, [clearRiskError, lastSseError]);
+
+  useEffect(() => {
+    if (aiCenterOpenRequestVersion > 0) {
+      setIsOpen(true);
+    }
+  }, [aiCenterOpenRequestVersion]);
+
+  useEffect(() => {
+    if (voiceCaptureState === 'recording' || voiceCaptureState === 'transcribing') {
+      setIsOpen(true);
+    }
+  }, [voiceCaptureState]);
+
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    if (!isDragging.current) {
+      return;
+    }
+
+    const panelRect = document.getElementById('ai-center-panel')?.getBoundingClientRect();
+    if (!panelRect) {
+      return;
+    }
+
+    let nextPercentage = ((event.clientY - panelRect.top) / panelRect.height) * 100;
+    nextPercentage = Math.max(20, Math.min(80, nextPercentage));
+    setTopSectionHeight(nextPercentage);
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  }, [handleMouseMove]);
+
+  useEffect(() => () => {
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  }, [handleMouseMove, handleMouseUp]);
+
+  const handleDividerMouseDown = () => {
+    isDragging.current = true;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   const sortedExplainedTargets = useMemo(() => (
     targets
@@ -102,58 +175,30 @@ export function RiskExplanationPanel() {
         if (!explanation || !shouldShowRiskCard(explanation.risk_level)) {
           return null;
         }
+
         return { target, explanation };
       })
       .filter((item): item is { target: RiskTarget; explanation: ExplanationPayload } => Boolean(item))
-      .sort((l, r) => getRiskPriority(r.explanation.risk_level) - getRiskPriority(l.explanation.risk_level))
-  ), [targets, explanationsByTargetId]);
+      .sort((left, right) => getRiskPriority(right.explanation.risk_level) - getRiskPriority(left.explanation.risk_level))
+  ), [explanationsByTargetId, targets]);
 
-  const selectedTargetsForChip = useMemo(() => {
-    const chips: Array<{ id: string; riskLevel: string }> = [];
-    for (const id of selectedTargetIds) {
-      const target = targets.find((t) => t.id === id);
-      if (target) {
-        chips.push({ id: target.id, riskLevel: target.risk_assessment.risk_level });
-      }
-    }
-    return chips;
-  }, [selectedTargetIds, targets]);
-
-  const handleMouseEnter = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    setIsHovered(true);
-  };
-
-  const handleMouseLeave = () => {
-    if (isChatFocused || isDragging.current) {
-      return;
-    }
-
-    timeoutRef.current = setTimeout(() => {
-      setIsHovered(false);
-    }, 300);
-  };
-
-  useEffect(() => {
-    if (!isChatFocused && !isHovered) {
-      handleMouseLeave();
-    }
-  }, [isChatFocused, isHovered]);
-
-  useEffect(() => {
-    if (aiCenterOpenRequestVersion > 0) {
-      handleMouseEnter();
-    }
-  }, [aiCenterOpenRequestVersion]);
+  const selectedTargetsForChip = useMemo(() => (
+    selectedTargetIds
+      .map((id) => {
+        const target = targets.find((item) => item.id === id);
+        return target ? { id: target.id, riskLevel: target.risk_assessment.risk_level } : null;
+      })
+      .filter((item): item is { id: string; riskLevel: RiskLevel } => item !== null)
+  ), [selectedTargetIds, targets]);
 
   const handleSendChat = () => {
     const sent = sendTextMessage(chatInput);
-    if (!sent) {
-      setChatSendError('发送失败：连接已断开');
-      setTimeout(() => setChatSendError(null), 3000);
+    if (sent) {
+      return;
     }
+
+    setChatSendError('发送失败：连接已断开');
+    setTimeout(() => setChatSendError(null), 3000);
   };
 
   const handleRetry = (message: AiCenterChatMessage) => {
@@ -170,130 +215,307 @@ export function RiskExplanationPanel() {
   };
 
   const handleSpeechToggle = () => {
-    if (!speechSupported) return;
+    if (!speechSupported) {
+      return;
+    }
+
     if (speechEnabled) {
       setSpeechEnabled(false);
       speechService.stop();
-    } else {
-      const unlocked = speechService.unlock();
-      setSpeechUnlocked(unlocked);
-      setSpeechEnabled(unlocked);
+      return;
     }
+
+    const unlocked = speechService.unlock();
+    setSpeechUnlocked(unlocked);
+    setSpeechEnabled(unlocked);
   };
 
-  const handleMouseDown = () => {
-    isDragging.current = true;
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!isDragging.current) return;
-    const panelRect = document.getElementById('ai-center-panel')?.getBoundingClientRect();
-    if (!panelRect) return;
-
-    const relativeY = event.clientY - panelRect.top;
-    let newPercentage = (relativeY / panelRect.height) * 100;
-    newPercentage = Math.max(20, Math.min(80, newPercentage));
-    setTopSectionHeight(newPercentage);
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    isDragging.current = false;
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    if (!isChatFocused && !isHovered) handleMouseLeave();
-  }, [handleMouseMove, isChatFocused, isHovered]);
-
-  const isVisible = isHovered || isChatFocused || voiceCaptureState === 'recording' || voiceCaptureState === 'transcribing';
+  const glassClass = isDarkMode ? 'glass-vision-dark' : 'glass-vision';
 
   return (
-    <div
-      className="fixed right-0 top-0 bottom-0 flex pointer-events-none z-50 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-      style={{
-        transform: isVisible ? 'translateX(0)' : `translateX(${PANEL_WIDTH}px)`,
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* 全高边缘句柄 */}
-      <div className="w-8 h-full pointer-events-auto flex items-center justify-end pr-1 cursor-w-resize group">
+    <div className="pointer-events-none fixed right-0 top-0 bottom-0 z-50">
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="pointer-events-auto absolute flex justify-end pr-1"
+        style={{
+          right: 0,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 36,
+          opacity: isOpen ? 0 : 1,
+          pointerEvents: isOpen ? 'none' : 'auto',
+          transition: 'opacity 0.3s ease',
+        }}
+        aria-label="打开 AI 助手"
+      >
         <div
-          className={`w-1 h-32 rounded-full transition-all duration-300 ${
-            isVisible
-              ? 'bg-cyan-500/60 shadow-[0_0_8px_rgba(6,182,212,0.4)]'
-              : 'bg-white/10 group-hover:bg-cyan-400/80 group-hover:h-40'
-          }`}
-        />
-      </div>
+          className={glassClass}
+          style={{
+            borderRight: 'none',
+            borderRadius: '16px 0 0 16px',
+            padding: '20px 8px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <span style={{ position: 'relative', width: 10, height: 10, display: 'inline-block' }}>
+            <span
+              className="anim-soft-pulse"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: 999,
+                background: 'var(--accent)',
+                opacity: 0.5,
+              }}
+            />
+            <span
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: 999,
+                background: 'var(--accent)',
+              }}
+            />
+          </span>
+
+          {sortedExplainedTargets.length > 0 && (
+            <span
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 999,
+                background: 'var(--risk-warning)',
+                color: 'white',
+                fontSize: 9,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: 'JetBrains Mono, monospace',
+              }}
+            >
+              {sortedExplainedTargets.length}
+            </span>
+          )}
+
+          <span
+            style={{
+              writingMode: 'vertical-rl',
+              fontSize: 9,
+              fontWeight: 600,
+              letterSpacing: '0.28em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-700)',
+            }}
+          >
+            AI
+          </span>
+
+          <svg
+            width="12"
+            height="12"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+            style={{ color: 'var(--ink-500)' }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </div>
+      </button>
 
       <div
         id="ai-center-panel"
-        className="h-full bg-white/95 dark:bg-slate-950/85 backdrop-blur-xl border-l border-slate-200 dark:border-white/10 shadow-2xl flex flex-col pointer-events-auto overflow-hidden relative transition-colors duration-300"
-        style={{ width: `${PANEL_WIDTH}px` }}
+        className={`${glassClass} pointer-events-auto flex flex-col overflow-hidden absolute top-0 bottom-0 right-0`}
+        style={{
+          width: PANEL_WIDTH,
+          borderRadius: '24px 0 0 24px',
+          borderRight: 'none',
+          transition: 'transform 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.4s',
+          transform: isOpen ? 'translateX(0)' : `translateX(${PANEL_WIDTH}px)`,
+          opacity: isOpen ? 1 : 0,
+        }}
       >
-        {/* 顶部标题栏 */}
-        <div className="px-4 py-3 border-b border-slate-200 dark:border-white/10 shrink-0 bg-gradient-to-r from-transparent to-cyan-50 dark:to-cyan-950/20">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold tracking-wide text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse"></span>
-              AI 航海助手
-              </h2>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className={`p-1.5 rounded transition-colors ${
-                  isSettingsOpen
-                    ? 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400'
-                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                }`}
-                title="系统设置"
+        <div
+          className="flex items-center justify-between px-5 pb-4 pt-5"
+          style={{ borderBottom: '0.5px solid color-mix(in oklch, var(--ink-500) 12%, transparent)' }}
+        >
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 999,
+                  background: 'color-mix(in oklch, var(--accent) 16%, transparent)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <svg
+                  viewBox="0 0 16 16"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  <path
+                    d="M8 2L10 6L14 6.5L11 9.5L11.8 13.5L8 11.5L4.2 13.5L5 9.5L2 6.5L6 6Z"
+                    strokeLinejoin="round"
+                  />
                 </svg>
-              </button>
-              <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono">
-                {chatMessages.length} 条消息
+              </div>
+              <span className="text-[15px] font-semibold tracking-tight" style={{ color: 'var(--ink-900)' }}>
+                AI 航海助手
+              </span>
+              <span
+                className="rounded-full px-1.5 py-0.5 font-mono text-[8px]"
+                style={{
+                  background: 'color-mix(in oklch, var(--accent) 12%, transparent)',
+                  color: 'var(--accent)',
+                }}
+              >
+                LLM
               </span>
             </div>
+            <div className="mt-1 pl-[38px] text-[11px]" style={{ color: 'var(--ink-500)' }}>
+              {chatMessages.length} 条消息
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen((open) => !open)}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 999,
+                background: isSettingsOpen
+                  ? 'color-mix(in oklch, var(--accent) 14%, transparent)'
+                  : 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                style={{ color: isSettingsOpen ? 'var(--accent)' : 'var(--ink-500)' }}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 999,
+                background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <svg
+                width="12"
+                height="12"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                style={{ color: 'var(--ink-500)' }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         </div>
 
-        {/* 系统设置折叠区 */}
         <div
-          className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-200 dark:border-white/10 ${
-            isSettingsOpen ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'
-          }`}
+          style={{
+            overflow: 'hidden',
+            maxHeight: isSettingsOpen ? 140 : 0,
+            opacity: isSettingsOpen ? 1 : 0,
+            transition: 'max-height 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.2s',
+            borderBottom: '0.5px solid color-mix(in oklch, var(--ink-500) 12%, transparent)',
+            background: 'color-mix(in oklch, var(--ink-500) 3%, transparent)',
+          }}
         >
-          <div className="p-4 space-y-3">
+          <div className="space-y-3 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">显示模式</div>
-                <div className="text-[9px] text-slate-400">切换深色/浅色主题</div>
+                <div className="text-[10px] font-semibold" style={{ color: 'var(--ink-700)' }}>
+                  显示模式
+                </div>
+                <div className="text-[9px]" style={{ color: 'var(--ink-500)' }}>
+                  切换深色 / 浅色主题
+                </div>
               </div>
               <button
+                type="button"
                 onClick={toggleTheme}
-                className="px-3 py-1 rounded text-[10px] font-medium border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-cyan-500/50 transition-colors"
+                className="rounded-lg px-3 py-1 text-[10px] font-medium"
+                style={{
+                  border: '0.5px solid color-mix(in oklch, var(--ink-500) 20%, transparent)',
+                  background: 'color-mix(in oklch, var(--ink-500) 8%, transparent)',
+                  color: 'var(--ink-700)',
+                  cursor: 'pointer',
+                }}
               >
                 {isDarkMode ? '深色模式' : '浅色模式'}
               </button>
             </div>
+
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">语音播报</div>
-                <div className="text-[9px] text-slate-400">{speechSupported ? '自动播报 AI 评估' : '浏览器不支持'}</div>
+                <div className="text-[10px] font-semibold" style={{ color: 'var(--ink-700)' }}>
+                  语音播报
+                </div>
+                <div className="text-[9px]" style={{ color: 'var(--ink-500)' }}>
+                  {speechSupported ? '自动播报 AI 评估' : '浏览器不支持'}
+                </div>
               </div>
               <button
+                type="button"
                 onClick={handleSpeechToggle}
                 disabled={!speechSupported}
-                className={`px-3 py-1 rounded text-[10px] font-medium border transition-all ${
-                  speechEnabled
-                    ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
-                    : 'border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-500'
-                }`}
+                className="rounded-lg px-3 py-1 text-[10px] font-medium"
+                style={{
+                  border: `0.5px solid ${speechEnabled
+                    ? 'color-mix(in oklch, var(--accent) 40%, transparent)'
+                    : 'color-mix(in oklch, var(--ink-500) 20%, transparent)'}`,
+                  background: speechEnabled
+                    ? 'color-mix(in oklch, var(--accent) 12%, transparent)'
+                    : 'color-mix(in oklch, var(--ink-500) 8%, transparent)',
+                  color: speechEnabled ? 'var(--accent)' : 'var(--ink-500)',
+                  cursor: speechSupported ? 'pointer' : 'not-allowed',
+                }}
               >
                 {speechEnabled ? '已开启' : '已关闭'}
               </button>
@@ -301,74 +523,141 @@ export function RiskExplanationPanel() {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 flex flex-col">
-          {/* 态势监控日志区 */}
+        <div className="flex min-h-0 flex-1 flex-col">
           <section
             style={{ height: `${topSectionHeight}%` }}
-            className="min-h-0 border-b border-slate-200 dark:border-white/10 flex flex-col"
+            className="flex min-h-0 flex-col"
           >
-            <div className="px-4 py-2.5 shrink-0 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              <span>风险评估</span>
-              <span>{sortedExplainedTargets.length} 个目标</span>
+            <div
+              className="flex items-center justify-between px-5 py-2.5"
+              style={{ borderBottom: '0.5px solid color-mix(in oklch, var(--ink-500) 8%, transparent)' }}
+            >
+              <span className="text-[11px] font-semibold" style={{ color: 'var(--ink-900)' }}>
+                风险评估
+              </span>
+              <span className="tnum font-mono text-[10px]" style={{ color: 'var(--ink-500)' }}>
+                {sortedExplainedTargets.length} 目标
+              </span>
             </div>
+
             {visibleSseError && (
-              <div className="px-4 pb-2 text-[10px] text-red-500 dark:text-red-400/80 animate-pulse shrink-0 font-medium">
-                服务连接异常: {visibleSseError}
+              <div
+                className="anim-soft-pulse px-5 py-1.5 text-[10px] font-medium"
+                style={{ color: 'var(--risk-alarm)' }}
+              >
+                服务连接异常：{visibleSseError}
               </div>
             )}
 
-            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 transition-colors duration-300">
+            <div className="scrollbar-apple flex-1 min-h-0 space-y-2.5 overflow-y-auto p-4">
               {sortedExplainedTargets.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center px-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center mb-3">
-                    <svg className="w-6 h-6 text-slate-300 dark:text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 999,
+                      marginBottom: 12,
+                      background: 'color-mix(in oklch, var(--risk-safe) 12%, transparent)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      style={{ color: 'var(--risk-safe)' }}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">当前航区暂无风险评估</p>
+                  <p className="text-[12px] font-medium" style={{ color: 'var(--ink-700)' }}>
+                    航区平稳
+                  </p>
+                  <p className="mt-1 text-[11px]" style={{ color: 'var(--ink-500)' }}>
+                    当前无需 AI 介入
+                  </p>
                 </div>
               ) : (
                 sortedExplainedTargets.map(({ target, explanation }) => {
+                  const color = riskColors[explanation.risk_level];
                   const isSelected = selectedTargetIds.includes(target.id);
-                  const riskColor = getRiskColor(explanation.risk_level);
-                  const riskHex = `rgb(${riskColor.join(',')})`;
-                  const encounterTypeText = translateEncounterType(target.risk_assessment.encounter_type);
+                  const encounterLabel = translateEncounterType(target.risk_assessment.encounter_type);
 
                   return (
                     <div
                       key={explanation.event_id}
                       onClick={() => selectTarget(target.id)}
-                      className={`p-3 rounded-lg border transition-all duration-200 cursor-pointer ${
-                        isSelected
-                          ? 'border-cyan-500/50 bg-cyan-50 dark:bg-cyan-950/30 shadow-sm'
-                          : 'border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/50 hover:border-slate-300 dark:hover:border-white/10'
-                      }`}
+                      className="cursor-pointer overflow-hidden rounded-2xl transition-all duration-200"
+                      style={{
+                        background: isSelected
+                          ? `color-mix(in oklch, ${color} 8%, ${isDarkMode ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.9)'})`
+                          : isDarkMode
+                            ? 'rgba(255,255,255,0.04)'
+                            : 'rgba(255,255,255,0.6)',
+                        border: `0.5px solid color-mix(in oklch, ${color} ${isSelected ? 35 : 20}%, transparent)`,
+                        boxShadow: isSelected
+                          ? `0 4px 16px -6px color-mix(in oklch, ${color} 28%, transparent)`
+                          : 'none',
+                      }}
                     >
-                      <div className="flex justify-between items-center mb-2 gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-mono text-xs text-slate-700 dark:text-slate-200 truncate font-bold">ID: {target.id}</span>
-                          {encounterTypeText && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">
-                              {encounterTypeText}
+                      <div
+                        className="flex items-center gap-3 px-4 py-2.5"
+                        style={{ borderBottom: `0.5px solid color-mix(in oklch, ${color} 18%, transparent)` }}
+                      >
+                        <CpaArc
+                          tcpa_sec={target.risk_assessment.cpa_metrics.tcpa_sec}
+                          dcpa_nm={target.risk_assessment.cpa_metrics.dcpa_nm}
+                          riskLevel={explanation.risk_level}
+                          size={40}
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-0.5 flex items-center gap-2">
+                            <span
+                              className="tnum font-mono text-[12px] font-semibold"
+                              style={{ color: 'var(--ink-900)' }}
+                            >
+                              {target.id}
                             </span>
-                          )}
+                            {encounterLabel && (
+                              <span
+                                className="rounded px-1.5 py-0.5 text-[8px] font-medium"
+                                style={{
+                                  background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                                  color: 'var(--ink-500)',
+                                }}
+                              >
+                                {encounterLabel}
+                              </span>
+                            )}
+                            <span
+                              className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+                              style={{
+                                color,
+                                background: `color-mix(in oklch, ${color} 15%, transparent)`,
+                              }}
+                            >
+                              {riskLabels[explanation.risk_level]}
+                            </span>
+                          </div>
+                          <div className="text-[10px]" style={{ color: 'var(--ink-500)' }}>
+                            {explanation.provider} · {explanation.timestamp}
+                          </div>
                         </div>
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                          style={{ color: riskHex, backgroundColor: `rgba(${riskColor.join(',')}, 0.15)` }}
-                        >
-                          {explanation.risk_level}
-                        </span>
                       </div>
 
-                      <div className="text-[12px] leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-medium">
+                      <p
+                        className="px-4 py-3 text-[12.5px] leading-relaxed"
+                        style={{ color: 'var(--ink-700)' }}
+                      >
                         {explanation.text}
-                      </div>
-
-                      <div className="mt-2 pt-2 border-t border-slate-200 dark:border-white/5 flex justify-between items-center text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                        <span>{explanation.provider}</span>
-                        <span>{explanation.timestamp}</span>
-                      </div>
+                      </p>
                     </div>
                   );
                 })
@@ -376,23 +665,39 @@ export function RiskExplanationPanel() {
             </div>
           </section>
 
-          {/* 拖动分割条 */}
           <div
-            className="h-1 bg-slate-100 dark:bg-white/5 hover:bg-cyan-500/50 cursor-row-resize transition-colors"
-            onMouseDown={handleMouseDown}
+            className="h-1 cursor-row-resize transition-colors"
+            style={{ background: 'color-mix(in oklch, var(--ink-500) 8%, transparent)' }}
+            onMouseDown={handleDividerMouseDown}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.background = 'color-mix(in oklch, var(--accent) 40%, transparent)';
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.background = 'color-mix(in oklch, var(--ink-500) 8%, transparent)';
+            }}
           />
 
-          {/* 对话区 */}
           <section
             style={{ height: `${100 - topSectionHeight}%` }}
-            className="min-h-0 flex flex-col"
+            className="flex min-h-0 flex-col"
           >
-            <div className="px-4 py-2.5 shrink-0 flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              <span>智能决策助理</span>
+            <div
+              className="flex items-center justify-between px-5 py-2.5"
+              style={{ borderBottom: '0.5px solid color-mix(in oklch, var(--ink-500) 8%, transparent)' }}
+            >
+              <span className="text-[11px] font-semibold" style={{ color: 'var(--ink-900)' }}>
+                智能决策助理
+              </span>
               <button
                 type="button"
                 onClick={handleResetConversation}
-                className="rounded border border-slate-200 dark:border-white/10 px-2 py-0.5 text-[9px] tracking-normal text-slate-400 hover:border-cyan-500/50 hover:text-cyan-600 dark:hover:text-cyan-400 transition-all"
+                className="rounded-lg px-2 py-0.5 text-[9px]"
+                style={{
+                  border: '0.5px solid color-mix(in oklch, var(--ink-500) 20%, transparent)',
+                  color: 'var(--ink-500)',
+                  cursor: 'pointer',
+                  background: 'transparent',
+                }}
               >
                 重置会话
               </button>
@@ -411,6 +716,7 @@ export function RiskExplanationPanel() {
               onCancelEditingLastUserMessage={cancelEditingLastUserMessage}
               onClearEditingSubmitError={clearEditingSubmitError}
             />
+
             <ChatComposer
               value={chatInput}
               disabled={isChatSending}
@@ -429,25 +735,10 @@ export function RiskExplanationPanel() {
               onStartVoiceRecording={handleStartVoiceRecording}
               onStopVoiceRecording={handleStopVoiceRecording}
               onCancelVoiceRecording={cancelVoiceCapture}
-              onFocus={() => setIsChatFocused(true)}
-              onBlur={() => setIsChatFocused(false)}
             />
           </section>
         </div>
       </div>
     </div>
   );
-}
-
-function shouldShowRiskCard(level: RiskLevel): boolean {
-  return level === 'CAUTION' || level === 'WARNING' || level === 'ALARM';
-}
-
-function getRiskPriority(level: RiskLevel): number {
-  switch (level) {
-    case 'ALARM': return 3;
-    case 'WARNING': return 2;
-    case 'CAUTION': return 1;
-    default: return 0;
-  }
 }

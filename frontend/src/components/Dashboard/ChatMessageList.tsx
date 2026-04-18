@@ -49,7 +49,7 @@ export function ChatMessageList({
   }
 
   return (
-    <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-4 scrollbar-thin transition-colors duration-300">
+    <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-4 scrollbar-apple transition-colors duration-300">
       {messages.map((message) => {
         const isUser = message.role === 'user';
         const isSpeechMessage = message.request_type === 'SPEECH' || message.message_type === 'speech_transcript';

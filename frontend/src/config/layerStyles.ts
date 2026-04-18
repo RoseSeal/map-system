@@ -1,11 +1,21 @@
 /**
  * MapLibre Layer Style Definitions
- * S-57 MVT layer styling for 2.5D maritime chart rendering
+ * S-57 MVT layer styling for hydrology-focused maritime chart rendering
  */
 
-import { COLORS, LAYER_IDS, LAYER_ZOOM, EXTRUSION, MVT_CONFIG } from './constants';
-import type { LayerSpecification, SourceSpecification } from 'maplibre-gl';
-import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
+import {
+  COLORS,
+  EXTRUSION,
+  LAYER_IDS,
+  LAYER_ZOOM,
+  MVT_CONFIG,
+} from './constants';
+import type {
+  ExpressionSpecification,
+  LayerSpecification,
+  Map as MapLibreMap,
+  SourceSpecification,
+} from 'maplibre-gl';
 
 type MapThemeMode = 'dark' | 'light';
 type ThemePaintUpdate = {
@@ -15,8 +25,9 @@ type ThemePaintUpdate = {
 };
 
 const LIGHT_THEME_BACKGROUND = '#DCE7EE';
-const LIGHT_THEME_WATER_DEEP = '#D7E6F0';
-const LIGHT_THEME_WATER_SHALLOW = '#96C9E6';
+const LIGHT_THEME_WATER_DEEP = '#A9CBE4';
+const LIGHT_THEME_WATER_SHALLOW = '#4F8AB3';
+const LIGHT_THEME_WATER_SHELLOW_GLOW = '#EF6A61';
 const LIGHT_THEME_LAND = '#DDD8CD';
 const LIGHT_THEME_LAND_3D = '#C8C0B1';
 const LIGHT_THEME_COASTLINE = '#737A76';
@@ -24,8 +35,62 @@ const LIGHT_THEME_DEPTH_CONTOUR = '#6F8FA3';
 const LIGHT_THEME_SOUNDING = '#4B6B86';
 const LIGHT_THEME_SOUNDING_HALO = '#F7F9FB';
 
+const DARK_THEME_WATER_DEEP = '#133B5B';
+const DARK_THEME_WATER_SHALLOW = '#2A6F97';
+const DARK_THEME_SHOAL_GLOW = '#F05B5B';
+
+const SOURCE_IDS = {
+  DEPARE: 's57-depare',
+  LNDARE: 's57-lndare',
+  COALNE: 's57-coalne',
+  DEPCNT: 's57-depcnt',
+  SOUNDG: 's57-soundg',
+  OBSTRN: 's57-obstrn',
+} as const;
+
+const OBSTRUCTION_ICON_IDS = {
+  wreck: 'obstrn-wreck',
+  rock: 'obstrn-rock',
+  pile: 'obstrn-pile',
+  unknown: 'obstrn-unknown',
+} as const;
+
 function createDepthValueExpression(): ExpressionSpecification {
   return ['coalesce', ['get', 'drval1'], ['get', 'DRVAL1'], 50];
+}
+
+function createShallowWaterFilter(safetyContourVal: number): ExpressionSpecification {
+  return ['<', createDepthValueExpression(), safetyContourVal];
+}
+
+function createDepthExtrusionHeightExpression(): ExpressionSpecification {
+  return ['*', -EXTRUSION.DEPTH_EXAGGERATION, createDepthValueExpression()];
+}
+
+function createObstructionIconExpression(): ExpressionSpecification {
+  return [
+    'match',
+    ['coalesce', ['to-string', ['get', 'catobs']], ['to-string', ['get', 'CATOBS']], 'UNKNOWN'],
+    ['1', '2', '3', 'WRECK', 'wreck', 'WRECKS', 'wrecks'],
+    OBSTRUCTION_ICON_IDS.wreck,
+    ['5', '6', '7', 'ROCK', 'rock', 'ROCKS', 'rocks'],
+    OBSTRUCTION_ICON_IDS.rock,
+    ['4', '8', '9', 'PILE', 'pile', 'STUMP', 'stump'],
+    OBSTRUCTION_ICON_IDS.pile,
+    OBSTRUCTION_ICON_IDS.unknown,
+  ];
+}
+
+function formatSafetyContourValue(safetyContourVal: number): string {
+  return safetyContourVal.toFixed(1);
+}
+
+function buildLayerTileUrl(layerName: string, safetyContourVal?: number): string {
+  if (safetyContourVal === undefined) {
+    return `${MVT_CONFIG.TILE_BASE_URL}/${layerName}.pbf`;
+  }
+
+  return `${MVT_CONFIG.TILE_BASE_URL}/${layerName}.pbf?safety_contour=${encodeURIComponent(formatSafetyContourValue(safetyContourVal))}`;
 }
 
 const MAP_THEME_PAINTS: Record<MapThemeMode, ThemePaintUpdate[]> = {
@@ -70,45 +135,51 @@ const MAP_THEME_LIGHTS = {
   },
 };
 
-/** Individual source for each layer (workaround for composite tile issues) */
-export const s57Sources: Record<string, SourceSpecification> = {
-  's57-depare': {
-    type: 'vector',
-    tiles: [`${MVT_CONFIG.TILE_BASE_URL}/DEPARE.pbf`],
-    minzoom: 0,
-    maxzoom: 14,
-  },
-  's57-lndare': {
-    type: 'vector',
-    tiles: [`${MVT_CONFIG.TILE_BASE_URL}/LNDARE.pbf`],
-    minzoom: 0,
-    maxzoom: 14,
-  },
-  's57-coalne': {
-    type: 'vector',
-    tiles: [`${MVT_CONFIG.TILE_BASE_URL}/COALNE.pbf`],
-    minzoom: 0,
-    maxzoom: 14,
-  },
-  's57-depcnt': {
-    type: 'vector',
-    tiles: [`${MVT_CONFIG.TILE_BASE_URL}/DEPCNT.pbf`],
-    minzoom: 0,
-    maxzoom: 14,
-  },
-  's57-soundg': {
-    type: 'vector',
-    tiles: [`${MVT_CONFIG.TILE_BASE_URL}/SOUNDG.pbf`],
-    minzoom: 0,
-    maxzoom: 14,
-  },
-};
+export function createS57Sources(safetyContourVal: number): Record<string, SourceSpecification> {
+  return {
+    [SOURCE_IDS.DEPARE]: {
+      type: 'vector',
+      tiles: [buildLayerTileUrl('DEPARE')],
+      minzoom: 0,
+      maxzoom: 14,
+    },
+    [SOURCE_IDS.LNDARE]: {
+      type: 'vector',
+      tiles: [buildLayerTileUrl('LNDARE')],
+      minzoom: 0,
+      maxzoom: 14,
+    },
+    [SOURCE_IDS.COALNE]: {
+      type: 'vector',
+      tiles: [buildLayerTileUrl('COALNE')],
+      minzoom: 0,
+      maxzoom: 14,
+    },
+    [SOURCE_IDS.DEPCNT]: {
+      type: 'vector',
+      tiles: [buildLayerTileUrl('DEPCNT', safetyContourVal)],
+      minzoom: 0,
+      maxzoom: 14,
+    },
+    [SOURCE_IDS.SOUNDG]: {
+      type: 'vector',
+      tiles: [buildLayerTileUrl('SOUNDG')],
+      minzoom: 0,
+      maxzoom: 14,
+    },
+    [SOURCE_IDS.OBSTRN]: {
+      type: 'vector',
+      tiles: [buildLayerTileUrl('OBSTRN')],
+      minzoom: 0,
+      maxzoom: 14,
+    },
+  };
+}
 
-/** Land base fill layer (2D fallback) */
-export const landBaseLayer: LayerSpecification = {
+const landBaseLayer: LayerSpecification = {
   id: LAYER_IDS.LAND_BASE,
   type: 'fill',
-  source: 's57-lndare',
+  source: SOURCE_IDS.LNDARE,
   'source-layer': 'LNDARE',
   minzoom: 0,
   maxzoom: LAYER_ZOOM.LAND_3D_MIN,
@@ -118,11 +189,10 @@ export const landBaseLayer: LayerSpecification = {
   },
 };
 
-/** Land 3D extrusion layer - enhanced with lighting effect */
-export const land3DLayer: LayerSpecification = {
+const land3DLayer: LayerSpecification = {
   id: LAYER_IDS.LAND_3D,
   type: 'fill-extrusion',
-  source: 's57-lndare',
+  source: SOURCE_IDS.LNDARE,
   'source-layer': 'LNDARE',
   minzoom: LAYER_ZOOM.LAND_3D_MIN,
   paint: {
@@ -134,36 +204,59 @@ export const land3DLayer: LayerSpecification = {
   },
 };
 
-/**
- * Water depth layer with enhanced gradient coloring
- * Uses multiple depth thresholds for visual depth perception
- */
-export const waterDepthLayer: LayerSpecification = {
-  id: LAYER_IDS.WATER_DEPTH,
+const waterDepthFlatLayer: LayerSpecification = {
+  id: LAYER_IDS.WATER_DEPTH_FLAT,
   type: 'fill',
-  source: 's57-depare',
+  source: SOURCE_IDS.DEPARE,
   'source-layer': 'DEPARE',
   minzoom: 0,
   paint: {
-    'fill-color': [
-      'interpolate',
-      ['linear'],
-      createDepthValueExpression(),
-      0, '#1E3A5F',
-      5, '#1E3A8A',
-      10, '#172554',
-      20, '#0F172A',
-      50, '#0A0F1A',
-    ],
-    'fill-opacity': 0.9,
+    'fill-color': DARK_THEME_WATER_DEEP,
+    'fill-opacity': 0.92,
   },
 };
 
-/** Depth contour lines - subtle, non-distracting */
-export const depthContourLayer: LayerSpecification = {
+const depthExtrusionLayer: LayerSpecification = {
+  id: LAYER_IDS.WATER_DEPTH_EXTRUSION,
+  type: 'fill-extrusion',
+  source: SOURCE_IDS.DEPARE,
+  'source-layer': 'DEPARE',
+  minzoom: 0,
+  layout: {
+    visibility: 'none',
+  },
+  paint: {
+    'fill-extrusion-base': 0,
+    'fill-extrusion-height': createDepthExtrusionHeightExpression(),
+    'fill-extrusion-color': DARK_THEME_WATER_DEEP,
+    'fill-extrusion-opacity': 0.45,
+    'fill-extrusion-vertical-gradient': true,
+  },
+};
+
+const shoalGlowLayer: LayerSpecification = {
+  id: LAYER_IDS.SHOAL_GLOW,
+  type: 'fill-extrusion',
+  source: SOURCE_IDS.DEPARE,
+  'source-layer': 'DEPARE',
+  minzoom: 0,
+  layout: {
+    visibility: 'none',
+  },
+  filter: createShallowWaterFilter(10),
+  paint: {
+    'fill-extrusion-base': 0.6,
+    'fill-extrusion-height': 0.9,
+    'fill-extrusion-color': DARK_THEME_SHOAL_GLOW,
+    'fill-extrusion-opacity': 0.35,
+    'fill-extrusion-vertical-gradient': true,
+  },
+};
+
+const depthContourLayer: LayerSpecification = {
   id: 'depth-contour',
   type: 'line',
-  source: 's57-depcnt',
+  source: SOURCE_IDS.DEPCNT,
   'source-layer': 'DEPCNT',
   minzoom: 11,
   paint: {
@@ -173,11 +266,10 @@ export const depthContourLayer: LayerSpecification = {
   },
 };
 
-/** Coastline layer - bright white for clear land/water boundary */
-export const coastlineLayer: LayerSpecification = {
+const coastlineLayer: LayerSpecification = {
   id: 'coastline',
   type: 'line',
-  source: 's57-coalne',
+  source: SOURCE_IDS.COALNE,
   'source-layer': 'COALNE',
   minzoom: 0,
   paint: {
@@ -194,31 +286,29 @@ export const coastlineLayer: LayerSpecification = {
   },
 };
 
-/** Sounding points layer */
-export const soundingLayer: LayerSpecification = {
+const soundingLayer: LayerSpecification = {
   id: 'soundings',
   type: 'circle',
-  source: 's57-soundg',
+  source: SOURCE_IDS.SOUNDG,
   'source-layer': 'SOUNDG',
   minzoom: LAYER_ZOOM.DEPTH_POINTS_MIN,
   paint: {
-    'circle-radius': 3,
+    'circle-radius': 2.5,
     'circle-color': '#60A5FA',
-    'circle-opacity': 0.8,
+    'circle-opacity': 0.72,
     'circle-stroke-width': 1,
     'circle-stroke-color': '#ffffff',
   },
 };
 
-/** Sounding labels layer */
-export const soundingLabelLayer: LayerSpecification = {
+const soundingLabelLayer: LayerSpecification = {
   id: 'sounding-labels',
   type: 'symbol',
-  source: 's57-soundg',
+  source: SOURCE_IDS.SOUNDG,
   'source-layer': 'SOUNDG',
   minzoom: LAYER_ZOOM.DEPTH_POINTS_MIN,
   layout: {
-    'text-field': ['get', 'depth'],
+    'text-field': ['to-string', ['coalesce', ['get', 'depth'], ['get', 'DEPTH'], '']],
     'text-font': ['Open Sans Regular'],
     'text-size': 10,
     'text-offset': [0, 1.5],
@@ -230,8 +320,28 @@ export const soundingLabelLayer: LayerSpecification = {
   },
 };
 
-/** Restricted area layer (semi-transparent red) */
-export const restrictedLayer: LayerSpecification = {
+const obstructionSymbolLayer: LayerSpecification = {
+  id: LAYER_IDS.OBSTRUCTION_SYMBOL,
+  type: 'symbol',
+  source: SOURCE_IDS.OBSTRN,
+  'source-layer': 'OBSTRN',
+  minzoom: 11,
+  layout: {
+    'icon-image': createObstructionIconExpression(),
+    'icon-size': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      11, 0.45,
+      14, 0.65,
+      17, 0.9,
+    ],
+    'icon-allow-overlap': true,
+    'icon-ignore-placement': true,
+  },
+};
+
+const restrictedLayer: LayerSpecification = {
   id: LAYER_IDS.RESTRICTED,
   type: 'fill',
   source: MVT_CONFIG.SOURCE_ID,
@@ -243,44 +353,115 @@ export const restrictedLayer: LayerSpecification = {
   },
 };
 
-/** All S-57 layers for map initialization */
 export const s57Layers: LayerSpecification[] = [
-  waterDepthLayer,
+  waterDepthFlatLayer,
+  depthExtrusionLayer,
+  shoalGlowLayer,
   landBaseLayer,
   land3DLayer,
   coastlineLayer,
   depthContourLayer,
   soundingLayer,
   soundingLabelLayer,
+  obstructionSymbolLayer,
   restrictedLayer,
 ];
 
-/**
- * Update water depth layer based on dynamic safety contour value and theme
- * @param map MapLibre map instance
- * @param safetyContourVal Safety contour depth in meters
- * @param isDarkMode Current theme mode
- */
+function buildWaterFlatColorExpression(safetyContourVal: number, isDarkMode: boolean): ExpressionSpecification {
+  const shallowColor = isDarkMode ? DARK_THEME_WATER_SHALLOW : LIGHT_THEME_WATER_SHALLOW;
+  const deepColor = isDarkMode ? DARK_THEME_WATER_DEEP : LIGHT_THEME_WATER_DEEP;
+
+  return [
+    'case',
+    createShallowWaterFilter(safetyContourVal),
+    shallowColor,
+    deepColor,
+  ];
+}
+
+function buildDepthExtrusionColorExpression(safetyContourVal: number, isDarkMode: boolean): ExpressionSpecification {
+  const shallowColor = isDarkMode ? DARK_THEME_WATER_SHALLOW : LIGHT_THEME_WATER_SHALLOW;
+  const deepColor = isDarkMode ? DARK_THEME_WATER_DEEP : LIGHT_THEME_WATER_DEEP;
+
+  return [
+    'case',
+    createShallowWaterFilter(safetyContourVal),
+    shallowColor,
+    [
+      'interpolate',
+      ['linear'],
+      createDepthValueExpression(),
+      8, shallowColor,
+      15, isDarkMode ? '#22577A' : '#7FAFD1',
+      30, deepColor,
+      60, isDarkMode ? '#0B2136' : '#7A9FB7',
+    ],
+  ];
+}
+
+function buildDepthExtrusionOpacityExpression(safetyContourVal: number): ExpressionSpecification {
+  return [
+    'case',
+    createShallowWaterFilter(safetyContourVal),
+    0.7,
+    0.45,
+  ];
+}
+
+function setLayerVisibility(map: MapLibreMap, layerId: string, isVisible: boolean): void {
+  if (!map.getLayer(layerId)) {
+    return;
+  }
+
+  map.setLayoutProperty(layerId, 'visibility', isVisible ? 'visible' : 'none');
+}
+
+export function syncHydrologyLayerVisibility(map: MapLibreMap): void {
+  const showExtrusions = map.getPitch() > EXTRUSION.HYDROLOGY_PITCH_THRESHOLD;
+
+  setLayerVisibility(map, LAYER_IDS.WATER_DEPTH_FLAT, !showExtrusions);
+  setLayerVisibility(map, LAYER_IDS.WATER_DEPTH_EXTRUSION, showExtrusions);
+  setLayerVisibility(map, LAYER_IDS.SHOAL_GLOW, showExtrusions);
+}
+
 export function updateWaterDepthStyle(
-  map: maplibregl.Map,
+  map: MapLibreMap,
   safetyContourVal: number,
   isDarkMode: boolean
 ): void {
-  if (!map.getLayer(LAYER_IDS.WATER_DEPTH)) return;
+  if (map.getLayer(LAYER_IDS.WATER_DEPTH_FLAT)) {
+    map.setPaintProperty(
+      LAYER_IDS.WATER_DEPTH_FLAT,
+      'fill-color',
+      buildWaterFlatColorExpression(safetyContourVal, isDarkMode),
+    );
+  }
 
-  const shallowColor = isDarkMode ? COLORS.WATER_SHALLOW : LIGHT_THEME_WATER_SHALLOW;
-  const deepColor = isDarkMode ? COLORS.WATER_DEEP : LIGHT_THEME_WATER_DEEP;
+  if (map.getLayer(LAYER_IDS.WATER_DEPTH_EXTRUSION)) {
+    map.setPaintProperty(
+      LAYER_IDS.WATER_DEPTH_EXTRUSION,
+      'fill-extrusion-color',
+      buildDepthExtrusionColorExpression(safetyContourVal, isDarkMode),
+    );
+    map.setPaintProperty(
+      LAYER_IDS.WATER_DEPTH_EXTRUSION,
+      'fill-extrusion-opacity',
+      buildDepthExtrusionOpacityExpression(safetyContourVal),
+    );
+  }
 
-  map.setPaintProperty(LAYER_IDS.WATER_DEPTH, 'fill-color', [
-    'case',
-    ['<', createDepthValueExpression(), safetyContourVal],
-    shallowColor,
-    deepColor,
-  ]);
+  if (map.getLayer(LAYER_IDS.SHOAL_GLOW)) {
+    map.setFilter(LAYER_IDS.SHOAL_GLOW, createShallowWaterFilter(safetyContourVal));
+    map.setPaintProperty(
+      LAYER_IDS.SHOAL_GLOW,
+      'fill-extrusion-color',
+      isDarkMode ? DARK_THEME_SHOAL_GLOW : LIGHT_THEME_WATER_SHELLOW_GLOW,
+    );
+  }
 }
 
 export function applyMapTheme(
-  map: maplibregl.Map,
+  map: MapLibreMap,
   safetyContourVal: number,
   isDarkMode: boolean
 ): void {
@@ -294,4 +475,149 @@ export function applyMapTheme(
 
   map.setLight(MAP_THEME_LIGHTS[theme]);
   updateWaterDepthStyle(map, safetyContourVal, isDarkMode);
+  syncHydrologyLayerVisibility(map);
+}
+
+function withAlpha(hexColor: string, alpha: number): string {
+  const normalized = hexColor.replace('#', '');
+  const value = normalized.length === 3
+    ? normalized.split('').map((char) => `${char}${char}`).join('')
+    : normalized;
+  const alphaHex = Math.round(alpha * 255).toString(16).padStart(2, '0');
+
+  return `#${value}${alphaHex}`;
+}
+
+function drawObstructionGlyph(
+  ctx: CanvasRenderingContext2D,
+  iconId: string,
+  centerX: number,
+  centerY: number,
+): void {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#F8FAFC';
+  ctx.fillStyle = '#F8FAFC';
+  ctx.lineWidth = 5;
+
+  switch (iconId) {
+    case OBSTRUCTION_ICON_IDS.wreck:
+      ctx.beginPath();
+      ctx.moveTo(centerX - 12, centerY - 8);
+      ctx.lineTo(centerX + 12, centerY + 8);
+      ctx.moveTo(centerX + 12, centerY - 8);
+      ctx.lineTo(centerX - 12, centerY + 8);
+      ctx.stroke();
+      break;
+    case OBSTRUCTION_ICON_IDS.rock:
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY - 13);
+      ctx.lineTo(centerX + 12, centerY);
+      ctx.lineTo(centerX, centerY + 13);
+      ctx.lineTo(centerX - 12, centerY);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case OBSTRUCTION_ICON_IDS.pile:
+      [-10, 0, 10].forEach((offset) => {
+        ctx.beginPath();
+        ctx.moveTo(centerX + offset, centerY - 12);
+        ctx.lineTo(centerX + offset, centerY + 12);
+        ctx.stroke();
+      });
+      break;
+    default:
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', centerX, centerY + 1);
+      break;
+  }
+
+  ctx.restore();
+}
+
+function createObstructionIcon(iconId: string): ImageData | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return null;
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.beginPath();
+  ctx.arc(32, 32, 25, 0, Math.PI * 2);
+  ctx.fillStyle = withAlpha('#7F1D1D', 0.22);
+  ctx.fill();
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = withAlpha('#F87171', 0.95);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(32, 32, 18, 0, Math.PI * 2);
+  ctx.fillStyle = withAlpha('#0F172A', 0.78);
+  ctx.fill();
+
+  drawObstructionGlyph(ctx, iconId, 32, 32);
+
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+
+export function ensureObstructionIcons(map: MapLibreMap): void {
+  Object.values(OBSTRUCTION_ICON_IDS).forEach((iconId) => {
+    if (map.hasImage(iconId)) {
+      return;
+    }
+
+    const imageData = createObstructionIcon(iconId);
+    if (imageData) {
+      map.addImage(iconId, imageData, { pixelRatio: 2 });
+    }
+  });
+}
+
+export function addS57Sources(map: MapLibreMap, safetyContourVal: number): void {
+  Object.entries(createS57Sources(safetyContourVal)).forEach(([sourceId, sourceSpec]) => {
+    if (!map.getSource(sourceId)) {
+      map.addSource(sourceId, sourceSpec);
+    }
+  });
+}
+
+export function addS57Layers(map: MapLibreMap): void {
+  s57Layers.forEach((layer) => {
+    if (map.getLayer(layer.id)) {
+      return;
+    }
+
+    const sourceId = 'source' in layer && typeof layer.source === 'string' ? layer.source : null;
+    if (sourceId && !map.getSource(sourceId)) {
+      return;
+    }
+
+    map.addLayer(layer);
+  });
+}
+
+export function removeS57Sources(map: MapLibreMap): void {
+  [...s57Layers].reverse().forEach((layer) => {
+    if (map.getLayer(layer.id)) {
+      map.removeLayer(layer.id);
+    }
+  });
+
+  Object.keys(createS57Sources(10)).forEach((sourceId) => {
+    if (map.getSource(sourceId)) {
+      map.removeSource(sourceId);
+    }
+  });
 }

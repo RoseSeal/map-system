@@ -79,6 +79,35 @@ describe('useRiskStore', () => {
     expect(state.droppedTargetNotices).toEqual(['TGT-ALARM']);
   });
 
+  it('clears explanation when a tracked target downgrades to SAFE', () => {
+    const store = useRiskStore.getState();
+
+    store.setRiskUpdate(riskUpdateFixture);
+    store.upsertExplanation(explanationForAlarmFixture);
+    store.upsertExplanation(explanationForCautionFixture);
+
+    store.setRiskUpdate({
+      ...riskUpdateFixture,
+      event_id: 'risk-event-safe',
+      risk_object_id: 'risk-object-safe',
+      targets: riskUpdateFixture.targets.map((target) => (
+        target.id === 'TGT-ALARM'
+          ? {
+            ...target,
+            risk_assessment: {
+              ...target.risk_assessment,
+              risk_level: 'SAFE',
+            },
+          }
+          : target
+      )),
+    });
+
+    const state = useRiskStore.getState();
+    expect(Object.keys(state.explanationsByTargetId)).toEqual(['TGT-CAUTION']);
+    expect(state.targets.find((target) => target.id === 'TGT-ALARM')?.risk_assessment.risk_level).toBe('SAFE');
+  });
+
   it('only upserts explanations for existing targets', () => {
     const store = useRiskStore.getState();
 

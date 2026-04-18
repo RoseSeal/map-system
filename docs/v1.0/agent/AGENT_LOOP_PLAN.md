@@ -46,6 +46,8 @@ String chat(List<LlmChatMessage> messages);
 
 v0.9 完成后已具备 AI 工作区壳层、解释卡片、目标选择注入链路（`selected_target_ids`）、对话消息列表与语音入口。`useAiCenterStore` 和 `useRiskStore` 构成前端消费状态层。尚无结构化 advisory 消费契约，也没有 agent loop 状态指示能力。
 
+2026-04-18 的前端视觉升级补丁曾提议在 AI 面板中增加“Agent 工具调用”区域，但由于当前协议和 store 中不存在真实工具调用轨迹，该区域未落地，仅保留为实现参考。参考稿见 [`../VISUAL_UPGRADE_REFERENCE.md`](../VISUAL_UPGRADE_REFERENCE.md)。
+
 ---
 
 ## 2. Agent Loop 实现方向
@@ -493,8 +495,13 @@ COLREGS 72 条主规则总量有限（全文约 3 万词），内存图在 v1.0 
 
 本规划引入的范围决策与现有真值文档存在不一致，需要在 step-plan 开始前或同步期间更新：
 
-- [docs/TODO.md](../../TODO.md) §3 目前将 GraphRAG 标记为 `P4`。v1.0 纳入 COLREGS GraphRAG 基础落地，是对优先级和范围的改动。TODO.md 的对应条目需要从"后续规划"降级到"已纳入 v1.0"，或从 backlog 中移除相应 bullet，避免与本规划产生跨文档范围不一致
+- [docs/TODO.md](../../TODO.md) 当前仅保留未挂入实施链的 agent backlog，因此不应再重复登记 Step 0–5 主线事项；保留在 TODO 的只应是流式 advisory、历史案例 GraphRAG、外部图数据库接入等外扩项
 - [docs/EVENT_SCHEMA.md](../../EVENT_SCHEMA.md) 需要在 Step 3 实施时新增 `ADVISORY` 事件类型的完整定义，并将 `RiskSseEventType` 枚举加入 `ADVISORY` 取值
-- [docs/TODO.md](../../TODO.md) §3 中"Agent Loop"、"结构化 Advisory 输出"、"上下文质量优化"、"Advisory schema 分层决策"等条目在 v1.0 完成后应对应关闭或收敛
+- [docs/TODO.md](../../TODO.md) 中仍保留的 agent 项只应是当前未挂入 Step 0–5 的剩余 backlog；若后续把某个外扩项正式挂入新的 milestone / step 链，应同步从 TODO 移除
 
-这些同步动作由 step-plan 在各 step 收尾时负责，本总览规划不单方面修改 TODO.md 或 EVENT_SCHEMA.md。
+本次文档同步后，`docs/TODO.md` 仅保留未实现且未挂到当前 step / milestone 链的 agent backlog；Step 0–5 主线事项不再重复登记于 TODO。后续仅在以下场景回收至 TODO：
+
+- 某项被明确移出 Step 0–5 且暂未挂入新的 milestone / step 链
+- `v1.0` 外扩方向（如流式 advisory 中间步骤、历史案例 GraphRAG、外部图数据库接入）仍无明确 owner
+
+`EVENT_SCHEMA.md` 等真值文档仍按各 step 实施时同步更新。

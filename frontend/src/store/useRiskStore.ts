@@ -66,12 +66,17 @@ export const useRiskStore = create<RiskState>()(
 
     setRiskUpdate: (payload: RiskUpdatePayload) => {
       set((state) => {
-        const targetIds = new Set(payload.targets.map((target) => target.id));
-        const explanationsByTargetId = Object.fromEntries(
-          Object.entries(state.explanationsByTargetId).filter(([targetId]) => targetIds.has(targetId)),
+        const activeRiskTargetIds = new Set(
+          payload.targets
+            .filter((target) => target.risk_assessment.risk_level !== 'SAFE')
+            .map((target) => target.id),
         );
-        const selectedTargetIds = state.selectedTargetIds.filter((id) => targetIds.has(id));
-        const droppedTargetNotices = state.selectedTargetIds.filter((id) => !targetIds.has(id));
+        const trackedTargetIds = new Set(payload.targets.map((target) => target.id));
+        const explanationsByTargetId = Object.fromEntries(
+          Object.entries(state.explanationsByTargetId).filter(([targetId]) => activeRiskTargetIds.has(targetId)),
+        );
+        const selectedTargetIds = state.selectedTargetIds.filter((id) => trackedTargetIds.has(id));
+        const droppedTargetNotices = state.selectedTargetIds.filter((id) => !trackedTargetIds.has(id));
 
         return {
           latestRiskUpdate: payload,

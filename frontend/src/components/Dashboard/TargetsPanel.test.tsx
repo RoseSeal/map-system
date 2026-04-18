@@ -72,7 +72,7 @@ describe('TargetsPanel smoke', () => {
     expect(screen.getByText('警报')).toBeInTheDocument();
     expect(screen.getByText('注意')).toBeInTheDocument();
 
-    const targetRows = screen.getAllByText(/ID: TGT-/).map((element) => element.textContent);
+    const targetRows = screen.getAllByRole('button').map((element) => element.textContent ?? '');
     expect(targetRows[0]).toContain('TGT-ALARM');
     expect(targetRows[1]).toContain('TGT-CAUTION');
   });
