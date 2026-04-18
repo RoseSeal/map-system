@@ -1,6 +1,6 @@
 # CURRENT_SYSTEM_OVERVIEW
 
-> Last updated: 2026-04-16
+> Last updated: 2026-04-17
 > Purpose: A practical, implementation-first guide for quickly understanding and locating the current system.
 > Scope: Only current effective code and docs, with explicit separation from archived planning history.
 
@@ -43,8 +43,8 @@ Measured from current workspace:
 - `listener-service` test Java files: 1
 - Frontend source files (`ts`, `tsx`, `css`): 49
 - Frontend test files: 8
-- Markdown docs total: 44
-- Current root docs (non-history): 6
+- Markdown docs total: 42
+- Current root docs under `docs/` (non-history): 6
 - History docs: 31
 - Simulator top-level scripts: 6
 - Repo utility scripts: 2
@@ -569,7 +569,11 @@ Current truth docs (authoritative for current system):
 - [docs/TODO.md](docs/TODO.md)
 
 Active planning docs:
-- none currently
+- [docs/v1.0/README.md](docs/v1.0/README.md)
+- [docs/v1.0/SOURCEBOOK.md](docs/v1.0/SOURCEBOOK.md)
+
+Planning note:
+- `v1.0/` is the active milestone planning directory. `agent` is the primary release track; `hydrology` and `weather` are parallel non-blocking tracks.
 
 Historical docs (not current truth source):
 - [docs/history](docs/history)

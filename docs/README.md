@@ -1,7 +1,7 @@
 # Docs Index
 
 > 文档状态：current
-> 最后更新：2026-04-16
+> 最后更新：2026-04-17
 > 用途：为 `docs/` 提供入口索引，并明确“当前真值 / 规划 / 历史归档”的边界。
 
 ## 1. 当前真值
@@ -17,10 +17,13 @@
 ## 3. 规划与待办
 
 - [`TODO.md`](./TODO.md)：跨模块待办、延后事项与工程债。
+- [`v1.0/README.md`](./v1.0/README.md)：`v1.0` active milestone 总览；定义 `agent` / `hydrology` / `weather` 三条并行 track 与阻塞关系。
+- [`v1.0/SOURCEBOOK.md`](./v1.0/SOURCEBOOK.md)：`v1.0` 共用原始材料索引稿；汇总 agent / hydrology / weather 三条 track 的现有文档入口、代码入口与待补资料。
 
 说明：
 
-- 当前无进行中的阶段性规划目录；下一个 milestone 启动前，新增规划先收口到 `TODO.md`。
+- `v1.0/` 是当前 active milestone 规划目录；其中 `agent` 为主线，`hydrology` / `weather` 为并行增强 track。
+- 其他尚未冻结的规划项仍优先收口到 `TODO.md`。
 
 ## 4. 历史归档
 
