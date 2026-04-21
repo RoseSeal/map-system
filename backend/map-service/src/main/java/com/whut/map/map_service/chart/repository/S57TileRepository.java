@@ -135,7 +135,7 @@ public class S57TileRepository {
 
         // Add layer-specific filters
         if ("DEPARE".equals(upperLayerName) && safetyContour != null) {
-            sql.append(String.format(" AND (\"DRVAL1\" <= %f OR \"DRVAL2\" <= %f)", safetyContour, safetyContour));
+            sql.append(buildDangerAreaPredicate("t", safetyContour));
         }
 
         sql.append(String.format("""
@@ -175,14 +175,11 @@ public class S57TileRepository {
 
     /**
      * Build SQL for depth contour lines (DEPCNT)
-     * Extracts boundary lines from DEPARE polygons
+     * Extracts the outer boundary of the current danger-area polygon set.
      */
     private String buildDepthContourSQL(Double safetyContour) {
-        String filterClause = safetyContour != null
-                ? String.format(" AND (\"DRVAL1\" = %f OR \"DRVAL2\" = %f)", safetyContour, safetyContour)
-                : "";
-
-        return String.format("""
+        if (safetyContour == null) {
+            return """
             WITH bounds AS (
                 SELECT ST_MakeEnvelope(?, ?, ?, ?, 3857) AS geom_env
             ),
@@ -194,7 +191,6 @@ public class S57TileRepository {
                 FROM enc_depare
                 WHERE ST_Intersects(ST_Transform(geometry, 3857),
                     (SELECT geom_env FROM bounds))
-                %s
             ),
             mvtgeom AS (
                 SELECT ST_AsMVTGeom(
@@ -209,7 +205,37 @@ public class S57TileRepository {
                 FROM contours c, bounds
             )
             SELECT ST_AsMVT(mvtgeom.*, 'DEPCNT', 4096, 'geom') FROM mvtgeom
-            """, filterClause);
+            """;
+        }
+
+        return String.format(Locale.US, """
+            WITH bounds AS (
+                SELECT ST_MakeEnvelope(?, ?, ?, ?, 3857) AS geom_env
+            ),
+            danger_areas AS (
+                SELECT geometry
+                FROM enc_depare
+                WHERE ST_Intersects(ST_Transform(geometry, 3857), (SELECT geom_env FROM bounds))
+                %1$s
+            ),
+            contour_geom AS (
+                SELECT ST_Boundary(ST_UnaryUnion(ST_Collect(geometry))) AS geometry
+                FROM danger_areas
+            ),
+            mvtgeom AS (
+                SELECT ST_AsMVTGeom(
+                    ST_Transform(c.geometry, 3857),
+                    bounds.geom_env,
+                    4096,
+                    256,
+                    true
+                ) AS geom,
+                %2$f as valdco
+                FROM contour_geom c, bounds
+                WHERE c.geometry IS NOT NULL
+            )
+            SELECT ST_AsMVT(mvtgeom.*, 'DEPCNT', 4096, 'geom') FROM mvtgeom
+            """, buildDangerAreaPredicate(null, safetyContour), safetyContour);
     }
 
     /**
@@ -281,6 +307,35 @@ public class S57TileRepository {
                 ? "depare_mvt, lndare_mvt, coalne_mvt, depcnt_mvt, soundg_mvt, obstrn_mvt"
                 : "depare_mvt, lndare_mvt, coalne_mvt, depcnt_mvt, soundg_mvt";
 
+        String depcntMvtCte = safetyContour == null
+                ? """
+            depcnt_mvt AS (
+                SELECT COALESCE(ST_AsMVT(q.*, 'DEPCNT', 4096, 'geom'), ''::bytea) AS tile FROM (
+                    SELECT ST_AsMVTGeom(ST_Transform(ST_Boundary(t.geometry), 3857), bounds.geom, 4096, 256, true) AS geom,
+                        t."DRVAL1" as valdco
+                    FROM enc_depare t, bounds
+                    WHERE ST_Intersects(ST_Transform(t.geometry, 3857), bounds.geom)
+                ) q
+            ),
+            """
+                : String.format(Locale.US, """
+            depcnt_mvt AS (
+                SELECT COALESCE(ST_AsMVT(q.*, 'DEPCNT', 4096, 'geom'), ''::bytea) AS tile FROM (
+                    SELECT ST_AsMVTGeom(ST_Transform(c.geometry, 3857), bounds.geom, 4096, 256, true) AS geom,
+                        c.valdco
+                    FROM (
+                        SELECT
+                            ST_Boundary(ST_UnaryUnion(ST_Collect(t.geometry))) AS geometry,
+                            %.1f as valdco
+                        FROM enc_depare t, bounds
+                        WHERE ST_Intersects(ST_Transform(t.geometry, 3857), bounds.geom)
+                        %s
+                    ) c, bounds
+                    WHERE c.geometry IS NOT NULL
+                ) q
+            ),
+            """, safetyContour, buildDangerAreaPredicate("t", safetyContour));
+
         // Generate proper multi-layer MVT using separate ST_AsMVT calls combined with ||
         // The key is that each layer MUST have data, otherwise the concat fails
         // Use a WITH clause to pre-compute bounds and each layer's MVT
@@ -312,14 +367,7 @@ public class S57TileRepository {
                     WHERE ST_Intersects(ST_Transform(t.geometry, 3857), bounds.geom)
                 ) q
             ),
-            depcnt_mvt AS (
-                SELECT COALESCE(ST_AsMVT(q.*, 'DEPCNT', 4096, 'geom'), ''::bytea) AS tile FROM (
-                    SELECT ST_AsMVTGeom(ST_Transform(ST_Boundary(t.geometry), 3857), bounds.geom, 4096, 256, true) AS geom,
-                        t."DRVAL1" as valdco
-                    FROM enc_depare t, bounds
-                    WHERE ST_Intersects(ST_Transform(t.geometry, 3857), bounds.geom)
-                ) q
-            ),
+            %5$s
             soundg_mvt AS (
                 SELECT COALESCE(ST_AsMVT(q.*, 'SOUNDG', 4096, 'geom'), ''::bytea) AS tile FROM (
                     SELECT ST_AsMVTGeom(ST_Transform(t.geometry, 3857), bounds.geom, 4096, 256, true) AS geom,
@@ -331,7 +379,25 @@ public class S57TileRepository {
             %2$s
             SELECT %3$s
             FROM %4$s
-            """, boundsExpr, obstructionCte, tileConcat, tileSources);
+            """,
+                boundsExpr,
+                obstructionCte,
+                tileConcat,
+                tileSources,
+                depcntMvtCte
+        );
+    }
+
+    private String buildDangerAreaPredicate(String alias, Double safetyContour) {
+        if (safetyContour == null) {
+            return "";
+        }
+
+        String fieldPrefix = alias == null || alias.isBlank() ? "" : alias + ".";
+        return String.format(Locale.US,
+                " AND (%s\"DRVAL1\" < %.6f OR %s\"DRVAL2\" < %.6f)",
+                fieldPrefix, safetyContour, fieldPrefix, safetyContour
+        );
     }
 
     private boolean isTableAvailable(String tableName) {

@@ -60,6 +60,33 @@ const initialState = {
   droppedTargetNotices: [] as string[],
 };
 
+function parseTimestampMs(timestamp: string): number | null {
+  const value = Date.parse(timestamp);
+  return Number.isNaN(value) ? null : value;
+}
+
+function shouldKeepExistingExplanation(
+  existing: ExplanationPayload | undefined,
+  incoming: ExplanationPayload,
+): boolean {
+  if (!existing) {
+    return false;
+  }
+
+  const existingTimestampMs = parseTimestampMs(existing.timestamp);
+  const incomingTimestampMs = parseTimestampMs(incoming.timestamp);
+  if (existingTimestampMs !== null && incomingTimestampMs !== null && incomingTimestampMs < existingTimestampMs) {
+    return true;
+  }
+
+  return existing.event_id === incoming.event_id
+    && existing.risk_object_id === incoming.risk_object_id
+    && existing.risk_level === incoming.risk_level
+    && existing.provider === incoming.provider
+    && existing.text === incoming.text
+    && existing.timestamp === incoming.timestamp;
+}
+
 export const useRiskStore = create<RiskState>()(
   subscribeWithSelector((set) => ({
     ...initialState,
@@ -99,6 +126,11 @@ export const useRiskStore = create<RiskState>()(
     upsertExplanation: (payload: ExplanationPayload) => {
       set((state) => {
         if (!state.targets.some((target) => target.id === payload.target_id)) {
+          return state;
+        }
+
+        const existing = state.explanationsByTargetId[payload.target_id];
+        if (shouldKeepExistingExplanation(existing, payload)) {
           return state;
         }
 

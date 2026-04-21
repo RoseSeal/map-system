@@ -77,5 +77,6 @@ Expected local behavior after startup:
 ## Documentation Split
 
 Detailed references moved to:
-- `backend-api.md` for endpoint definitions and backend contract details.
-- `../docs/frontend-design.md` for architecture, rendering rules, and performance notes.
+- `../docs/EVENT_SCHEMA.md` for current SSE / WebSocket contract details.
+- `../docs/frontend-design.md` for frontend architecture, rendering rules, and interaction boundaries.
+- `../CURRENT_SYSTEM_OVERVIEW.md` for cross-module repository orientation.

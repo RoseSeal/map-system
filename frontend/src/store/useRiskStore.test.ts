@@ -119,6 +119,28 @@ describe('useRiskStore', () => {
     expect(useRiskStore.getState().explanationsByTargetId['TGT-ALARM']?.event_id).toBe('explanation-1');
   });
 
+  it('ignores out-of-order explanations for the same target', () => {
+    const store = useRiskStore.getState();
+
+    store.setRiskUpdate(riskUpdateFixture);
+    store.upsertExplanation({
+      ...explanationForAlarmFixture,
+      event_id: 'explanation-newer',
+      text: 'Newest alarm explanation should stay visible.',
+      timestamp: '2026-04-15T12:00:20.000Z',
+    });
+    store.upsertExplanation({
+      ...explanationForAlarmFixture,
+      event_id: 'explanation-older',
+      text: 'Older alarm explanation must not overwrite the latest text.',
+      timestamp: '2026-04-15T12:00:10.000Z',
+    });
+
+    const explanation = useRiskStore.getState().explanationsByTargetId['TGT-ALARM'];
+    expect(explanation?.event_id).toBe('explanation-newer');
+    expect(explanation?.text).toBe('Newest alarm explanation should stay visible.');
+  });
+
   it('supports select, deselect, toggle and clear-all selection', () => {
     const store = useRiskStore.getState();
 

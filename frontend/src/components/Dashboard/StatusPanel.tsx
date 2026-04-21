@@ -11,7 +11,6 @@ import {
 } from '../../store';
 import { useThemeStore } from '../../store/useThemeStore';
 import type { DisplayConnectionState } from '../../types/connection';
-import type { EnvironmentContext } from '../../types/schema';
 
 function ConnectionDot({ label, state }: { label: string; state: DisplayConnectionState }) {
   const color = state === 'connected'
@@ -39,112 +38,37 @@ function ConnectionDot({ label, state }: { label: string; state: DisplayConnecti
   );
 }
 
-function RiskStrip() {
-  const items = [
-    { color: 'var(--risk-safe)', label: '安全' },
-    { color: 'var(--risk-caution)', label: '注意' },
-    { color: 'var(--risk-warning)', label: '警告' },
-    { color: 'var(--risk-alarm)', label: '警报' },
-  ];
 
-  return (
-    <div
-      className="mt-3 flex items-center justify-between pt-3"
-      style={{ borderTop: '0.5px solid color-mix(in oklch, var(--ink-500) 12%, transparent)' }}
-    >
-      {items.map(({ color, label }) => (
-        <div key={label} className="flex items-center gap-1.5">
-          <span
-            style={{
-              display: 'inline-block',
-              width: 7,
-              height: 7,
-              borderRadius: '999px',
-              background: color,
-            }}
-          />
-          <span className="text-[10px] font-medium" style={{ color: 'var(--ink-700)' }}>
-            {label}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
-function EnvironmentStrip({ environment }: { environment: EnvironmentContext | null }) {
-  const activeAlertCount = environment?.active_alerts.length ?? 0;
-  const weather = environment?.weather ?? null;
-  const hasWeather = weather != null;
-
-  const weatherTag = hasWeather ? formatWeatherSummaryTag(weather) : '气象未接入';
-
-  const label = hasWeather
-    ? '实时气象'
-    : activeAlertCount > 0
-      ? '环境告警'
-      : '天气未接入';
-  const note = activeAlertCount > 0
-    ? `活动告警 ${activeAlertCount} 项`
-    : hasWeather
-      ? '气象信号正常'
-      : '暂无实时天气源';
-  const color = hasWeather
-    ? 'var(--risk-safe)'
-    : activeAlertCount > 0
-      ? 'var(--risk-warning)'
-      : 'var(--ink-700)';
-  const icon = hasWeather ? 'Wx' : activeAlertCount > 0 ? '⚠' : '∅';
-
-  return (
-    <div
-      className="mt-3 flex items-center justify-between pt-3"
-      style={{ borderTop: '0.5px solid color-mix(in oklch, var(--ink-500) 12%, transparent)' }}
-    >
-      <div className="flex items-center gap-2">
-        <span style={{ fontSize: 14, lineHeight: 1 }}>{icon}</span>
-        <div>
-          <div
-            className="text-[11px] font-medium"
-            style={{ color }}
-          >
-            {label}
-          </div>
-          <div className="text-[9px]" style={{ color: 'var(--ink-500)' }}>
-            {note}
-          </div>
-        </div>
-      </div>
-      <span
-        title={weatherTag}
-        className="max-w-[68%] truncate rounded-full px-1.5 py-0.5 font-mono text-[8px]"
-        style={{
-          background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
-          color: 'var(--ink-500)',
-        }}
-      >
-        {weatherTag}
-      </span>
-    </div>
-  );
-}
-
-function formatWeatherSummaryTag(weather: NonNullable<EnvironmentContext['weather']>): string {
-  const weatherCode = weather.weather_code ?? '--';
-  const visibility = weather.visibility_nm == null ? '--' : weather.visibility_nm.toFixed(1);
-  const windDirection = toCardinalDirection(weather.wind.direction_from_deg);
-  const windSpeed = weather.wind.speed_kn == null ? '--' : Math.round(weather.wind.speed_kn).toString();
-  return `${weatherCode} · vis ${visibility} nm · wind ${windDirection} ${windSpeed}kn`;
-}
 
 function toCardinalDirection(directionFromDeg: number | null): string {
   if (directionFromDeg == null || Number.isNaN(directionFromDeg)) {
     return '--';
   }
 
-  const cardinal = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const cardinal = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
   const normalized = ((directionFromDeg % 360) + 360) % 360;
   return cardinal[Math.round(normalized / 45) % cardinal.length];
+}
+
+function toWeatherCodeCN(code: string | null): string {
+  if (!code) return '--';
+  const map: Record<string, string> = {
+    CLEAR: '晴朗',
+    CLOUDS: '多云',
+    OVERCAST: '阴',
+    RAIN: '雨',
+    DRIZZLE: '小雨',
+    SHOWER: '阵雨',
+    THUNDERSTORM: '雷暴',
+    SNOW: '雪',
+    SLEET: '雨夹雪',
+    FOG: '雾',
+    MIST: '薄雾',
+    HAZE: '霾',
+    WINDY: '大风',
+  };
+  return map[code.toUpperCase()] ?? code;
 }
 
 export function StatusPanel() {
@@ -234,6 +158,14 @@ export function StatusPanel() {
   const batteryPctValue = (ownShip.platform_health as unknown as Record<string, unknown>).battery_pct;
   const batteryPct = typeof batteryPctValue === 'number' ? batteryPctValue : null;
 
+  const weather = environment?.weather ?? null;
+  const hasWeather = weather != null;
+  const weatherCodeCN = hasWeather ? toWeatherCodeCN(weather.weather_code) : '--';
+  const windDirCN = hasWeather ? toCardinalDirection(weather.wind.direction_from_deg) : '--';
+  const windSpeedStr = weather?.wind.speed_kn != null ? `${Math.round(weather.wind.speed_kn)} kn` : '--';
+  const visibilityStr = weather?.visibility_nm != null ? `${weather.visibility_nm.toFixed(1)} nm` : '--';
+  const activeAlertCount = environment?.active_alerts.length ?? 0;
+
   return (
     <div
       className={`${glassClass} anim-rise w-full shrink-0 overflow-hidden rounded-[22px] p-4`}
@@ -281,34 +213,70 @@ export function StatusPanel() {
         </div>
       )}
 
-      <div className="mb-3">
-        <div className="mb-0.5 flex items-baseline gap-2">
-          <span
-            className="tnum font-semibold leading-none tracking-tight"
-            style={{ fontSize: 38, color: 'var(--ink-900)' }}
-          >
-            {displaySog.toFixed(1)}
-          </span>
-          <div className="flex flex-col gap-1">
-            <span className="text-[13px] font-medium" style={{ color: 'var(--ink-500)' }}>
-              kn
-            </span>
+      {/* SOG + weather row */}
+      <div className="mb-3 flex items-start gap-3">
+        {/* Left: SOG hero */}
+        <div className="flex-shrink-0">
+          <div className="mb-0.5 flex items-baseline gap-2">
             <span
-              className="rounded-full px-1.5 py-0.5 text-[9px] font-medium"
-              style={{
-                background: 'color-mix(in oklch, var(--risk-safe) 14%, transparent)',
-                color: 'var(--risk-safe)',
-              }}
+              className="tnum font-semibold leading-none tracking-tight"
+              style={{ fontSize: 38, color: 'var(--ink-900)' }}
             >
-              {healthLabel}
+              {displaySog.toFixed(1)}
             </span>
+            <div className="flex flex-col gap-1">
+              <span className="text-[13px] font-medium" style={{ color: 'var(--ink-500)' }}>kn</span>
+              <span
+                className="rounded-full px-1.5 py-0.5 text-[9px] font-medium"
+                style={{
+                  background: 'color-mix(in oklch, var(--risk-safe) 14%, transparent)',
+                  color: 'var(--risk-safe)',
+                }}
+              >
+                {healthLabel}
+              </span>
+            </div>
           </div>
+          <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>SOG · 对地航速</span>
         </div>
-        <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>
-          SOG · 对地航速
-        </span>
+
+        {/* Vertical divider */}
+        <div
+          className="self-stretch"
+          style={{
+            width: '0.5px',
+            background: 'color-mix(in oklch, var(--ink-500) 12%, transparent)',
+            flexShrink: 0,
+          }}
+        />
+
+        {/* Right: weather mini-grid (same label+value language as main grid) */}
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-3 gap-y-1.5 pt-0.5">
+          {[
+            { label: '天气', value: weatherCodeCN },
+            { label: '能见度', value: visibilityStr },
+            { label: '风向', value: windDirCN },
+            { label: '风速', value: windSpeedStr },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <div className="mb-0.5 text-[9px] tracking-wide" style={{ color: 'var(--ink-500)' }}>{label}</div>
+              <div
+                className="tnum font-mono font-semibold text-[11px]"
+                style={{ color: hasWeather ? 'var(--ink-900)' : 'var(--ink-300)' }}
+              >
+                {value}
+              </div>
+            </div>
+          ))}
+          {activeAlertCount > 0 && (
+            <div className="col-span-2 mt-0.5 text-[9px] font-medium" style={{ color: 'var(--risk-warning)' }}>
+              环境告警 {activeAlertCount} 项
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Navigation grid: COG / HDG / 经度 / 纬度 */}
       <div
         className="grid grid-cols-2 gap-x-4 gap-y-2 pb-3"
         style={{ borderBottom: '0.5px solid color-mix(in oklch, var(--ink-500) 12%, transparent)' }}
@@ -320,9 +288,7 @@ export function StatusPanel() {
           { label: '纬度', value: `N ${ownShip.position.lat.toFixed(4)}°`, small: true },
         ].map(({ label, value, small }) => (
           <div key={label}>
-            <div className="mb-0.5 text-[9px] tracking-wide" style={{ color: 'var(--ink-500)' }}>
-              {label}
-            </div>
+            <div className="mb-0.5 text-[9px] tracking-wide" style={{ color: 'var(--ink-500)' }}>{label}</div>
             <div
               className={`tnum font-mono font-semibold ${small ? 'text-[11px]' : 'text-[15px]'}`}
               style={{ color: 'var(--ink-900)' }}
@@ -369,8 +335,6 @@ export function StatusPanel() {
         </div>
       </div>
 
-      <EnvironmentStrip environment={environment} />
-      <RiskStrip />
     </div>
   );
 }

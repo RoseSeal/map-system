@@ -24,20 +24,20 @@ type ThemePaintUpdate = {
   value: string | boolean;
 };
 
-const LIGHT_THEME_BACKGROUND = '#DCE7EE';
-const LIGHT_THEME_WATER_DEEP = '#A9CBE4';
-const LIGHT_THEME_WATER_SHALLOW = '#4F8AB3';
-const LIGHT_THEME_WATER_SHELLOW_GLOW = '#EF6A61';
-const LIGHT_THEME_LAND = '#DDD8CD';
-const LIGHT_THEME_LAND_3D = '#C8C0B1';
-const LIGHT_THEME_COASTLINE = '#737A76';
-const LIGHT_THEME_DEPTH_CONTOUR = '#6F8FA3';
-const LIGHT_THEME_SOUNDING = '#4B6B86';
-const LIGHT_THEME_SOUNDING_HALO = '#F7F9FB';
+const LIGHT_THEME_BACKGROUND = '#F0F4F8';
+const LIGHT_THEME_WATER_DEEP = '#8FB7D4';
+const LIGHT_THEME_WATER_SHALLOW = '#6AADD0';
+const LIGHT_THEME_HAZARD_FILL = '#D96A3A';
+const LIGHT_THEME_LAND = '#E5E1D6';
+const LIGHT_THEME_LAND_3D = '#D8D3C5';
+const LIGHT_THEME_COASTLINE = '#8CA09A';
+const LIGHT_THEME_DEPTH_CONTOUR = '#6E94AF';
+const LIGHT_THEME_SOUNDING = '#5A7C96';
+const LIGHT_THEME_SOUNDING_HALO = '#FFFFFF';
 
-const DARK_THEME_WATER_DEEP = '#133B5B';
-const DARK_THEME_WATER_SHALLOW = '#2A6F97';
-const DARK_THEME_SHOAL_GLOW = '#F05B5B';
+const DARK_THEME_WATER_DEEP = '#0B1D2E';
+const DARK_THEME_WATER_SHALLOW = '#1E4D72';
+const DARK_THEME_HAZARD_FILL = '#E87A40';
 
 const SOURCE_IDS = {
   DEPARE: 's57-depare',
@@ -59,12 +59,18 @@ function createDepthValueExpression(): ExpressionSpecification {
   return ['coalesce', ['get', 'drval1'], ['get', 'DRVAL1'], 50];
 }
 
-function createShallowWaterFilter(safetyContourVal: number): ExpressionSpecification {
+function createDangerAreaFilter(safetyContourVal: number): ExpressionSpecification {
   return ['<', createDepthValueExpression(), safetyContourVal];
 }
 
+function createSafeDepthAreaFilter(safetyContourVal: number): ExpressionSpecification {
+  return ['>=', createDepthValueExpression(), safetyContourVal];
+}
+
 function createDepthExtrusionHeightExpression(): ExpressionSpecification {
-  return ['*', -EXTRUSION.DEPTH_EXAGGERATION, createDepthValueExpression()];
+  // Shallow areas protrude more; deeper areas approach zero height.
+  // max(0, 40 - depth * exaggeration) keeps expression non-negative.
+  return ['max', 0, ['-', 40, ['*', EXTRUSION.DEPTH_EXAGGERATION, createDepthValueExpression()]]];
 }
 
 function createObstructionIconExpression(): ExpressionSpecification {
@@ -95,12 +101,12 @@ function buildLayerTileUrl(layerName: string, safetyContourVal?: number): string
 
 const MAP_THEME_PAINTS: Record<MapThemeMode, ThemePaintUpdate[]> = {
   dark: [
-    { layerId: 'background', paintProperty: 'background-color', value: '#111827' },
-    { layerId: LAYER_IDS.LAND_BASE, paintProperty: 'fill-color', value: COLORS.LAND },
-    { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-color', value: '#2D3748' },
+    { layerId: 'background', paintProperty: 'background-color', value: '#080C14' },
+    { layerId: LAYER_IDS.LAND_BASE, paintProperty: 'fill-color', value: '#1E293B' },
+    { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-color', value: '#24324D' },
     { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-vertical-gradient', value: true },
-    { layerId: 'depth-contour', paintProperty: 'line-color', value: '#4A90A4' },
-    { layerId: 'coastline', paintProperty: 'line-color', value: '#F5F0E6' },
+    { layerId: 'depth-contour', paintProperty: 'line-color', value: '#33667A' },
+    { layerId: 'coastline', paintProperty: 'line-color', value: '#475569' },
     { layerId: 'soundings', paintProperty: 'circle-color', value: '#60A5FA' },
     { layerId: 'soundings', paintProperty: 'circle-stroke-color', value: '#ffffff' },
     { layerId: 'sounding-labels', paintProperty: 'text-color', value: '#ffffff' },
@@ -110,7 +116,7 @@ const MAP_THEME_PAINTS: Record<MapThemeMode, ThemePaintUpdate[]> = {
     { layerId: 'background', paintProperty: 'background-color', value: LIGHT_THEME_BACKGROUND },
     { layerId: LAYER_IDS.LAND_BASE, paintProperty: 'fill-color', value: LIGHT_THEME_LAND },
     { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-color', value: LIGHT_THEME_LAND_3D },
-    { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-vertical-gradient', value: false },
+    { layerId: LAYER_IDS.LAND_3D, paintProperty: 'fill-extrusion-vertical-gradient', value: true },
     { layerId: 'depth-contour', paintProperty: 'line-color', value: LIGHT_THEME_DEPTH_CONTOUR },
     { layerId: 'coastline', paintProperty: 'line-color', value: LIGHT_THEME_COASTLINE },
     { layerId: 'soundings', paintProperty: 'circle-color', value: LIGHT_THEME_SOUNDING },
@@ -123,15 +129,15 @@ const MAP_THEME_PAINTS: Record<MapThemeMode, ThemePaintUpdate[]> = {
 const MAP_THEME_LIGHTS = {
   dark: {
     anchor: 'viewport' as const,
-    color: '#dbeafe',
-    intensity: 0.32,
-    position: [1.15, 210, 38] as [number, number, number],
+    color: '#E0F2FE',
+    intensity: 0.45,
+    position: [1.15, 210, 45] as [number, number, number],
   },
   light: {
     anchor: 'viewport' as const,
-    color: '#ebe3d4',
-    intensity: 0.09,
-    position: [1.05, 165, 42] as [number, number, number],
+    color: '#FFFFFF',
+    intensity: 0.15,
+    position: [1.05, 165, 50] as [number, number, number],
   },
 };
 
@@ -210,6 +216,7 @@ const waterDepthFlatLayer: LayerSpecification = {
   source: SOURCE_IDS.DEPARE,
   'source-layer': 'DEPARE',
   minzoom: 0,
+  filter: createSafeDepthAreaFilter(10),
   paint: {
     'fill-color': DARK_THEME_WATER_DEEP,
     'fill-opacity': 0.92,
@@ -225,6 +232,7 @@ const depthExtrusionLayer: LayerSpecification = {
   layout: {
     visibility: 'none',
   },
+  filter: createSafeDepthAreaFilter(10),
   paint: {
     'fill-extrusion-base': 0,
     'fill-extrusion-height': createDepthExtrusionHeightExpression(),
@@ -234,22 +242,16 @@ const depthExtrusionLayer: LayerSpecification = {
   },
 };
 
-const shoalGlowLayer: LayerSpecification = {
-  id: LAYER_IDS.SHOAL_GLOW,
-  type: 'fill-extrusion',
+const hazardFillLayer: LayerSpecification = {
+  id: LAYER_IDS.HAZARD_FILL,
+  type: 'fill',
   source: SOURCE_IDS.DEPARE,
   'source-layer': 'DEPARE',
   minzoom: 0,
-  layout: {
-    visibility: 'none',
-  },
-  filter: createShallowWaterFilter(10),
+  filter: createDangerAreaFilter(10),
   paint: {
-    'fill-extrusion-base': 0.6,
-    'fill-extrusion-height': 0.9,
-    'fill-extrusion-color': DARK_THEME_SHOAL_GLOW,
-    'fill-extrusion-opacity': 0.35,
-    'fill-extrusion-vertical-gradient': true,
+    'fill-color': DARK_THEME_HAZARD_FILL,
+    'fill-opacity': 0.45,
   },
 };
 
@@ -356,7 +358,7 @@ const restrictedLayer: LayerSpecification = {
 export const s57Layers: LayerSpecification[] = [
   waterDepthFlatLayer,
   depthExtrusionLayer,
-  shoalGlowLayer,
+  hazardFillLayer,
   landBaseLayer,
   land3DLayer,
   coastlineLayer,
@@ -367,45 +369,40 @@ export const s57Layers: LayerSpecification[] = [
   restrictedLayer,
 ];
 
-function buildWaterFlatColorExpression(safetyContourVal: number, isDarkMode: boolean): ExpressionSpecification {
-  const shallowColor = isDarkMode ? DARK_THEME_WATER_SHALLOW : LIGHT_THEME_WATER_SHALLOW;
-  const deepColor = isDarkMode ? DARK_THEME_WATER_DEEP : LIGHT_THEME_WATER_DEEP;
-
-  return [
-    'case',
-    createShallowWaterFilter(safetyContourVal),
-    shallowColor,
-    deepColor,
-  ];
+function buildSafeDepthGradient(isDarkMode: boolean): ExpressionSpecification {
+  // Continuous depth gradient for areas above safety contour (drval1 >= threshold).
+  // Anchors chosen so shallow-safe reads clearly blue, deep reads rich navy.
+  return isDarkMode
+    ? ['interpolate', ['linear'], createDepthValueExpression(),
+        0,  DARK_THEME_WATER_SHALLOW,
+        8,  DARK_THEME_WATER_SHALLOW,
+        15, '#174070',
+        30, '#0E2B52',
+        60, DARK_THEME_WATER_DEEP,
+      ]
+    : ['interpolate', ['linear'], createDepthValueExpression(),
+        0,  LIGHT_THEME_WATER_SHALLOW,
+        8,  LIGHT_THEME_WATER_SHALLOW,
+        15, '#4A90C0',
+        30, '#3278AA',
+        60, LIGHT_THEME_WATER_DEEP,
+      ];
 }
 
-function buildDepthExtrusionColorExpression(safetyContourVal: number, isDarkMode: boolean): ExpressionSpecification {
-  const shallowColor = isDarkMode ? DARK_THEME_WATER_SHALLOW : LIGHT_THEME_WATER_SHALLOW;
-  const deepColor = isDarkMode ? DARK_THEME_WATER_DEEP : LIGHT_THEME_WATER_DEEP;
-
-  return [
-    'case',
-    createShallowWaterFilter(safetyContourVal),
-    shallowColor,
-    [
-      'interpolate',
-      ['linear'],
-      createDepthValueExpression(),
-      8, shallowColor,
-      15, isDarkMode ? '#22577A' : '#7FAFD1',
-      30, deepColor,
-      60, isDarkMode ? '#0B2136' : '#7A9FB7',
-    ],
-  ];
+function buildWaterFlatColorExpression(isDarkMode: boolean): ExpressionSpecification {
+  return buildSafeDepthGradient(isDarkMode);
 }
 
-function buildDepthExtrusionOpacityExpression(safetyContourVal: number): ExpressionSpecification {
-  return [
-    'case',
-    createShallowWaterFilter(safetyContourVal),
-    0.7,
-    0.45,
-  ];
+function buildDepthExtrusionColorExpression(isDarkMode: boolean): ExpressionSpecification {
+  return buildSafeDepthGradient(isDarkMode);
+}
+
+function getHazardFillColor(isDarkMode: boolean): string {
+  return isDarkMode ? DARK_THEME_HAZARD_FILL : LIGHT_THEME_HAZARD_FILL;
+}
+
+function buildDepthExtrusionOpacityExpression(): number {
+  return 0.45;
 }
 
 function setLayerVisibility(map: MapLibreMap, layerId: string, isVisible: boolean): void {
@@ -421,7 +418,7 @@ export function syncHydrologyLayerVisibility(map: MapLibreMap): void {
 
   setLayerVisibility(map, LAYER_IDS.WATER_DEPTH_FLAT, !showExtrusions);
   setLayerVisibility(map, LAYER_IDS.WATER_DEPTH_EXTRUSION, showExtrusions);
-  setLayerVisibility(map, LAYER_IDS.SHOAL_GLOW, showExtrusions);
+  setLayerVisibility(map, LAYER_IDS.HAZARD_FILL, true);
 }
 
 export function updateWaterDepthStyle(
@@ -430,32 +427,34 @@ export function updateWaterDepthStyle(
   isDarkMode: boolean
 ): void {
   if (map.getLayer(LAYER_IDS.WATER_DEPTH_FLAT)) {
+    map.setFilter(LAYER_IDS.WATER_DEPTH_FLAT, createSafeDepthAreaFilter(safetyContourVal));
     map.setPaintProperty(
       LAYER_IDS.WATER_DEPTH_FLAT,
       'fill-color',
-      buildWaterFlatColorExpression(safetyContourVal, isDarkMode),
+      buildWaterFlatColorExpression(isDarkMode),
     );
   }
 
   if (map.getLayer(LAYER_IDS.WATER_DEPTH_EXTRUSION)) {
+    map.setFilter(LAYER_IDS.WATER_DEPTH_EXTRUSION, createSafeDepthAreaFilter(safetyContourVal));
     map.setPaintProperty(
       LAYER_IDS.WATER_DEPTH_EXTRUSION,
       'fill-extrusion-color',
-      buildDepthExtrusionColorExpression(safetyContourVal, isDarkMode),
+      buildDepthExtrusionColorExpression(isDarkMode),
     );
     map.setPaintProperty(
       LAYER_IDS.WATER_DEPTH_EXTRUSION,
       'fill-extrusion-opacity',
-      buildDepthExtrusionOpacityExpression(safetyContourVal),
+      buildDepthExtrusionOpacityExpression(),
     );
   }
 
-  if (map.getLayer(LAYER_IDS.SHOAL_GLOW)) {
-    map.setFilter(LAYER_IDS.SHOAL_GLOW, createShallowWaterFilter(safetyContourVal));
+  if (map.getLayer(LAYER_IDS.HAZARD_FILL)) {
+    map.setFilter(LAYER_IDS.HAZARD_FILL, createDangerAreaFilter(safetyContourVal));
     map.setPaintProperty(
-      LAYER_IDS.SHOAL_GLOW,
-      'fill-extrusion-color',
-      isDarkMode ? DARK_THEME_SHOAL_GLOW : LIGHT_THEME_WATER_SHELLOW_GLOW,
+      LAYER_IDS.HAZARD_FILL,
+      'fill-color',
+      getHazardFillColor(isDarkMode),
     );
   }
 }

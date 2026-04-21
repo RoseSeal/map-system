@@ -71,7 +71,7 @@ export const COLORS_RGBA: Record<string, RGBAColor> = {
   CAUTION: [245, 158, 11, 200],
   WARNING: [249, 115, 22, 200],
   ALARM: [239, 68, 68, 200],
-  SAFETY_DOMAIN: [16, 185, 129, 80],
+  SAFETY_DOMAIN: [50, 130, 190, 45],
   OZT_SECTOR: [239, 68, 68, 120],
 } as const;
 
@@ -151,7 +151,7 @@ export const LAYER_IDS = {
   LAND_3D: 'land-3d',
   WATER_DEPTH_FLAT: 'water-depth-flat',
   WATER_DEPTH_EXTRUSION: 'depare-extrusion',
-  SHOAL_GLOW: 'shoal-glow',
+  HAZARD_FILL: 'hazard-fill',
   OBSTRUCTION_SYMBOL: 'obstrn-symbol',
   RESTRICTED: 'restricted',
 } as const;

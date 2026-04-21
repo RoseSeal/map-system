@@ -37,7 +37,8 @@ Step 1 只改前端与 MVT 拼装，不动后端引擎与 LLM。重点有三：
 - 新增 MapLibre 图层：
   - `obstrn-symbol`：点符号（wreck / rock / pile / unknown 四类 icon）+ 红色警戒圈
   - `depare-extrusion`：替换现有 `depth-areas-*` 三层，使用 `fill-extrusion-base/height` 将 `drval1` 映射到负 height（例：`height = -drval1 * 2`）
-  - `shoal-glow`：`drval1 < safety_contour_val` 的独立层，`fill-extrusion-color` 配合半透明高 opacity，营造体积发光
+  - `hazard-fill`：危险区独立专题填充层；按 `drval1 < safety_contour_val` 过滤 `DEPARE` 后着色，基础蓝色水深层同步排除危险区，避免 2.5D 视角下危险填充与 contour 边界错位
+  - `depth-contour`：当传入 `safety_contour_val` 时，后端返回“危险区并集外边界”，与 `hazard-fill` 共享同一阈值真值，而不是只取原始 depth band 等值边
 - `SOUNDG` 测深点符号保留，缩放阈值上调避免与 OBSTRN 符号视觉打架
 
 ### 2.3 交互改动
@@ -90,14 +91,15 @@ obstrn_mvt AS (
 
 - `fill-extrusion-base` 固定 `0`
 - `fill-extrusion-height` = `-['get', 'drval1'] * depth_exaggeration`；`depth_exaggeration` 初始 `2.0`，Step 1 里可配成常量
-- `fill-extrusion-opacity` 对深水 `0.45`，浅水 `0.7`，让浅区更显眼
+- `fill-extrusion-opacity` 保持中等强度（当前约 `0.45`），3D 体积主要服务于安全水域层次感；危险区高亮交给独立 `hazard-fill`，不再叠第二层挤出体
 - 仅在 `pitch > 25°` 启用（通过 `minzoom` 或 MapLibre filter 不能直接表达 pitch 条件，需在前端监听 `pitchend` 动态切换图层 visibility）
 
-### 4.3 `shoal-glow` 层触发条件
+### 4.3 危险区填充与 contour 统一真值
 
-- MapLibre `fill-extrusion` 不支持真实 AO/bloom，需要用半透明多层叠加模拟
-- 实施方案：同一 `DEPARE` source-layer 上再叠一层过滤 `drval1 < safety_contour_val` 的 `fill-extrusion`，颜色 `#ff4444` + opacity `0.35`，小幅度上移 `base` 避免 z-fighting
-- 若后续发现性能下滑明显，降级为 2D `fill` + `fill-pattern` 纹理
+- 旧方案用额外 `shoal-glow` 挤出层模拟危险浅区，但 refined safety contour 下会与 `DEPCNT` 线产生边界错位
+- 修正后，危险区填充改为 flat overlay：前端直接在 `DEPARE` 上按 `drval1 < safety_contour_val` 过滤着色，基础蓝色水深层同步排除这部分 polygon
+- 后端 `DEPCNT` 在传入 `safety_contour_val` 时，不再取原始 `DRVAL1/DRVAL2 == contour` 的 band 边，而是对危险区 polygon 集合做 union 后提取外边界
+- 结果是：危险填充与 contour 边界共享同一套阈值真值；即使 contour 值细化到非原始 depth band 边界，也不会继续出现“橙色区块与边界线语义不一致”的问题
 
 ### 4.4 safety contour slider 状态所属
 
@@ -114,6 +116,7 @@ obstrn_mvt AS (
 - 在仓库现有 Jamaica Bay 仿真数据下，能直接看到至少一个 OBSTRN 符号
 - pitch 30°/60° 下水深层明显拔深，对比平视有可见立体感
 - 危险浅区在正常光照下颜色/体积明显区别于普通浅水
+- refined safety contour（非原始 depth band 阈值）下，危险填充与 contour 边界仍保持一致，不再出现边界错位
 
 ### 5.2 交互
 

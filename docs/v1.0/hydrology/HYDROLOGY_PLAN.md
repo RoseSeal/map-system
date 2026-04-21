@@ -1,7 +1,7 @@
 # v1.0 Hydrology Track — 总览规划
 
 > 文档状态：active
-> 最后更新：2026-04-17
+> 最后更新：2026-04-19
 > 用途：v1.0 水文 track 的方向判断、范围收敛与 step 拆分的中间层规划文档。
 > 非目标：不是 step-plan 实施细则；不替代 [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)、[`../../EVENT_SCHEMA.md`](../../EVENT_SCHEMA.md) 等当前真值文档。
 
@@ -94,7 +94,7 @@ v1.0 引入 `environment_context.hydrology` 子字段。**此契约与天气 tra
 
 定义枚举 `EnvAlertCode`，本 track 贡献项：
 
-注：该枚举已由 weather track Step 1 首次写入天气类告警；hydrology 在后续 step 仅做追加，不重定义顶层结构。
+注：截至本计划最后更新时，weather 已向 `active_alerts` 写入天气类告警，但实现仍是字符串字面量；`EnvAlertCode` 的真正落地与 weather / hydrology 的统一迁移在 hydrology Step 2 一并完成。hydrology 在该步骤只补齐共享枚举与追加自身告警，不重定义顶层结构。
 
 - `SHOAL_PROXIMITY`：本船在 `safety_contour_val` 内或紧邻浅区
 - `OBSTRUCTION_NEARBY`：距离已知 OBSTRN `< 0.5 nm`（阈值可配）
@@ -163,12 +163,12 @@ v1.0 引入 `environment_context.hydrology` 子字段。**此契约与天气 tra
 **主要工作**：
 
 - 新建 `com.whut.map.map_service.chart.service.HydrologyContextService`，复用 `JdbcTemplate` 对 `enc_depare / enc_obstrn` 做 ST_DWithin 查询
-- 把 Step 1 的 safety contour slider 值写回后端，收敛为服务端可见配置，并作为 `HydrologyContextService` 查询输入
+- 把 Step 1 的 safety contour slider 值写回后端，收敛为服务端可见的运行时配置，并作为 `HydrologyContextService` 查询输入
+- 调整 `RiskObjectAssembler` / `RiskObjectMetaAssembler` 装配链，使 hydrology 查询在组装 `RiskObjectDto` 时显式完成一次，再注入 `environment_context`
 - 扩展 `RiskObjectMetaAssembler` 把 hydrology 摘要注入 `environment_context`
-- 至少一条 LLM 可消费上下文链路接入该值：优先进入 `environment_context.hydrology` 并被 LLM 消费，或等价进入 agent / LLM 上下文摘要
-- 填充 `active_alerts`：`SHOAL_PROXIMITY / OBSTRUCTION_NEARBY / DEPTH_DATA_MISSING`
-- 查询结果按本船位置缓存（同一 RiskObject 内多次调用只查一次）
+- 落地共享 `EnvAlertCode`，并填充 `active_alerts`：`SHOAL_PROXIMITY / OBSTRUCTION_NEARBY / DEPTH_DATA_MISSING`
 - 前端 `[useRiskStore.ts:83](../../../frontend/src/store/useRiskStore.ts#L83)` 的 `environment` 类型扩展 `hydrology` 可选字段
+- Step 2 只把 hydrology 事实沉淀为服务端真值，不直接接入 `LlmRiskContext`；LLM / agent 的深度消费转 Step 3
 
 **验收**：本船进入 `safety_contour_val` 以浅区时，SSE `RISK_UPDATE` 的 `environment_context.hydrology.own_ship_min_depth_m` 正确反映；`active_alerts` 包含 `SHOAL_PROXIMITY`
 

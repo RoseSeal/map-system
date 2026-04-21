@@ -41,6 +41,7 @@
 | --- | --- |
 | MQTT Listener | 订阅外部输入消息，触发处理链入口 |
 | `WeatherMqttConfig` + `WeatherMessageHandler` | 订阅 `usv/Weather`，维护共享 `WeatherContextHolder` 快照供 SSE/风险元数据消费 |
+| `S57Controller` + `S57TileRepository` | 提供 `/api/s57/*` 海图 tile、layer metadata、style 与 safety contour HTTP 接口 |
 | `RiskSseController` | 提供 `/api/v2/risk` SSE 风险事件入口 |
 | `ChatWebSocketHandler` | 提供 `/api/v2/chat` 双向问答与语音交互入口 |
 
@@ -130,6 +131,7 @@ ChatWebSocketHandler
 ## 六、能力边界
 
 - 已具备多源消息接入、风险计算、SSE 风险推送、WebSocket 问答交互、TTS 播报与 ASR 语音输入能力。
+- 已具备 S-57 海图 HTTP 接口能力，后端通过 `/api/s57/*` 提供 vector tile、layer metadata、style 与 safety contour 配置，供前端海图链路消费。
 - 实时事件协议已完成 v2 整理，`risk` 与 `chat` 分别通过 SSE 与 WebSocket 承载；具体字段与事件类型以 `docs/EVENT_SCHEMA.md` 为准。
 - LLM 风险解释已从风险主链路中解绑，以异步事件下发；聊天链路支持多轮对话，由 `ConversationMemory` 维护历史，每次请求注入最新风险上下文；当用户选中目标时，最近有效解释文本也会作为补充上下文注入。
 - Chat 支持在当前会话的最后一条文本用户消息上执行非破坏式重答：仅在新回复成功生成后才替换最后一组 `USER / ASSISTANT`，失败时保留旧轮次。
@@ -209,7 +211,7 @@ ChatWebSocketHandler
 
 ### P3 - 功能扩展
 
-- **Engine 增强**（已完成，详见 `docs/history/v0.7-engine-enhancement/ENGINE_ENHANCEMENT_PLAN.md`）：
+- **Engine 增强**（已完成，详见 `docs/history/v0.8-engine-enhancement/ENGINE_ENHANCEMENT_PLAN.md`）：
   - 本船安全领域：动态四参数椭圆模型，替代 assembler 硬编码尺寸。
   - 目标船航迹预测：CV 恒速模型 + 历史轨迹存储，输出预测轨迹点序列。
   - 会遇态势识别：对遇/追越/交叉三类分类，参考内河避碰规则。

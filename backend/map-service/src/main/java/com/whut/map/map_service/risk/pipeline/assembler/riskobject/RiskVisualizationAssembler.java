@@ -4,6 +4,7 @@ import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import com.whut.map.map_service.risk.engine.risk.RiskConstants;
 import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
+import com.whut.map.map_service.shared.util.GeoUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -18,9 +19,25 @@ public class RiskVisualizationAssembler {
             return null;
         }
 
+        double tcpaSeconds = Math.max(assessment.getTcpaSeconds(), 0.0);
+        double[] ownVelocity = GeoUtils.toVelocity(ownShip.getSog(), ownShip.getCog());
+        double[] targetVelocity = GeoUtils.toVelocity(targetShip.getSog(), targetShip.getCog());
+        double[] ownCpaPos = GeoUtils.displace(
+                ownShip.getLatitude(),
+                ownShip.getLongitude(),
+                ownVelocity[0] * tcpaSeconds,
+                ownVelocity[1] * tcpaSeconds
+        );
+        double[] targetCpaPos = GeoUtils.displace(
+                targetShip.getLatitude(),
+                targetShip.getLongitude(),
+                targetVelocity[0] * tcpaSeconds,
+                targetVelocity[1] * tcpaSeconds
+        );
+
         Map<String, Object> graphicCpaLine = new LinkedHashMap<>();
-        graphicCpaLine.put("own_pos", List.of(ownShip.getLongitude(), ownShip.getLatitude()));
-        graphicCpaLine.put("target_pos", List.of(targetShip.getLongitude(), targetShip.getLatitude()));
+        graphicCpaLine.put("own_pos", List.of(ownCpaPos[1], ownCpaPos[0]));
+        graphicCpaLine.put("target_pos", List.of(targetCpaPos[1], targetCpaPos[0]));
         return graphicCpaLine;
     }
 

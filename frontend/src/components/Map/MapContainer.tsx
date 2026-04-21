@@ -7,7 +7,8 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import type { Layer, Position } from '@deck.gl/core';
-import { IconLayer, LineLayer, PathLayer, PolygonLayer, ScatterplotLayer } from '@deck.gl/layers';
+import { PathStyleExtension } from '@deck.gl/extensions';
+import { IconLayer, PathLayer, PolygonLayer, ScatterplotLayer } from '@deck.gl/layers';
 
 import {
   useRiskStore,
@@ -19,8 +20,6 @@ import { useThemeStore } from '../../store/useThemeStore';
 import {
   DEFAULT_VIEW_STATE,
   MAP_CONSTRAINTS,
-  COLORS_RGB,
-  COLORS_RGBA,
   getRiskColor,
   VISUALIZATION,
 } from '../../config';
@@ -36,28 +35,42 @@ import {
   generateEllipsePolygon,
   generateLinearTrajectory,
 } from '../../utils';
-import type { LonLat, OwnShip, RGBAColor, RiskTarget } from '../../types/schema';
+import { useMapSettingsStore } from '../../store/useMapSettingsStore';
+import type { LonLat, OwnShip, RGBAColor } from '../../types/schema';
 
-const CONTOUR_MIN = 5;
-const CONTOUR_MAX = 30;
 const CONTOUR_DEBOUNCE_MS = 300;
-const SAFETY_CONTOUR_PRESETS = [5, 10, 15, 20, 25, 30] as const;
 const WEATHER_FOG_SOURCE_ID = 'weather-fog-source';
 const WEATHER_FOG_LAYER_ID = 'weather-fog-layer';
 const WEATHER_FOG_COLOR = '#d2d7dc';
 const WEATHER_FOG_MAX_OPACITY = 0.65;
 const WEATHER_CLEAR_VISIBILITY_NM = 10.0;
+const NAVIGATION_PLANE_Z = 48;
+const CPA_BRIDGE_Z = 56;
+const CPA_GLOW_Z = 58;
+const CPA_POINT_Z = 60;
+const OVERLAY_ON_TOP_PARAMETERS = {
+  depthCompare: 'always',
+  depthWriteEnabled: false,
+  blend: true,
+} as const;
 const DECK_LAYER_ID_HINTS = new Set([
   'safety-domain',
-  'trajectory-fade',
-  'target-trajectories-fade',
+  'traj-l-a', 'traj-l-b', 'traj-l-c',
+  'traj-r-a', 'traj-r-b', 'traj-r-c',
+  'target-traj-l', 'target-traj-r',
   'cpa-lines',
   'own-ship',
   'selected-target-highlight',
   'targets',
 ]);
+const DECK_LAYER_ID_PREFIXES = [
+  'safety-domain-',
+  'own-traj-',
+  'target-traj-',
+  'cpa-',
+] as const;
 
-const WEATHER_FOG_POLYGON = {
+const WEATHER_FOG_POLYGON: GeoJSON.FeatureCollection<GeoJSON.Polygon> = {
   type: 'FeatureCollection',
   features: [
     {
@@ -77,27 +90,6 @@ const WEATHER_FOG_POLYGON = {
   ],
 };
 
-function roundContourValue(value: number): number {
-  return Number(value.toFixed(1));
-}
-
-function buildSafetyContourOptions(liveSafetyContourVal: number): number[] {
-  const options = new Set<number>(SAFETY_CONTOUR_PRESETS);
-
-  if (Number.isFinite(liveSafetyContourVal)) {
-    options.add(roundContourValue(liveSafetyContourVal));
-  }
-
-  return [...options].sort((left, right) => left - right);
-}
-
-function findClosestContourIndex(value: number, options: number[]): number {
-  return options.reduce((closestIndex, option, index) => (
-    Math.abs(option - value) < Math.abs(options[closestIndex] - value)
-      ? index
-      : closestIndex
-  ), 0);
-}
 
 const VESSEL_ICON = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
@@ -138,8 +130,8 @@ export function MapContainer() {
   const deckOverlay = useRef<MapboxOverlay | null>(null);
   const lastReloadedContourRef = useRef<number | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [localSafetyContourOverride, setLocalSafetyContourOverride] = useState<number | null>(null);
   const [debouncedSafetyContourVal, setDebouncedSafetyContourVal] = useState<number>(10);
+  const { safetyContourOverride: localSafetyContourOverride } = useMapSettingsStore();
 
   const ownShip = useRiskStore(selectOwnShip);
   const targets = useRiskStore(selectTargets);
@@ -155,13 +147,6 @@ export function MapContainer() {
     () => calculateFogOpacity(environment?.weather?.visibility_nm ?? null),
     [environment?.weather?.visibility_nm],
   );
-  const safetyContourOptions = useMemo(
-    () => buildSafetyContourOptions(liveSafetyContourVal),
-    [liveSafetyContourVal],
-  );
-  const safetyContourIndex = findClosestContourIndex(effectiveSafetyContourVal, safetyContourOptions);
-  const glassClass = isDarkMode ? 'glass-vision-dark' : 'glass-vision';
-
   useEffect(() => {
     setDebouncedSafetyContourVal(effectiveSafetyContourVal);
   }, []);
@@ -209,7 +194,6 @@ export function MapContainer() {
       }
       syncHydrologyLayerVisibility(map.current);
     };
-
     mapInstance.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     deckOverlay.current = new MapboxOverlay({
@@ -284,123 +268,214 @@ export function MapContainer() {
 
     const ownPos: LonLat = [ownShip.position.lon, ownShip.position.lat];
 
+    // 1. Safety Domain - Frosted Field with Glowing Edge
     if (ownShip.safety_domain.shape_type === 'ellipse' && ownShip.safety_domain.dimensions) {
       const domainPolygon = generateEllipsePolygon(
         ownPos,
         ownShip.safety_domain.dimensions,
         ownShip.dynamics.hdg,
+        160,
       );
 
+      // Inner Frosted Fill
       layers.push(
         new PolygonLayer({
-          id: 'safety-domain',
+          id: 'safety-domain-fill',
           data: [{ polygon: domainPolygon }],
           getPolygon: (d: { polygon: LonLat[] }) => d.polygon,
-          getFillColor: COLORS_RGBA.SAFETY_DOMAIN,
-          getLineColor: COLORS_RGB.SAFE,
-          getLineWidth: 2,
-          lineWidthUnits: 'pixels',
+          getFillColor: [255, 255, 255, 25] as RGBAColor,
+          getLineColor: [0, 0, 0, 0],
           pickable: false,
-          parameters: {
-            depthMask: false,
-          },
+          parameters: OVERLAY_ON_TOP_PARAMETERS,
         }),
       );
-    }
 
-    const trajectoryPoints = buildTrajectoryPoints(ownShip);
-    if (trajectoryPoints.length > 1) {
-      const fadeSegments: { path: Position[]; color: RGBAColor }[] = [];
-
-      for (let i = 0; i < trajectoryPoints.length - 1; i += 1) {
-        const opacity = Math.max(40, 220 - i * 50);
-        fadeSegments.push({
-          path: [
-            [trajectoryPoints[i][0], trajectoryPoints[i][1], 10],
-            [trajectoryPoints[i + 1][0], trajectoryPoints[i + 1][1], 10],
-          ],
-          color: [0, 255, 255, opacity] as RGBAColor,
-        });
-      }
-
+      // Soft Glowing Boundary
       layers.push(
-        new PathLayer<{ path: Position[]; color: RGBAColor }>({
-          id: 'trajectory-fade',
-          data: fadeSegments,
-          getPath: (d) => d.path,
-          getColor: (d) => d.color,
-          getWidth: 4,
+        new PathLayer({
+          id: 'safety-domain-glow',
+          data: [{ path: domainPolygon }],
+          getPath: (d: { path: Position[] }) => d.path,
+          getColor: [100, 180, 240, 80] as RGBAColor,
+          getWidth: 8,
           widthUnits: 'pixels',
-          pickable: false,
-          capRounded: true,
           jointRounded: true,
+          capRounded: true,
+          parameters: OVERLAY_ON_TOP_PARAMETERS,
+        }),
+      );
+
+      // Sharp Inner Edge (High Detail)
+      layers.push(
+        new PathLayer({
+          id: 'safety-domain-edge',
+          data: [{ path: domainPolygon }],
+          getPath: (d: { path: Position[] }) => d.path,
+          getColor: [200, 230, 255, 120] as RGBAColor,
+          getWidth: 1.5,
+          widthUnits: 'pixels',
+          jointRounded: true,
+          capRounded: true,
+          parameters: OVERLAY_ON_TOP_PARAMETERS,
         }),
       );
     }
 
-    if (allTargets.length > 0) {
-      const targetRouteSegments: { path: Position[]; color: RGBAColor }[] = [];
+    // 2. Trajectories - Glowing Ribbons
+    // Own Ship Trajectory
+    const ownTrajectoryPoints = buildTrajectoryPoints(ownShip);
+    if (ownTrajectoryPoints.length > 1) {
+      const n = ownTrajectoryPoints.length;
+      const ownColor = (a: number): RGBAColor =>
+        isDarkMode ? [56, 189, 248, a] : [20, 120, 200, a];
 
-      allTargets.forEach((target) => {
-        const traj = target.predicted_trajectory;
-        if (!traj?.points || traj.points.length < 1) return;
+      // Wide Ribbon Base
+      layers.push(new PathLayer<{ path: Position[] }>({
+        id: 'own-traj-ribbon',
+        data: [{ path: ownTrajectoryPoints.map((p) => [p[0], p[1], NAVIGATION_PLANE_Z] as Position) }],
+        getPath: (d) => d.path,
+        getColor: ownColor(40),
+        getWidth: 12,
+        widthUnits: 'pixels',
+        jointRounded: true,
+        capRounded: true,
+        parameters: OVERLAY_ON_TOP_PARAMETERS,
+      }));
 
-        const fullPath: LonLat[] = [
-          [target.position.lon, target.position.lat],
-          ...traj.points.map((point): LonLat => [point.lon, point.lat]),
+      // Sharp Flow Line
+      layers.push(new PathLayer<{ path: Position[] }>({
+        id: 'own-traj-flow',
+        data: [{ path: ownTrajectoryPoints.map((p) => [p[0], p[1], NAVIGATION_PLANE_Z] as Position) }],
+        getPath: (d) => d.path,
+        getColor: ownColor(180),
+        getWidth: 2,
+        widthUnits: 'pixels',
+        parameters: OVERLAY_ON_TOP_PARAMETERS,
+      }));
+
+      // Distance Fading segments (simulate gradient)
+      const ptsNear = ownTrajectoryPoints.slice(0, Math.max(2, Math.ceil(n * 0.3)));
+      layers.push(new PathLayer<{ path: Position[] }>({
+        id: 'own-traj-highlight',
+        data: [{ path: ptsNear.map((p) => [p[0], p[1], NAVIGATION_PLANE_Z] as Position) }],
+        getPath: (d) => d.path,
+        getColor: ownColor(255),
+        getWidth: 3.5,
+        widthUnits: 'pixels',
+        parameters: OVERLAY_ON_TOP_PARAMETERS,
+      }));
+    }
+
+    // Target Trajectories
+    allTargets.forEach((target) => {
+      const traj = target.predicted_trajectory;
+      if (!traj?.points || traj.points.length < 1) return;
+      
+      const fullPath: LonLat[] = [
+        [target.position.lon, target.position.lat],
+        ...traj.points.map((p): LonLat => [p.lon, p.lat]),
+      ];
+      
+      const color = getRiskColor(target.risk_assessment.risk_level);
+      const targetColor = (a: number): RGBAColor => [...color, a];
+
+      layers.push(new PathLayer({
+        id: `target-traj-ribbon-${target.id}`,
+        data: [{ path: fullPath.map((p) => [p[0], p[1], NAVIGATION_PLANE_Z] as Position) }],
+        getPath: (d) => d.path,
+        getColor: targetColor(35),
+        getWidth: 8,
+        widthUnits: 'pixels',
+        jointRounded: true,
+        capRounded: true,
+        parameters: OVERLAY_ON_TOP_PARAMETERS,
+      }));
+
+      layers.push(new PathLayer({
+        id: `target-traj-flow-${target.id}`,
+        data: [{ path: fullPath.map((p) => [p[0], p[1], NAVIGATION_PLANE_Z] as Position) }],
+        getPath: (d) => d.path,
+        getColor: targetColor(140),
+        getWidth: 1.5,
+        widthUnits: 'pixels',
+        parameters: OVERLAY_ON_TOP_PARAMETERS,
+      }));
+    });
+
+    // 3. CPA - Collision Bridge (Data-Link Style)
+    targets.forEach((target) => {
+      const riskLevel = target.risk_assessment.risk_level;
+      const cpaLine = target.risk_assessment.graphic_cpa_line;
+      if ((riskLevel === 'ALARM' || riskLevel === 'WARNING') && cpaLine) {
+        const { own_pos, target_pos } = cpaLine;
+        const color = getRiskColor(riskLevel);
+        const cpaPositions = [own_pos, target_pos];
+        const bridgePath: Position[] = [
+          [own_pos[0], own_pos[1], CPA_BRIDGE_Z] as Position,
+          [target_pos[0], target_pos[1], CPA_BRIDGE_Z] as Position,
         ];
 
-        for (let i = 0; i < fullPath.length - 1; i += 1) {
-          const opacity = i === 0 ? 160 : 90;
-          targetRouteSegments.push({
-            path: [
-              [fullPath[i][0], fullPath[i][1], 8],
-              [fullPath[i + 1][0], fullPath[i + 1][1], 8],
-            ],
-            color: [255, 165, 0, opacity] as RGBAColor,
-          });
-        }
-      });
+        // Heatmap Glow at CPA Points
+        cpaPositions.forEach((pos, idx) => {
+          layers.push(new ScatterplotLayer<{ position: LonLat }>({
+            id: `cpa-glow-${target.id}-${idx}`,
+            data: [{ position: pos }],
+            getPosition: (d) => [d.position[0], d.position[1], CPA_GLOW_Z],
+            getRadius: 60,
+            radiusUnits: 'meters',
+            getFillColor: [...color, 40] as RGBAColor,
+            stroked: false,
+          }));
+          
+          layers.push(new ScatterplotLayer<{ position: LonLat }>({
+            id: `cpa-point-${target.id}-${idx}`,
+            data: [{ position: pos }],
+            getPosition: (d) => [d.position[0], d.position[1], CPA_POINT_Z],
+            getRadius: 12,
+            radiusUnits: 'meters',
+            getFillColor: [...color, 255] as RGBAColor,
+            stroked: true,
+            getLineColor: [255, 255, 255, 200],
+            getLineWidth: 2,
+            lineWidthUnits: 'pixels',
+          }));
+        });
 
-      if (targetRouteSegments.length > 0) {
-        layers.push(
-          new PathLayer<{ path: Position[]; color: RGBAColor }>({
-            id: 'target-trajectories-fade',
-            data: targetRouteSegments,
-            getPath: (d) => d.path,
-            getColor: (d) => d.color,
-            getWidth: 2,
-            widthUnits: 'pixels',
-            pickable: false,
-            capRounded: true,
-            jointRounded: true,
-          }),
-        );
+        // Bridge Connection Glow
+        layers.push(new PathLayer<{ path: Position[] }>({
+          id: `cpa-bridge-glow-${target.id}`,
+          data: [{ path: bridgePath }],
+          getPath: (d) => d.path,
+          getColor: [...color, 70] as RGBAColor,
+          getWidth: 9,
+          widthUnits: 'pixels',
+          jointRounded: true,
+          capRounded: true,
+        }));
+
+        // Bridge Connection Core
+        layers.push(new PathLayer({
+          id: `cpa-bridge-${target.id}`,
+          data: [{ path: bridgePath }],
+          getPath: (d: { path: Position[] }) => d.path,
+          getColor: [...color, 230] as RGBAColor,
+          getWidth: 3,
+          widthUnits: 'pixels',
+          dashJustified: true,
+          getDashArray: [4, 3],
+          jointRounded: true,
+          capRounded: true,
+          extensions: [new PathStyleExtension({ dash: true })],
+        } as any));
       }
-    }
+    });
 
-    if (targets.length > 0) {
-      const cpaLineData = buildCPALineData(targets);
-      if (cpaLineData.length > 0) {
-        layers.push(
-          new LineLayer({
-            id: 'cpa-lines',
-            data: cpaLineData,
-            getSourcePosition: (d: { source: LonLat }) => [d.source[0], d.source[1], 12],
-            getTargetPosition: (d: { target: LonLat }) => [d.target[0], d.target[1], 12],
-            getColor: COLORS_RGB.ALARM,
-            getWidth: VISUALIZATION.CPA_LINE_WIDTH,
-            widthUnits: 'pixels',
-          }),
-        );
-      }
-    }
-
+    // Vessel Icons
     layers.push(
       new IconLayer({
         id: 'own-ship',
         data: [{ position: ownPos, heading: ownShip.dynamics.hdg }],
-        getPosition: (d: { position: LonLat }) => [d.position[0], d.position[1], 50],
+        getPosition: (d: { position: LonLat }) => [d.position[0], d.position[1], NAVIGATION_PLANE_Z],
         getIcon: () => ({
           url: VESSEL_ICON,
           width: 48,
@@ -424,7 +499,7 @@ export function MapContainer() {
             data: selectedTargets.map((target) => ({
               position: [target.position.lon, target.position.lat] as LonLat,
             })),
-            getPosition: (d: { position: LonLat }) => [d.position[0], d.position[1], 32],
+            getPosition: (d: { position: LonLat }) => [d.position[0], d.position[1], NAVIGATION_PLANE_Z],
             getRadius: 95,
             radiusUnits: 'meters',
             getFillColor: [0, 0, 0, 0],
@@ -447,7 +522,7 @@ export function MapContainer() {
             riskLevel: target.risk_assessment.risk_level,
             id: target.id,
           })),
-          getPosition: (d) => [d.position[0], d.position[1], 50],
+          getPosition: (d) => [d.position[0], d.position[1], NAVIGATION_PLANE_Z],
           getIcon: () => ({
             url: TARGET_ICON,
             width: 48,
@@ -504,75 +579,6 @@ export function MapContainer() {
         style={{ minHeight: '100vh' }}
       />
 
-      <div className="pointer-events-none absolute right-4 top-20 z-20">
-        <div className={`${glassClass} pointer-events-auto w-[240px] rounded-[18px] px-4 py-3`}>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--ink-500)' }}>
-                Hydrology
-              </div>
-              <div className="mt-1 text-[13px] font-semibold" style={{ color: 'var(--ink-900)' }}>
-                Safety Contour
-              </div>
-            </div>
-            <div
-              className="rounded-full px-2 py-0.5 font-mono text-[11px]"
-              style={{
-                background: localSafetyContourOverride === null
-                  ? 'color-mix(in oklch, var(--risk-safe) 12%, transparent)'
-                  : 'color-mix(in oklch, var(--risk-warning) 12%, transparent)',
-                color: localSafetyContourOverride === null ? 'var(--risk-safe)' : 'var(--risk-warning)',
-              }}
-            >
-              {effectiveSafetyContourVal.toFixed(1)}m
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <input
-              aria-label="Safety contour value"
-              type="range"
-              min={0}
-              max={Math.max(0, safetyContourOptions.length - 1)}
-              step={1}
-              value={safetyContourIndex}
-              onChange={(event) => {
-                const nextOption = safetyContourOptions[Number(event.target.value)];
-                if (nextOption !== undefined) {
-                  setLocalSafetyContourOverride(nextOption);
-                }
-              }}
-              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-transparent"
-            />
-            <div className="mt-1 flex justify-between text-[10px] font-mono" style={{ color: 'var(--ink-500)' }}>
-              <span>{safetyContourOptions[0]?.toFixed(1) ?? CONTOUR_MIN.toFixed(1)}m</span>
-              <span>{safetyContourOptions[safetyContourOptions.length - 1]?.toFixed(1) ?? CONTOUR_MAX.toFixed(1)}m</span>
-            </div>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="text-[10px]" style={{ color: 'var(--ink-500)' }}>
-              {localSafetyContourOverride === null
-                ? `实时值 ${liveSafetyContourVal.toFixed(1)}m`
-                : `已覆盖实时值 ${liveSafetyContourVal.toFixed(1)}m`}
-            </div>
-            <button
-              type="button"
-              disabled={localSafetyContourOverride === null}
-              onClick={() => {
-                setLocalSafetyContourOverride(null);
-              }}
-              className="rounded-full px-2.5 py-1 text-[10px] font-medium transition disabled:cursor-default disabled:opacity-40"
-              style={{
-                background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
-                color: 'var(--ink-700)',
-              }}
-            >
-              恢复实时值
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -592,15 +598,6 @@ function getOwnShipColor(ownShip: OwnShip): [number, number, number, number] {
     default:
       return [16, 185, 129, 255];
   }
-}
-
-function buildCPALineData(targets: RiskTarget[]): { source: LonLat; target: LonLat }[] {
-  return targets
-    .filter((target) => target.risk_assessment.risk_level === 'ALARM' && target.risk_assessment.graphic_cpa_line)
-    .map((target) => ({
-      source: target.risk_assessment.graphic_cpa_line!.own_pos,
-      target: target.risk_assessment.graphic_cpa_line!.target_pos,
-    }));
 }
 
 function ensureFogOverlayLayer(mapInstance: maplibregl.Map, allowMoveToTopWhenNoAnchor: boolean): void {
@@ -639,7 +636,11 @@ function ensureFogOverlayLayer(mapInstance: maplibregl.Map, allowMoveToTopWhenNo
 function findDeckLayerAnchor(mapInstance: maplibregl.Map): string | undefined {
   const styleLayers = mapInstance.getStyle()?.layers ?? [];
   for (const layer of styleLayers) {
-    if (layer.id.startsWith('deckgl') || DECK_LAYER_ID_HINTS.has(layer.id)) {
+    if (
+      layer.id.startsWith('deckgl')
+      || DECK_LAYER_ID_HINTS.has(layer.id)
+      || DECK_LAYER_ID_PREFIXES.some((prefix) => layer.id.startsWith(prefix))
+    ) {
       return layer.id;
     }
   }

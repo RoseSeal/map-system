@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -14,6 +15,7 @@ import {
   selectEditingMessageEventId,
   selectEditingSubmitError,
   selectEditingSubmitEventId,
+  selectEnvironment,
   selectExplanationsByTargetId,
   selectIsChatSending,
   selectSelectedTargetIds,
@@ -24,6 +26,12 @@ import {
   useRiskStore,
 } from '../../store';
 import { useThemeStore } from '../../store/useThemeStore';
+import { useMapSettingsStore } from '../../store/useMapSettingsStore';
+import {
+  CONTOUR_MIN,
+  CONTOUR_MAX,
+  CONTOUR_STEP,
+} from '../../utils/safetyContour';
 import type { AiCenterChatMessage } from '../../types/aiCenter';
 import type { ExplanationPayload, RiskLevel, RiskTarget } from '../../types/schema';
 import { translateEncounterType } from '../../utils/riskDisplay';
@@ -34,6 +42,17 @@ import { ChatMessageList } from './ChatMessageList';
 import { CpaArc } from './CpaArc';
 
 const PANEL_WIDTH = 420;
+const EXIT_ANIMATION_MS = 220;
+
+type ExplainedCardData = {
+  target: RiskTarget;
+  explanation: ExplanationPayload;
+};
+
+type DisplayedRiskCard = ExplainedCardData & {
+  isLeaving: boolean;
+  renderKey: string;
+};
 
 const riskColors: Record<RiskLevel, string> = {
   SAFE: 'oklch(0.76 0.11 158)',
@@ -91,7 +110,13 @@ export function RiskExplanationPanel() {
   const setSpeechEnabled = useAiCenterStore((state) => state.setSpeechEnabled);
   const setSpeechUnlocked = useAiCenterStore((state) => state.setSpeechUnlocked);
 
+  const environment = useRiskStore(selectEnvironment);
   const { isDarkMode, toggleTheme } = useThemeStore();
+  const { safetyContourOverride, setSafetyContourOverride } = useMapSettingsStore();
+
+  const liveSafetyContourVal = environment?.safety_contour_val ?? 10;
+  const effectiveSafetyContourVal = safetyContourOverride ?? liveSafetyContourVal;
+
   const {
     activeVoiceMode,
     cancelVoiceCapture,
@@ -107,8 +132,13 @@ export function RiskExplanationPanel() {
   const [chatSendError, setChatSendError] = useState<string | null>(null);
   const [visibleSseError, setVisibleSseError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
 
   const isDragging = useRef(false);
+  const cardDataRef = useRef<Map<string, ExplainedCardData>>(new Map());
+  const leavingTimerIdsRef = useRef<Map<string, number>>(new Map());
+  const prevCardIdsRef = useRef<Set<string>>(new Set());
+  const renderOrderRef = useRef<string[]>([]);
 
   useEffect(() => {
     if (!lastSseError) {
@@ -181,6 +211,110 @@ export function RiskExplanationPanel() {
       .filter((item): item is { target: RiskTarget; explanation: ExplanationPayload } => Boolean(item))
       .sort((left, right) => getRiskPriority(right.explanation.risk_level) - getRiskPriority(left.explanation.risk_level))
   ), [explanationsByTargetId, targets]);
+
+  const currentCardsById = useMemo(
+    () => new Map(sortedExplainedTargets.map((item) => [item.target.id, item])),
+    [sortedExplainedTargets],
+  );
+  const currentCardIds = useMemo(
+    () => sortedExplainedTargets.map((item) => item.target.id),
+    [sortedExplainedTargets],
+  );
+
+  useLayoutEffect(() => {
+    sortedExplainedTargets.forEach((item) => {
+      cardDataRef.current.set(item.target.id, item);
+    });
+
+    const currentIds = new Set(currentCardIds);
+    currentIds.forEach((id) => {
+      const existingTimerId = leavingTimerIdsRef.current.get(id);
+      if (existingTimerId !== undefined) {
+        window.clearTimeout(existingTimerId);
+        leavingTimerIdsRef.current.delete(id);
+      }
+    });
+
+    const gone = [...prevCardIdsRef.current].filter((id) => !currentIds.has(id));
+    prevCardIdsRef.current = currentIds;
+
+    setLeavingIds((prev) => {
+      const next = new Set([...prev].filter((id) => !currentIds.has(id)));
+      gone.forEach((id) => next.add(id));
+      return next;
+    });
+
+    gone.forEach((id) => {
+      const existingTimerId = leavingTimerIdsRef.current.get(id);
+      if (existingTimerId !== undefined) {
+        window.clearTimeout(existingTimerId);
+      }
+
+      const timerId = window.setTimeout(() => {
+        setLeavingIds((prev) => {
+          if (!prev.has(id)) {
+            return prev;
+          }
+
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        leavingTimerIdsRef.current.delete(id);
+        cardDataRef.current.delete(id);
+      }, EXIT_ANIMATION_MS);
+
+      leavingTimerIdsRef.current.set(id, timerId);
+    });
+  }, [currentCardIds, sortedExplainedTargets]);
+
+  useEffect(() => () => {
+    leavingTimerIdsRef.current.forEach((timerId) => {
+      window.clearTimeout(timerId);
+    });
+    leavingTimerIdsRef.current.clear();
+  }, []);
+
+  const displayedCards = useMemo<DisplayedRiskCard[]>(() => {
+    const visibleLeavingIds = [...leavingIds].filter(
+      (id) => !currentCardsById.has(id) && cardDataRef.current.has(id),
+    );
+    const previousOrder = renderOrderRef.current;
+    const previousOrderSet = new Set(previousOrder);
+    const orderedIds = [
+      ...previousOrder.filter((id) => currentCardsById.has(id) || visibleLeavingIds.includes(id)),
+      ...currentCardIds.filter((id) => !previousOrderSet.has(id)),
+      ...visibleLeavingIds.filter((id) => !previousOrderSet.has(id)),
+    ];
+
+    return orderedIds
+      .map((id) => {
+        const currentCard = currentCardsById.get(id);
+        if (currentCard) {
+          return {
+            ...currentCard,
+            isLeaving: false,
+            renderKey: id,
+          };
+        }
+
+        const leavingCard = cardDataRef.current.get(id);
+        if (!leavingCard) {
+          return null;
+        }
+
+        return {
+          ...leavingCard,
+          isLeaving: true,
+          renderKey: `${id}::leaving`,
+        };
+      })
+      .filter((item): item is DisplayedRiskCard => item !== null);
+  }, [currentCardIds, currentCardsById, leavingIds]);
+
+  useLayoutEffect(() => {
+    renderOrderRef.current = displayedCards.map((card) => card.target.id);
+  }, [displayedCards]);
 
   const selectedTargetsForChip = useMemo(() => (
     selectedTargetIds
@@ -460,7 +594,7 @@ export function RiskExplanationPanel() {
         <div
           style={{
             overflow: 'hidden',
-            maxHeight: isSettingsOpen ? 140 : 0,
+            maxHeight: isSettingsOpen ? 280 : 0,
             opacity: isSettingsOpen ? 1 : 0,
             transition: 'max-height 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.2s',
             borderBottom: '0.5px solid color-mix(in oklch, var(--ink-500) 12%, transparent)',
@@ -520,6 +654,61 @@ export function RiskExplanationPanel() {
                 {speechEnabled ? '已开启' : '已关闭'}
               </button>
             </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-semibold" style={{ color: 'var(--ink-700)' }}>
+                    安全等深线
+                  </div>
+                  <div className="text-[9px]" style={{ color: 'var(--ink-500)' }}>
+                    水文图层显示深度阈值
+                  </div>
+                </div>
+                <span
+                  className="rounded-full px-2 py-0.5 font-mono text-[10px]"
+                  style={{
+                    background: safetyContourOverride === null
+                      ? 'color-mix(in oklch, var(--risk-safe) 12%, transparent)'
+                      : 'color-mix(in oklch, var(--risk-warning) 12%, transparent)',
+                    color: safetyContourOverride === null ? 'var(--risk-safe)' : 'var(--risk-warning)',
+                  }}
+                >
+                  {effectiveSafetyContourVal.toFixed(1)}m
+                </span>
+              </div>
+              <input
+                aria-label="Safety contour value"
+                type="range"
+                min={CONTOUR_MIN}
+                max={CONTOUR_MAX}
+                step={CONTOUR_STEP}
+                value={Math.round(effectiveSafetyContourVal)}
+                onChange={(event) => setSafetyContourOverride(Number(event.target.value))}
+                className="h-1.5 w-full cursor-pointer appearance-none rounded-full"
+                style={{ background: 'color-mix(in oklch, var(--ink-500) 15%, transparent)' }}
+              />
+              <div className="mt-1 flex items-center justify-between">
+                <span className="font-mono text-[9px]" style={{ color: 'var(--ink-500)' }}>
+                  {CONTOUR_MIN}m
+                </span>
+                <button
+                  type="button"
+                  disabled={safetyContourOverride === null}
+                  onClick={() => setSafetyContourOverride(null)}
+                  className="rounded-full px-2 py-0.5 text-[9px] font-medium transition disabled:cursor-default disabled:opacity-40"
+                  style={{
+                    background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                    color: 'var(--ink-700)',
+                  }}
+                >
+                  恢复实时值
+                </button>
+                <span className="font-mono text-[9px]" style={{ color: 'var(--ink-500)' }}>
+                  {CONTOUR_MAX}m
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -550,7 +739,7 @@ export function RiskExplanationPanel() {
             )}
 
             <div className="scrollbar-apple flex-1 min-h-0 space-y-2.5 overflow-y-auto p-4">
-              {sortedExplainedTargets.length === 0 ? (
+              {displayedCards.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                   <div
                     style={{
@@ -584,17 +773,18 @@ export function RiskExplanationPanel() {
                   </p>
                 </div>
               ) : (
-                sortedExplainedTargets.map(({ target, explanation }) => {
+                displayedCards.map(({ target, explanation, isLeaving, renderKey }) => {
                   const color = riskColors[explanation.risk_level];
                   const isSelected = selectedTargetIds.includes(target.id);
                   const encounterLabel = translateEncounterType(target.risk_assessment.encounter_type);
 
                   return (
                     <div
-                      key={explanation.event_id}
+                      key={renderKey}
                       onClick={() => selectTarget(target.id)}
-                      className="cursor-pointer overflow-hidden rounded-2xl transition-all duration-200"
+                      className={`${isLeaving ? 'card-exit' : 'anim-rise'} cursor-pointer overflow-hidden rounded-2xl transition-all duration-200`}
                       style={{
+                        transformOrigin: 'top center',
                         background: isSelected
                           ? `color-mix(in oklch, ${color} 8%, ${isDarkMode ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.9)'})`
                           : isDarkMode

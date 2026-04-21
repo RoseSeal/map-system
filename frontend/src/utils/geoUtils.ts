@@ -244,7 +244,8 @@ export function generateEllipsePolygon(
   const vertices: LonLat[] = [];
   const headingRad = degToRad(headingDeg);
   
-  // Semi-axes in meters
+  // Consume the backend's asymmetric fore/aft/port/stbd extents directly so
+  // the rendered domain preserves the actual ship-relative envelope.
   const fore = nmToMeters(dimensions.fore_nm);
   const aft = nmToMeters(dimensions.aft_nm);
   const port = nmToMeters(dimensions.port_nm);
@@ -252,55 +253,12 @@ export function generateEllipsePolygon(
   
   for (let i = 0; i <= numPoints; i++) {
     const angle = (2 * Math.PI * i) / numPoints;
-    
-    // Determine quadrant radii
-    // 0 degrees = North (Fore) in this logic if we use sin for X and cos for Y
     const sinA = Math.sin(angle);
     const cosA = Math.cos(angle);
-    
-    let xRadius, yRadius;
-    
-    // Right side (Stbd) or Left side (Port)
-    if (sinA >= 0) {
-      xRadius = stbd;
-    } else {
-      xRadius = port;
-    }
-    
-    // Fore or Aft
-    if (cosA >= 0) {
-      yRadius = fore;
-    } else {
-      yRadius = aft;
-    }
-    
-    // Calculate local coordinates (Ship Frame: +Y=Fore, +X=Stbd)
+    const xRadius = sinA >= 0 ? stbd : port;
+    const yRadius = cosA >= 0 ? fore : aft;
     const x = xRadius * sinA;
     const y = yRadius * cosA;
-    
-    // Rotate by heading (Standard 2D rotation)
-    // Map Space: +Y is North. Ship Heading 0 = North.
-    // If Ship Heading is 90 (East), x (Stbd) should point South? No.
-    // If Heading=0: x=Stbd(East), y=Fore(North).
-    // If Heading=90: Stbd(East) becomes South. Fore(North) becomes East.
-    // xNew = x*cos(90) + y*sin(90) = y
-    // yNew = -x*sin(90) + y*cos(90) = -x
-    // Wait, standard rotation usually CCW. Heading is usually CW (0=N, 90=E).
-    // Heading 0: x=+X, y=+Y.
-    // Heading 90 (CW): Ship points +X. Stbd points -Y.
-    // Rotated X = x*cos(-hdg) - y*sin(-hdg)
-    // Rotated Y = x*sin(-hdg) + y*cos(-hdg)
-    // Using deck.gl / map coordinates usually needs careful verification.
-    // Previous code used:
-    // xRot = x * cos - y * sin
-    // yRot = x * sin + y * cos
-    // This is positive rotation (CCW).
-    // If heading is 90 (East), headingRad should be -PI/2 if using standard math?
-    // MapLibre/Geo: Bearing 90 is East.
-    // Let's stick to the previous rotation formula to avoid breaking existing orientation.
-    // The previous formula:
-    // Rotate by negative heading so that increasing heading (clockwise)
-    // rotates the local ship frame clockwise as in compass bearings.
     const cosH = Math.cos(headingRad);
     const sinH = Math.sin(headingRad);
     const xRot = x * cosH + y * sinH;

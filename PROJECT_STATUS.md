@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-04-16
+> Last updated: 2026-04-19
 
 ## 1. Current Baseline
 
@@ -9,9 +9,14 @@
 
 ## 2. v1.0 Final Status
 
-| Step | Plan | Implementation |
-| --- | --- |
-| Overview plan | completed | not applicable |
+| Item | Plan | Implementation |
+| --- | --- | --- |
+| Milestone overview ([`docs/v1.0/README.md`](./docs/v1.0/README.md)) | completed | not applicable |
+| `agent` track ([`docs/v1.0/agent/AGENT_LOOP_PLAN.md`](./docs/v1.0/agent/AGENT_LOOP_PLAN.md)) | completed | in_progress |
+| `hydrology` track ([`docs/v1.0/hydrology/HYDROLOGY_PLAN.md`](./docs/v1.0/hydrology/HYDROLOGY_PLAN.md)) | completed | in_progress |
+| `hydrology` Step 1 ([`docs/v1.0/hydrology/step1.md`](./docs/v1.0/hydrology/step1.md)) | completed | completed |
+| `weather` track ([`docs/v1.0/weather/WEATHER_PLAN.md`](./docs/v1.0/weather/WEATHER_PLAN.md)) | completed | in_progress |
+| `weather` Step 1 ([`docs/v1.0/weather/step1.md`](./docs/v1.0/weather/step1.md)) | completed | completed |
 
 ## 3. Update Rule
 

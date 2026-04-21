@@ -69,8 +69,7 @@ describe('StatusPanel', () => {
     expect(screen.getByText('10.0')).toBeDefined();
     expect(screen.getByText('STREAM')).toBeDefined();
     expect(screen.getByText('AI-WS')).toBeDefined();
-    expect(screen.getByText('环境告警')).toBeDefined();
-    expect(screen.getByText('活动告警 1 项')).toBeDefined();
+    expect(screen.getByText('环境告警 1 项')).toBeDefined();
   });
 
   it('renders low confidence warning when isLowTrust is true', () => {
