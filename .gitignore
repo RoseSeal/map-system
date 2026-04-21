@@ -50,4 +50,5 @@ AGENTS.md
 .gemini/
 .github/
 .claude/
+.agents/
 skills-lock.json

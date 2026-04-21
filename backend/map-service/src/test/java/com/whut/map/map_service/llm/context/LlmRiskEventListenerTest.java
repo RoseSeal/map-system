@@ -9,6 +9,7 @@ import com.whut.map.map_service.risk.engine.encounter.EncounterClassifier;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.risk.event.RiskAssessmentCompletedEvent;
+import com.whut.map.map_service.llm.agent.trigger.SceneRiskStateTracker;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
@@ -17,6 +18,7 @@ import com.whut.map.map_service.llm.service.LlmExplanationService;
 import com.whut.map.map_service.llm.service.LlmTriggerService;
 import com.whut.map.map_service.risk.transport.RiskStreamPublisher;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -38,7 +40,9 @@ class LlmRiskEventListenerTest {
                 holder,
                 triggerService,
                 explanationCache,
-                publisher
+                publisher,
+                new SceneRiskStateTracker(new LlmProperties(), null,
+                        new StaticListableBeanFactory().getBeanProvider(com.whut.map.map_service.llm.agent.trigger.AdvisoryTriggerPort.class))
         );
 
         listener.onRiskAssessmentCompleted(riskEvent(7L, false));
@@ -73,7 +77,9 @@ class LlmRiskEventListenerTest {
                 holder,
                 triggerService,
                 explanationCache,
-                publisher
+                publisher,
+                new SceneRiskStateTracker(new LlmProperties(), null,
+                        new StaticListableBeanFactory().getBeanProvider(com.whut.map.map_service.llm.agent.trigger.AdvisoryTriggerPort.class))
         );
 
         listener.onRiskAssessmentCompleted(riskEvent(8L, true));
@@ -100,7 +106,9 @@ class LlmRiskEventListenerTest {
                 holder,
                 triggerService,
                 explanationCache,
-                publisher
+                publisher,
+                new SceneRiskStateTracker(new LlmProperties(), null,
+                        new StaticListableBeanFactory().getBeanProvider(com.whut.map.map_service.llm.agent.trigger.AdvisoryTriggerPort.class))
         );
 
         listener.onRiskAssessmentCompleted(riskEvent(8L, true));
@@ -130,7 +138,9 @@ class LlmRiskEventListenerTest {
                 holder,
                 triggerService,
                 explanationCache,
-                publisher
+                publisher,
+                new SceneRiskStateTracker(new LlmProperties(), null,
+                        new StaticListableBeanFactory().getBeanProvider(com.whut.map.map_service.llm.agent.trigger.AdvisoryTriggerPort.class))
         );
 
         listener.onRiskAssessmentCompleted(riskEvent(8L, true));

@@ -23,10 +23,18 @@ public class LlmProperties {
 
     private ProviderProperties gemini = new ProviderProperties();
     private ProviderProperties zhipu = new ProviderProperties();
+    private Advisory advisory = new Advisory();
 
     @Data
     public static class ProviderProperties {
         private String apiKey;
         private String model;
+    }
+
+    @Data
+    public static class Advisory {
+        private boolean enabled = false;
+        private int tcpaThresholdSeconds = 300;
+        private int snapshotStalenessThreshold = 5;
     }
 }

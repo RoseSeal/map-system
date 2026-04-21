@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 public class LlmTriggerService {
     private final LlmProperties llmProperties;
     private final ConcurrentHashMap<String, Instant> nextAllowedTimeMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, RiskLevel> lastExplainedLevelMap = new ConcurrentHashMap<>();
     private final LlmExplanationService llmExplanationService;
 
     public void triggerExplanationsIfNeeded(
@@ -66,10 +67,12 @@ public class LlmTriggerService {
                 .map(LlmRiskTargetContext::getTargetId)
                 .collect(Collectors.toSet());
         nextAllowedTimeMap.keySet().retainAll(activeTargetIds);
+        lastExplainedLevelMap.keySet().retainAll(activeTargetIds);
 
-        List<LlmRiskTargetContext> triggeredTargets = targets.stream()
+        List<LlmExplanationService.ExplanationTrigger> triggeredTargets = targets.stream()
                 .filter(this::isExplainableTarget)
-                .filter(this::tryAcquireTrigger)
+                .map(this::buildExplanationTrigger)
+                .filter(Objects::nonNull)
                 .limit(llmProperties.getMaxTargetsPerCall())
                 .toList();
 
@@ -78,11 +81,42 @@ public class LlmTriggerService {
             return;
         }
 
+        Consumer<LlmExplanation> wrappedOnExplanation = explanation -> {
+            RiskLevel level = RiskLevel.fromValue(explanation.getRiskLevel());
+            if (level != null && explanation.getTargetId() != null) {
+                lastExplainedLevelMap.put(explanation.getTargetId(), level);
+            }
+            onExplanation.accept(explanation);
+        };
+
         llmExplanationService.generateTargetExplanationsAsync(
                 ownShip,
                 triggeredTargets,
-                onExplanation,
+                wrappedOnExplanation,
                 onError
+        );
+    }
+
+    private LlmExplanationService.ExplanationTrigger buildExplanationTrigger(LlmRiskTargetContext target) {
+        RiskLevel lastExplainedLevel = lastExplainedLevelMap.get(target.getTargetId());
+        if (isLevelUpgrade(target, lastExplainedLevel)) {
+            // Reset cooldown timer so the next same-level frame uses the cooldown gate
+            nextAllowedTimeMap.put(target.getTargetId(), Instant.now().plus(cooldown()));
+            return new LlmExplanationService.ExplanationTrigger(
+                    target,
+                    LlmExplanationService.TriggerReason.LEVEL_UPGRADE,
+                    lastExplainedLevel
+            );
+        }
+
+        if (!tryAcquireTrigger(target)) {
+            return null;
+        }
+
+        return new LlmExplanationService.ExplanationTrigger(
+                target,
+                LlmExplanationService.TriggerReason.COOLDOWN_REFRESH,
+                lastExplainedLevel
         );
     }
 
@@ -102,6 +136,10 @@ public class LlmTriggerService {
         });
 
         return acquired.get();
+    }
+
+    private boolean isLevelUpgrade(LlmRiskTargetContext target, RiskLevel lastExplainedLevel) {
+        return lastExplainedLevel != null && target.getRiskLevel().compareTo(lastExplainedLevel) > 0;
     }
 
     private boolean isExplainableTarget(LlmRiskTargetContext target) {

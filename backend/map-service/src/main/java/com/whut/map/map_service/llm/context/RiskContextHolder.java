@@ -26,6 +26,10 @@ public class RiskContextHolder {
         return snapshot == null ? null : snapshot.version();
     }
 
-    record Snapshot(long version, LlmRiskContext context, Instant updatedAt) {
+    public Snapshot getSnapshot() {
+        return snapshot;
+    }
+
+    public record Snapshot(long version, LlmRiskContext context, Instant updatedAt) {
     }
 }

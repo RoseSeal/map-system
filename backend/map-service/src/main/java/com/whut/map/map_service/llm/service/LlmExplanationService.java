@@ -10,6 +10,7 @@ import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.llm.prompt.PromptScene;
 import com.whut.map.map_service.llm.prompt.PromptTemplateService;
+import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.shared.util.GeoUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.RequiredArgsConstructor;
@@ -39,9 +40,21 @@ public class LlmExplanationService {
     public record LlmExplanationError(LlmErrorCode errorCode, String errorMessage) {
     }
 
+    public enum TriggerReason {
+        LEVEL_UPGRADE,
+        COOLDOWN_REFRESH
+    }
+
+    public record ExplanationTrigger(
+            LlmRiskTargetContext target,
+            TriggerReason triggerReason,
+            RiskLevel previousRiskLevel
+    ) {
+    }
+
     public void generateTargetExplanationsAsync(
             LlmRiskOwnShipContext ownShip,
-            List<LlmRiskTargetContext> triggeredTargets,
+            List<ExplanationTrigger> triggeredTargets,
             Consumer<LlmExplanation> onSuccess,
             BiConsumer<LlmRiskTargetContext, LlmExplanationError> onError
     ) {
@@ -56,8 +69,9 @@ public class LlmExplanationService {
                 triggeredTargets.size(),
                 llmProperties.getProvider());
 
-        for (LlmRiskTargetContext target : triggeredTargets) {
-            List<LlmChatMessage> messages = buildMessages(ownShip, target);
+        for (ExplanationTrigger trigger : triggeredTargets) {
+            LlmRiskTargetContext target = trigger.target();
+            List<LlmChatMessage> messages = buildMessages(ownShip, trigger);
             log.debug("Built LLM messages for target {}: {}", target.getTargetId(), messages);
             CompletableFuture<String> future = CompletableFuture
                     .supplyAsync(() -> llmClient.chat(messages), llmExecutor);
@@ -99,7 +113,8 @@ public class LlmExplanationService {
         }
     }
 
-    private List<LlmChatMessage> buildMessages(LlmRiskOwnShipContext ownShip, LlmRiskTargetContext target) {
+    private List<LlmChatMessage> buildMessages(LlmRiskOwnShipContext ownShip, ExplanationTrigger trigger) {
+        LlmRiskTargetContext target = trigger.target();
         return List.of(
                 new LlmChatMessage(
                         ChatRole.SYSTEM,
@@ -118,6 +133,7 @@ public class LlmExplanationService {
                         位置: (%.4f, %.4f)
                         航速: %.1f 节，航向: %.1f°
                         风险等级: %s
+                        触发原因: %s
                         现距: %s
                         相对方位: %s
                         DCPA: %.2f 海里，TCPA: %.0f 秒
@@ -133,6 +149,7 @@ public class LlmExplanationService {
                                 target.getLongitude(), target.getLatitude(),
                                 target.getSpeedKn(), target.getCourseDeg(),
                                 target.getRiskLevel() == null ? "未知" : target.getRiskLevel().name(),
+                                formatTriggerReason(trigger),
                                 formatDistanceNm(target.getCurrentDistanceNm()),
                                 formatRelativeBearing(target.getRelativeBearingDeg()),
                                 target.getDcpaNm(), target.getTcpaSec(),
@@ -141,6 +158,15 @@ public class LlmExplanationService {
                         )
                 )
         );
+    }
+
+    private String formatTriggerReason(ExplanationTrigger trigger) {
+        if (trigger.triggerReason() == TriggerReason.LEVEL_UPGRADE) {
+            String previous = trigger.previousRiskLevel() == null ? "未知" : trigger.previousRiskLevel().name();
+            String current = trigger.target().getRiskLevel() == null ? "未知" : trigger.target().getRiskLevel().name();
+            return "风险等级升级（%s -> %s）".formatted(previous, current);
+        }
+        return "冷却窗口到期，基于当前态势重新解释";
     }
 
     private Throwable unwrap(Throwable throwable) {

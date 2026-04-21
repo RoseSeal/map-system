@@ -5,6 +5,7 @@ import com.whut.map.map_service.risk.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.llm.dto.LlmExplanation;
 import com.whut.map.map_service.llm.service.LlmErrorCode;
 import com.whut.map.map_service.llm.service.LlmTriggerService;
+import com.whut.map.map_service.llm.agent.trigger.SceneRiskStateTracker;
 import com.whut.map.map_service.risk.transport.RiskStreamPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class LlmRiskEventListener {
     private final LlmTriggerService llmTriggerService;
     private final ExplanationCache explanationCache;
     private final RiskStreamPublisher riskStreamPublisher;
+    private final SceneRiskStateTracker sceneRiskStateTracker;
 
     @EventListener
     public void onRiskAssessmentCompleted(RiskAssessmentCompletedEvent event) {
@@ -42,6 +44,7 @@ public class LlmRiskEventListener {
         );
         riskContextHolder.update(event.snapshotVersion(), context);
         explanationCache.refreshTargetState(buildCurrentTargetIds(event), buildCurrentNonSafeTargetIds(context));
+        sceneRiskStateTracker.onSceneUpdate(context);
 
         if (!event.triggerExplanations()) {
             return;

@@ -57,7 +57,11 @@ class LlmExplanationServiceTest {
             CapturingExplanationCallback callback = new CapturingExplanationCallback();
             service.generateTargetExplanationsAsync(
                     ownShip,
-                    List.of(target),
+                    List.of(new LlmExplanationService.ExplanationTrigger(
+                            target,
+                            LlmExplanationService.TriggerReason.LEVEL_UPGRADE,
+                            RiskLevel.CAUTION
+                    )),
                     callback::captureSuccess,
                     callback::captureError
             );
@@ -78,6 +82,7 @@ class LlmExplanationServiceTest {
                     .contains("ID: target-9")
                     .contains("航向: 270.1°")
                     .contains("风险等级: WARNING")
+                    .contains("触发原因: 风险等级升级（CAUTION -> WARNING）")
                     .contains("现距: 0.80 海里")
                     .contains("相对方位: 右舷前方 (45°)")
                     .contains("DCPA: 0.42 海里")
@@ -88,6 +93,58 @@ class LlmExplanationServiceTest {
             assertThat(callback.success().getProvider()).isEqualTo("gemini");
             assertThat(callback.success().getText()).isEqualTo("risk reply");
             assertThat(callback.errorCode()).isNull();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void explanationRequestsIncludeCooldownRefreshReason() throws Exception {
+        LlmProperties properties = buildProperties(true, 1000L, "gemini");
+        StubLlmClient llmClient = new StubLlmClient();
+        llmClient.response = "risk reply";
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            LlmExplanationService service = new LlmExplanationService(properties, llmClient, promptTemplateService, executor);
+            LlmRiskOwnShipContext ownShip = LlmRiskOwnShipContext.builder()
+                    .id("own-1")
+                    .longitude(120.1234)
+                    .latitude(30.5678)
+                    .sog(12.3)
+                    .cog(87.6)
+                    .heading(35.0)
+                    .build();
+            LlmRiskTargetContext target = LlmRiskTargetContext.builder()
+                    .targetId("target-9")
+                    .longitude(121.2345)
+                    .latitude(31.6789)
+                    .speedKn(10.4)
+                    .courseDeg(270.1)
+                    .riskLevel(RiskLevel.WARNING)
+                    .currentDistanceNm(0.80)
+                    .relativeBearingDeg(45.0)
+                    .dcpaNm(0.42)
+                    .tcpaSec(240)
+                    .approaching(true)
+                    .ruleExplanation("DCPA and TCPA exceed warning thresholds")
+                    .build();
+            CapturingExplanationCallback callback = new CapturingExplanationCallback();
+            service.generateTargetExplanationsAsync(
+                    ownShip,
+                    List.of(new LlmExplanationService.ExplanationTrigger(
+                            target,
+                            LlmExplanationService.TriggerReason.COOLDOWN_REFRESH,
+                            RiskLevel.WARNING
+                    )),
+                    callback::captureSuccess,
+                    callback::captureError
+            );
+
+            callback.await();
+            List<LlmChatMessage> messages = llmClient.lastMessages;
+            assertThat(messages).hasSize(2);
+            assertThat(messages.get(1).content())
+                    .contains("触发原因: 冷却窗口到期，基于当前态势重新解释");
         } finally {
             executor.shutdownNow();
         }
