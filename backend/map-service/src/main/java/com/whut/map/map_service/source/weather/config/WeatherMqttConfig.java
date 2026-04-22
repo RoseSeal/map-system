@@ -57,9 +57,13 @@ public class WeatherMqttConfig {
                     mqttProperties.getBroker(),
                     mqttProperties.getTopic());
         } catch (MqttException e) {
-            log.info("Failed to connect weather MQTT client to broker: {}, error: {}",
+            Throwable cause = e.getCause();
+            log.warn("Failed to connect weather MQTT client to broker: {}, reasonCode={}, error={}, causeType={}, causeMessage={}",
                     mqttProperties.getBroker(),
-                    e.getMessage());
+                    e.getReasonCode(),
+                    e.getMessage(),
+                    cause == null ? null : cause.getClass().getSimpleName(),
+                    cause == null ? null : cause.getMessage());
         }
     }
 

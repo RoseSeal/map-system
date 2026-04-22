@@ -29,6 +29,22 @@ public class LlmProperties {
     public static class ProviderProperties {
         private String apiKey;
         private String model;
+        private ProxyProperties proxy = new ProxyProperties();
+        private RetryProperties retry = new RetryProperties();
+    }
+
+    @Data
+    public static class ProxyProperties {
+        private boolean enabled = false;
+        private String host;
+        private Integer port;
+        private String scheme = "http";
+    }
+
+    @Data
+    public static class RetryProperties {
+        private int maxRetries = 2;
+        private long initialBackoffMs = 1000L;
     }
 
     @Data

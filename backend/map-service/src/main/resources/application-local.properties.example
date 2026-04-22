@@ -1,3 +1,9 @@
 llm.provider=zhipu
 llm.zhipu.api-key=YOUR_ZHIPU_API_KEY
 llm.gemini.api-key=YOUR_GEMINI_API_KEY
+llm.gemini.proxy.enabled=true
+llm.gemini.proxy.host=127.0.0.1
+llm.gemini.proxy.port=7897
+llm.gemini.proxy.scheme=http
+llm.gemini.retry.max-retries=2
+llm.gemini.retry.initial-backoff-ms=1000

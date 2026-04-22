@@ -1,5 +1,6 @@
 package com.whut.map.map_service.llm.service;
 
+import com.google.genai.errors.ApiException;
 import com.whut.map.map_service.llm.config.LlmExecutorConfig;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.client.LlmClient;
@@ -109,6 +110,16 @@ public class LlmChatService {
                                 return;
                             }
 
+                            if (cause instanceof ApiException apiException && apiException.code() == 503) {
+                                log.warn("LLM chat request hit temporary upstream overload, provider={}, status={}, message={}",
+                                        resolveProviderName(),
+                                        apiException.status(),
+                                        apiException.message());
+                                onError.accept(LlmErrorCode.LLM_FAILED,
+                                        "LLM service is temporarily unavailable due to high demand. Please retry shortly.");
+                                return;
+                            }
+
                             log.warn("LLM chat request failed, type={}, message={}",
                                     cause.getClass().getSimpleName(),
                                     cause.getMessage());
@@ -205,9 +216,12 @@ public class LlmChatService {
     }
 
     private Throwable unwrap(Throwable throwable) {
-        if (throwable instanceof CompletionException && throwable.getCause() != null) {
-            return throwable.getCause();
+        Throwable current = throwable;
+        while ((current instanceof CompletionException
+                || current instanceof java.util.concurrent.ExecutionException)
+                && current.getCause() != null) {
+            current = current.getCause();
         }
-        return throwable;
+        return current;
     }
 }

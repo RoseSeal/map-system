@@ -58,8 +58,13 @@ public class MqttConfig {
 
             log.info("MQTT client connected to broker: {}, subscribed to topic: {}", mqttProperties.getBroker(), mqttProperties.getTopic());
         } catch (MqttException e) {
-            log.info("Failed to connect MQTT client to broker: {}, error: {}", mqttProperties.getBroker(), e.getMessage());
+            Throwable cause = e.getCause();
+            log.warn("Failed to connect MQTT client to broker: {}, reasonCode={}, error={}, causeType={}, causeMessage={}",
+                    mqttProperties.getBroker(),
+                    e.getReasonCode(),
+                    e.getMessage(),
+                    cause == null ? null : cause.getClass().getSimpleName(),
+                    cause == null ? null : cause.getMessage());
         }
     }
 }
-
