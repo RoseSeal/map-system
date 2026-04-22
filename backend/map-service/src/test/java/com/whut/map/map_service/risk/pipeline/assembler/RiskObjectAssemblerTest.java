@@ -12,6 +12,7 @@ import com.whut.map.map_service.risk.pipeline.assembler.riskobject.OwnShipAssemb
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskObjectMetaAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskVisualizationAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.TargetAssembler;
+import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
 import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +29,8 @@ class RiskObjectAssemblerTest {
             new RiskObjectMetaAssembler(
                     new RiskObjectMetaProperties(),
                     new WeatherContextHolder(),
-                    WEATHER_ALERT_PROPERTIES
+                    WEATHER_ALERT_PROPERTIES,
+                    new RegionalWeatherResolver()
             ),
             new OwnShipAssembler(),
             new TargetAssembler(new RiskVisualizationAssembler())

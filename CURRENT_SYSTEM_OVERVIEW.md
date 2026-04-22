@@ -32,21 +32,21 @@ Project status tracker:
 
 At last update in status file:
 - Latest completed milestone: v0.9 frontend enhancement
-- Active milestone: none
+- Active milestone: v1.0 implementation milestone (`agent` mainline, `hydrology` / `weather` parallel tracks)
 
 ### 2.3 Effective Artifact Counts (Code + Docs)
 
-Measured from current workspace:
-- `map-service` main Java files: 124
-- `map-service` test Java files: 37
+Measured from the current workspace snapshot, excluding dependency directories such as `frontend/node_modules` and local agent-skill folders:
+- `map-service` main Java files: 131
+- `map-service` test Java files: 39
 - `listener-service` main Java files: 8
 - `listener-service` test Java files: 1
-- Frontend source files (`ts`, `tsx`, `css`): 49
+- Frontend source files (`ts`, `tsx`, `css`): 52
 - Frontend test files: 8
-- Markdown docs total: 42
+- Project Markdown docs total: 55
 - Current root docs under `docs/` (non-history): 6
 - History docs: 31
-- Simulator top-level scripts: 6
+- Simulator top-level scripts: 7
 - Repo utility scripts: 2
 
 ### 2.4 Top-Level Repository Structure

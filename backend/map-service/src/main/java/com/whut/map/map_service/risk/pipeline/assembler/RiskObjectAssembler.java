@@ -56,7 +56,7 @@ public class RiskObjectAssembler {
                 .ownShip(ownShipAssembler.assemble(ownShip, domainResult))
                 .targets(targetAssembler.assembleTargets(
                         ownShip, allShips, cpaResults, riskResult, cvResults, encounterResults))
-                .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext())
+                .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext(ownShip))
                 .build();
     }
 

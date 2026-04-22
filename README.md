@@ -17,12 +17,12 @@ MQTT -> `map-service` -> SSE (`/api/v2/risk`) + WebSocket (`/api/v2/chat`) -> Fr
 
 ## Documentation
 
-- Architecture: [docs/ARCHITECTURE.md](/home/xin/workspace/map-system/docs/ARCHITECTURE.md)
-- System Design: [docs/design.md](/home/xin/workspace/map-system/docs/design.md)
-- Event Schema: [docs/EVENT_SCHEMA.md](/home/xin/workspace/map-system/docs/EVENT_SCHEMA.md)
-- LLM Roadmap: [docs/LLM_ROADMAP.md](/home/xin/workspace/map-system/docs/LLM_ROADMAP.md)
-- LLM Enhancement Plan: [docs/llm-enhancement/LLM_ENHANCEMENT_PLAN.md](/home/xin/workspace/map-system/docs/llm-enhancement/LLM_ENHANCEMENT_PLAN.md)
-- Frontend Design: [docs/frontend-design.md](/home/xin/workspace/map-system/docs/frontend-design.md)
+- Docs index: [docs/README.md](./docs/README.md)
+- Current architecture truth: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- Current protocol truth: [docs/EVENT_SCHEMA.md](./docs/EVENT_SCHEMA.md)
+- Frontend architecture and interaction model: [docs/frontend-design.md](./docs/frontend-design.md)
+- Current project status: [PROJECT_STATUS.md](./PROJECT_STATUS.md)
+- Current system overview: [CURRENT_SYSTEM_OVERVIEW.md](./CURRENT_SYSTEM_OVERVIEW.md)
 
 ## Tech Stack
 

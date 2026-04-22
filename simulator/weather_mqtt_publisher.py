@@ -3,7 +3,7 @@ import json
 import random
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Dict, List, Optional
 
 from mqtt_publisher_base import BaseMqttPublisher, MqttConfig
 
@@ -63,7 +63,43 @@ SCENES: Dict[str, WeatherScene] = {
         surface_current_set_deg=120.0,
         sea_state=7,
     ),
+    "zoned_fog": WeatherScene(
+        weather_code="CLEAR",
+        visibility_nm=10.0,
+        precipitation_mm_per_hr=0.0,
+        wind_speed_kn=5.0,
+        wind_direction_from_deg=270.0,
+        surface_current_speed_kn=0.3,
+        surface_current_set_deg=90.0,
+        sea_state=2,
+    ),
 }
+
+# Static zone definitions for scenes that carry weather_zones.
+# Coordinates follow GeoJSON [longitude, latitude] convention.
+_ZONED_FOG_ZONES: List[Dict] = [
+    {
+        "zone_id": "fog-bank-east",
+        "weather_code": "FOG",
+        "visibility_nm": 0.8,
+        "precipitation_mm_per_hr": 0.0,
+        "wind": {"speed_kn": 3.0, "direction_from_deg": 225},
+        "surface_current": {"speed_kn": 0.4, "set_deg": 90},
+        "sea_state": 2,
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [114.30, 30.52],
+                    [114.34, 30.52],
+                    [114.34, 30.56],
+                    [114.30, 30.56],
+                    [114.30, 30.52],
+                ]
+            ],
+        },
+    }
+]
 
 
 class WeatherMqttPublisher(BaseMqttPublisher):
@@ -93,7 +129,7 @@ class WeatherMqttPublisher(BaseMqttPublisher):
         surface_current_set_deg = self._jitter_direction(self.scene.surface_current_set_deg)
         sea_state = self._jitter_sea_state(self.scene.sea_state)
 
-        return {
+        payload: Dict[str, object] = {
             "weather_code": self.scene.weather_code,
             "visibility_nm": round(visibility_nm, 2),
             "precipitation_mm_per_hr": round(precipitation_mm_per_hr, 2),
@@ -108,6 +144,17 @@ class WeatherMqttPublisher(BaseMqttPublisher):
             "sea_state": sea_state,
             "timestamp_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         }
+
+        zones = self._build_zones()
+        if zones is not None:
+            payload["weather_zones"] = zones
+
+        return payload
+
+    def _build_zones(self) -> Optional[List[Dict]]:
+        if self.scene_name == "zoned_fog":
+            return _ZONED_FOG_ZONES
+        return None
 
     def _jitter_scalar(self, value: float) -> float:
         if self.jitter <= 0.0:

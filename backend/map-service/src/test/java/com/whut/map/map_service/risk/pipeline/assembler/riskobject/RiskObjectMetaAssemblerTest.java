@@ -2,6 +2,8 @@ package com.whut.map.map_service.risk.pipeline.assembler.riskobject;
 
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
+import com.whut.map.map_service.shared.domain.ShipStatus;
+import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
 import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +22,8 @@ class RiskObjectMetaAssemblerTest {
         RiskObjectMetaAssembler assembler = new RiskObjectMetaAssembler(
                 properties,
                 new WeatherContextHolder(),
-                WEATHER_ALERT_PROPERTIES
+                WEATHER_ALERT_PROPERTIES,
+                new RegionalWeatherResolver()
         );
 
         Map<String, Object> governance = assembler.buildGovernance(0.42);
@@ -36,13 +39,16 @@ class RiskObjectMetaAssemblerTest {
         RiskObjectMetaAssembler assembler = new RiskObjectMetaAssembler(
                 properties,
                 new WeatherContextHolder(),
-                WEATHER_ALERT_PROPERTIES
+                WEATHER_ALERT_PROPERTIES,
+                new RegionalWeatherResolver()
         );
 
-        Map<String, Object> environmentContext = assembler.buildEnvironmentContext();
+        ShipStatus ownShip = ShipStatus.builder().id("OWN").latitude(0.0).longitude(0.0).build();
+        Map<String, Object> environmentContext = assembler.buildEnvironmentContext(ownShip);
 
         assertThat(environmentContext).containsEntry("safety_contour_val", 12.5);
         assertThat(environmentContext).containsEntry("active_alerts", java.util.List.of());
         assertThat(environmentContext).containsEntry("weather", null);
+        assertThat(environmentContext).containsEntry("weather_zones", null);
     }
 }

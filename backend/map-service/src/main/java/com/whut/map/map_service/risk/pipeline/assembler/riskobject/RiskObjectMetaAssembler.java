@@ -3,8 +3,10 @@ package com.whut.map.map_service.risk.pipeline.assembler.riskobject;
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.shared.domain.ShipStatus;
+import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
 import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
 import com.whut.map.map_service.source.weather.dto.WeatherContext;
+import com.whut.map.map_service.source.weather.dto.WeatherZoneContext;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -15,6 +17,9 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class RiskObjectMetaAssembler {
@@ -24,18 +29,23 @@ public class RiskObjectMetaAssembler {
     private static final String ALERT_HEAVY_PRECIPITATION = "HEAVY_PRECIPITATION";
     private static final String ALERT_STRONG_CURRENT_SET = "STRONG_CURRENT_SET";
 
+    private static final Set<String> VALID_GEOMETRY_TYPES = Set.of("Polygon", "MultiPolygon");
+
     private final RiskObjectMetaProperties properties;
     private final WeatherContextHolder weatherContextHolder;
     private final WeatherAlertProperties weatherAlertProperties;
+    private final RegionalWeatherResolver regionalWeatherResolver;
 
     public RiskObjectMetaAssembler(
             RiskObjectMetaProperties properties,
             WeatherContextHolder weatherContextHolder,
-            WeatherAlertProperties weatherAlertProperties
+            WeatherAlertProperties weatherAlertProperties,
+            RegionalWeatherResolver regionalWeatherResolver
     ) {
         this.properties = properties;
         this.weatherContextHolder = weatherContextHolder;
         this.weatherAlertProperties = weatherAlertProperties;
+        this.regionalWeatherResolver = regionalWeatherResolver;
     }
 
     public String buildSnapshotTimestamp(Collection<ShipStatus> allShips, ShipStatus fallback) {
@@ -61,22 +71,71 @@ public class RiskObjectMetaAssembler {
         return Map.of("mode", properties.getGovernanceMode(), "trust_factor", trustFactor);
     }
 
-    public Map<String, Object> buildEnvironmentContext() {
-        Map<String, Object> environmentContext = new LinkedHashMap<>();
-        environmentContext.put("safety_contour_val", properties.getSafetyContourVal());
+    public Map<String, Object> buildEnvironmentContext(ShipStatus ownShip) {
+        Duration staleThreshold = Duration.ofSeconds(weatherAlertProperties.getStaleThresholdSeconds());
+        Optional<WeatherContextHolder.Snapshot> snapshotOpt = weatherContextHolder.getFreshSnapshot(staleThreshold);
 
-        List<String> alerts = new ArrayList<>();
-        WeatherContext weather = weatherContextHolder
-                .getFreshContext(Duration.ofSeconds(weatherAlertProperties.getStaleThresholdSeconds()))
-                .orElse(null);
+        WeatherContext globalContext = null;
+        List<WeatherZoneContext> zones = List.of();
+        Instant snapshotUpdatedAt = null;
 
-        if (weather != null) {
-            evaluateWeatherAlerts(weather, alerts);
+        if (snapshotOpt.isPresent()) {
+            WeatherContextHolder.Snapshot snap = snapshotOpt.get();
+            globalContext = snap.globalContext();
+            zones = snap.zones();
+            snapshotUpdatedAt = snap.updatedAt();
         }
 
+        WeatherContext effectiveWeather;
+        String sourceZoneId;
+
+        if (!zones.isEmpty() && ownShip != null) {
+            Optional<WeatherZoneContext> matchedZone = regionalWeatherResolver.resolve(
+                    ownShip.getLatitude(), ownShip.getLongitude(), zones);
+            if (matchedZone.isPresent()) {
+                effectiveWeather = zoneToWeatherContext(matchedZone.get(), snapshotUpdatedAt);
+                sourceZoneId = matchedZone.get().zoneId();
+            } else {
+                effectiveWeather = globalContext;
+                sourceZoneId = null;
+            }
+        } else {
+            effectiveWeather = globalContext;
+            sourceZoneId = null;
+        }
+
+        List<String> alerts = new ArrayList<>();
+        if (effectiveWeather != null) {
+            evaluateWeatherAlerts(effectiveWeather, alerts);
+        }
+
+        Map<String, Object> weatherPayload = null;
+        if (effectiveWeather != null) {
+            weatherPayload = toWeatherPayload(effectiveWeather);
+            weatherPayload.put("source_zone_id", sourceZoneId);
+        }
+
+        List<Map<String, Object>> zonesPayload = zones.isEmpty() ? null : toZonesPayload(zones);
+
+        Map<String, Object> environmentContext = new LinkedHashMap<>();
+        environmentContext.put("safety_contour_val", properties.getSafetyContourVal());
         environmentContext.put("active_alerts", List.copyOf(alerts));
-        environmentContext.put("weather", weather == null ? null : toWeatherPayload(weather));
+        environmentContext.put("weather", weatherPayload);
+        environmentContext.put("weather_zones", zonesPayload);
         return environmentContext;
+    }
+
+    private WeatherContext zoneToWeatherContext(WeatherZoneContext zone, Instant snapshotUpdatedAt) {
+        Instant updatedAt = zone.updatedAt() != null ? zone.updatedAt() : snapshotUpdatedAt;
+        return new WeatherContext(
+                zone.weatherCode(),
+                zone.visibilityNm(),
+                zone.precipitationMmPerHr(),
+                zone.wind(),
+                zone.surfaceCurrent(),
+                zone.seaState(),
+                updatedAt
+        );
     }
 
     private void evaluateWeatherAlerts(WeatherContext weather, List<String> alerts) {
@@ -112,6 +171,30 @@ public class RiskObjectMetaAssembler {
         payload.put("sea_state", weather.seaState());
         payload.put("updated_at", formatUpdatedAt(weather.updatedAt()));
         return payload;
+    }
+
+    private List<Map<String, Object>> toZonesPayload(List<WeatherZoneContext> zones) {
+        return zones.stream()
+                .filter(z -> z.geometry() != null && VALID_GEOMETRY_TYPES.contains(z.geometry().type()))
+                .map(this::toZoneMap)
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, Object> toZoneMap(WeatherZoneContext zone) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("zone_id", zone.zoneId());
+        map.put("weather_code", zone.weatherCode());
+        map.put("visibility_nm", zone.visibilityNm());
+        map.put("precipitation_mm_per_hr", zone.precipitationMmPerHr());
+        map.put("wind", toWindPayload(zone.wind()));
+        map.put("surface_current", toSurfaceCurrentPayload(zone.surfaceCurrent()));
+        map.put("sea_state", zone.seaState());
+        map.put("updated_at", formatUpdatedAt(zone.updatedAt()));
+        Map<String, Object> geomMap = new LinkedHashMap<>();
+        geomMap.put("type", zone.geometry().type());
+        geomMap.put("coordinates", zone.geometry().coordinates());
+        map.put("geometry", geomMap);
+        return map;
     }
 
     private Map<String, Object> toWindPayload(WeatherContext.Wind wind) {

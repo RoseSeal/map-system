@@ -36,7 +36,7 @@ import {
   generateLinearTrajectory,
 } from '../../utils';
 import { useMapSettingsStore } from '../../store/useMapSettingsStore';
-import type { LonLat, OwnShip, RGBAColor } from '../../types/schema';
+import type { LonLat, OwnShip, RGBAColor, WeatherZoneContext } from '../../types/schema';
 
 const CONTOUR_DEBOUNCE_MS = 300;
 const WEATHER_FOG_SOURCE_ID = 'weather-fog-source';
@@ -44,6 +44,9 @@ const WEATHER_FOG_LAYER_ID = 'weather-fog-layer';
 const WEATHER_FOG_COLOR = '#d2d7dc';
 const WEATHER_FOG_MAX_OPACITY = 0.65;
 const WEATHER_CLEAR_VISIBILITY_NM = 10.0;
+const WEATHER_ZONE_SOURCE_PREFIX = 'weather-zone-';
+const WEATHER_ZONE_LAYER_SUFFIX = '-layer';
+const WEATHER_ZONE_SOURCE_SUFFIX = '-source';
 const NAVIGATION_PLANE_Z = 48;
 const CPA_BRIDGE_Z = 56;
 const CPA_GLOW_Z = 58;
@@ -129,6 +132,7 @@ export function MapContainer() {
   const map = useRef<maplibregl.Map | null>(null);
   const deckOverlay = useRef<MapboxOverlay | null>(null);
   const lastReloadedContourRef = useRef<number | null>(null);
+  const currentZoneIdsRef = useRef<Set<string>>(new Set());
   const [mapLoaded, setMapLoaded] = useState(false);
   const [debouncedSafetyContourVal, setDebouncedSafetyContourVal] = useState<number>(10);
   const { safetyContourOverride: localSafetyContourOverride } = useMapSettingsStore();
@@ -143,9 +147,13 @@ export function MapContainer() {
 
   const liveSafetyContourVal = environment?.safety_contour_val ?? 10;
   const effectiveSafetyContourVal = localSafetyContourOverride ?? liveSafetyContourVal;
+  const weatherZones = environment?.weather_zones;
   const fogOpacity = useMemo(
-    () => calculateFogOpacity(environment?.weather?.visibility_nm ?? null),
-    [environment?.weather?.visibility_nm],
+    () => {
+      if (weatherZones != null && weatherZones.length > 0) return 0;
+      return calculateFogOpacity(environment?.weather?.visibility_nm ?? null);
+    },
+    [environment?.weather?.visibility_nm, weatherZones],
   );
   useEffect(() => {
     setDebouncedSafetyContourVal(effectiveSafetyContourVal);
@@ -223,6 +231,7 @@ export function MapContainer() {
       mapInstance.off('pitchend', syncPitchVisibility);
       mapInstance.remove();
       map.current = null;
+      currentZoneIdsRef.current = new Set();
     };
   }, []);
 
@@ -260,6 +269,56 @@ export function MapContainer() {
     ensureFogOverlayLayer(map.current, false);
     map.current.setPaintProperty(WEATHER_FOG_LAYER_ID, 'fill-opacity', fogOpacity);
   }, [fogOpacity, mapLoaded]);
+
+  useEffect(() => {
+    if (!mapLoaded || !map.current) {
+      return;
+    }
+    const mapInstance = map.current;
+    const zones = weatherZones ?? [];
+    const activeZones = zones.filter((z) => z.weather_code !== 'CLEAR');
+    const newZoneIds = new Set(activeZones.map((z) => z.zone_id));
+
+    for (const oldId of currentZoneIdsRef.current) {
+      if (!newZoneIds.has(oldId)) {
+        const layerId = `${WEATHER_ZONE_SOURCE_PREFIX}${oldId}${WEATHER_ZONE_LAYER_SUFFIX}`;
+        const sourceId = `${WEATHER_ZONE_SOURCE_PREFIX}${oldId}${WEATHER_ZONE_SOURCE_SUFFIX}`;
+        if (mapInstance.getLayer(layerId)) mapInstance.removeLayer(layerId);
+        if (mapInstance.getSource(sourceId)) mapInstance.removeSource(sourceId);
+      }
+    }
+
+    const beforeId = findDeckLayerAnchor(mapInstance);
+    for (const zone of activeZones) {
+      const sourceId = `${WEATHER_ZONE_SOURCE_PREFIX}${zone.zone_id}${WEATHER_ZONE_SOURCE_SUFFIX}`;
+      const layerId = `${WEATHER_ZONE_SOURCE_PREFIX}${zone.zone_id}${WEATHER_ZONE_LAYER_SUFFIX}`;
+      const feature: GeoJSON.Feature = {
+        type: 'Feature',
+        geometry: zone.geometry as unknown as GeoJSON.Geometry,
+        properties: {},
+      };
+      const { color, opacity } = getWeatherZoneStyle(zone.weather_code);
+
+      const existingSource = mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource | undefined;
+      if (existingSource) {
+        existingSource.setData(feature);
+      } else {
+        mapInstance.addSource(sourceId, { type: 'geojson', data: feature });
+      }
+
+      if (mapInstance.getLayer(layerId)) {
+        mapInstance.setPaintProperty(layerId, 'fill-color', color);
+        mapInstance.setPaintProperty(layerId, 'fill-opacity', opacity);
+      } else {
+        mapInstance.addLayer(
+          { id: layerId, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': opacity } },
+          beforeId,
+        );
+      }
+    }
+
+    currentZoneIdsRef.current = newZoneIds;
+  }, [weatherZones, mapLoaded]);
 
   const buildDeckLayers = useCallback(() => {
     const layers: Layer[] = [];
@@ -654,4 +713,14 @@ function calculateFogOpacity(visibilityNm: number | null): number {
 
   const clampedVisibility = Math.min(WEATHER_CLEAR_VISIBILITY_NM, Math.max(0, visibilityNm));
   return ((WEATHER_CLEAR_VISIBILITY_NM - clampedVisibility) / WEATHER_CLEAR_VISIBILITY_NM) * WEATHER_FOG_MAX_OPACITY;
+}
+
+function getWeatherZoneStyle(weatherCode: WeatherZoneContext['weather_code']): { color: string; opacity: number } {
+  switch (weatherCode) {
+    case 'FOG': return { color: '#d2d7dc', opacity: 0.50 };
+    case 'RAIN': return { color: '#4a6fa5', opacity: 0.35 };
+    case 'STORM': return { color: '#2c2c4a', opacity: 0.55 };
+    case 'SNOW': return { color: '#e8eef5', opacity: 0.40 };
+    default: return { color: '#ffffff', opacity: 0 };
+  }
 }

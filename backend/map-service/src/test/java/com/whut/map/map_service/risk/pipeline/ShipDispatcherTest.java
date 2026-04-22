@@ -7,6 +7,7 @@ import com.whut.map.map_service.risk.config.ShipStateProperties;
 import com.whut.map.map_service.risk.pipeline.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.OwnShipAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskObjectMetaAssembler;
+import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskVisualizationAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.TargetAssembler;
 import com.whut.map.map_service.shared.domain.QualityFlag;
@@ -471,7 +472,7 @@ class ShipDispatcherTest {
         RiskObjectMetaProperties metaProperties = new RiskObjectMetaProperties();
         WeatherAlertProperties weatherAlertProperties = new WeatherAlertProperties();
         return new RiskObjectAssembler(
-            new RiskObjectMetaAssembler(metaProperties, new WeatherContextHolder(), weatherAlertProperties),
+            new RiskObjectMetaAssembler(metaProperties, new WeatherContextHolder(), weatherAlertProperties, new RegionalWeatherResolver()),
                 new OwnShipAssembler(),
                 new TargetAssembler(new RiskVisualizationAssembler())
         );

@@ -7,7 +7,7 @@
 
 ## 1. 当前项目真值入口
 
-- [`../../PROJECT_STATUS.md`](../../PROJECT_STATUS.md)：milestone 状态真值；当前记录为 `v0.9` 已完成、`v1.0` 进入并行 track 规划阶段。
+- [`../../PROJECT_STATUS.md`](../../PROJECT_STATUS.md)：milestone 状态真值；当前记录为 `v0.9` 已完成、`v1.0` 进入 implementation milestone，`agent` 为主线，`hydrology` / `weather` 为并行 track。
 - [`../../CURRENT_SYSTEM_OVERVIEW.md`](../../CURRENT_SYSTEM_OVERVIEW.md)：当前系统实现导览、模块定位与文档分层入口。
 - [`../README.md`](../README.md)：`docs/` 下当前真值 / 规划 / 历史归档的边界说明。
 - [`README.md`](./README.md)：`v1.0` 里程碑总览与 track 边界说明。

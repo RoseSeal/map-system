@@ -1,11 +1,11 @@
 # Project Status
 
-> Last updated: 2026-04-19
+> Last updated: 2026-04-21
 
 ## 1. Current Baseline
 
 - Latest completed milestone: `v0.9 FRONTEND ENHANCEMENT`
-- Current active milestone: `v1.0 AGENT LOOP FOUNDATION`
+- Current active milestone: `v1.0 implementation milestone` (`agent` mainline, `hydrology` / `weather` parallel tracks)
 
 ## 2. v1.0 Final Status
 

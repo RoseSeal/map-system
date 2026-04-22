@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.Instant;
+import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record WeatherMqttDto(
@@ -26,7 +27,10 @@ public record WeatherMqttDto(
         Integer seaState,
 
         @JsonProperty("timestamp_utc")
-        Instant timestampUtc
+        Instant timestampUtc,
+
+        @JsonProperty("weather_zones")
+        List<WeatherZoneMqttDto> weatherZones
 ) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -47,5 +51,42 @@ public record WeatherMqttDto(
             @JsonProperty("set_deg")
             Double setDeg
     ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record WeatherZoneMqttDto(
+            @JsonProperty("zone_id")
+            String zoneId,
+
+            @JsonProperty("weather_code")
+            String weatherCode,
+
+            @JsonProperty("visibility_nm")
+            Double visibilityNm,
+
+            @JsonProperty("precipitation_mm_per_hr")
+            Double precipitationMmPerHr,
+
+            @JsonProperty("wind")
+            WindDto wind,
+
+            @JsonProperty("surface_current")
+            SurfaceCurrentDto surfaceCurrent,
+
+            @JsonProperty("sea_state")
+            Integer seaState,
+
+            @JsonProperty("geometry")
+            ZoneGeometryDto geometry
+    ) {
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public record ZoneGeometryDto(
+                @JsonProperty("type")
+                String type,
+
+                @JsonProperty("coordinates")
+                Object coordinates
+        ) {
+        }
     }
 }

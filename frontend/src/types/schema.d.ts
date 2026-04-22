@@ -149,13 +149,27 @@ export interface WeatherContext {
   wind: WeatherWind;
   surface_current: WeatherSurfaceCurrent;
   sea_state: number | null;
+  source_zone_id?: string | null;
   updated_at: string;
+}
+
+export interface WeatherZoneContext {
+  zone_id: string;
+  weather_code: WeatherCode | null;
+  visibility_nm: number | null;
+  precipitation_mm_per_hr: number | null;
+  wind: WeatherWind | null;
+  surface_current: WeatherSurfaceCurrent | null;
+  sea_state: number | null;
+  updated_at: string | null;
+  geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown };
 }
 
 export interface EnvironmentContext {
   safety_contour_val: number;
   active_alerts: string[];
   weather?: WeatherContext | null;
+  weather_zones?: WeatherZoneContext[] | null;
 }
 
 // ============================================================

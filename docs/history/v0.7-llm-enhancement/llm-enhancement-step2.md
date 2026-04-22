@@ -38,7 +38,7 @@
 - `system-risk-explanation.txt` 保持“基于态势信息，用简洁中文描述风险并给建议”的语义
 
 #### 3. 重构 LlmChatService
-修改 [LlmChatService.java](../../../backend/map-service/src/main/java/com/whut/map/map_service/service/llm/LlmChatService.java)：
+修改 [LlmChatService.java](../../../backend/map-service/src/main/java/com/whut/map/map_service/llm/service/LlmChatService.java)：
 - 注入 `PromptTemplateService`
 - `buildMessages()` 不再内联 system 文本，改为：
   - `SYSTEM`: `promptTemplateService.getSystemPrompt(PromptScene.CHAT)`
@@ -50,7 +50,7 @@
   - provider 名称解析
 
 #### 4. 重构 LlmExplanationService
-修改 [LlmExplanationService.java](../../../backend/map-service/src/main/java/com/whut/map/map_service/service/llm/LlmExplanationService.java)：
+修改 [LlmExplanationService.java](../../../backend/map-service/src/main/java/com/whut/map/map_service/llm/service/LlmExplanationService.java)：
 - 注入 `PromptTemplateService`
 - `buildMessages()` 中的 system message 改为：
   - `SYSTEM`: `promptTemplateService.getSystemPrompt(PromptScene.RISK_EXPLANATION)`
