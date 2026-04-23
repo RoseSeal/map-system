@@ -6,6 +6,7 @@ import com.whut.map.map_service.risk.pipeline.assembler.riskobject.TargetAssembl
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.shared.dto.RiskObjectDto;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
@@ -37,6 +38,7 @@ public class RiskObjectAssembler {
             ShipStatus ownShip,
             Collection<ShipStatus> allShips,
             Map<String, CpaTcpaResult> cpaResults,
+            Map<String, PredictedCpaTcpaResult> predictedCpaResults,
             RiskAssessmentResult riskResult,
             ShipDomainResult domainResult,
             Map<String, CvPredictionResult> cvResults,
@@ -55,7 +57,7 @@ public class RiskObjectAssembler {
                 .governance(riskObjectMetaAssembler.buildGovernance(trustFactor))
                 .ownShip(ownShipAssembler.assemble(ownShip, domainResult))
                 .targets(targetAssembler.assembleTargets(
-                        ownShip, allShips, cpaResults, riskResult, cvResults, encounterResults))
+                        ownShip, allShips, cpaResults, riskResult, cvResults, predictedCpaResults, encounterResults))
                 .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext(ownShip))
                 .build();
     }

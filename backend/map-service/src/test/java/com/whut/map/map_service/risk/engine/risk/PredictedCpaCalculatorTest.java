@@ -1,5 +1,6 @@
 package com.whut.map.map_service.risk.engine.risk;
 
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaCalculator;
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionResult;
 import com.whut.map.map_service.shared.util.GeoUtils;
@@ -11,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PredictedCpaCalculatorTest {
 
-    private final PredictedCpaCalculator calculator = new PredictedCpaCalculator();
+    private final PredictedCpaCalculator calculator = new PredictedCpaCalculator(new PredictedCpaTcpaCalculator());
 
     @Test
     void shouldCalculateMinDistanceInTrajectory() {

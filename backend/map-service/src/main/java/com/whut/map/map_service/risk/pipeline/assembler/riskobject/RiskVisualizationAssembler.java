@@ -1,5 +1,6 @@
 package com.whut.map.map_service.risk.pipeline.assembler.riskobject;
 
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaResult;
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import com.whut.map.map_service.risk.engine.risk.RiskConstants;
@@ -14,9 +15,27 @@ import java.util.Map;
 @Component
 public class RiskVisualizationAssembler {
 
-    public Map<String, Object> buildGraphicCpaLine(ShipStatus ownShip, ShipStatus targetShip, TargetRiskAssessment assessment) {
+    public Map<String, Object> buildGraphicCpaLine(
+            ShipStatus ownShip,
+            ShipStatus targetShip,
+            TargetRiskAssessment assessment,
+            PredictedCpaTcpaResult predictedCpaResult
+    ) {
         if (assessment == null || !assessment.isApproaching()) {
             return null;
+        }
+
+        if (predictedCpaResult != null) {
+            Map<String, Object> graphicCpaLine = new LinkedHashMap<>();
+            graphicCpaLine.put("own_pos", List.of(
+                    predictedCpaResult.getOwnCpaLongitude(),
+                    predictedCpaResult.getOwnCpaLatitude()
+            ));
+            graphicCpaLine.put("target_pos", List.of(
+                    predictedCpaResult.getTargetCpaLongitude(),
+                    predictedCpaResult.getTargetCpaLatitude()
+            ));
+            return graphicCpaLine;
         }
 
         double tcpaSeconds = Math.max(assessment.getTcpaSeconds(), 0.0);

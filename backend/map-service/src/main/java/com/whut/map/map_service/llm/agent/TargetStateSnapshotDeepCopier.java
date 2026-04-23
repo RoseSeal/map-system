@@ -1,6 +1,7 @@
 package com.whut.map.map_service.llm.agent;
 
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionResult;
@@ -28,6 +29,7 @@ public class TargetStateSnapshotDeepCopier {
                 source.targetId(),
                 copyCvPrediction(source.predictionResult()),
                 copyCpaTcpa(source.cpaResult()),
+                copyPredictedCpaTcpa(source.predictedCpaResult()),
                 copyEncounterClassification(source.encounterResult()),
                 copyRiskAssessment(source.riskAssessment())
         );
@@ -59,6 +61,20 @@ public class TargetStateSnapshotDeepCopier {
                 .tcpaTime(source.getTcpaTime())
                 .isApproaching(source.isApproaching())
                 .cpaValid(source.isCpaValid())
+                .build();
+    }
+
+    private PredictedCpaTcpaResult copyPredictedCpaTcpa(PredictedCpaTcpaResult source) {
+        if (source == null) return null;
+        return PredictedCpaTcpaResult.builder()
+                .targetMmsi(source.getTargetMmsi())
+                .cpaDistanceMeters(source.getCpaDistanceMeters())
+                .tcpaSeconds(source.getTcpaSeconds())
+                .approaching(source.isApproaching())
+                .ownCpaLatitude(source.getOwnCpaLatitude())
+                .ownCpaLongitude(source.getOwnCpaLongitude())
+                .targetCpaLatitude(source.getTargetCpaLatitude())
+                .targetCpaLongitude(source.getTargetCpaLongitude())
                 .build();
     }
 

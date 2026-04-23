@@ -50,6 +50,7 @@ class RiskObjectAssemblerTest {
                 ownShip,
                 List.of(ownShip),
                 Map.of(),
+                Map.of(),
                 riskResult,
                 domainResult(),
                 Map.of(),
@@ -66,6 +67,7 @@ class RiskObjectAssemblerTest {
         RiskObjectDto riskObject = assembler.assembleRiskObject(
                 ownShip,
                 List.of(ownShip),
+                Map.of(),
                 Map.of(),
                 RiskAssessmentResult.empty(),
                 domainResult(),
@@ -88,6 +90,7 @@ class RiskObjectAssemblerTest {
         RiskObjectDto riskObject = assembler.assembleRiskObject(
                 ownShip,
                 List.of(ownShip),
+                Map.of(),
                 Map.of(),
                 riskResult,
                 domainResult(),

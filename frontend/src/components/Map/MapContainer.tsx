@@ -645,7 +645,7 @@ export function MapContainer() {
 function buildTrajectoryPoints(ownShip: OwnShip): LonLat[] {
   const pos: LonLat = [ownShip.position.lon, ownShip.position.lat];
 
-  return generateLinearTrajectory(pos, ownShip.dynamics.cog, ownShip.dynamics.sog, 6);
+  return generateLinearTrajectory(pos, ownShip.dynamics.cog, ownShip.dynamics.sog, 4);
 }
 
 function getOwnShipColor(ownShip: OwnShip): [number, number, number, number] {

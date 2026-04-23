@@ -12,7 +12,7 @@ class DerivedTargetStateStoreTest {
     @Test
     void getAllReturnsUnmodifiableView() {
         DerivedTargetStateStore store = new DerivedTargetStateStore();
-        store.put("target-1", new TargetDerivedSnapshot("target-1", null, null, null, null));
+        store.put("target-1", new TargetDerivedSnapshot("target-1", null, null, null, null, null));
 
         Map<String, TargetDerivedSnapshot> snapshot = store.getAll();
 

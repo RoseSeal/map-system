@@ -1,5 +1,6 @@
 package com.whut.map.map_service.risk.pipeline.assembler.riskobject;
 
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaResult;
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import com.whut.map.map_service.risk.engine.risk.RiskConstants;
@@ -17,7 +18,7 @@ class RiskVisualizationAssemblerTest {
     private final RiskVisualizationAssembler assembler = new RiskVisualizationAssembler();
 
     @Test
-    void buildGraphicCpaLineProjectsBothShipsToTcpaPositions() {
+    void buildGraphicCpaLineFallsBackToLinearProjectionWithoutPredictedResult() {
         ShipStatus ownShip = ShipStatus.builder()
                 .longitude(120.0)
                 .latitude(30.0)
@@ -35,7 +36,7 @@ class RiskVisualizationAssemblerTest {
                 .tcpaSeconds(120.0)
                 .build();
 
-        Map<String, Object> result = assembler.buildGraphicCpaLine(ownShip, targetShip, assessment);
+        Map<String, Object> result = assembler.buildGraphicCpaLine(ownShip, targetShip, assessment, null);
 
         double[] expectedOwn = GeoUtils.displace(30.0, 120.0, GeoUtils.toVelocity(10.0, 90.0)[0] * 120.0, GeoUtils.toVelocity(10.0, 90.0)[1] * 120.0);
         double[] expectedTarget = GeoUtils.displace(30.01, 120.02, GeoUtils.toVelocity(12.0, 180.0)[0] * 120.0, GeoUtils.toVelocity(12.0, 180.0)[1] * 120.0);
@@ -52,6 +53,42 @@ class RiskVisualizationAssemblerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void buildGraphicCpaLineUsesPredictedResultCoordinatesWhenAvailable() {
+        ShipStatus ownShip = ShipStatus.builder()
+                .longitude(120.0)
+                .latitude(30.0)
+                .sog(10.0)
+                .cog(90.0)
+                .build();
+        ShipStatus targetShip = ShipStatus.builder()
+                .longitude(120.02)
+                .latitude(30.01)
+                .sog(12.0)
+                .cog(180.0)
+                .build();
+        TargetRiskAssessment assessment = TargetRiskAssessment.builder()
+                .approaching(true)
+                .tcpaSeconds(120.0)
+                .build();
+        PredictedCpaTcpaResult predictedCpaResult = PredictedCpaTcpaResult.builder()
+                .targetMmsi("target-1")
+                .cpaDistanceMeters(120.0)
+                .tcpaSeconds(90.0)
+                .ownCpaLatitude(30.123)
+                .ownCpaLongitude(120.456)
+                .targetCpaLatitude(30.789)
+                .targetCpaLongitude(120.654)
+                .build();
+
+        Map<String, Object> result = assembler.buildGraphicCpaLine(ownShip, targetShip, assessment, predictedCpaResult);
+
+        assertThat(result).isNotNull();
+        assertThat((List<Double>) result.get("own_pos")).containsExactly(120.456, 30.123);
+        assertThat((List<Double>) result.get("target_pos")).containsExactly(120.654, 30.789);
+    }
+
+    @Test
     void buildGraphicCpaLineReturnsNullWhenTargetIsNotApproaching() {
         ShipStatus ownShip = ShipStatus.builder().longitude(120.0).latitude(30.0).sog(10.0).cog(90.0).build();
         ShipStatus targetShip = ShipStatus.builder().longitude(120.02).latitude(30.01).sog(12.0).cog(180.0).build();
@@ -60,7 +97,7 @@ class RiskVisualizationAssemblerTest {
                 .tcpaSeconds(120.0)
                 .build();
 
-        assertThat(assembler.buildGraphicCpaLine(ownShip, targetShip, assessment)).isNull();
+        assertThat(assembler.buildGraphicCpaLine(ownShip, targetShip, assessment, null)).isNull();
     }
 
     @Test

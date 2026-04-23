@@ -12,22 +12,22 @@ public class ShipDomainProperties {
     /**
      * Baseline forward radius in nautical miles, scaled by sog/referenceSpeedKn.
      */
-    private double baseForeNm = 0.5;
+    private double baseForeNm = 0.4;
 
     /**
      * Baseline aft radius in nautical miles, scaled by sog/referenceSpeedKn.
      */
-    private double baseAftNm = 0.1;
+    private double baseAftNm = 0.08;
 
     /**
      * Baseline port-side radius in nautical miles, scaled by sog/referenceSpeedKn.
      */
-    private double basePortNm = 0.2;
+    private double basePortNm = 0.16;
 
     /**
      * Baseline starboard-side radius in nautical miles, scaled by sog/referenceSpeedKn.
      */
-    private double baseStbdNm = 0.2;
+    private double baseStbdNm = 0.16;
 
     /**
      * Reference vessel speed in knots used as the divisor for dynamic scaling.

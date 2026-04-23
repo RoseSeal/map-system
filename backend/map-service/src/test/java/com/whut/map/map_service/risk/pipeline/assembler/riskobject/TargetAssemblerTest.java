@@ -1,5 +1,6 @@
 package com.whut.map.map_service.risk.pipeline.assembler.riskobject;
 
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaResult;
 import com.whut.map.map_service.shared.domain.QualityFlag;
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
@@ -34,7 +35,7 @@ class TargetAssemblerTest {
                 ))
                 .build();
 
-        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, cvResult, null);
+        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, cvResult, null, null);
 
         assertThat(targetMap).containsKey("predicted_trajectory");
         Map<String, Object> predictedTrajectory = (Map<String, Object>) targetMap.get("predicted_trajectory");
@@ -54,7 +55,7 @@ class TargetAssemblerTest {
         ShipStatus ownShip = ShipStatus.builder().id("own").build();
         ShipStatus targetShip = ShipStatus.builder().id("target-1").sog(10.0).cog(45.0).longitude(120.0).latitude(30.0).build();
 
-        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, null);
+        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, null, null);
 
         assertThat(targetMap).doesNotContainKey("predicted_trajectory");
     }
@@ -73,7 +74,7 @@ class TargetAssemblerTest {
                 .trajectory(List.of())
                 .build();
 
-        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, cvResult, null);
+        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, cvResult, null, null);
 
         assertThat(targetMap).doesNotContainKey("predicted_trajectory");
     }
@@ -92,7 +93,7 @@ class TargetAssemblerTest {
                 .encounterType(EncounterType.CROSSING)
                 .build();
 
-        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, encounterResult);
+        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, null, encounterResult);
 
         assertThat(targetMap).containsKey("risk_assessment");
         Map<String, Object> riskAssessment = (Map<String, Object>) targetMap.get("risk_assessment");
@@ -113,7 +114,7 @@ class TargetAssemblerTest {
                 .qualityFlags(Set.of(QualityFlag.MISSING_TIMESTAMP))
                 .build();
 
-        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, null);
+        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, null, null);
 
         assertThat(targetMap).containsEntry("tracking_status", "stale");
     }
@@ -132,7 +133,7 @@ class TargetAssemblerTest {
                 .qualityFlags(Set.of(QualityFlag.MISSING_HEADING))
                 .build();
 
-        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, null);
+        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, null, null, null);
 
         assertThat(targetMap).containsEntry("tracking_status", "tracking");
     }
@@ -165,6 +166,7 @@ class TargetAssemblerTest {
                 null,
                 assessment,
                 null,
+                null,
                 encounterResult
         );
 
@@ -172,5 +174,48 @@ class TargetAssemblerTest {
         Map<String, Object> oztSector = (Map<String, Object>) riskAssessment.get("ozt_sector");
         assertThat(oztSector).containsEntry("start_angle_deg", 25.0);
         assertThat(oztSector).containsEntry("end_angle_deg", 65.0);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void assembleTargetUsesPredictedGraphicCpaLineWhenPresent() {
+        TargetAssembler assembler = new TargetAssembler(new RiskVisualizationAssembler());
+
+        ShipStatus ownShip = ShipStatus.builder().id("own").build();
+        ShipStatus targetShip = ShipStatus.builder()
+                .id("target-1")
+                .longitude(120.0)
+                .latitude(30.0)
+                .build();
+        TargetRiskAssessment assessment = TargetRiskAssessment.builder()
+                .targetId("target-1")
+                .riskLevel("WARNING")
+                .approaching(true)
+                .tcpaSeconds(60.0)
+                .build();
+        PredictedCpaTcpaResult predictedCpaResult = PredictedCpaTcpaResult.builder()
+                .targetMmsi("target-1")
+                .cpaDistanceMeters(100.0)
+                .tcpaSeconds(60.0)
+                .ownCpaLatitude(30.001)
+                .ownCpaLongitude(120.001)
+                .targetCpaLatitude(30.002)
+                .targetCpaLongitude(120.002)
+                .build();
+
+        Map<String, Object> targetMap = assembler.assembleTarget(
+                ownShip,
+                targetShip,
+                null,
+                assessment,
+                null,
+                predictedCpaResult,
+                null
+        );
+
+        Map<String, Object> riskAssessment = (Map<String, Object>) targetMap.get("risk_assessment");
+        Map<String, Object> graphicCpaLine = (Map<String, Object>) riskAssessment.get("graphic_cpa_line");
+        assertThat(graphicCpaLine).containsEntry("own_pos", List.of(120.001, 30.001));
+        assertThat(graphicCpaLine).containsEntry("target_pos", List.of(120.002, 30.002));
     }
 }

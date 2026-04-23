@@ -8,6 +8,8 @@ import com.whut.map.map_service.risk.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.risk.event.RiskFrame;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaBatchCalculator;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaBatchCalculator;
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassifier;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentEngine;
@@ -41,6 +43,7 @@ public class ShipDispatcher {
     private final ShipDomainEngine shipDomainEngine;
     private final CvPredictionEngine cvPredictionEngine;
     private final CpaTcpaBatchCalculator cpaTcpaBatchCalculator;
+    private final PredictedCpaTcpaBatchCalculator predictedCpaTcpaBatchCalculator;
     private final EncounterClassifier encounterClassifier;
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
@@ -56,6 +59,7 @@ public class ShipDispatcher {
             ShipDomainEngine shipDomainEngine,
             CvPredictionEngine cvPredictionEngine,
             CpaTcpaBatchCalculator cpaTcpaBatchCalculator,
+            PredictedCpaTcpaBatchCalculator predictedCpaTcpaBatchCalculator,
             EncounterClassifier encounterClassifier,
             RiskAssessmentEngine riskAssessmentEngine,
             RiskObjectAssembler riskObjectAssembler,
@@ -69,6 +73,10 @@ public class ShipDispatcher {
         this.shipDomainEngine = shipDomainEngine;
         this.cvPredictionEngine = cvPredictionEngine;
         this.cpaTcpaBatchCalculator = cpaTcpaBatchCalculator;
+        this.predictedCpaTcpaBatchCalculator = Objects.requireNonNull(
+                predictedCpaTcpaBatchCalculator,
+                "predictedCpaTcpaBatchCalculator"
+        );
         this.encounterClassifier = encounterClassifier;
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
@@ -158,6 +166,7 @@ public class ShipDispatcher {
                 target.getId(),
                 outputs.cvPredictionResults().get(target.getId()),
                 outputs.cpaResults().get(target.getId()),
+                outputs.predictedCpaResults().get(target.getId()),
                 outputs.encounterResults().get(target.getId()),
                 riskAssessment
             );
@@ -171,17 +180,19 @@ public class ShipDispatcher {
         
         CvPredictionResult pred = cvPredictionEngine.consume(targetShip, shipTrajectoryStore.getHistory(tId));
         CpaTcpaResult cpa = cpaTcpaBatchCalculator.calculateOne(context.ownShip(), targetShip);
+        PredictedCpaTcpaResult predictedCpa = predictedCpaTcpaBatchCalculator.calculateOne(context.ownShip(), pred);
         EncounterClassificationResult enc = encounterClassifier.classify(context.ownShip(), targetShip);
         
         TargetRiskAssessment riskAssessment = riskAssessmentEngine.buildTargetAssessment(
                 tId, cpa, context.ownShip(), targetShip, this.cachedOwnShipDomainResult, pred, enc);
                 
-        TargetDerivedSnapshot ts = new TargetDerivedSnapshot(tId, pred, cpa, enc, riskAssessment);
+        TargetDerivedSnapshot ts = new TargetDerivedSnapshot(tId, pred, cpa, predictedCpa, enc, riskAssessment);
         derivedTargetStateStore.put(tId, ts);
-        
+
         // Reconstruct outputs from cache
         Map<String, CvPredictionResult> cvs = new HashMap<>();
         Map<String, CpaTcpaResult> cpas = new HashMap<>();
+        Map<String, PredictedCpaTcpaResult> predictedCpas = new HashMap<>();
         Map<String, EncounterClassificationResult> encs = new HashMap<>();
         
         for (ShipStatus s : context.allShips()) {
@@ -190,11 +201,12 @@ public class ShipDispatcher {
             if (st != null) {
                 cvs.put(s.getId(), st.predictionResult());
                 cpas.put(s.getId(), st.cpaResult());
+                predictedCpas.put(s.getId(), st.predictedCpaResult());
                 encs.put(s.getId(), st.encounterResult());
             }
         }
-        
-        return new ShipDerivedOutputs(this.cachedOwnShipDomainResult, cvs, cpas, encs);
+
+        return new ShipDerivedOutputs(this.cachedOwnShipDomainResult, cvs, cpas, predictedCpas, encs);
     }
 
     private ShipDispatchContext prepareContext(ShipStatus message) {
@@ -264,11 +276,21 @@ public class ShipDispatcher {
                 context.ownShip(),
                 context.allShips()
         );
+        Map<String, PredictedCpaTcpaResult> predictedCpaResults = predictedCpaTcpaBatchCalculator.calculateAll(
+                context.ownShip(),
+                cvPredictionResults
+        );
 
         Map<String, EncounterClassificationResult> encounterResults =
                 batchClassify(context.ownShip(), context.allShips());
 
-        return new ShipDerivedOutputs(shipDomainResult, cvPredictionResults, cpaResults, encounterResults);
+        return new ShipDerivedOutputs(
+                shipDomainResult,
+                cvPredictionResults,
+                cpaResults,
+                predictedCpaResults,
+                encounterResults
+        );
     }
 
     private RiskDispatchSnapshot buildRiskSnapshot(
@@ -288,6 +310,7 @@ public class ShipDispatcher {
                 context.ownShip(),
                 context.allShips(),
                 outputs.cpaResults(),
+                outputs.predictedCpaResults(),
                 riskResult,
                 outputs.shipDomainResult(),
                 outputs.cvPredictionResults(),

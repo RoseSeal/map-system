@@ -2,12 +2,13 @@ package com.whut.map.map_service.risk.engine.risk;
 
 import com.whut.map.map_service.risk.config.RiskAssessmentProperties;
 import com.whut.map.map_service.risk.config.RiskScoringProperties;
-import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaCalculator;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.shared.util.GeoUtils;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +24,7 @@ class RiskAssessmentEngineTest {
                 properties,
                 new RiskScoringProperties(),
                 new DomainPenetrationCalculator(),
-                new PredictedCpaCalculator()
+                new PredictedCpaCalculator(new PredictedCpaTcpaCalculator())
         );
     }
 
@@ -67,7 +68,12 @@ class RiskAssessmentEngineTest {
     @Test
     void riskScoreShouldBeModifiedByEncounterType() {
         RiskScoringProperties scoring = new RiskScoringProperties();
-        RiskAssessmentEngine engine = new RiskAssessmentEngine(new RiskAssessmentProperties(), scoring, new DomainPenetrationCalculator(), new PredictedCpaCalculator());
+        RiskAssessmentEngine engine = new RiskAssessmentEngine(
+                new RiskAssessmentProperties(),
+                scoring,
+                new DomainPenetrationCalculator(),
+                new PredictedCpaCalculator(new PredictedCpaTcpaCalculator())
+        );
         ShipStatus own = ship("own");
         ShipStatus target = ship("target-1");
         CpaTcpaResult cpa = cpaTcpa(0.5, 600);

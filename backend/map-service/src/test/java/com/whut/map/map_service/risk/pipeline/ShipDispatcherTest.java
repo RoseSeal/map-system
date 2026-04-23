@@ -20,6 +20,8 @@ import com.whut.map.map_service.risk.event.RiskFrame;
 import com.whut.map.map_service.risk.engine.ShipKinematicQualityChecker;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaBatchCalculator;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaBatchCalculator;
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaCalculator;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassifier;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentEngine;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
@@ -100,6 +102,7 @@ class ShipDispatcherTest {
                 shipDomainEngine,
                 cvPredictionEngine,
                 cpaTcpaBatchCalculator,
+                predictedCpaTcpaBatchCalculator(),
                 encounterClassifier,
                 riskAssessmentEngine,
                 riskObjectAssembler(),
@@ -149,6 +152,7 @@ class ShipDispatcherTest {
                 shipDomainEngine,
                 new RecordingCvPredictionEngine(),
                 cpaTcpaBatchCalculator,
+                predictedCpaTcpaBatchCalculator(),
                 encounterClassifier,
                 riskAssessmentEngine,
                 riskObjectAssembler(),
@@ -175,6 +179,7 @@ class ShipDispatcherTest {
                 (ShipDomainEngine) null,
                 (CvPredictionEngine) null,
                 (CpaTcpaBatchCalculator) null,
+                predictedCpaTcpaBatchCalculator(),
                 (EncounterClassifier) null,
                 (RiskAssessmentEngine) null,
                 (RiskObjectAssembler) null,
@@ -209,6 +214,7 @@ class ShipDispatcherTest {
                 new RecordingShipDomainEngine(ShipDomainResult.builder().shapeType(ShipDomainResult.SHAPE_ELLIPSE).build()),
                 new RecordingCvPredictionEngine(),
                 new StubCpaTcpaBatchCalculator(Map.of()),
+                predictedCpaTcpaBatchCalculator(),
                 new EncounterClassifier(new EncounterProperties()),
                 new StubRiskAssessmentEngine(RiskAssessmentResult.empty()),
                 riskObjectAssembler(),
@@ -262,6 +268,7 @@ class ShipDispatcherTest {
                 new RecordingShipDomainEngine(ShipDomainResult.builder().shapeType(ShipDomainResult.SHAPE_ELLIPSE).build()),
                 new RecordingCvPredictionEngine(),
                 new StubCpaTcpaBatchCalculator(Map.of()),
+                predictedCpaTcpaBatchCalculator(),
                 new EncounterClassifier(new EncounterProperties()),
                 riskAssessmentEngine,
                 riskObjectAssembler(),
@@ -309,6 +316,7 @@ class ShipDispatcherTest {
                 shipDomainEngine,
                 new RecordingCvPredictionEngine(),
                 new StubCpaTcpaBatchCalculator(Map.of()),
+                predictedCpaTcpaBatchCalculator(),
                 new EncounterClassifier(new EncounterProperties()),
                 riskAssessmentEngine,
                 riskObjectAssembler(),
@@ -353,6 +361,7 @@ class ShipDispatcherTest {
                 shipDomainEngine,
                 new RecordingCvPredictionEngine(),
                 new StubCpaTcpaBatchCalculator(Map.of()),
+                predictedCpaTcpaBatchCalculator(),
                 new EncounterClassifier(new EncounterProperties()),
                 riskAssessmentEngine,
                 riskObjectAssembler(),
@@ -388,12 +397,13 @@ class ShipDispatcherTest {
         shipStateStore.update(ownShip);
         shipStateStore.update(liveTarget);
         trajectoryStore.append(liveTarget);
-        derivedStore.put("stale-target", new TargetDerivedSnapshot("stale-target", null, null, null, null));
+        derivedStore.put("stale-target", new TargetDerivedSnapshot("stale-target", null, null, null, null, null));
 
         ShipDispatcher dispatcher = new ShipDispatcher(
                 new RecordingShipDomainEngine(ShipDomainResult.builder().shapeType(ShipDomainResult.SHAPE_ELLIPSE).build()),
                 new RecordingCvPredictionEngine(),
                 new StubCpaTcpaBatchCalculator(Map.of()),
+                predictedCpaTcpaBatchCalculator(),
                 new EncounterClassifier(new EncounterProperties()),
                 new StubRiskAssessmentEngine(RiskAssessmentResult.empty()),
                 riskObjectAssembler(),
@@ -427,6 +437,7 @@ class ShipDispatcherTest {
                 new RecordingShipDomainEngine(ShipDomainResult.builder().shapeType(ShipDomainResult.SHAPE_ELLIPSE).build()),
                 new RecordingCvPredictionEngine(),
                 new StubCpaTcpaBatchCalculator(Map.of()),
+                predictedCpaTcpaBatchCalculator(),
                 new EncounterClassifier(new EncounterProperties()),
                 new StubRiskAssessmentEngine(RiskAssessmentResult.empty()),
                 riskObjectAssembler(),
@@ -483,6 +494,10 @@ class ShipDispatcherTest {
         properties.setExpireAfterSeconds(300L);
         properties.setCleanupIntervalSeconds(300L);
         return new ShipStateStore(properties);
+    }
+
+    private PredictedCpaTcpaBatchCalculator predictedCpaTcpaBatchCalculator() {
+        return new PredictedCpaTcpaBatchCalculator(new PredictedCpaTcpaCalculator());
     }
 
     private ShipStatus ship(String id, ShipRole role, double longitude, double latitude) {

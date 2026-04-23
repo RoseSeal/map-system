@@ -3,6 +3,7 @@ package com.whut.map.map_service.risk.pipeline.assembler.riskobject;
 import com.whut.map.map_service.shared.domain.QualityFlag;
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
+import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
@@ -34,6 +35,7 @@ public class TargetAssembler {
             Map<String, CpaTcpaResult> cpaResults,
             RiskAssessmentResult riskResult,
             Map<String, CvPredictionResult> cvResults,
+            Map<String, PredictedCpaTcpaResult> predictedCpaResults,
             Map<String, EncounterClassificationResult> encounterResults
     ) {
         List<Map<String, Object>> targets = new ArrayList<>();
@@ -48,8 +50,10 @@ public class TargetAssembler {
             CpaTcpaResult cpaResult = cpaResults == null ? null : cpaResults.get(ship.getId());
             TargetRiskAssessment assessment = riskResult == null ? null : riskResult.getTargetAssessment(ship.getId());
             CvPredictionResult cvResult = (cvResults == null) ? null : cvResults.get(ship.getId());
+            PredictedCpaTcpaResult predictedCpaResult =
+                    predictedCpaResults == null ? null : predictedCpaResults.get(ship.getId());
             EncounterClassificationResult encounterResult = encounterResults == null ? null : encounterResults.get(ship.getId());
-            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment, cvResult, encounterResult));
+            targets.add(assembleTarget(ownShip, ship, cpaResult, assessment, cvResult, predictedCpaResult, encounterResult));
         }
         return targets;
     }
@@ -60,6 +64,7 @@ public class TargetAssembler {
             CpaTcpaResult cpaResult,
             TargetRiskAssessment assessment,
             CvPredictionResult cvResult,
+            PredictedCpaTcpaResult predictedCpaResult,
             EncounterClassificationResult encounterResult
     ) {
         Map<String, Object> position = new LinkedHashMap<>();
@@ -84,7 +89,12 @@ public class TargetAssembler {
         riskAssessment.put("risk_score", assessment != null ? assessment.getRiskScore() : 0.0);
         riskAssessment.put("risk_confidence", assessment != null ? assessment.getRiskConfidence() : 1.0);
 
-        Map<String, Object> graphicCpaLine = riskVisualizationAssembler.buildGraphicCpaLine(ownShip, targetShip, assessment);
+        Map<String, Object> graphicCpaLine = riskVisualizationAssembler.buildGraphicCpaLine(
+                ownShip,
+                targetShip,
+                assessment,
+                predictedCpaResult
+        );
         if (graphicCpaLine != null) {
             riskAssessment.put("graphic_cpa_line", graphicCpaLine);
         }
