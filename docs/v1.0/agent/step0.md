@@ -32,7 +32,7 @@
 3. `RiskContextHolder` 新增 `getSnapshot()` 方法，支持原子捕获完整快照
 4. 改造 `LlmTriggerService` explanation 触发为语义去重（等级升级优先，cooldown 作为兜底）
 5. 新增 `SceneRiskStateTracker`：追踪场景最高风险等级与 advisory 生成状态，检测触发条件
-6. 定义 `AdvisoryTriggerPort` 接口（Step 3 / step4.md 实现），本步骤注入 no-op stub
+6. 定义 `AdvisoryTriggerPort` 接口（Step 3 / step3.md 实现），本步骤注入 no-op stub
 
 ---
 
@@ -40,14 +40,14 @@
 
 | 事项 | 分类 | 后续归属 |
 |---|---|---|
-| `AgentLoopOrchestrator` 实现 | 延后 | step4.md（Step 3） |
-| `chatWithTools` LlmClient 扩展 | 延后 | step2.md（Step 1） |
-| Agent 消息模型（AgentMessage sealed） | 延后 | step2.md（Step 1） |
-| 工具注册表 + 查询工具实现 | 延后 | step3.md（Step 2） |
-| `ADVISORY` SSE 事件类型 + 协议 | 延后 | step4.md（Step 3） |
-| 前端 advisory 消费组件 | 延后 | step4.md（Step 3） |
-| Chat agent path（selection-constrained） | 延后 | step5.md（Step 4） |
-| GraphRAG COLREGS 图谱 | 延后 | step6.md（Step 5） |
+| `AgentLoopOrchestrator` 实现 | 延后 | step3.md（Step 3） |
+| `chatWithTools` LlmClient 扩展 | 延后 | step1.md（Step 1） |
+| Agent 消息模型（AgentMessage sealed） | 延后 | step1.md（Step 1） |
+| 工具注册表 + 查询工具实现 | 延后 | step2.md（Step 2） |
+| `ADVISORY` SSE 事件类型 + 协议 | 延后 | step3.md（Step 3） |
+| 前端 advisory 消费组件 | 延后 | step3.md（Step 3） |
+| Chat agent path（selection-constrained） | 延后 | step4.md（Step 4） |
+| GraphRAG COLREGS 图谱 | 延后 | step5.md（Step 5） |
 | 路径 A（LlmRisk DTO 改造为 record） | 暂不做 | 若路径 B 深拷贝成本显著，v1.0 内重评估；否则延后 v1.1 |
 
 路径 A 暂不进入 `docs/TODO.md`，由本步骤完成后的性能测量结果决定是否回收。

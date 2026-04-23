@@ -1,5 +1,8 @@
 package com.whut.map.map_service.llm.service;
 
+import com.whut.map.map_service.llm.agent.AgentMessage;
+import com.whut.map.map_service.llm.agent.AgentStepResult;
+import com.whut.map.map_service.llm.agent.ToolDefinition;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.llm.client.LlmClient;
@@ -599,6 +602,11 @@ class LlmChatServiceTest {
             return "delegated";
         }
 
+        @Override
+        public AgentStepResult chatWithTools(List<AgentMessage> messages, List<ToolDefinition> tools) {
+            throw new UnsupportedOperationException("stub uses chat() override");
+        }
+
         List<LlmChatMessage> lastMessages() {
             return lastMessages;
         }
@@ -617,6 +625,11 @@ class LlmChatServiceTest {
             }
             return response;
         }
+
+        @Override
+        public AgentStepResult chatWithTools(List<AgentMessage> messages, List<ToolDefinition> tools) {
+            throw new UnsupportedOperationException("stub uses chat() override");
+        }
     }
 
     private static final class BlockingLlmClient implements LlmClient {
@@ -634,6 +647,11 @@ class LlmChatServiceTest {
                 throw new RuntimeException(e);
             }
             return response;
+        }
+
+        @Override
+        public AgentStepResult chatWithTools(List<AgentMessage> messages, List<ToolDefinition> tools) {
+            throw new UnsupportedOperationException("stub uses chat() override");
         }
 
         void awaitStarted() throws InterruptedException {

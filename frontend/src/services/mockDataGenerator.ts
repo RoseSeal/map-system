@@ -232,10 +232,10 @@ function generateRiskObject(): RiskUpdatePayload {
       safety_domain: {
         shape_type: 'ellipse',
         dimensions: {
-          fore_nm: 0.4,
-          aft_nm: 0.08,
-          port_nm: 0.16,
-          stbd_nm: 0.16,
+          fore_nm: 0.2,
+          aft_nm: 0.04,
+          port_nm: 0.08,
+          stbd_nm: 0.08,
         },
       },
     },
