@@ -26,6 +26,10 @@ export type PlatformHealthStatus = 'NORMAL' | 'DEGRADED' | 'NUC';
 export type GovernanceMode = 'adaptive';
 export type ChatProvider = 'gemini' | 'zhipu';
 export type ExplanationProvider = 'gemini' | 'zhipu' | 'fallback';
+export type AdvisoryScope = 'SCENE';
+export type AdvisoryStatus = 'ACTIVE' | 'SUPERSEDED';
+export type AdvisoryActionType = 'COURSE_CHANGE' | 'SPEED_CHANGE' | 'MAINTAIN_COURSE' | 'MONITOR' | 'UNKNOWN';
+export type AdvisoryUrgency = 'LOW' | 'MEDIUM' | 'HIGH' | 'IMMEDIATE';
 
 // ============================================================
 // Risk payload nested types
@@ -176,7 +180,31 @@ export interface EnvironmentContext {
 // Risk SSE types
 // ============================================================
 
-export type RiskSseEventType = 'RISK_UPDATE' | 'EXPLANATION' | 'ERROR';
+export type RiskSseEventType = 'RISK_UPDATE' | 'EXPLANATION' | 'ADVISORY' | 'ERROR';
+
+export interface RecommendedAction {
+  type: AdvisoryActionType;
+  description: string;
+  urgency: AdvisoryUrgency;
+}
+
+export interface AdvisoryPayload {
+  event_id: string;
+  advisory_id: string;
+  risk_object_id: string | null;
+  snapshot_version: number;
+  scope: AdvisoryScope;
+  status: AdvisoryStatus;
+  supersedes_id: string | null;
+  valid_until: string;
+  risk_level: RiskLevel;
+  provider: string;
+  timestamp: string;
+  summary: string;
+  affected_targets: string[];
+  recommended_action: RecommendedAction;
+  evidence_items: string[];
+}
 
 export interface RiskUpdatePayload {
   event_id: string;

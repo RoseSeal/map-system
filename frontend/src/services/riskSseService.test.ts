@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  advisoryFixture,
   explanationForAlarmFixture,
   riskUpdateFixture,
   sseErrorFixture,
@@ -98,13 +99,15 @@ describe('riskSseService', () => {
     off();
   });
 
-  it('parses and forwards RISK_UPDATE, EXPLANATION and ERROR events', () => {
+  it('parses and forwards RISK_UPDATE, EXPLANATION, ADVISORY and ERROR events', () => {
     const riskUpdateSpy = vi.fn();
     const explanationSpy = vi.fn();
+    const advisorySpy = vi.fn();
     const errorSpy = vi.fn();
 
     const offRisk = riskSseService.onRiskUpdate(riskUpdateSpy);
     const offExplanation = riskSseService.onExplanation(explanationSpy);
+    const offAdvisory = riskSseService.onAdvisory(advisorySpy);
     const offError = riskSseService.onError(errorSpy);
 
     riskSseService.connect('http://localhost:8080/api/v2/risk');
@@ -112,14 +115,17 @@ describe('riskSseService', () => {
     const source = MockEventSource.instances[0];
     source.emit('RISK_UPDATE', riskUpdateFixture);
     source.emit('EXPLANATION', explanationForAlarmFixture);
+    source.emit('ADVISORY', advisoryFixture);
     source.emit('ERROR', sseErrorFixture);
 
     expect(riskUpdateSpy).toHaveBeenCalledWith(riskUpdateFixture);
     expect(explanationSpy).toHaveBeenCalledWith(explanationForAlarmFixture);
+    expect(advisorySpy).toHaveBeenCalledWith(advisoryFixture);
     expect(errorSpy).toHaveBeenCalledWith(sseErrorFixture);
 
     offRisk();
     offExplanation();
+    offAdvisory();
     offError();
   });
 
@@ -144,7 +150,7 @@ describe('riskSseService', () => {
     riskSseService.disconnect();
 
     expect(source.closed).toBe(true);
-    expect(source.removedEventTypes).toEqual(expect.arrayContaining(['RISK_UPDATE', 'EXPLANATION', 'ERROR']));
+    expect(source.removedEventTypes).toEqual(expect.arrayContaining(['RISK_UPDATE', 'EXPLANATION', 'ADVISORY', 'ERROR']));
     expect(connectionSpy).toHaveBeenLastCalledWith('disconnected', null);
 
     off();

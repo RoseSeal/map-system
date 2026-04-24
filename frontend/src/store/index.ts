@@ -10,6 +10,8 @@ export {
   selectRiskConnectionError,
   selectSelectedTargetIds,
   selectDroppedTargetNotices,
+  selectActiveAdvisory,
+  selectArchivedAdvisories,
 } from './useRiskStore';
 
 export {

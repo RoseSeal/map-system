@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type {
+  AdvisoryPayload,
   EnvironmentContext,
   ExplanationPayload,
   Governance,
@@ -24,6 +25,9 @@ interface RiskState {
   environment: EnvironmentContext | null;
   explanationsByTargetId: Record<string, ExplanationPayload>;
 
+  activeAdvisory: AdvisoryPayload | null;
+  archivedAdvisories: AdvisoryPayload[];
+
   riskConnectionState: DisplayConnectionState;
   connectionError: string | null;
   lastError: SseErrorPayload | null;
@@ -34,6 +38,8 @@ interface RiskState {
 
   setRiskUpdate: (payload: RiskUpdatePayload) => void;
   upsertExplanation: (payload: ExplanationPayload) => void;
+  upsertAdvisory: (payload: AdvisoryPayload) => void;
+  expireActiveAdvisory: (advisoryId: string) => void;
   setRiskConnectionState: (state: DisplayConnectionState, error?: string | null) => void;
   setRiskError: (payload: SseErrorPayload) => void;
   clearRiskError: () => void;
@@ -52,6 +58,8 @@ const initialState = {
   governance: null,
   environment: null,
   explanationsByTargetId: {} as Record<string, ExplanationPayload>,
+  activeAdvisory: null as AdvisoryPayload | null,
+  archivedAdvisories: [] as AdvisoryPayload[],
   riskConnectionState: 'disconnected' as DisplayConnectionState,
   connectionError: null,
   lastError: null as SseErrorPayload | null,
@@ -120,6 +128,31 @@ export const useRiskStore = create<RiskState>()(
           connectionError: null,
           isLowTrust: payload.governance.trust_factor < PERFORMANCE.LOW_TRUST_THRESHOLD,
         };
+      });
+    },
+
+    upsertAdvisory: (payload: AdvisoryPayload) => {
+      set((state) => {
+        const prev = state.activeAdvisory;
+        if (prev && prev.advisory_id === payload.advisory_id) {
+          return state;
+        }
+        const archived = prev
+          ? [...state.archivedAdvisories, { ...prev, status: 'SUPERSEDED' as const }]
+          : state.archivedAdvisories;
+        return {
+          activeAdvisory: payload,
+          archivedAdvisories: archived,
+        };
+      });
+    },
+
+    expireActiveAdvisory: (advisoryId: string) => {
+      set((state) => {
+        if (!state.activeAdvisory || state.activeAdvisory.advisory_id !== advisoryId) {
+          return state;
+        }
+        return { activeAdvisory: null };
       });
     },
 
@@ -203,6 +236,8 @@ export const selectRiskConnectionError = (state: RiskState) => state.connectionE
 export const selectExplanationsByTargetId = (state: RiskState) => state.explanationsByTargetId;
 export const selectSelectedTargetIds = (state: RiskState) => state.selectedTargetIds;
 export const selectDroppedTargetNotices = (state: RiskState) => state.droppedTargetNotices;
+export const selectActiveAdvisory = (state: RiskState) => state.activeAdvisory;
+export const selectArchivedAdvisories = (state: RiskState) => state.archivedAdvisories;
 let hasInitializedRiskStoreSubscriptions = false;
 
 function initializeRiskStoreSubscriptions(): void {
@@ -218,6 +253,10 @@ function initializeRiskStoreSubscriptions(): void {
 
   riskSseService.onExplanation((payload) => {
     useRiskStore.getState().upsertExplanation(payload);
+  });
+
+  riskSseService.onAdvisory((payload) => {
+    useRiskStore.getState().upsertAdvisory(payload);
   });
 
   riskSseService.onError((payload) => {

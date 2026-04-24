@@ -8,6 +8,7 @@ import {
 } from 'react';
 import {
   selectAiCenterOpenRequestVersion,
+  selectActiveAdvisory,
   selectChatInput,
   selectChatMessages,
   selectDroppedTargetNotices,
@@ -25,6 +26,7 @@ import {
   useAiCenterStore,
   useRiskStore,
 } from '../../store';
+import { AdvisoryCard } from './AdvisoryCard';
 import { useThemeStore } from '../../store/useThemeStore';
 import { useMapSettingsStore } from '../../store/useMapSettingsStore';
 import {
@@ -79,6 +81,7 @@ function getRiskPriority(level: RiskLevel) {
 export function RiskExplanationPanel() {
   const targets = useRiskStore(selectTargets);
   const explanationsByTargetId = useRiskStore(selectExplanationsByTargetId);
+  const activeAdvisory = useRiskStore(selectActiveAdvisory);
   const selectedTargetIds = useRiskStore(selectSelectedTargetIds);
   const droppedTargetNotices = useRiskStore(selectDroppedTargetNotices);
   const lastSseError = useRiskStore((state) => state.lastError);
@@ -735,6 +738,12 @@ export function RiskExplanationPanel() {
                 style={{ color: 'var(--risk-alarm)' }}
               >
                 服务连接异常：{visibleSseError}
+              </div>
+            )}
+
+            {activeAdvisory && (
+              <div className="px-4 pt-3 pb-1">
+                <AdvisoryCard isDarkMode={isDarkMode} />
               </div>
             )}
 

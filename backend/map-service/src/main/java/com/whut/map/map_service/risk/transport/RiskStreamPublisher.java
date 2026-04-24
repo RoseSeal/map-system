@@ -2,6 +2,7 @@ package com.whut.map.map_service.risk.transport;
 
 import com.whut.map.map_service.shared.dto.RiskObjectDto;
 import com.whut.map.map_service.risk.event.RiskFrame;
+import com.whut.map.map_service.shared.dto.sse.AdvisoryPayload;
 import com.whut.map.map_service.shared.dto.sse.ExplanationPayload;
 import com.whut.map.map_service.shared.dto.sse.RiskUpdatePayload;
 import com.whut.map.map_service.shared.dto.sse.SseErrorPayload;
@@ -58,6 +59,16 @@ public class RiskStreamPublisher {
             }
 
             publishAndCacheLatestRiskFrame(payload);
+        });
+    }
+
+    public void publishAdvisory(AdvisoryPayload payload) {
+        submit("publish advisory", () -> {
+            if (payload == null) {
+                return;
+            }
+
+            publish(SseEventType.ADVISORY, payload);
         });
     }
 

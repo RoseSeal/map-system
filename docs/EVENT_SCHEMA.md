@@ -14,6 +14,7 @@
 | v2 | 2026-04-08 | CHAT/SPEECH payload 新增可选字段 `selected_target_ids`，用于选中目标定向注入 |
 | v2 | 2026-04-16 | CHAT payload 新增 `edit_last_user_message`；`selected_target_ids` 语义扩展为可注入最近有效解释文本 |
 | v2 | 2026-04-18 | `RISK_UPDATE.environment_context` 新增 `weather` 字段；`active_alerts` 增补天气告警枚举 |
+| v2 | 2026-04-24 | risk SSE 新增 `ADVISORY` 事件；新增错误码 `ADVISORY_SCHEMA_FAILED` |
 
 ## 1. 文档定位
 
@@ -125,6 +126,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 |---|---|
 | `RISK_UPDATE` | 风险快照事件 |
 | `EXPLANATION` | 风险解释事件 |
+| `ADVISORY` | 场景级 AI 航行建议事件 |
 | `ERROR` | risk 连接错误事件 |
 
 ### 4.3 `RISK_UPDATE` payload
@@ -243,6 +245,68 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `provider` | `string` | `gemini` / `zhipu` / `fallback` |
 | `text` | `string` | 解释文本 |
 | `timestamp` | `string` | 解释生成时间 |
+
+### 4.6 `ADVISORY` payload（risk）
+
+说明：
+
+- 用于场景级 AI 航行建议卡片
+- 通过 risk SSE 通道下发，独立于 `EXPLANATION`
+- 不进入 `latestRiskFrame` replay 缓存，新连接不补发
+- 生命周期：前端收到新 advisory 时将旧 active advisory 标记为 `SUPERSEDED` 并归档
+
+```json
+{
+  "event_id": "server-event-xxx",
+  "advisory_id": "advisory-uuid",
+  "risk_object_id": "snapshot-12345",
+  "snapshot_version": 12345,
+  "scope": "SCENE",
+  "status": "ACTIVE",
+  "supersedes_id": null,
+  "valid_until": "2026-04-24T10:25:00Z",
+  "risk_level": "ALARM",
+  "provider": "gemini",
+  "timestamp": "2026-04-24T10:23:00Z",
+  "summary": "目标 413999001 进入紧急接近态势，建议立即采取避让动作。",
+  "affected_targets": ["413999001"],
+  "recommended_action": {
+    "type": "COURSE_CHANGE",
+    "description": "建议右转并持续监控 TCPA 变化。",
+    "urgency": "IMMEDIATE"
+  },
+  "evidence_items": [
+    "目标 413999001 DCPA 0.12 nm，低于 WARNING 阈值 0.5 nm。",
+    "目标 413999001 TCPA 138 s，低于 300 s 紧急阈值。"
+  ]
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `event_id` | `string` | 服务端事件 ID |
+| `advisory_id` | `string` | 本条 advisory 的唯一 ID（UUID） |
+| `risk_object_id` | `string` | 关联的风险快照帧 ID |
+| `snapshot_version` | `number` | 触发此 advisory 的快照版本号 |
+| `scope` | `string` | 固定为 `SCENE` |
+| `status` | `string` | `ACTIVE` / `SUPERSEDED` |
+| `supersedes_id` | `string\|null` | 被本条取代的上一条 advisory ID |
+| `valid_until` | `string` | advisory 前端展示有效期（ISO 8601） |
+| `risk_level` | `string` | 场景最高风险等级，由后端从快照填充 |
+| `provider` | `string` | LLM 提供商标识 |
+| `timestamp` | `string` | advisory 生成时间 |
+| `summary` | `string` | 场景级综合建议摘要 |
+| `affected_targets` | `string[]` | 涉及目标 ID 列表 |
+| `recommended_action.type` | `string` | 动作类型枚举 |
+| `recommended_action.description` | `string` | 动作描述 |
+| `recommended_action.urgency` | `string` | 紧急程度枚举 |
+| `evidence_items` | `string[]` | 支撑建议的数值/状态事实列表（来自工具结果） |
+
+新增错误码：
+
+- `ADVISORY_SCHEMA_FAILED`：advisory 输出解析校验失败
 
 ## 5. Chat 连接协议
 
@@ -521,7 +585,11 @@ SSE 与 WebSocket chat 下行共用：
 | PredictionType | `linear` / `cv` |
 | EncounterType | `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED` |
 | SafetyDomainShape | `ellipse` |
-| RiskSseEventType | `RISK_UPDATE` / `EXPLANATION` / `ERROR` |
+| RiskSseEventType | `RISK_UPDATE` / `EXPLANATION` / `ADVISORY` / `ERROR` |
+| AdvisoryScope | `SCENE` |
+| AdvisoryStatus | `ACTIVE` / `SUPERSEDED` |
+| AdvisoryActionType | `COURSE_CHANGE` / `SPEED_CHANGE` / `MAINTAIN_COURSE` / `MONITOR` / `UNKNOWN` |
+| AdvisoryUrgency | `LOW` / `MEDIUM` / `HIGH` / `IMMEDIATE` |
 | ChatDownlinkType | `PONG` / `CHAT_REPLY` / `SPEECH_TRANSCRIPT` / `CLEAR_HISTORY_ACK` / `ERROR` |
 | ChatUplinkType | `PING` / `CHAT` / `SPEECH` / `CLEAR_HISTORY` |
 

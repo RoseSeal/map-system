@@ -7,6 +7,7 @@ import type { DisplayConnectionState } from '../../types/connection';
 const riskSubscribers = vi.hoisted(() => ({
   onRiskUpdate: undefined as ((payload: unknown) => void) | undefined,
   onExplanation: undefined as ((payload: unknown) => void) | undefined,
+  onAdvisory: undefined as ((payload: unknown) => void) | undefined,
   onError: undefined as ((payload: unknown) => void) | undefined,
   onConnectionStatusChange: undefined as ((state: DisplayConnectionState, error?: string | null) => void) | undefined,
 }));
@@ -18,6 +19,10 @@ const riskSseServiceMock = vi.hoisted(() => ({
   }),
   onExplanation: vi.fn((cb: (payload: unknown) => void) => {
     riskSubscribers.onExplanation = cb;
+    return vi.fn();
+  }),
+  onAdvisory: vi.fn((cb: (payload: unknown) => void) => {
+    riskSubscribers.onAdvisory = cb;
     return vi.fn();
   }),
   onError: vi.fn((cb: (payload: unknown) => void) => {

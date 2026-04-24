@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  advisoryFixture,
+  advisoryFixture2,
   explanationForAlarmFixture,
   explanationForCautionFixture,
   explanationForMissingTargetFixture,
@@ -12,6 +14,7 @@ import type { DisplayConnectionState } from '../types/connection';
 const riskSubscribers = vi.hoisted(() => ({
   onRiskUpdate: undefined as ((payload: unknown) => void) | undefined,
   onExplanation: undefined as ((payload: unknown) => void) | undefined,
+  onAdvisory: undefined as ((payload: unknown) => void) | undefined,
   onError: undefined as ((payload: unknown) => void) | undefined,
   onConnectionStatusChange: undefined as ((state: DisplayConnectionState, error?: string | null) => void) | undefined,
 }));
@@ -23,6 +26,10 @@ const riskSseServiceMock = vi.hoisted(() => ({
   }),
   onExplanation: vi.fn((cb: (payload: unknown) => void) => {
     riskSubscribers.onExplanation = cb;
+    return vi.fn();
+  }),
+  onAdvisory: vi.fn((cb: (payload: unknown) => void) => {
+    riskSubscribers.onAdvisory = cb;
     return vi.fn();
   }),
   onError: vi.fn((cb: (payload: unknown) => void) => {
@@ -162,19 +169,68 @@ describe('useRiskStore', () => {
   it('responds to risk service subscription callbacks', () => {
     expect(typeof riskSubscribers.onRiskUpdate).toBe('function');
     expect(typeof riskSubscribers.onExplanation).toBe('function');
+    expect(typeof riskSubscribers.onAdvisory).toBe('function');
     expect(typeof riskSubscribers.onError).toBe('function');
     expect(typeof riskSubscribers.onConnectionStatusChange).toBe('function');
 
     riskSubscribers.onRiskUpdate?.(riskUpdateFixture);
     riskSubscribers.onExplanation?.(explanationForAlarmFixture);
+    riskSubscribers.onAdvisory?.(advisoryFixture);
     riskSubscribers.onError?.(sseErrorFixture);
     riskSubscribers.onConnectionStatusChange?.('disconnected', 'stream-down');
 
     const state = useRiskStore.getState();
     expect(state.targets).toHaveLength(2);
     expect(state.explanationsByTargetId['TGT-ALARM']?.provider).toBe('gemini');
+    expect(state.activeAdvisory?.advisory_id).toBe('advisory-uuid-1');
     expect(state.lastError?.error_code).toBe('RISK_STREAM_INTERRUPTED');
     expect(state.riskConnectionState).toBe('disconnected');
     expect(state.connectionError).toBe('stream-down');
+  });
+
+  it('upsertAdvisory sets active advisory', () => {
+    useRiskStore.getState().upsertAdvisory(advisoryFixture);
+
+    const state = useRiskStore.getState();
+    expect(state.activeAdvisory?.advisory_id).toBe('advisory-uuid-1');
+    expect(state.archivedAdvisories).toHaveLength(0);
+  });
+
+  it('second advisory supersedes first and archives it', () => {
+    const store = useRiskStore.getState();
+    store.upsertAdvisory(advisoryFixture);
+    store.upsertAdvisory(advisoryFixture2);
+
+    const state = useRiskStore.getState();
+    expect(state.activeAdvisory?.advisory_id).toBe('advisory-uuid-2');
+    expect(state.archivedAdvisories).toHaveLength(1);
+    expect(state.archivedAdvisories[0].advisory_id).toBe('advisory-uuid-1');
+    expect(state.archivedAdvisories[0].status).toBe('SUPERSEDED');
+  });
+
+  it('expireActiveAdvisory clears active advisory when id matches', () => {
+    const store = useRiskStore.getState();
+    store.upsertAdvisory(advisoryFixture);
+    store.expireActiveAdvisory('advisory-uuid-1');
+
+    expect(useRiskStore.getState().activeAdvisory).toBeNull();
+  });
+
+  it('expireActiveAdvisory is no-op when id does not match', () => {
+    const store = useRiskStore.getState();
+    store.upsertAdvisory(advisoryFixture);
+    store.expireActiveAdvisory('advisory-uuid-WRONG');
+
+    expect(useRiskStore.getState().activeAdvisory?.advisory_id).toBe('advisory-uuid-1');
+  });
+
+  it('duplicate advisory with same id is ignored', () => {
+    const store = useRiskStore.getState();
+    store.upsertAdvisory(advisoryFixture);
+    store.upsertAdvisory(advisoryFixture); // same id
+
+    const state = useRiskStore.getState();
+    expect(state.archivedAdvisories).toHaveLength(0);
+    expect(state.activeAdvisory?.advisory_id).toBe('advisory-uuid-1');
   });
 });

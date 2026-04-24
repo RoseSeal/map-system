@@ -505,3 +505,25 @@ COLREGS 72 条主规则总量有限（全文约 3 万词），内存图在 v1.0 
 - `v1.0` 外扩方向（如流式 advisory 中间步骤、历史案例 GraphRAG、外部图数据库接入）仍无明确 owner
 
 `EVENT_SCHEMA.md` 等真值文档仍按各 step 实施时同步更新。
+
+---
+
+## Appendix A. Active Deviations
+
+### A.1 Step 3 快照构建位置前移到触发点
+
+- affected body item：§4 Step 3 中 `AdvisoryService` “接收场景触发 → 构建 AgentSnapshot”
+- triggered by：Step 3
+- date：2026-04-24
+- reason：better-approach
+- temporary handling：`docs/v1.0/agent/step3.md` 记录 `SceneRiskStateTracker` 在触发瞬间通过 `AgentSnapshotFactory.build()` 构建冻结快照，并通过 `AdvisoryTriggerPort.onAdvisoryTrigger(AgentSnapshot snapshot, Runnable onComplete)` 传入 `AdvisoryService`
+- canonical resolution：Step 3 正文在版本收敛时应改为“接收已冻结的 AgentSnapshot → 调用 AgentLoopOrchestrator → 填写 advisory 生命周期字段 → 发布”
+
+### A.2 Step 3 结构化解析与时效性检查移出 orchestrator
+
+- affected body item：§4 Step 3 中 `AgentLoopOrchestrator` “结束后调用结构化解析…发布前时效性检查”
+- triggered by：Step 3
+- date：2026-04-24
+- reason：better-approach
+- temporary handling：`docs/v1.0/agent/step3.md` 记录 `AgentLoopOrchestrator` 只返回 `AgentLoopResult`；`AdvisoryService` 负责 `AdvisoryOutputParser` 调用、schema failure 处理、snapshot version lag 检查和 SSE 发布
+- canonical resolution：Step 3 正文在版本收敛时应改为“`AgentLoopOrchestrator` 只编排有界 tool loop；`AdvisoryService` 在 loop 完成后执行结构化解析和发布前时效性检查”

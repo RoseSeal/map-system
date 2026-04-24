@@ -3,7 +3,8 @@ package com.whut.map.map_service.risk.transport;
 public enum SseEventType {
     RISK_UPDATE("RISK_UPDATE"),
     EXPLANATION("EXPLANATION"),
-    ERROR("ERROR");
+    ERROR("ERROR"),
+    ADVISORY("ADVISORY");
 
     private final String value;
 

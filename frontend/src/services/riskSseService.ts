@@ -1,4 +1,5 @@
 import type {
+  AdvisoryPayload,
   ExplanationPayload,
   RiskUpdatePayload,
   SseErrorPayload,
@@ -8,6 +9,7 @@ import type { DisplayConnectionState } from '../types/connection';
 
 type RiskUpdateCallback = (payload: RiskUpdatePayload) => void;
 type ExplanationCallback = (payload: ExplanationPayload) => void;
+type AdvisoryCallback = (payload: AdvisoryPayload) => void;
 type ErrorCallback = (payload: SseErrorPayload) => void;
 type ConnectionStatusCallback = (state: DisplayConnectionState, error?: string | null) => void;
 
@@ -17,6 +19,7 @@ class RiskSseService {
   private eventSource: EventSource | null = null;
   private riskUpdateCallbacks = new Set<RiskUpdateCallback>();
   private explanationCallbacks = new Set<ExplanationCallback>();
+  private advisoryCallbacks = new Set<AdvisoryCallback>();
   private errorCallbacks = new Set<ErrorCallback>();
   private connectionStatusCallbacks = new Set<ConnectionStatusCallback>();
   private currentUrl = DEFAULT_RISK_SSE_URL;
@@ -35,6 +38,7 @@ class RiskSseService {
     };
     eventSource.addEventListener('RISK_UPDATE', this.handleRiskUpdate as EventListener);
     eventSource.addEventListener('EXPLANATION', this.handleExplanation as EventListener);
+    eventSource.addEventListener('ADVISORY', this.handleAdvisory as EventListener);
     eventSource.addEventListener('ERROR', this.handleErrorEvent as EventListener);
     eventSource.onerror = (event) => {
       console.error('[riskSseService] EventSource error', event);
@@ -53,6 +57,7 @@ class RiskSseService {
 
     this.eventSource.removeEventListener('RISK_UPDATE', this.handleRiskUpdate as EventListener);
     this.eventSource.removeEventListener('EXPLANATION', this.handleExplanation as EventListener);
+    this.eventSource.removeEventListener('ADVISORY', this.handleAdvisory as EventListener);
     this.eventSource.removeEventListener('ERROR', this.handleErrorEvent as EventListener);
     this.eventSource.close();
     this.eventSource = null;
@@ -70,6 +75,13 @@ class RiskSseService {
     this.explanationCallbacks.add(cb);
     return () => {
       this.explanationCallbacks.delete(cb);
+    };
+  }
+
+  onAdvisory(cb: AdvisoryCallback): () => void {
+    this.advisoryCallbacks.add(cb);
+    return () => {
+      this.advisoryCallbacks.delete(cb);
     };
   }
 
@@ -103,6 +115,15 @@ class RiskSseService {
     }
 
     this.explanationCallbacks.forEach((cb) => cb(payload));
+  };
+
+  private handleAdvisory = (event: Event): void => {
+    const payload = parseSsePayload<AdvisoryPayload>(event);
+    if (!payload) {
+      return;
+    }
+
+    this.advisoryCallbacks.forEach((cb) => cb(payload));
   };
 
   private handleErrorEvent = (event: Event): void => {
