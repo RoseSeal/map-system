@@ -2,7 +2,7 @@
 
 > 文档状态：active
 > 最后更新：2026-04-23
-> 执行状态：planned
+> 执行状态：completed
 > 所属 track：[`AGENT_LOOP_PLAN.md`](./AGENT_LOOP_PLAN.md)
 > 对应总览：`AGENT_LOOP_PLAN.md` §4 Step 2
 > 目标：实现无副作用的 agent 工具层，建立统一注册与调度机制，并交付 advisory / chat agent 共用的基础查询工具。
