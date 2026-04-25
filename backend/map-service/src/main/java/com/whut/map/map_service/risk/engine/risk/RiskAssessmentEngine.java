@@ -22,6 +22,7 @@ import java.util.Map;
 public class RiskAssessmentEngine {
     // TCPA容差：允许轻微负值，避免数值抖动导致“刚刚错过”被误判为远离。
     private static final double TCPA_CPA_EPS_SEC = 1.0;
+    private static final double DOMAIN_PENETRATION_EPS = 1e-6;
 
     private final RiskAssessmentProperties riskProperties;
     private final RiskScoringProperties scoringProperties;
@@ -152,6 +153,12 @@ public class RiskAssessmentEngine {
 
         // 船域侵入分量：用于描述“空间压迫”风险。
         Double penetration = domainPenetrationCalculator.calculate(ownShip, targetShip, domainResult);
+        if (penetration != null && penetration > DOMAIN_PENETRATION_EPS) {
+            boolean separating = cpaResult.isCpaValid() && rawTcpaSec < -TCPA_CPA_EPS_SEC;
+            riskLevel = separating
+                    ? maxRiskLevel(riskLevel, RiskConstants.WARNING)
+                    : RiskConstants.ALARM;
+        }
         double domainScore = 0.0;
         double finalRiskScore;
         // 会遇修正因子：不同会遇类型对应不同风险放大/缩小权重。
@@ -217,5 +224,22 @@ public class RiskAssessmentEngine {
             return RiskConstants.CAUTION;
         }
         return RiskConstants.SAFE;
+    }
+
+    private String maxRiskLevel(String current, String floor) {
+        return riskPriority(current) >= riskPriority(floor) ? current : floor;
+    }
+
+    private int riskPriority(String riskLevel) {
+        if (RiskConstants.ALARM.equals(riskLevel)) {
+            return 3;
+        }
+        if (RiskConstants.WARNING.equals(riskLevel)) {
+            return 2;
+        }
+        if (RiskConstants.CAUTION.equals(riskLevel)) {
+            return 1;
+        }
+        return 0;
     }
 }

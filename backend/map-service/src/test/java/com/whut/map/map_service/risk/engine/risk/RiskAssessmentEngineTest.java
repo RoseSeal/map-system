@@ -20,10 +20,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RiskAssessmentEngineTest {
 
     private RiskAssessmentEngine createEngine(RiskAssessmentProperties properties) {
+        return createEngine(properties, new DomainPenetrationCalculator());
+    }
+
+    private RiskAssessmentEngine createEngine(
+            RiskAssessmentProperties properties,
+            DomainPenetrationCalculator domainPenetrationCalculator
+    ) {
         return new RiskAssessmentEngine(
                 properties,
                 new RiskScoringProperties(),
-                new DomainPenetrationCalculator(),
+                domainPenetrationCalculator,
                 new PredictedCpaCalculator(new PredictedCpaTcpaCalculator())
         );
     }
@@ -164,6 +171,104 @@ class RiskAssessmentEngineTest {
                 .build();
 
         RiskAssessmentResult result = engine.consume(own, List.of(own, target), Map.of(target.getId(), parallelResult), null, null, null);
+        assertThat(result.getTargetAssessment(target.getId()).getRiskLevel()).isEqualTo(RiskConstants.SAFE);
+    }
+
+    @Test
+    void targetInsideSafetyDomainWithoutSeparatingTrend_shouldBeAlarm() {
+        RiskAssessmentEngine engine = createEngine(new RiskAssessmentProperties());
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+
+        CpaTcpaResult parallelResult = CpaTcpaResult.builder()
+                .targetMmsi("target-1")
+                .cpaDistance(GeoUtils.nmToMeters(1.5))
+                .tcpaTime(1800)
+                .isApproaching(false)
+                .cpaValid(false)
+                .build();
+
+        ShipDomainResult domain = ShipDomainResult.builder()
+                .foreNm(0.2)
+                .aftNm(0.2)
+                .portNm(0.2)
+                .stbdNm(0.2)
+                .shapeType(ShipDomainResult.SHAPE_ELLIPSE)
+                .build();
+
+        RiskAssessmentResult result = engine.consume(
+                own,
+                List.of(own, target),
+                Map.of(target.getId(), parallelResult),
+                domain,
+                null,
+                null
+        );
+
+        assertThat(result.getTargetAssessment(target.getId()).getRiskLevel()).isEqualTo(RiskConstants.ALARM);
+    }
+
+    @Test
+    void targetInsideSafetyDomainButSeparating_shouldUseWarningFloor() {
+        RiskAssessmentEngine engine = createEngine(new RiskAssessmentProperties());
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+
+        CpaTcpaResult separatingResult = CpaTcpaResult.builder()
+                .targetMmsi("target-1")
+                .cpaDistance(GeoUtils.nmToMeters(1.5))
+                .tcpaTime(-20.0)
+                .isApproaching(false)
+                .cpaValid(true)
+                .build();
+
+        ShipDomainResult domain = ShipDomainResult.builder()
+                .foreNm(0.2)
+                .aftNm(0.2)
+                .portNm(0.2)
+                .stbdNm(0.2)
+                .shapeType(ShipDomainResult.SHAPE_ELLIPSE)
+                .build();
+
+        RiskAssessmentResult result = engine.consume(
+                own,
+                List.of(own, target),
+                Map.of(target.getId(), separatingResult),
+                domain,
+                null,
+                null
+        );
+
+        assertThat(result.getTargetAssessment(target.getId()).getRiskLevel()).isEqualTo(RiskConstants.WARNING);
+    }
+
+    @Test
+    void tinyDomainPenetration_shouldNotTriggerRiskFloor() {
+        DomainPenetrationCalculator tinyPenetrationCalculator = new DomainPenetrationCalculator() {
+            @Override
+            public Double calculate(ShipStatus ownShip, ShipStatus targetShip, ShipDomainResult domainResult) {
+                return 1e-7;
+            }
+        };
+        RiskAssessmentEngine engine = createEngine(new RiskAssessmentProperties(), tinyPenetrationCalculator);
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+
+        RiskAssessmentResult result = engine.consume(
+                own,
+                List.of(own, target),
+                Map.of(target.getId(), cpaTcpa(1.5, 1800.0)),
+                ShipDomainResult.builder()
+                        .foreNm(0.2)
+                        .aftNm(0.2)
+                        .portNm(0.2)
+                        .stbdNm(0.2)
+                        .shapeType(ShipDomainResult.SHAPE_ELLIPSE)
+                        .build(),
+                null,
+                null
+        );
+
         assertThat(result.getTargetAssessment(target.getId()).getRiskLevel()).isEqualTo(RiskConstants.SAFE);
     }
 }

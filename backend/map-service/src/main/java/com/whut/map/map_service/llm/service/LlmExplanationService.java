@@ -148,13 +148,13 @@ public class LlmExplanationService {
                                 target.getTargetId(),
                                 target.getLongitude(), target.getLatitude(),
                                 target.getSpeedKn(), target.getCourseDeg(),
-                                target.getRiskLevel() == null ? "未知" : target.getRiskLevel().name(),
+                                formatRiskLevel(target.getRiskLevel()),
                                 formatTriggerReason(trigger),
                                 formatDistanceNm(target.getCurrentDistanceNm()),
                                 formatRelativeBearing(target.getRelativeBearingDeg()),
                                 target.getDcpaNm(), target.getTcpaSec(),
                                 target.isApproaching() ? "是" : "否",
-                                target.getRuleExplanation() != null ? target.getRuleExplanation() : "无"
+                                formatRuleExplanation(target.getRuleExplanation())
                         )
                 )
         );
@@ -162,11 +162,34 @@ public class LlmExplanationService {
 
     private String formatTriggerReason(ExplanationTrigger trigger) {
         if (trigger.triggerReason() == TriggerReason.LEVEL_UPGRADE) {
-            String previous = trigger.previousRiskLevel() == null ? "未知" : trigger.previousRiskLevel().name();
-            String current = trigger.target().getRiskLevel() == null ? "未知" : trigger.target().getRiskLevel().name();
+            String previous = formatRiskLevel(trigger.previousRiskLevel());
+            String current = formatRiskLevel(trigger.target().getRiskLevel());
             return "风险等级升级（%s -> %s）".formatted(previous, current);
         }
         return "冷却窗口到期，基于当前态势重新解释";
+    }
+
+    private String formatRiskLevel(RiskLevel riskLevel) {
+        if (riskLevel == null) {
+            return "未知";
+        }
+        return switch (riskLevel) {
+            case ALARM -> "警报";
+            case WARNING -> "预警";
+            case CAUTION -> "注意";
+            case SAFE -> "安全";
+        };
+    }
+
+    private String formatRuleExplanation(String ruleExplanation) {
+        if (!StringUtils.hasText(ruleExplanation)) {
+            return "无";
+        }
+        return ruleExplanation
+                .replace("ALARM", "警报")
+                .replace("WARNING", "预警")
+                .replace("CAUTION", "注意")
+                .replace("SAFE", "安全");
     }
 
     private Throwable unwrap(Throwable throwable) {
