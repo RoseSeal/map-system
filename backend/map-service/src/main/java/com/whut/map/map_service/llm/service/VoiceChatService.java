@@ -111,7 +111,8 @@ public class VoiceChatService {
                 request.eventId(),
                 content,
                 request.selectedTargetIds(),
-                false
+                false,
+                ChatAgentMode.CHAT
         );
     }
 

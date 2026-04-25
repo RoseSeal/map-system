@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -21,6 +22,15 @@ public class AgentLoopOrchestrator {
             AgentSnapshot snapshot,
             List<AgentMessage> initialMessages,
             int maxIterations
+    ) {
+        return run(snapshot, initialMessages, maxIterations, AgentStepSink.NOOP);
+    }
+
+    public AgentLoopResult run(
+            AgentSnapshot snapshot,
+            List<AgentMessage> initialMessages,
+            int maxIterations,
+            AgentStepSink stepSink
     ) {
         List<AgentMessage> messages = new ArrayList<>(initialMessages);
         List<ToolDefinition> toolDefs = toolRegistry.getToolDefinitions();
@@ -39,6 +49,8 @@ public class AgentLoopOrchestrator {
 
             switch (stepResult) {
                 case ToolCallRequest tcr -> {
+                    stepSink.accept(new AgentStepEvent(
+                            UUID.randomUUID().toString(), tcr.toolName(), AgentStepStatus.RUNNING, "正在调用工具"));
                     messages.add(new ToolCallAgentMessage(tcr.callId(), tcr.toolName(), tcr.arguments()));
                     ToolResult toolResult;
                     try {
@@ -46,14 +58,20 @@ public class AgentLoopOrchestrator {
                                 new ToolCall(tcr.callId(), tcr.toolName(), tcr.arguments()),
                                 snapshot
                         );
+                        stepSink.accept(new AgentStepEvent(
+                                UUID.randomUUID().toString(), tcr.toolName(), AgentStepStatus.SUCCEEDED, "工具调用完成"));
                     } catch (Exception e) {
                         log.warn("Tool {} (callId={}) threw unexpected exception: {}", tcr.toolName(), tcr.callId(), e.getMessage());
+                        stepSink.accept(new AgentStepEvent(
+                                UUID.randomUUID().toString(), tcr.toolName(), AgentStepStatus.FAILED, "工具调用失败"));
                         return AgentLoopResult.toolFailed(tcr.callId(), tcr.toolName(), e.getMessage(), e);
                     }
                     messages.add(new ToolResultAgentMessage(toolResult.callId(), toolResult.toolName(), toolResult.payload()));
                     toolCallCount++;
                 }
                 case FinalText ft -> {
+                    stepSink.accept(new AgentStepEvent(
+                            UUID.randomUUID().toString(), null, AgentStepStatus.FINALIZING, "正在整理态势"));
                     return AgentLoopResult.completed(ft.text(), iteration, toolCallCount);
                 }
             }

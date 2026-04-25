@@ -47,7 +47,7 @@ class AgentLoopOrchestratorTest {
     void firstRoundFinalTextReturnsCompleted() {
         when(llmClient.chatWithTools(anyList(), anyList())).thenReturn(new FinalText("done"));
 
-        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 5);
+        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 5, com.whut.map.map_service.llm.agent.AgentStepSink.NOOP);
 
         assertThat(result).isInstanceOf(AgentLoopResult.Completed.class);
         AgentLoopResult.Completed completed = (AgentLoopResult.Completed) result;
@@ -66,7 +66,7 @@ class AgentLoopOrchestratorTest {
                 .thenReturn(new FinalText("advisory text"));
         when(toolRegistry.execute(any(ToolCall.class), any(AgentSnapshot.class))).thenReturn(toolResult);
 
-        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 5);
+        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 5, com.whut.map.map_service.llm.agent.AgentStepSink.NOOP);
 
         assertThat(result).isInstanceOf(AgentLoopResult.Completed.class);
         AgentLoopResult.Completed completed = (AgentLoopResult.Completed) result;
@@ -84,7 +84,7 @@ class AgentLoopOrchestratorTest {
                 .thenReturn(new FinalText("text"));
         when(toolRegistry.execute(any(), any())).thenReturn(toolResult);
 
-        orchestrator.run(emptySnapshot(), List.of(), 5);
+        orchestrator.run(emptySnapshot(), List.of(), 5, com.whut.map.map_service.llm.agent.AgentStepSink.NOOP);
 
         // First call: empty messages; second call: 2 messages (tool call + tool result)
         verify(llmClient, times(2)).chatWithTools(anyList(), anyList());
@@ -97,7 +97,7 @@ class AgentLoopOrchestratorTest {
         when(llmClient.chatWithTools(anyList(), anyList())).thenReturn(tcr);
         when(toolRegistry.execute(any(), any())).thenReturn(toolResult);
 
-        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 3);
+        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 3, com.whut.map.map_service.llm.agent.AgentStepSink.NOOP);
 
         assertThat(result).isInstanceOf(AgentLoopResult.MaxIterationsExceeded.class);
         AgentLoopResult.MaxIterationsExceeded exceeded = (AgentLoopResult.MaxIterationsExceeded) result;
@@ -111,7 +111,7 @@ class AgentLoopOrchestratorTest {
         when(llmClient.chatWithTools(anyList(), anyList())).thenReturn(tcr);
         when(toolRegistry.execute(any(), any())).thenThrow(new RuntimeException("unexpected"));
 
-        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 5);
+        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 5, com.whut.map.map_service.llm.agent.AgentStepSink.NOOP);
 
         assertThat(result).isInstanceOf(AgentLoopResult.ToolFailed.class);
         AgentLoopResult.ToolFailed failed = (AgentLoopResult.ToolFailed) result;
@@ -123,7 +123,7 @@ class AgentLoopOrchestratorTest {
     void providerExceptionReturnsProviderFailed() {
         when(llmClient.chatWithTools(anyList(), anyList())).thenThrow(new RuntimeException("provider down"));
 
-        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 5);
+        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 5, com.whut.map.map_service.llm.agent.AgentStepSink.NOOP);
 
         assertThat(result).isInstanceOf(AgentLoopResult.ProviderFailed.class);
         AgentLoopResult.ProviderFailed failed = (AgentLoopResult.ProviderFailed) result;

@@ -88,7 +88,8 @@ public class AdvisoryService implements AdvisoryTriggerPort {
             }
 
             var initialMessages = promptBuilder.build(snapshot);
-            AgentLoopResult loopResult = orchestrator.run(snapshot, initialMessages, config.getMaxIterations());
+            AgentLoopResult loopResult = orchestrator.run(snapshot, initialMessages, config.getMaxIterations(),
+                    com.whut.map.map_service.llm.agent.AgentStepSink.NOOP);
 
             switch (loopResult) {
                 case AgentLoopResult.Completed completed -> {

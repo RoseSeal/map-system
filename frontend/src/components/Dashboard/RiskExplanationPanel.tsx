@@ -9,6 +9,10 @@ import {
 import {
   selectAiCenterOpenRequestVersion,
   selectActiveAdvisory,
+  selectAgentStepsByReplyToEventId,
+  selectAssistantMode,
+  selectChatCapability,
+  selectChatCapabilityState,
   selectChatInput,
   selectChatMessages,
   selectDroppedTargetNotices,
@@ -98,6 +102,11 @@ export function RiskExplanationPanel() {
   const editingSubmitEventId = useAiCenterStore(selectEditingSubmitEventId);
   const editingSubmitError = useAiCenterStore(selectEditingSubmitError);
   const isChatSending = useAiCenterStore(selectIsChatSending);
+  const assistantMode = useAiCenterStore(selectAssistantMode);
+  const chatCapabilityState = useAiCenterStore(selectChatCapabilityState);
+  const chatCapability = useAiCenterStore(selectChatCapability);
+  const agentStepsByReplyToEventId = useAiCenterStore(selectAgentStepsByReplyToEventId);
+  const setAssistantMode = useAiCenterStore((state) => state.setAssistantMode);
   const speechEnabled = useAiCenterStore(selectSpeechEnabled);
 
   const speechSupported = useAiCenterStore(selectSpeechSupported);
@@ -115,7 +124,12 @@ export function RiskExplanationPanel() {
 
   const environment = useRiskStore(selectEnvironment);
   const { isDarkMode, toggleTheme } = useThemeStore();
-  const { safetyContourOverride, setSafetyContourOverride } = useMapSettingsStore();
+  const {
+    safetyContourOverride,
+    setSafetyContourOverride,
+    followMode,
+    setFollowMode,
+  } = useMapSettingsStore();
 
   const liveSafetyContourVal = environment?.safety_contour_val ?? 10;
   const effectiveSafetyContourVal = safetyContourOverride ?? liveSafetyContourVal;
@@ -162,6 +176,12 @@ export function RiskExplanationPanel() {
       setIsOpen(true);
     }
   }, [aiCenterOpenRequestVersion]);
+
+  useEffect(() => {
+    if (followMode === 'OFF') {
+      setFollowMode('SOFT');
+    }
+  }, [followMode, setFollowMode]);
 
   useEffect(() => {
     if (voiceCaptureState === 'recording' || voiceCaptureState === 'transcribing') {
@@ -365,6 +385,14 @@ export function RiskExplanationPanel() {
     const unlocked = speechService.unlock();
     setSpeechUnlocked(unlocked);
     setSpeechEnabled(unlocked);
+  };
+
+  const handleSpeechEnabledChange = (nextEnabled: boolean) => {
+    if (!speechSupported || speechEnabled === nextEnabled) {
+      return;
+    }
+
+    handleSpeechToggle();
   };
 
   const glassClass = isDarkMode ? 'glass-vision-dark' : 'glass-vision';
@@ -597,65 +625,156 @@ export function RiskExplanationPanel() {
         <div
           style={{
             overflow: 'hidden',
-            maxHeight: isSettingsOpen ? 280 : 0,
+            maxHeight: isSettingsOpen ? 420 : 0,
             opacity: isSettingsOpen ? 1 : 0,
-            transition: 'max-height 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.2s',
+            transition: 'max-height 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.2s',
             borderBottom: '0.5px solid color-mix(in oklch, var(--ink-500) 12%, transparent)',
             background: 'color-mix(in oklch, var(--ink-500) 3%, transparent)',
           }}
         >
-          <div className="space-y-3 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-semibold" style={{ color: 'var(--ink-700)' }}>
+          <div className="space-y-4 p-5">
+            <div className="flex items-center">
+              <div className="w-[140px] flex-shrink-0">
+                <div className="text-[11px] font-semibold" style={{ color: 'var(--ink-700)' }}>
                   显示模式
                 </div>
-                <div className="text-[9px]" style={{ color: 'var(--ink-500)' }}>
-                  切换深色 / 浅色主题
+                <div className="text-[10px] leading-tight" style={{ color: 'var(--ink-500)' }}>
+                  切换深浅主题
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className="rounded-lg px-3 py-1 text-[10px] font-medium"
-                style={{
-                  border: '0.5px solid color-mix(in oklch, var(--ink-500) 20%, transparent)',
-                  background: 'color-mix(in oklch, var(--ink-500) 8%, transparent)',
-                  color: 'var(--ink-700)',
-                  cursor: 'pointer',
-                }}
-              >
-                {isDarkMode ? '深色模式' : '浅色模式'}
-              </button>
+              <div className="flex flex-1 justify-end">
+                <div
+                  className="inline-flex w-[146px] items-center gap-0.5 rounded-lg p-0.5"
+                  style={{
+                    background: 'color-mix(in oklch, var(--ink-500) 8%, transparent)',
+                    border: '0.5px solid color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                  }}
+                >
+                  {([
+                    { key: 'light', label: '浅色模式', active: !isDarkMode },
+                    { key: 'dark', label: '深色模式', active: isDarkMode }
+                  ]).map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => {
+                        if (!item.active) {
+                          toggleTheme();
+                        }
+                      }}
+                      className="flex-1 px-3 py-1 text-[10px] font-medium transition-all duration-200"
+                      style={{
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: item.active
+                          ? (isDarkMode ? 'rgba(255,255,255,0.12)' : 'white')
+                          : 'transparent',
+                        boxShadow: item.active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        color: item.active ? 'var(--accent)' : 'var(--ink-500)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-semibold" style={{ color: 'var(--ink-700)' }}>
+            <div className="flex items-center">
+              <div className="w-[140px] flex-shrink-0">
+                <div className="text-[11px] font-semibold" style={{ color: 'var(--ink-700)' }}>
                   语音播报
                 </div>
-                <div className="text-[9px]" style={{ color: 'var(--ink-500)' }}>
+                <div className="text-[10px] leading-tight" style={{ color: 'var(--ink-500)' }}>
                   {speechSupported ? '自动播报 AI 评估' : '浏览器不支持'}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleSpeechToggle}
-                disabled={!speechSupported}
-                className="rounded-lg px-3 py-1 text-[10px] font-medium"
-                style={{
-                  border: `0.5px solid ${speechEnabled
-                    ? 'color-mix(in oklch, var(--accent) 40%, transparent)'
-                    : 'color-mix(in oklch, var(--ink-500) 20%, transparent)'}`,
-                  background: speechEnabled
-                    ? 'color-mix(in oklch, var(--accent) 12%, transparent)'
-                    : 'color-mix(in oklch, var(--ink-500) 8%, transparent)',
-                  color: speechEnabled ? 'var(--accent)' : 'var(--ink-500)',
-                  cursor: speechSupported ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {speechEnabled ? '已开启' : '已关闭'}
-              </button>
+              <div className="flex flex-1 justify-end">
+                <div
+                  className="inline-flex w-[146px] items-center gap-0.5 rounded-lg p-0.5"
+                  style={{
+                    background: 'color-mix(in oklch, var(--ink-500) 8%, transparent)',
+                    border: '0.5px solid color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                    opacity: speechSupported ? 1 : 0.5,
+                  }}
+                >
+                  {([
+                    { val: true, label: '已开启' },
+                    { val: false, label: '已关闭' }
+                  ]).map((item) => {
+                    const isActive = speechEnabled === item.val;
+                    return (
+                      <button
+                        key={String(item.val)}
+                        type="button"
+                        disabled={!speechSupported}
+                        onClick={() => handleSpeechEnabledChange(item.val)}
+                        className="flex-1 px-3 py-1 text-[10px] font-medium transition-all duration-200"
+                        style={{
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: isActive
+                            ? (isDarkMode ? 'rgba(255,255,255,0.12)' : 'white')
+                            : 'transparent',
+                          boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                          color: isActive ? 'var(--accent)' : 'var(--ink-500)',
+                          cursor: speechSupported ? 'pointer' : 'not-allowed',
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <div className="w-[140px] flex-shrink-0">
+                <div className="text-[11px] font-semibold" style={{ color: 'var(--ink-700)' }}>
+                  本船视角
+                </div>
+                <div className="text-[10px] leading-tight" style={{ color: 'var(--ink-500)' }}>
+                  镜头跟随策略
+                </div>
+              </div>
+              <div className="flex flex-1 justify-end">
+                <div
+                  className="inline-flex w-[146px] items-center gap-0.5 rounded-lg p-0.5"
+                  style={{
+                    background: 'color-mix(in oklch, var(--ink-500) 8%, transparent)',
+                    border: '0.5px solid color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                  }}
+                >
+                  {([
+                    { mode: 'SOFT' as const, label: '浅跟随' },
+                    { mode: 'LOCKED' as const, label: '锁定' },
+                  ]).map(({ mode, label }) => {
+                    const isActive = followMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setFollowMode(mode)}
+                        className="flex-1 px-2.5 py-1 text-[10px] font-medium transition-all duration-200"
+                        style={{
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: isActive
+                            ? (isDarkMode ? 'rgba(255,255,255,0.12)' : 'white')
+                            : 'transparent',
+                          boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                          color: isActive ? 'var(--accent)' : 'var(--ink-500)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div>
@@ -884,9 +1003,53 @@ export function RiskExplanationPanel() {
               className="flex items-center justify-between px-5 py-2.5"
               style={{ borderBottom: '0.5px solid color-mix(in oklch, var(--ink-500) 8%, transparent)' }}
             >
-              <span className="text-[11px] font-semibold" style={{ color: 'var(--ink-900)' }}>
-                智能决策助理
-              </span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-[11px] font-semibold" style={{ color: 'var(--ink-900)' }}>
+                  智能决策助理
+                </span>
+                <div
+                  className="flex items-center rounded-lg overflow-hidden"
+                  style={{
+                    border: '0.5px solid color-mix(in oklch, var(--ink-500) 20%, transparent)',
+                    background: 'color-mix(in oklch, var(--ink-500) 5%, transparent)',
+                  }}
+                >
+                  {(['CHAT', 'AGENT'] as const).map((mode) => {
+                    const isActive = assistantMode === mode;
+                    const isCapabilityReady = chatCapabilityState === 'ready';
+                    const isAvailable = mode === 'CHAT'
+                      ? !isCapabilityReady || (chatCapability?.chat_available ?? true)
+                      : !isCapabilityReady || (chatCapability?.agent_available ?? false);
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        disabled={!isAvailable}
+                        onClick={() => setAssistantMode(mode)}
+                        className="px-2 py-0.5 text-[9px] font-semibold transition-colors"
+                        style={{
+                          background: isActive
+                            ? 'color-mix(in oklch, var(--accent) 18%, transparent)'
+                            : 'transparent',
+                          color: isActive
+                            ? 'var(--accent)'
+                            : 'var(--ink-500)',
+                          cursor: isAvailable ? 'pointer' : 'not-allowed',
+                          opacity: isAvailable ? 1 : 0.4,
+                          border: 'none',
+                        }}
+                        title={!isAvailable && isCapabilityReady
+                          ? (mode === 'AGENT'
+                            ? (chatCapability?.disabled_reasons?.agent ?? 'Agent 模式不可用')
+                            : (chatCapability?.disabled_reasons?.chat ?? 'Chat 模式不可用'))
+                          : undefined}
+                      >
+                        {mode}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={handleResetConversation}
@@ -914,11 +1077,12 @@ export function RiskExplanationPanel() {
               onConfirmEditingLastUserMessage={confirmEditingLastUserMessage}
               onCancelEditingLastUserMessage={cancelEditingLastUserMessage}
               onClearEditingSubmitError={clearEditingSubmitError}
+              agentStepsByReplyToEventId={agentStepsByReplyToEventId}
             />
 
             <ChatComposer
               value={chatInput}
-              disabled={isChatSending}
+              disabled={isChatSending || chatCapabilityState !== 'ready'}
               isSending={isChatSending}
               voiceSupported={voiceCaptureSupported}
               voiceState={voiceCaptureState}

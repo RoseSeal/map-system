@@ -190,6 +190,7 @@ export const CHAT_CONFIG = {
   VOICE_SENT_RESET_DELAY_MS: 2000,
   CHAT_REQUEST_TIMEOUT_MS: 20000,
   SPEECH_REQUEST_TIMEOUT_MS: 65000,
+  CAPABILITY_TIMEOUT_MS: 3000,
 } as const;
 
 // ============================================================
@@ -217,7 +218,7 @@ export const VISUALIZATION = {
   /** CPA line minimum risk level to display */
   CPA_LINE_MIN_RISK: 'ALARM' as const,
   /** Vessel icon size in pixels */
-  VESSEL_ICON_SIZE: 48,
+  VESSEL_ICON_SIZE: 40,
   /** Trajectory line width */
   TRAJECTORY_WIDTH: 3,
   /** CPA line width */

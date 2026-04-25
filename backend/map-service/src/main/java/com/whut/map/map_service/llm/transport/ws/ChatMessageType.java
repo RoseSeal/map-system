@@ -3,10 +3,12 @@ package com.whut.map.map_service.llm.transport.ws;
 public enum ChatMessageType {
     PING("PING"),
     PONG("PONG"),
+    CAPABILITY("CAPABILITY"),
     CHAT("CHAT"),
     SPEECH("SPEECH"),
     CLEAR_HISTORY("CLEAR_HISTORY"),
     CHAT_REPLY("CHAT_REPLY"),
+    AGENT_STEP("AGENT_STEP"),
     SPEECH_TRANSCRIPT("SPEECH_TRANSCRIPT"),
     CLEAR_HISTORY_ACK("CLEAR_HISTORY_ACK"),
     ERROR("ERROR");

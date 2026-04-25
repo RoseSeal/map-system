@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type {
+  AgentStepPayload,
+  ChatCapabilityPayload,
   ChatErrorPayload,
   ChatReplyPayload,
   SpeechMode,
@@ -8,9 +10,12 @@ import type {
 } from '../types/schema';
 import type { AiCenterChatMessage } from '../types/aiCenter';
 import { chatWsService } from '../services/chatWsService';
+import type { CapabilityState } from '../services/chatWsService';
 import { CHAT_CONFIG } from '../config/constants';
 import { useRiskStore } from './useRiskStore';
 import type { DisplayConnectionState } from '../types/connection';
+
+export type AssistantMode = 'CHAT' | 'AGENT';
 
 export type VoiceCaptureState = 'idle' | 'recording' | 'transcribing' | 'sent' | 'error';
 
@@ -39,6 +44,11 @@ interface AiCenterState {
 
   chatConnectionState: DisplayConnectionState;
 
+  assistantMode: AssistantMode;
+  chatCapabilityState: CapabilityState;
+  chatCapability: ChatCapabilityPayload | null;
+  agentStepsByReplyToEventId: Record<string, AgentStepPayload[]>;
+
   speechEnabled: boolean;
   speechUnlocked: boolean;
   speechSupported: boolean;
@@ -65,6 +75,10 @@ interface AiCenterState {
   appendSpeechTranscript: (payload: SpeechTranscriptPayload) => void;
   appendChatError: (payload: ChatErrorPayload) => void;
   setChatConnectionState: (state: DisplayConnectionState) => void;
+  setAssistantMode: (mode: AssistantMode) => void;
+  setChatCapabilityState: (state: CapabilityState, payload: ChatCapabilityPayload | null) => void;
+  appendAgentStep: (payload: AgentStepPayload) => void;
+  clearAgentSteps: (replyToEventId: string) => void;
   setSpeechEnabled: (enabled: boolean) => void;
   setSpeechUnlocked: (unlocked: boolean) => void;
   setSpeechSupported: (supported: boolean) => void;
@@ -96,6 +110,10 @@ const initialState = () => ({
   chatErrorByEventId: {} as Record<string, string | null>,
   latestChatError: null as ChatErrorPayload | null,
   chatConnectionState: 'disconnected' as DisplayConnectionState,
+  assistantMode: 'CHAT' as AssistantMode,
+  chatCapabilityState: 'pending' as CapabilityState,
+  chatCapability: null as ChatCapabilityPayload | null,
+  agentStepsByReplyToEventId: {} as Record<string, AgentStepPayload[]>,
   speechEnabled: false,
   speechUnlocked: false,
   speechSupported: false,
@@ -124,6 +142,9 @@ export const useAiCenterStore = create<AiCenterState>()(
       if (!text) {
         return false;
       }
+      if (get().chatCapabilityState !== 'ready') {
+        return false;
+      }
       if (hasPendingConversationRequest(get())) {
         return false;
       }
@@ -133,6 +154,7 @@ export const useAiCenterStore = create<AiCenterState>()(
       const eventId = chatWsService.send('CHAT', {
         conversation_id: conversationId,
         content: text,
+        agent_mode: get().assistantMode,
         ...(selectedTargetIds.length > 0 && { selected_target_ids: selectedTargetIds }),
       });
 
@@ -271,9 +293,12 @@ export const useAiCenterStore = create<AiCenterState>()(
 
       const conversationId = state.conversationId;
       const selectedTargetIds = useRiskStore.getState().selectedTargetIds;
+      const prevEventId = editableTurn.userMessage.event_id;
+      get().clearAgentSteps(prevEventId);
       const eventId = chatWsService.send('CHAT', {
         conversation_id: conversationId,
         content,
+        agent_mode: state.assistantMode,
         ...(selectedTargetIds.length > 0 && { selected_target_ids: selectedTargetIds }),
         edit_last_user_message: true,
       });
@@ -577,6 +602,40 @@ export const useAiCenterStore = create<AiCenterState>()(
       }
     },
 
+    setAssistantMode: (mode: AssistantMode) => {
+      set({ assistantMode: mode });
+    },
+
+    setChatCapabilityState: (capState: CapabilityState, payload: ChatCapabilityPayload | null) => {
+      set({
+        chatCapabilityState: capState,
+        chatCapability: payload ?? null,
+      });
+    },
+
+    appendAgentStep: (payload: AgentStepPayload) => {
+      set((state) => {
+        const existing = state.agentStepsByReplyToEventId[payload.reply_to_event_id] ?? [];
+        return {
+          agentStepsByReplyToEventId: {
+            ...state.agentStepsByReplyToEventId,
+            [payload.reply_to_event_id]: [...existing, payload],
+          },
+        };
+      });
+    },
+
+    clearAgentSteps: (replyToEventId: string) => {
+      set((state) => {
+        if (!(replyToEventId in state.agentStepsByReplyToEventId)) {
+          return state;
+        }
+        const next = { ...state.agentStepsByReplyToEventId };
+        delete next[replyToEventId];
+        return { agentStepsByReplyToEventId: next };
+      });
+    },
+
     setSpeechEnabled: (enabled: boolean) => {
       set({ speechEnabled: enabled });
     },
@@ -620,6 +679,7 @@ export const useAiCenterStore = create<AiCenterState>()(
         pendingChatEventIds: {},
         chatErrorByEventId: {},
         latestChatError: null,
+        agentStepsByReplyToEventId: {},
         spokenMessages: Object.fromEntries(
           Object.entries(state.spokenMessages).filter(([key]) => key.startsWith('llm-explanation::')),
         ),
@@ -725,6 +785,10 @@ export const selectVoiceCaptureError = (state: AiCenterState) => state.voiceCapt
 export const selectActiveVoiceEventId = (state: AiCenterState) => state.activeVoiceEventId;
 export const selectActiveVoiceMode = (state: AiCenterState) => state.activeVoiceMode;
 export const selectChatConnectionState = (state: AiCenterState) => state.chatConnectionState;
+export const selectAssistantMode = (state: AiCenterState) => state.assistantMode;
+export const selectChatCapabilityState = (state: AiCenterState) => state.chatCapabilityState;
+export const selectChatCapability = (state: AiCenterState) => state.chatCapability;
+export const selectAgentStepsByReplyToEventId = (state: AiCenterState) => state.agentStepsByReplyToEventId;
 
 let hasInitializedAiCenterStoreSubscriptions = false;
 
@@ -765,6 +829,14 @@ function initializeAiCenterStoreSubscriptions(): void {
 
   chatWsService.onConnectionStateChange((state) => {
     useAiCenterStore.getState().setChatConnectionState(state);
+  });
+
+  chatWsService.onCapabilityState((capState, payload) => {
+    useAiCenterStore.getState().setChatCapabilityState(capState, payload);
+  });
+
+  chatWsService.onAgentStep((payload) => {
+    useAiCenterStore.getState().appendAgentStep(payload);
   });
 }
 

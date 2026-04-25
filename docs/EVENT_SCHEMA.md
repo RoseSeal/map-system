@@ -15,6 +15,7 @@
 | v2 | 2026-04-16 | CHAT payload 新增 `edit_last_user_message`；`selected_target_ids` 语义扩展为可注入最近有效解释文本 |
 | v2 | 2026-04-18 | `RISK_UPDATE.environment_context` 新增 `weather` 字段；`active_alerts` 增补天气告警枚举 |
 | v2 | 2026-04-24 | risk SSE 新增 `ADVISORY` 事件；新增错误码 `ADVISORY_SCHEMA_FAILED` |
+| v2 | 2026-04-25 | CHAT payload 新增 `agent_mode`；WebSocket 连接建立时下发 `CAPABILITY` 握手消息；chat agent path 新增 `AGENT_STEP` 下行事件 |
 
 ## 1. 文档定位
 
@@ -330,7 +331,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 
 ```json
 {
-  "type": "PONG | CHAT_REPLY | SPEECH_TRANSCRIPT | CLEAR_HISTORY_ACK | ERROR",
+  "type": "PONG | CAPABILITY | CHAT_REPLY | AGENT_STEP | SPEECH_TRANSCRIPT | CLEAR_HISTORY_ACK | ERROR",
   "source": "server",
   "sequence_id": "string",
   "payload": {}
@@ -359,7 +360,9 @@ data: {"event_id":"server-event-xxx", ...payload}
 | type | payload |
 |---|---|
 | `PONG` | `null` |
+| `CAPABILITY` | `ChatCapabilityPayload` |
 | `CHAT_REPLY` | `ChatReplyPayload` |
+| `AGENT_STEP` | `AgentStepPayload` |
 | `SPEECH_TRANSCRIPT` | `SpeechTranscriptPayload` |
 | `CLEAR_HISTORY_ACK` | `ClearHistoryAckPayload` |
 | `ERROR` | `ErrorPayload` |
@@ -376,6 +379,7 @@ data: {"event_id":"server-event-xxx", ...payload}
     "conversation_id": "conversation-xxx",
     "event_id": "client-event-xxx",
     "content": "请评估当前风险",
+    "agent_mode": "CHAT",
     "selected_target_ids": ["413999001"],
     "edit_last_user_message": false
   }
@@ -389,7 +393,8 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `conversation_id` | `string` | 客户端会话 ID |
 | `event_id` | `string` | 当前用户请求事件 ID |
 | `content` | `string` | 用户问题文本 |
-| `selected_target_ids` | `string[]` | 可选，用户选中的目标船 ID 列表；存在时后端注入选中目标的风险详情；若存在最近有效解释文本且目标当前仍被追踪且非 SAFE，则一并注入 |
+| `agent_mode` | `string` | 可选；`CHAT`（默认）走普通 prompt 拼接路径，`AGENT` 走 agent loop；缺省视为 `CHAT` |
+| `selected_target_ids` | `string[]` | 可选，用户选中的目标船 ID 列表；存在时后端注入选中目标的风险详情；若存在最近有效解释文本且目标当前仍被追踪且非 SAFE，则一并注入；不控制 agent 路由 |
 | `edit_last_user_message` | `boolean` | 可选；`true` 表示本次请求用于编辑并重答当前会话最后一组 `USER / ASSISTANT` 轮次 |
 
 补充语义：
@@ -528,7 +533,80 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `reply_to_event_id` | `string` | 对应的 `CLEAR_HISTORY` 请求事件 ID |
 | `timestamp` | `string` | 清理确认时间 |
 
-### 6.7 `ERROR`
+### 6.7 `CAPABILITY`
+
+WebSocket 连接建立后，后端必须发送一次 `CAPABILITY` 消息，告知前端当前服务的能力可用性。前端在收到该消息前，不得发送依赖能力判断的请求。
+
+```json
+{
+  "event_id": "server-event-xxx",
+  "chat_available": true,
+  "agent_available": true,
+  "speech_transcription_available": true,
+  "disabled_reasons": {
+    "agent": null,
+    "speech_transcription": null
+  },
+  "timestamp": "2026-04-25T10:00:00Z"
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `event_id` | `string` | 服务端事件 ID |
+| `chat_available` | `boolean` | 普通 chat 路径是否可用 |
+| `agent_available` | `boolean` | agent loop 路径是否可用（`llm.agent-mode-enabled=true` 且相关组件可用） |
+| `speech_transcription_available` | `boolean` | 语音转录路径是否可用 |
+| `disabled_reasons` | `object\|null` | 各能力不可用时的原因文本；均可用时可为 `null` 或省略 |
+| `timestamp` | `string` | 消息发送时间 |
+
+前端消费规则：
+
+- 连接建立后（`onopen`）将 capability 状态置为 `pending`，并启动 3000ms 超时计时器
+- 收到 `CAPABILITY` 后清除计时器，将状态置为 `ready`，并按字段禁用对应 UI 入口
+- 超时仍未收到 `CAPABILITY` 时，将状态置为 `unavailable`，关闭连接触发重连
+- 每次重连后必须重复以上流程；旧连接迟到的 `CAPABILITY` 不得覆盖新连接状态
+
+### 6.8 `AGENT_STEP`
+
+仅在 `agent_mode = AGENT` 请求处理期间发送，用于实时展示工具调用进度。每完成一个工具调用阶段发送一条。
+
+```json
+{
+  "event_id": "server-event-xxx",
+  "conversation_id": "conversation-xxx",
+  "reply_to_event_id": "client-event-xxx",
+  "step_id": "step-1",
+  "tool_name": "get_risk_snapshot",
+  "status": "SUCCEEDED",
+  "message": "已读取风险快照",
+  "timestamp": "2026-04-25T10:00:01Z"
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `event_id` | `string` | 服务端事件 ID |
+| `conversation_id` | `string` | 所属会话 ID |
+| `reply_to_event_id` | `string` | 对应的客户端请求事件 ID，用于挂到对应 pending 消息下 |
+| `step_id` | `string` | 单次请求内唯一的 step 标识 |
+| `tool_name` | `string\|null` | 工具名；`FINALIZING` 等非工具阶段可为 `null` |
+| `status` | `string` | `RUNNING` / `SUCCEEDED` / `FAILED` / `FINALIZING` |
+| `message` | `string` | 前端展示文案，如"正在读取风险快照"、"工具调用完成" |
+| `timestamp` | `string` | 服务端生成时间 |
+
+发送规则：
+
+- 决定调用工具前发送 `RUNNING`；工具返回后发送 `SUCCEEDED`；工具失败发送 `FAILED`
+- 所有工具轮次完成并准备最终回复时，发送一次 `FINALIZING`
+- 若 provider 首轮直接返回文本且无工具调用，允许只发送 `FINALIZING`
+- 失败路径（provider failure、max iterations exceeded）不发送 `FINALIZING`；前端收到 `ERROR` 时应将最后一个 `RUNNING` step 标记为 `FAILED`
+
+### 6.9 `ERROR`
 
 SSE 与 WebSocket chat 下行共用：
 
@@ -567,7 +645,7 @@ SSE 与 WebSocket chat 下行共用：
 - `LLM_DISABLED`
 - `CONVERSATION_BUSY`
 
-### 6.8 `PING / PONG`
+### 6.10 `PING / PONG`
 
 ```json
 { "type": "PING", "source": "client", "payload": null }
@@ -590,8 +668,11 @@ SSE 与 WebSocket chat 下行共用：
 | AdvisoryStatus | `ACTIVE` / `SUPERSEDED` |
 | AdvisoryActionType | `COURSE_CHANGE` / `SPEED_CHANGE` / `MAINTAIN_COURSE` / `MONITOR` / `UNKNOWN` |
 | AdvisoryUrgency | `LOW` / `MEDIUM` / `HIGH` / `IMMEDIATE` |
-| ChatDownlinkType | `PONG` / `CHAT_REPLY` / `SPEECH_TRANSCRIPT` / `CLEAR_HISTORY_ACK` / `ERROR` |
+| ChatDownlinkType | `PONG` / `CAPABILITY` / `CHAT_REPLY` / `AGENT_STEP` / `SPEECH_TRANSCRIPT` / `CLEAR_HISTORY_ACK` / `ERROR` |
 | ChatUplinkType | `PING` / `CHAT` / `SPEECH` / `CLEAR_HISTORY` |
+| ChatAgentMode | `CHAT` / `AGENT` |
+| AgentStepStatus | `RUNNING` / `SUCCEEDED` / `FAILED` / `FINALIZING` |
+| CapabilityState | `pending` / `ready` / `unavailable` |
 
 ## 8. 与 v1 的核心差异
 

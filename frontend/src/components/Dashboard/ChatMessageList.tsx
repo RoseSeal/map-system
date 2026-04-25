@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { AiCenterChatMessage } from '../../types/aiCenter';
+import type { AgentStepPayload } from '../../types/schema';
 
 interface ChatMessageListProps {
   messages: AiCenterChatMessage[];
@@ -13,6 +14,7 @@ interface ChatMessageListProps {
   onConfirmEditingLastUserMessage?: () => void;
   onCancelEditingLastUserMessage?: () => void;
   onClearEditingSubmitError?: () => void;
+  agentStepsByReplyToEventId?: Record<string, AgentStepPayload[]>;
 }
 
 export function ChatMessageList({
@@ -27,6 +29,7 @@ export function ChatMessageList({
   onConfirmEditingLastUserMessage,
   onCancelEditingLastUserMessage,
   onClearEditingSubmitError,
+  agentStepsByReplyToEventId = {},
 }: ChatMessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editableMessage = getEditableLastUserMessage(messages);
@@ -56,6 +59,7 @@ export function ChatMessageList({
         const showError = isUser && message.status === 'error' && message.error_message;
         const showRetry = showError && message.request_type !== 'SPEECH';
         const showInterruptPlaceholder = isUser && message.status === 'pending';
+        const agentSteps = isUser ? (agentStepsByReplyToEventId[message.event_id] ?? []) : [];
         const isEditing = isUser && editingMessageEventId === message.event_id;
         const showEditButton = Boolean(
           isUser
@@ -159,7 +163,29 @@ export function ChatMessageList({
               <span>{formatStatus(message)}</span>
             </div>
 
-            {showInterruptPlaceholder && (
+            {agentSteps.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {agentSteps.map((step) => (
+                  <div
+                    key={step.event_id}
+                    className="flex items-center gap-2 rounded-full border px-3 py-1 text-[10px]"
+                    style={agentStepStyle(step.status)}
+                  >
+                    {step.status === 'RUNNING' && (
+                      <span className="h-2 w-2 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                    )}
+                    {(step.status === 'SUCCEEDED' || step.status === 'FINALIZING') && (
+                      <span className="h-2 w-2 rounded-full bg-current" />
+                    )}
+                    {step.status === 'FAILED' && (
+                      <span className="h-2 w-2 rounded-full bg-current" />
+                    )}
+                    <span className="font-medium">{step.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {showInterruptPlaceholder && agentSteps.length === 0 && (
               <div className="mt-2 flex items-center gap-2 rounded-full border border-cyan-500/10 bg-cyan-500/5 px-3 py-1 text-[10px] text-cyan-600 dark:text-cyan-400">
                 <span className="h-2 w-2 rounded-full border-2 border-current border-t-transparent animate-spin" />
                 <span className="font-bold tracking-tight uppercase">Processing</span>
@@ -201,6 +227,19 @@ function getEditableLastUserMessage(messages: AiCenterChatMessage[]): AiCenterCh
   }
 
   return userMessage;
+}
+
+function agentStepStyle(status: AgentStepPayload['status']): React.CSSProperties {
+  switch (status) {
+    case 'RUNNING':
+      return { borderColor: 'rgba(59,130,246,0.2)', background: 'rgba(59,130,246,0.05)', color: 'rgb(59,130,246)' };
+    case 'SUCCEEDED':
+      return { borderColor: 'rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.05)', color: 'rgb(16,185,129)' };
+    case 'FAILED':
+      return { borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)', color: 'rgb(239,68,68)' };
+    case 'FINALIZING':
+      return { borderColor: 'rgba(148,163,184,0.2)', background: 'rgba(148,163,184,0.05)', color: 'rgb(100,116,139)' };
+  }
 }
 
 function formatStatus(message: AiCenterChatMessage): string {

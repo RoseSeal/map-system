@@ -2,8 +2,11 @@ package com.whut.map.map_service.llm.transport.ws;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.whut.map.map_service.llm.agent.AgentStepEvent;
+import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.config.WhisperProperties;
 import com.whut.map.map_service.llm.memory.ConversationMemory;
+import com.whut.map.map_service.llm.service.ChatAgentMode;
 import com.whut.map.map_service.llm.service.LlmChatRequest;
 import com.whut.map.map_service.llm.service.LlmChatService;
 import com.whut.map.map_service.llm.service.LlmErrorCode;
@@ -32,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper;
+    private final LlmProperties llmProperties;
     private final WhisperProperties whisperProperties;
     private final LlmChatService llmChatService;
     private final VoiceChatService voiceChatService;
@@ -43,6 +47,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         session.setTextMessageSizeLimit(whisperProperties.getWebSocketTextMessageSizeLimitBytes());
         session.setBinaryMessageSizeLimit(whisperProperties.getWebSocketBinaryMessageSizeLimitBytes());
         log.debug("Chat WebSocket connected: {}", session.getId());
+        sendCapability(session);
     }
 
     @Override
@@ -106,18 +111,34 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        ChatAgentMode agentMode = ChatAgentMode.fromNullable(payload.getAgentMode());
+        if (agentMode == null) {
+            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST, "Invalid agent_mode value.");
+            return;
+        }
+
+        if (agentMode == ChatAgentMode.AGENT && !llmProperties.isAgentModeEnabled()) {
+            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST, "Agent mode is not enabled on this server.");
+            return;
+        }
+
+        String conversationId = payload.getConversationId();
+        String eventId = payload.getEventId();
+
         LlmChatRequest request = new LlmChatRequest(
-                payload.getConversationId(),
-                payload.getEventId(),
+                conversationId,
+                eventId,
                 payload.getContent(),
                 payload.getSelectedTargetIds(),
-                payload.getEditLastUserMessage() != null && payload.getEditLastUserMessage()
+                payload.getEditLastUserMessage() != null && payload.getEditLastUserMessage(),
+                agentMode
         );
 
         llmChatService.handleChat(
                 request,
-                result -> sendChatReply(session, payload.getConversationId(), payload.getEventId(), result),
-                (errorCode, errorMessage) -> sendError(session, payload.getEventId(), mapToProtocolErrorCode(errorCode), errorMessage)
+                result -> sendChatReply(session, conversationId, eventId, result),
+                (errorCode, errorMessage) -> sendError(session, eventId, mapToProtocolErrorCode(errorCode), errorMessage),
+                step -> sendAgentStep(session, conversationId, eventId, step)
         );
     }
 
@@ -247,6 +268,36 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .timestamp(Instant.now().toString())
                 .build();
         sendDownlink(session, ChatMessageType.ERROR, payload);
+    }
+
+    private void sendCapability(WebSocketSession session) {
+        ChatCapabilityPayload payload = ChatCapabilityPayload.builder()
+                .eventId(generateEventId())
+                .chatAvailable(llmProperties.isEnabled())
+                .agentAvailable(llmProperties.isEnabled() && llmProperties.isAgentModeEnabled())
+                .speechTranscriptionAvailable(llmProperties.isEnabled())
+                .timestamp(Instant.now().toString())
+                .build();
+        sendDownlink(session, ChatMessageType.CAPABILITY, payload);
+    }
+
+    private void sendAgentStep(
+            WebSocketSession session,
+            String conversationId,
+            String replyToEventId,
+            AgentStepEvent step
+    ) {
+        AgentStepPayload payload = AgentStepPayload.builder()
+                .eventId(generateEventId())
+                .conversationId(conversationId)
+                .replyToEventId(replyToEventId)
+                .stepId(step.stepId())
+                .toolName(step.toolName())
+                .status(step.status().name())
+                .message(step.message())
+                .timestamp(Instant.now().toString())
+                .build();
+        sendDownlink(session, ChatMessageType.AGENT_STEP, payload);
     }
 
     private void sendDownlink(WebSocketSession session, ChatMessageType type, Object payload) {

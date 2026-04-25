@@ -1,4 +1,6 @@
 import type {
+  AgentStepPayload,
+  ChatCapabilityPayload,
   ChatDownlinkEnvelope,
   ChatErrorPayload,
   ChatReplyPayload,
@@ -10,18 +12,22 @@ import type {
   SpeechRequestPayload,
   SpeechTranscriptPayload,
 } from '../types/schema';
-import { BACKEND_CONFIG, WS_CONFIG } from '../config/constants';
+import { BACKEND_CONFIG, CHAT_CONFIG, WS_CONFIG } from '../config/constants';
 import type { DisplayConnectionState } from '../types/connection';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+export type CapabilityState = 'pending' | 'ready' | 'unavailable';
 type ChatReplyCallback = (payload: ChatReplyPayload) => void;
 type SpeechTranscriptCallback = (payload: SpeechTranscriptPayload) => void;
 type ErrorCallback = (payload: ChatErrorPayload) => void;
 type ClearHistoryAckCallback = (payload: ClearHistoryAckPayload) => void;
 type PongCallback = () => void;
+type CapabilityCallback = (state: CapabilityState, payload: ChatCapabilityPayload | null) => void;
+type AgentStepCallback = (payload: AgentStepPayload) => void;
 
 const DEFAULT_CHAT_WS_URL: string = BACKEND_CONFIG.CHAT_WS_URL;
 const { HEARTBEAT_INTERVAL_MS, RECONNECT_BASE_DELAY_MS, RECONNECT_MAX_DELAY_MS } = WS_CONFIG;
+const { CAPABILITY_TIMEOUT_MS } = CHAT_CONFIG;
 
 class ChatWsService {
   private socket: WebSocket | null = null;
@@ -32,12 +38,17 @@ class ChatWsService {
   private currentUrl = DEFAULT_CHAT_WS_URL;
   private manuallyDisconnected = false;
 
+  private capabilityState: CapabilityState = 'pending';
+  private capabilityTimer: number | null = null;
+
   private chatReplyCallbacks = new Set<ChatReplyCallback>();
   private speechTranscriptCallbacks = new Set<SpeechTranscriptCallback>();
   private errorCallbacks = new Set<ErrorCallback>();
   private clearHistoryAckCallbacks = new Set<ClearHistoryAckCallback>();
   private pongCallbacks = new Set<PongCallback>();
   private connectionStateCallbacks = new Set<(state: DisplayConnectionState) => void>();
+  private capabilityCallbacks = new Set<CapabilityCallback>();
+  private agentStepCallbacks = new Set<AgentStepCallback>();
 
   connect(url: string = this.currentUrl): void {
     if (this.state === 'connected' || this.state === 'connecting') {
@@ -63,6 +74,19 @@ class ChatWsService {
       this.notifyConnectionState();
       this.reconnectAttempts = 0;
       this.startHeartbeat();
+
+      this.clearCapabilityTimer();
+      this.capabilityState = 'pending';
+      this.notifyCapabilityState(null);
+      this.capabilityTimer = window.setTimeout(() => {
+        this.capabilityTimer = null;
+        if (this.socket !== socket) {
+          return;
+        }
+        this.capabilityState = 'unavailable';
+        this.notifyCapabilityState(null);
+        socket.close(1000, 'Capability timeout');
+      }, CAPABILITY_TIMEOUT_MS);
     };
 
     socket.onmessage = (event) => {
@@ -87,6 +111,7 @@ class ChatWsService {
       }
 
       this.stopHeartbeat();
+      this.clearCapabilityTimer();
       this.socket = null;
 
       if (this.manuallyDisconnected) {
@@ -105,6 +130,7 @@ class ChatWsService {
     this.notifyConnectionState();
     this.clearReconnectTimer();
     this.stopHeartbeat();
+    this.clearCapabilityTimer();
 
     const socket = this.socket;
     this.socket = null;
@@ -182,8 +208,26 @@ class ChatWsService {
     };
   }
 
+  onCapabilityState(cb: CapabilityCallback): () => void {
+    this.capabilityCallbacks.add(cb);
+    return () => {
+      this.capabilityCallbacks.delete(cb);
+    };
+  }
+
+  onAgentStep(cb: AgentStepCallback): () => void {
+    this.agentStepCallbacks.add(cb);
+    return () => {
+      this.agentStepCallbacks.delete(cb);
+    };
+  }
+
   getState(): ConnectionState {
     return this.state;
+  }
+
+  getCapabilityState(): CapabilityState {
+    return this.capabilityState;
   }
 
   private notifyConnectionState(): void {
@@ -192,6 +236,11 @@ class ChatWsService {
       : this.state === 'disconnected' ? 'disconnected'
       : 'reconnecting'; // covers 'connecting' and 'reconnecting'
     this.connectionStateCallbacks.forEach((cb) => cb(display));
+  }
+
+  private notifyCapabilityState(payload: ChatCapabilityPayload | null): void {
+    const state = this.capabilityState;
+    this.capabilityCallbacks.forEach((cb) => cb(state, payload));
   }
 
   private buildEnvelope(
@@ -240,10 +289,24 @@ class ChatWsService {
       case 'PONG':
         this.pongCallbacks.forEach((cb) => cb());
         return;
+      case 'CAPABILITY':
+        if (isChatCapabilityPayload(message.payload)) {
+          const payload = message.payload;
+          this.clearCapabilityTimer();
+          this.capabilityState = 'ready';
+          this.notifyCapabilityState(payload);
+        }
+        return;
       case 'CHAT_REPLY':
         if (isChatReplyPayload(message.payload)) {
           const payload = message.payload;
           this.chatReplyCallbacks.forEach((cb) => cb(payload));
+        }
+        return;
+      case 'AGENT_STEP':
+        if (isAgentStepPayload(message.payload)) {
+          const payload = message.payload;
+          this.agentStepCallbacks.forEach((cb) => cb(payload));
         }
         return;
       case 'SPEECH_TRANSCRIPT':
@@ -284,6 +347,13 @@ class ChatWsService {
     }
   }
 
+  private clearCapabilityTimer(): void {
+    if (this.capabilityTimer !== null) {
+      window.clearTimeout(this.capabilityTimer);
+      this.capabilityTimer = null;
+    }
+  }
+
   private scheduleReconnect(): void {
     this.state = 'reconnecting';
     this.notifyConnectionState();
@@ -306,6 +376,26 @@ class ChatWsService {
       this.reconnectTimer = null;
     }
   }
+}
+
+function isChatCapabilityPayload(payload: ChatDownlinkEnvelope['payload']): payload is ChatCapabilityPayload {
+  return Boolean(
+    payload
+    && typeof payload === 'object'
+    && 'chat_available' in payload
+    && 'agent_available' in payload
+    && 'speech_transcription_available' in payload,
+  );
+}
+
+function isAgentStepPayload(payload: ChatDownlinkEnvelope['payload']): payload is AgentStepPayload {
+  return Boolean(
+    payload
+    && typeof payload === 'object'
+    && 'step_id' in payload
+    && 'status' in payload
+    && 'reply_to_event_id' in payload,
+  );
 }
 
 function isChatReplyPayload(payload: ChatDownlinkEnvelope['payload']): payload is ChatReplyPayload {

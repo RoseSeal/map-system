@@ -28,4 +28,7 @@ public class ChatRequestPayload {
 
     @JsonProperty("edit_last_user_message")
     private Boolean editLastUserMessage;
+
+    @JsonProperty("agent_mode")
+    private String agentMode;
 }

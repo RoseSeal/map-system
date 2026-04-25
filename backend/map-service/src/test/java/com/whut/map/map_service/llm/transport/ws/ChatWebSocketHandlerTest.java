@@ -2,6 +2,7 @@ package com.whut.map.map_service.llm.transport.ws;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.config.WhisperProperties;
 import com.whut.map.map_service.llm.service.LlmChatRequest;
 import com.whut.map.map_service.llm.service.LlmChatService;
@@ -37,6 +38,7 @@ class ChatWebSocketHandlerTest {
     void blankChatContentReturnsInvalidChatRequest() throws Exception {
         ChatWebSocketHandler handler = new ChatWebSocketHandler(
                 objectMapper,
+                llmProperties(),
                 whisperProperties(),
                 null,
                 null,
@@ -70,6 +72,7 @@ class ChatWebSocketHandlerTest {
         WhisperProperties whisperProperties = whisperProperties();
         ChatWebSocketHandler handler = new ChatWebSocketHandler(
                 objectMapper,
+                llmProperties(),
                 whisperProperties,
                 null,
                 null,
@@ -105,6 +108,7 @@ class ChatWebSocketHandlerTest {
         WhisperProperties whisperProperties = whisperProperties();
         ChatWebSocketHandler handler = new ChatWebSocketHandler(
                 objectMapper,
+                llmProperties(),
                 whisperProperties,
                 null,
                 null,
@@ -140,6 +144,7 @@ class ChatWebSocketHandlerTest {
         WhisperProperties whisperProperties = whisperProperties();
         ChatWebSocketHandler handler = new ChatWebSocketHandler(
                 objectMapper,
+                llmProperties(),
                 whisperProperties,
                 null,
                 null,
@@ -174,6 +179,7 @@ class ChatWebSocketHandlerTest {
         LlmChatService llmChatService = mock(LlmChatService.class);
         ChatWebSocketHandler handler = new ChatWebSocketHandler(
                 objectMapper,
+                llmProperties(),
                 whisperProperties(),
                 llmChatService,
                 null,
@@ -205,6 +211,10 @@ class ChatWebSocketHandlerTest {
         LlmChatRequest request = captor.getValue();
         assertThat(request.editLastUserMessage()).isTrue();
         assertThat(request.content()).isEqualTo("edited content");
+    }
+
+    private LlmProperties llmProperties() {
+        return new LlmProperties();
     }
 
     private WhisperProperties whisperProperties() {

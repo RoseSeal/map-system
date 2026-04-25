@@ -19,6 +19,9 @@ export type RiskLevel = 'SAFE' | 'CAUTION' | 'WARNING' | 'ALARM';
 export type EncounterType = 'HEAD_ON' | 'OVERTAKING' | 'CROSSING' | 'UNDEFINED';
 export type SpeechMode = 'direct' | 'preview';
 export type ConnectionType = 'risk' | 'chat';
+export type ChatAgentMode = 'CHAT' | 'AGENT';
+export type AgentStepStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'FINALIZING';
+export type OwnShipFollowMode = 'OFF' | 'SOFT' | 'LOCKED';
 export type TrackingStatus = 'tracking' | 'stale';
 export type PredictionType = 'linear' | 'cv';
 export type SafetyDomainShape = 'ellipse';
@@ -240,14 +243,39 @@ export interface SseErrorPayload {
 // ============================================================
 
 export type ChatUplinkType = 'PING' | 'CHAT' | 'SPEECH' | 'CLEAR_HISTORY';
-export type ChatDownlinkType = 'PONG' | 'CHAT_REPLY' | 'SPEECH_TRANSCRIPT' | 'ERROR' | 'CLEAR_HISTORY_ACK';
+export type ChatDownlinkType = 'PONG' | 'CAPABILITY' | 'CHAT_REPLY' | 'AGENT_STEP' | 'SPEECH_TRANSCRIPT' | 'ERROR' | 'CLEAR_HISTORY_ACK';
 
 export interface ChatRequestPayload {
   conversation_id: string;
   event_id: string;
   content: string;
+  agent_mode?: ChatAgentMode;
   selected_target_ids?: string[];
   edit_last_user_message?: boolean;
+}
+
+export interface ChatCapabilityPayload {
+  event_id: string;
+  chat_available: boolean;
+  agent_available: boolean;
+  speech_transcription_available: boolean;
+  disabled_reasons?: {
+    chat?: string;
+    agent?: string;
+    speech_transcription?: string;
+  };
+  timestamp: string;
+}
+
+export interface AgentStepPayload {
+  event_id: string;
+  conversation_id: string;
+  reply_to_event_id: string;
+  step_id: string;
+  tool_name: string | null;
+  status: AgentStepStatus;
+  message: string;
+  timestamp: string;
 }
 
 export interface SpeechRequestPayload {
@@ -309,5 +337,5 @@ export interface ChatDownlinkEnvelope {
   type: ChatDownlinkType;
   source: 'server';
   sequence_id: string;
-  payload: ChatReplyPayload | SpeechTranscriptPayload | ChatErrorPayload | ClearHistoryAckPayload | null;
+  payload: ChatReplyPayload | SpeechTranscriptPayload | ChatErrorPayload | ClearHistoryAckPayload | ChatCapabilityPayload | AgentStepPayload | null;
 }

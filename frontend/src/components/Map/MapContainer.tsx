@@ -135,7 +135,7 @@ export function MapContainer() {
   const currentZoneIdsRef = useRef<Set<string>>(new Set());
   const [mapLoaded, setMapLoaded] = useState(false);
   const [debouncedSafetyContourVal, setDebouncedSafetyContourVal] = useState<number>(10);
-  const { safetyContourOverride: localSafetyContourOverride } = useMapSettingsStore();
+  const { safetyContourOverride: localSafetyContourOverride, followMode, setFollowMode } = useMapSettingsStore();
 
   const ownShip = useRiskStore(selectOwnShip);
   const targets = useRiskStore(selectTargets);
@@ -615,20 +615,59 @@ export function MapContainer() {
 
   useEffect(() => {
     if (!map.current || !ownShip) return;
+    const mapInstance = map.current;
 
-    const currentCenter = map.current.getCenter();
-    const distance = Math.sqrt(
-      (currentCenter.lng - ownShip.position.lon) ** 2 +
-      (currentCenter.lat - ownShip.position.lat) ** 2,
-    );
-
-    if (distance > 0.1) {
-      map.current.flyTo({
-        center: [ownShip.position.lon, ownShip.position.lat],
-        duration: 1000,
-      });
+    if (followMode === 'OFF') {
+      return;
     }
-  }, [ownShip]);
+
+    if (followMode === 'SOFT') {
+      const currentCenter = mapInstance.getCenter();
+      const distance = Math.sqrt(
+        (currentCenter.lng - ownShip.position.lon) ** 2 +
+        (currentCenter.lat - ownShip.position.lat) ** 2,
+      );
+      if (distance > 0.1) {
+        mapInstance.flyTo({
+          center: [ownShip.position.lon, ownShip.position.lat],
+          duration: 1000,
+        });
+      }
+      return;
+    }
+
+    if (followMode === 'LOCKED') {
+      const screenPos = mapInstance.project([ownShip.position.lon, ownShip.position.lat]);
+      const mapCanvas = mapInstance.getCanvas();
+      const centerX = mapCanvas.clientWidth / 2;
+      const centerY = mapCanvas.clientHeight / 2;
+      const dx = screenPos.x - centerX;
+      const dy = screenPos.y - centerY;
+      const pixelDistance = Math.sqrt(dx * dx + dy * dy);
+      if (pixelDistance > 12) {
+        mapInstance.easeTo({
+          center: [ownShip.position.lon, ownShip.position.lat],
+          duration: 400,
+        });
+      }
+    }
+  }, [ownShip, followMode]);
+
+  useEffect(() => {
+    if (!map.current) return;
+    const mapInstance = map.current;
+
+    const handleDragStart = () => {
+      if (followMode === 'LOCKED') {
+        setFollowMode('SOFT');
+      }
+    };
+
+    mapInstance.on('dragstart', handleDragStart);
+    return () => {
+      mapInstance.off('dragstart', handleDragStart);
+    };
+  }, [followMode, setFollowMode]);
 
   return (
     <div className="relative h-full w-full" style={{ minHeight: '100vh' }}>
@@ -637,7 +676,6 @@ export function MapContainer() {
         className="h-full w-full"
         style={{ minHeight: '100vh' }}
       />
-
     </div>
   );
 }
@@ -645,7 +683,7 @@ export function MapContainer() {
 function buildTrajectoryPoints(ownShip: OwnShip): LonLat[] {
   const pos: LonLat = [ownShip.position.lon, ownShip.position.lat];
 
-  return generateLinearTrajectory(pos, ownShip.dynamics.cog, ownShip.dynamics.sog, 4);
+  return generateLinearTrajectory(pos, ownShip.dynamics.cog, ownShip.dynamics.sog, 2);
 }
 
 function getOwnShipColor(ownShip: OwnShip): [number, number, number, number] {

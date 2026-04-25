@@ -37,4 +37,8 @@ export {
   selectVoiceCaptureState,
   selectVoiceCaptureSupported,
   selectChatConnectionState,
+  selectAssistantMode,
+  selectChatCapabilityState,
+  selectChatCapability,
+  selectAgentStepsByReplyToEventId,
 } from './useAiCenterStore';

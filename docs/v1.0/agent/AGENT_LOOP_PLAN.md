@@ -1,7 +1,7 @@
 # v1.0 Agent Loop Foundation — 总览规划
 
 > 文档状态：active
-> 最后更新：2026-04-17
+> 最后更新：2026-04-25
 > 用途：v1.0 阶段方向判断、范围收敛与 step 拆分的中间层规划文档。
 > 非目标：不是 step-plan 实施细则；不替代 `EVENT_SCHEMA.md`、`ARCHITECTURE.md` 等当前真值文档。
 
@@ -527,3 +527,30 @@ COLREGS 72 条主规则总量有限（全文约 3 万词），内存图在 v1.0 
 - reason：better-approach
 - temporary handling：`docs/v1.0/agent/step3.md` 记录 `AgentLoopOrchestrator` 只返回 `AgentLoopResult`；`AdvisoryService` 负责 `AdvisoryOutputParser` 调用、schema failure 处理、snapshot version lag 检查和 SSE 发布
 - canonical resolution：Step 3 正文在版本收敛时应改为“`AgentLoopOrchestrator` 只编排有界 tool loop；`AdvisoryService` 在 loop 完成后执行结构化解析和发布前时效性检查”
+
+### A.3 Step 4 与 Step 5 之间插入 Step 4A
+
+- affected body item：§4 Step 依赖关系图与 Step 5 前置顺序
+- triggered by：Step 4A
+- date：2026-04-25
+- reason：better-approach
+- temporary handling：[`step4A.md`](./step4A.md) 作为 Step 4 与 Step 5 之间的额外实施步骤，接管显式 Chat / Agent 模式切换、chat agent 工具步骤可见性和演示所需本船强约束跟随能力；Step 5 仍保持 COLREGS GraphRAG 与操纵假设评估工具范围不变
+- canonical resolution：§4 阶段拆分应在 Step 4 后增加“Step 4A：Explicit Agent Mode + Runtime Visibility”，依赖 Step 4，完成后再进入 Step 5；Step 5 目标和依赖仍为 GraphRAG Foundation + 操纵假设评估工具
+
+### A.4 Chat agent 激活条件从 selected targets 改为显式 agent_mode
+
+- affected body item：§3.7 Chat Agent：selection-constrained、§4 Step 4 目标与主要工作、§5.2 “chat agent 全量 vs selection-constrained”
+- triggered by：Step 4A
+- date：2026-04-25
+- reason：better-approach
+- temporary handling：[`step4A.md`](./step4A.md) 定义 `CHAT` WebSocket payload 新增 `agent_mode = CHAT | AGENT`；`selected_target_ids` 不再参与 agent path 激活，只作为普通 chat 或 agent prompt 的可选上下文
+- canonical resolution：§3.7 应改写为“Chat Agent 由用户显式选择的 `agent_mode` 激活；`CHAT` 模式始终走普通 prompt 拼接路径，`AGENT` 模式始终走 agent loop；`selected_target_ids` 只提供可选目标上下文，不控制路由”
+
+### A.5 Chat agent 工具执行过程通过 WebSocket AGENT_STEP 可见
+
+- affected body item：§5.3 “流式 advisory 中间步骤”排除项、§4 Step 4 “CHAT_REPLY 的普通 content 字段下发”边界
+- triggered by：Step 4A
+- date：2026-04-25
+- reason：better-approach
+- temporary handling：[`step4A.md`](./step4A.md) 将 chat agent 工具调用过程定义为 WebSocket `AGENT_STEP` 下行事件；该事件按 `reply_to_event_id` 归属于用户请求，展示工具名、执行状态和简短过程文案，但不改变最终 `CHAT_REPLY` / `ERROR` 结果语义，也不实现 SSE advisory 流式协议
+- canonical resolution：§5.3 应区分“chat WebSocket agent step visibility”和“advisory SSE streaming”。前者纳入 Step 4A，后者仍作为后续独立协议能力处理
