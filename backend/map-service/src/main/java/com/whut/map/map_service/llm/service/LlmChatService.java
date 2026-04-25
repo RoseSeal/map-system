@@ -1,6 +1,13 @@
 package com.whut.map.map_service.llm.service;
 
 import com.google.genai.errors.ApiException;
+import com.whut.map.map_service.llm.agent.AgentLoopOrchestrator;
+import com.whut.map.map_service.llm.agent.AgentLoopResult;
+import com.whut.map.map_service.llm.agent.AgentSnapshot;
+import com.whut.map.map_service.llm.agent.AgentSnapshotFactory;
+import com.whut.map.map_service.llm.agent.AgentStepEvent;
+import com.whut.map.map_service.llm.agent.AgentStepSink;
+import com.whut.map.map_service.llm.agent.chat.ChatAgentPromptBuilder;
 import com.whut.map.map_service.llm.config.LlmExecutorConfig;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.client.LlmClient;
@@ -43,6 +50,9 @@ public class LlmChatService {
     private final ConversationMemory conversationMemory;
     @Qualifier(LlmExecutorConfig.LLM_EXECUTOR)
     private final ExecutorService llmExecutor;
+    private final AgentSnapshotFactory agentSnapshotFactory;
+    private final AgentLoopOrchestrator agentLoopOrchestrator;
+    private final ChatAgentPromptBuilder chatAgentPromptBuilder;
 
     public record ChatReplyResult(String content, String provider) {
     }
@@ -51,6 +61,15 @@ public class LlmChatService {
             LlmChatRequest request,
             Consumer<ChatReplyResult> onSuccess,
             BiConsumer<LlmErrorCode, String> onError
+    ) {
+        handleChat(request, onSuccess, onError, AgentStepSink.NOOP);
+    }
+
+    public void handleChat(
+            LlmChatRequest request,
+            Consumer<ChatReplyResult> onSuccess,
+            BiConsumer<LlmErrorCode, String> onError,
+            AgentStepSink onStep
     ) {
         if (!llmProperties.isEnabled()) {
             onError.accept(LlmErrorCode.LLM_DISABLED, "LLM chat is disabled.");
@@ -61,12 +80,25 @@ public class LlmChatService {
             return;
         }
 
+        if (request.agentMode() == ChatAgentMode.AGENT && !llmProperties.isAgentModeEnabled()) {
+            onError.accept(LlmErrorCode.LLM_DISABLED, "Agent mode is not enabled.");
+            return;
+        }
+
         String conversationId = request.conversationId();
 
         ConversationMemory.ConversationPermit permit = conversationMemory.tryAcquire(conversationId);
         if (permit == null) {
             onError.accept(LlmErrorCode.CONVERSATION_BUSY,
                     "Previous request in this conversation is still processing.");
+            return;
+        }
+
+        boolean useAgentPath = request.agentMode() == ChatAgentMode.AGENT
+                && llmProperties.isAgentModeEnabled();
+
+        if (useAgentPath) {
+            runAgentChat(request, permit, onSuccess, onError, onStep);
             return;
         }
 
@@ -213,6 +245,104 @@ public class LlmChatService {
 
     private int countTotalChars(List<LlmChatMessage> messages) {
         return messages.stream().mapToInt(message -> message.content().length()).sum();
+    }
+
+    private void runAgentChat(
+            LlmChatRequest request,
+            ConversationMemory.ConversationPermit permit,
+            Consumer<ChatReplyResult> onSuccess,
+            BiConsumer<LlmErrorCode, String> onError,
+            AgentStepSink onStep
+    ) {
+        AgentSnapshot snapshot;
+        try {
+            snapshot = agentSnapshotFactory.build();
+        } catch (IllegalStateException e) {
+            permit.close();
+            log.warn("Agent chat: no risk context snapshot available: {}", e.getMessage());
+            onError.accept(LlmErrorCode.LLM_FAILED, "Agent mode: no risk context snapshot available.");
+            return;
+        }
+
+        CompletableFuture<AgentLoopResult> future;
+        try {
+            var initialMessages = chatAgentPromptBuilder.build(request, snapshot);
+            int maxIterations = llmProperties.getAdvisory().getMaxIterations();
+            future = CompletableFuture.supplyAsync(
+                    () -> agentLoopOrchestrator.run(snapshot, initialMessages, maxIterations, onStep),
+                    llmExecutor
+            );
+        } catch (RejectedExecutionException e) {
+            permit.close();
+            log.warn("LLM executor rejected agent chat request: {}", e.getMessage());
+            onError.accept(LlmErrorCode.LLM_FAILED, "LLM request failed.");
+            return;
+        } catch (RuntimeException e) {
+            permit.close();
+            log.warn("Agent chat request failed before async execution: type={}, message={}",
+                    e.getClass().getSimpleName(), e.getMessage());
+            onError.accept(LlmErrorCode.LLM_FAILED, "LLM request failed.");
+            return;
+        }
+
+        future.orTimeout(llmProperties.getAgentChatTimeoutMs(), TimeUnit.MILLISECONDS)
+                .whenComplete((loopResult, throwable) -> {
+                    try {
+                        if (throwable != null) {
+                            Throwable cause = unwrap(throwable);
+                            if (cause instanceof TimeoutException) {
+                                future.cancel(true);
+                                log.warn("Agent chat request timed out after {} ms", llmProperties.getAgentChatTimeoutMs());
+                                onError.accept(LlmErrorCode.LLM_TIMEOUT, "LLM request timed out.");
+                            } else {
+                                log.warn("Agent chat request failed: type={}, message={}",
+                                        cause.getClass().getSimpleName(), cause.getMessage());
+                                onError.accept(LlmErrorCode.LLM_FAILED, "LLM request failed.");
+                            }
+                            return;
+                        }
+                        switch (loopResult) {
+                            case AgentLoopResult.Completed completed -> {
+                                LlmChatMessage userMessage = new LlmChatMessage(ChatRole.USER, request.content());
+                                LlmChatMessage assistantMessage = new LlmChatMessage(ChatRole.ASSISTANT, completed.finalText());
+                                if (request.editLastUserMessage()) {
+                                    boolean replaced = conversationMemory.replaceLastTurn(
+                                            request.conversationId(), userMessage, assistantMessage);
+                                    if (!replaced) {
+                                        log.warn("Agent chat edit fallback to append, conversationId={}",
+                                                request.conversationId());
+                                        conversationMemory.append(request.conversationId(), userMessage);
+                                        conversationMemory.append(request.conversationId(), assistantMessage);
+                                    }
+                                } else {
+                                    conversationMemory.append(request.conversationId(), userMessage);
+                                    conversationMemory.append(request.conversationId(), assistantMessage);
+                                }
+                                onSuccess.accept(new ChatReplyResult(completed.finalText(), resolveProviderName()));
+                            }
+                            case AgentLoopResult.MaxIterationsExceeded exceeded -> {
+                                log.warn("Agent chat loop exceeded max iterations ({})", exceeded.iterations());
+                                onError.accept(LlmErrorCode.LLM_FAILED, "LLM request failed.");
+                            }
+                            case AgentLoopResult.ProviderFailed failed -> {
+                                log.warn("Agent chat provider failed: {} - {}", failed.errorCode(), failed.message());
+                                if (failed.cause() instanceof ApiException apiException && apiException.code() == 503) {
+                                    log.warn("Agent chat provider temporarily overloaded, status={}", apiException.status());
+                                    onError.accept(LlmErrorCode.LLM_FAILED,
+                                            "LLM service is temporarily unavailable due to high demand. Please retry shortly.");
+                                } else {
+                                    onError.accept(LlmErrorCode.LLM_FAILED, "LLM request failed.");
+                                }
+                            }
+                            case AgentLoopResult.ToolFailed failed -> {
+                                log.warn("Agent chat tool {} failed: {}", failed.toolName(), failed.message());
+                                onError.accept(LlmErrorCode.LLM_FAILED, "LLM request failed.");
+                            }
+                        }
+                    } finally {
+                        permit.close();
+                    }
+                });
     }
 
     private Throwable unwrap(Throwable throwable) {

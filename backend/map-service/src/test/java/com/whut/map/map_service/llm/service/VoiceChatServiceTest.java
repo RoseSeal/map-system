@@ -202,7 +202,8 @@ class VoiceChatServiceTest {
                     new RiskContextFormatter(new LlmProperties()),
                     new ExplanationCache(),
                     new ConversationMemory(new LlmProperties()),
-                    executor
+                    executor,
+                    null, null, null
             );
             this.executor = executor;
         }

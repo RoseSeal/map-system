@@ -20,6 +20,8 @@ public class LlmProperties {
     private long conversationTtlMinutes = 30L; // 负数表示不自动清理
     private long conversationEvictIntervalMs = 60_000L;
     private int conversationTokenBudget = 6000;
+    private boolean agentModeEnabled = false;
+    private long agentChatTimeoutMs = 18_000L;
 
     private ProviderProperties gemini = new ProviderProperties();
     private ProviderProperties zhipu = new ProviderProperties();
