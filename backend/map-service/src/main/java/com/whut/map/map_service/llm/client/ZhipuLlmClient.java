@@ -13,6 +13,7 @@ import ai.z.openapi.service.model.ToolCalls;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.whut.map.map_service.llm.agent.AgentMessage;
 import com.whut.map.map_service.llm.agent.AgentStepResult;
 import com.whut.map.map_service.llm.agent.FinalText;
@@ -69,6 +70,7 @@ public class ZhipuLlmClient implements LlmClient {
 
         if (tools != null && !tools.isEmpty()) {
             builder.tools(tools.stream().map(this::toZhipuTool).toList());
+            builder.toolChoice("auto");
         }
 
         return builder.build();
@@ -98,11 +100,7 @@ public class ZhipuLlmClient implements LlmClient {
                     : UUID.randomUUID().toString();
             ChatFunctionCall functionCall = first.getFunction();
             String toolName = functionCall.getName();
-            JsonNode argsNode = functionCall.getArguments();
-            ObjectNode arguments = (argsNode instanceof ObjectNode on)
-                    ? on
-                    : objectMapper.createObjectNode();
-            return new ToolCallRequest(callId, toolName, arguments);
+            return new ToolCallRequest(callId, toolName, parseFunctionArguments(functionCall.getArguments()));
         }
 
         Object content = message.getContent();
@@ -127,7 +125,7 @@ public class ZhipuLlmClient implements LlmClient {
             case ToolCallAgentMessage toolCall -> {
                 ChatFunctionCall functionCall = ChatFunctionCall.builder()
                         .name(toolCall.toolName())
-                        .arguments(toolCall.arguments())
+                        .arguments(formatFunctionArguments(toolCall.arguments()))
                         .build();
                 ToolCalls tc = ToolCalls.builder()
                         .id(toolCall.callId())
@@ -157,6 +155,38 @@ public class ZhipuLlmClient implements LlmClient {
                 .type(ChatToolType.FUNCTION.value())
                 .function(function)
                 .build();
+    }
+
+    private ObjectNode parseFunctionArguments(JsonNode argsNode) {
+        if (argsNode == null || argsNode.isNull()) {
+            return objectMapper.createObjectNode();
+        }
+        if (argsNode instanceof ObjectNode objectNode) {
+            return objectNode;
+        }
+        if (argsNode.isTextual()) {
+            String raw = argsNode.asText();
+            if (raw == null || raw.isBlank()) {
+                return objectMapper.createObjectNode();
+            }
+            try {
+                JsonNode parsed = objectMapper.readTree(raw);
+                if (parsed instanceof ObjectNode objectNode) {
+                    return objectNode;
+                }
+            } catch (Exception ignored) {
+                return objectMapper.createObjectNode();
+            }
+        }
+        return objectMapper.createObjectNode();
+    }
+
+    private TextNode formatFunctionArguments(ObjectNode arguments) {
+        try {
+            return TextNode.valueOf(objectMapper.writeValueAsString(arguments));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to serialize Zhipu function arguments", e);
+        }
     }
 
     private ChatMessageRole toZhipuRole(ChatRole role) {

@@ -76,6 +76,8 @@ class ZhipuLlmClientTest {
         assertThat(tc.getId()).isEqualTo("call-1");
         assertThat(tc.getType()).isEqualTo(ChatToolType.FUNCTION.value());
         assertThat(tc.getFunction().getName()).isEqualTo("myTool");
+        assertThat(tc.getFunction().getArguments().isTextual()).isTrue();
+        assertThat(tc.getFunction().getArguments().asText()).isEqualTo("{\"ship\":\"vessel-1\"}");
     }
 
     @Test
@@ -117,6 +119,7 @@ class ZhipuLlmClientTest {
         assertThat(params.getTools()).hasSize(1);
         assertThat(params.getTools().get(0).getFunction().getName()).isEqualTo("myTool");
         assertThat(params.getTools().get(0).getType()).isEqualTo(ChatToolType.FUNCTION.value());
+        assertThat(params.getToolChoice()).isEqualTo("auto");
     }
 
     @Test
@@ -153,6 +156,18 @@ class ZhipuLlmClientTest {
         assertThat(tcr.callId()).isEqualTo("native-id-1");
         assertThat(tcr.toolName()).isEqualTo("myTool");
         assertThat(tcr.arguments().get("k").asText()).isEqualTo("v");
+    }
+
+    @Test
+    void toAgentStepResultParsesTextualFunctionArguments() {
+        ToolCalls tc = buildToolCallTextArgs("native-id-1", "myTool", "{\"k\":\"v\"}");
+        ChatCompletionResponse response = buildToolCallResponse(List.of(tc));
+
+        ToolCallRequest result = (ToolCallRequest) client().toAgentStepResult(response);
+
+        assertThat(result.callId()).isEqualTo("native-id-1");
+        assertThat(result.toolName()).isEqualTo("myTool");
+        assertThat(result.arguments().get("k").asText()).isEqualTo("v");
     }
 
     @Test
@@ -249,5 +264,18 @@ class ZhipuLlmClientTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private ToolCalls buildToolCallTextArgs(String id, String name, String argsJson) {
+        ai.z.openapi.service.model.ChatFunctionCall fc =
+                ai.z.openapi.service.model.ChatFunctionCall.builder()
+                        .name(name)
+                        .arguments(MAPPER.getNodeFactory().textNode(argsJson))
+                        .build();
+        ToolCalls tc = new ToolCalls();
+        tc.setId(id);
+        tc.setType(ChatToolType.FUNCTION.value());
+        tc.setFunction(fc);
+        return tc;
     }
 }
