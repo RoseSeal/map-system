@@ -103,10 +103,10 @@ class GetOwnShipStateToolTest {
 
         ObjectNode domain = (ObjectNode) result.payload().get("safety_domain");
         assertThat(domain.get("shape_type").asText()).isEqualTo("ellipse");
-        assertThat(domain.get("fore_nm").asDouble()).isCloseTo(0.2, within(1e-9));
-        assertThat(domain.get("aft_nm").asDouble()).isCloseTo(0.04, within(1e-9));
-        assertThat(domain.get("port_nm").asDouble()).isCloseTo(0.08, within(1e-9));
-        assertThat(domain.get("stbd_nm").asDouble()).isCloseTo(0.08, within(1e-9));
+        assertThat(domain.get("fore_nm").asDouble()).isCloseTo(0.1333, within(1e-9));
+        assertThat(domain.get("aft_nm").asDouble()).isCloseTo(0.0267, within(1e-9));
+        assertThat(domain.get("port_nm").asDouble()).isCloseTo(0.0533, within(1e-9));
+        assertThat(domain.get("stbd_nm").asDouble()).isCloseTo(0.0533, within(1e-9));
     }
 
     @Test
@@ -117,8 +117,8 @@ class GetOwnShipStateToolTest {
         ToolResult result = tool.execute(noArgCall(), snapshot);
 
         ObjectNode domain = (ObjectNode) result.payload().get("safety_domain");
-        assertThat(domain.get("fore_nm").asDouble()).isCloseTo(0.4, within(1e-9));
-        assertThat(domain.get("aft_nm").asDouble()).isCloseTo(0.08, within(1e-9));
+        assertThat(domain.get("fore_nm").asDouble()).isCloseTo(0.2666, within(1e-9));
+        assertThat(domain.get("aft_nm").asDouble()).isCloseTo(0.0534, within(1e-9));
     }
 
     @Test

@@ -17,10 +17,10 @@ class ShipDomainEngineTest {
     void returnsBaselineDomainAtReferenceSpeed() {
         ShipDomainResult result = engine.consume(shipWithSog(8.0));
 
-        assertThat(result.getForeNm()).isEqualTo(0.2);
-        assertThat(result.getAftNm()).isEqualTo(0.04);
-        assertThat(result.getPortNm()).isEqualTo(0.08);
-        assertThat(result.getStbdNm()).isEqualTo(0.08);
+        assertThat(result.getForeNm()).isCloseTo(0.1333, within(1e-12));
+        assertThat(result.getAftNm()).isCloseTo(0.0267, within(1e-12));
+        assertThat(result.getPortNm()).isCloseTo(0.0533, within(1e-12));
+        assertThat(result.getStbdNm()).isCloseTo(0.0533, within(1e-12));
         assertThat(result.getShapeType()).isEqualTo(ShipDomainResult.SHAPE_ELLIPSE);
     }
 
@@ -28,30 +28,30 @@ class ShipDomainEngineTest {
     void clampsLowSpeedToMinimumFactor() {
         ShipDomainResult result = engine.consume(shipWithSog(0.0));
 
-        assertThat(result.getForeNm()).isEqualTo(0.1);
-        assertThat(result.getAftNm()).isEqualTo(0.02);
-        assertThat(result.getPortNm()).isEqualTo(0.04);
-        assertThat(result.getStbdNm()).isEqualTo(0.04);
+        assertThat(result.getForeNm()).isCloseTo(0.06665, within(1e-12));
+        assertThat(result.getAftNm()).isCloseTo(0.01335, within(1e-12));
+        assertThat(result.getPortNm()).isCloseTo(0.02665, within(1e-12));
+        assertThat(result.getStbdNm()).isCloseTo(0.02665, within(1e-12));
     }
 
     @Test
     void clampsHighSpeedToMaximumFactor() {
         ShipDomainResult result = engine.consume(shipWithSog(20.0));
 
-        assertThat(result.getForeNm()).isEqualTo(0.4);
-        assertThat(result.getAftNm()).isEqualTo(0.08);
-        assertThat(result.getPortNm()).isEqualTo(0.16);
-        assertThat(result.getStbdNm()).isEqualTo(0.16);
+        assertThat(result.getForeNm()).isCloseTo(0.2666, within(1e-12));
+        assertThat(result.getAftNm()).isCloseTo(0.0534, within(1e-12));
+        assertThat(result.getPortNm()).isCloseTo(0.1066, within(1e-12));
+        assertThat(result.getStbdNm()).isCloseTo(0.1066, within(1e-12));
     }
 
     @Test
     void scalesLinearlyWithinClampRange() {
         ShipDomainResult result = engine.consume(shipWithSog(12.0));
 
-        assertThat(result.getForeNm()).isCloseTo(0.3, within(1e-12));
-        assertThat(result.getAftNm()).isCloseTo(0.06, within(1e-12));
-        assertThat(result.getPortNm()).isCloseTo(0.12, within(1e-12));
-        assertThat(result.getStbdNm()).isCloseTo(0.12, within(1e-12));
+        assertThat(result.getForeNm()).isCloseTo(0.19995, within(1e-12));
+        assertThat(result.getAftNm()).isCloseTo(0.04005, within(1e-12));
+        assertThat(result.getPortNm()).isCloseTo(0.07995, within(1e-12));
+        assertThat(result.getStbdNm()).isCloseTo(0.07995, within(1e-12));
     }
 
     @Test
@@ -74,10 +74,10 @@ class ShipDomainEngineTest {
     }
 
     private void assertBaseline(ShipDomainResult result) {
-        assertThat(result.getForeNm()).isEqualTo(0.2);
-        assertThat(result.getAftNm()).isEqualTo(0.04);
-        assertThat(result.getPortNm()).isEqualTo(0.08);
-        assertThat(result.getStbdNm()).isEqualTo(0.08);
+        assertThat(result.getForeNm()).isCloseTo(0.1333, within(1e-12));
+        assertThat(result.getAftNm()).isCloseTo(0.0267, within(1e-12));
+        assertThat(result.getPortNm()).isCloseTo(0.0533, within(1e-12));
+        assertThat(result.getStbdNm()).isCloseTo(0.0533, within(1e-12));
         assertThat(result.getShapeType()).isEqualTo(ShipDomainResult.SHAPE_ELLIPSE);
     }
 

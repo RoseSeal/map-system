@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "engine.trajectory-prediction")
 public class TrajectoryPredictionProperties {
-    private int horizonSeconds = 240;
-    private int stepSeconds = 30;
-    private double rotThresholdDegPerMin = 1.5;
+    private int horizonSeconds = 120;
+    private int stepSeconds = 10;
+    private double rotThresholdDegPerMin = 0.5;
 }

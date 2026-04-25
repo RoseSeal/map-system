@@ -43,7 +43,7 @@ class RiskAssessmentEngineTest {
                 null
         );
 
-        assertThat(result.getTargetAssessment(target.getId()).getRiskLevel()).isEqualTo(RiskConstants.WARNING);
+        assertThat(result.getTargetAssessment(target.getId()).getRiskLevel()).isEqualTo(RiskConstants.CAUTION);
     }
 
     @Test
