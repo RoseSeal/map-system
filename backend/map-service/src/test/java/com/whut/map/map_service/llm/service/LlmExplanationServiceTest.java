@@ -29,7 +29,7 @@ class LlmExplanationServiceTest {
 
     @Test
     void explanationRequestsIncludePromptTemplateAndRiskContext() throws Exception {
-        LlmProperties properties = buildProperties(true, 1000L, "gemini");
+        LlmProperties properties = buildProperties(true, 1000L);
         StubLlmClient llmClient = new StubLlmClient();
         llmClient.response = "risk reply";
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -84,8 +84,8 @@ class LlmExplanationServiceTest {
                     .contains("【目标船】")
                     .contains("ID: target-9")
                     .contains("航向: 270.1°")
-                    .contains("风险等级: WARNING")
-                    .contains("触发原因: 风险等级升级（CAUTION -> WARNING）")
+                    .contains("风险等级: 预警")
+                    .contains("触发原因: 风险等级升级（注意 -> 预警）")
                     .contains("现距: 0.80 海里")
                     .contains("相对方位: 右舷前方 (45°)")
                     .contains("DCPA: 0.42 海里")
@@ -93,7 +93,7 @@ class LlmExplanationServiceTest {
                     .contains("接近中: 是")
                     .contains("规则说明: DCPA and TCPA exceed warning thresholds");
             assertThat(callback.success()).isNotNull();
-            assertThat(callback.success().getProvider()).isEqualTo("gemini");
+            assertThat(callback.success().getProvider()).isEqualTo("zhipu");
             assertThat(callback.success().getText()).isEqualTo("risk reply");
             assertThat(callback.errorCode()).isNull();
         } finally {
@@ -103,7 +103,7 @@ class LlmExplanationServiceTest {
 
     @Test
     void explanationRequestsIncludeCooldownRefreshReason() throws Exception {
-        LlmProperties properties = buildProperties(true, 1000L, "gemini");
+        LlmProperties properties = buildProperties(true, 1000L);
         StubLlmClient llmClient = new StubLlmClient();
         llmClient.response = "risk reply";
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -153,11 +153,10 @@ class LlmExplanationServiceTest {
         }
     }
 
-    private LlmProperties buildProperties(boolean enabled, long timeoutMs, String provider) {
+    private LlmProperties buildProperties(boolean enabled, long timeoutMs) {
         LlmProperties properties = new LlmProperties();
         properties.setEnabled(enabled);
         properties.setTimeoutMs(timeoutMs);
-        properties.setProvider(provider);
         return properties;
     }
 

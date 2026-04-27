@@ -89,7 +89,6 @@ class AdvisoryServiceTest {
     @BeforeEach
     void setUp() {
         llmProperties = new LlmProperties();
-        llmProperties.setProvider("gemini");
         llmProperties.getAdvisory().setMaxIterations(5);
         llmProperties.getAdvisory().setMaxSnapshotVersionLag(5);
         llmProperties.getAdvisory().setValidSeconds(120);
@@ -107,7 +106,7 @@ class AdvisoryServiceTest {
     @Test
     void successfulGenerationPublishesAdvisoryAndCallsOnComplete() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt()))
+        when(orchestrator.run(any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.completed("text", 3, 2));
         when(outputParser.parse(eq("text"), any())).thenReturn(validParsed());
 
@@ -125,7 +124,7 @@ class AdvisoryServiceTest {
     @Test
     void schemaFailurePublishesErrorAndCallsOnComplete() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt()))
+        when(orchestrator.run(any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.completed("bad", 3, 2));
         when(outputParser.parse(any(), any())).thenReturn(null);
 
@@ -140,7 +139,7 @@ class AdvisoryServiceTest {
     @Test
     void zeroToolCallCountTreatedAsSchemaFailure() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt()))
+        when(orchestrator.run(any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.completed("guessed", 1, 0));
 
         AtomicBoolean completed = new AtomicBoolean(false);
@@ -166,7 +165,7 @@ class AdvisoryServiceTest {
     @Test
     void supersedesIdFilledFromPreviousAdvisory() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt()))
+        when(orchestrator.run(any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.completed("text", 3, 2));
         when(outputParser.parse(any(), any())).thenReturn(validParsed());
 
@@ -184,7 +183,7 @@ class AdvisoryServiceTest {
     @Test
     void providerFailurePublishesErrorAndCallsOnComplete() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt()))
+        when(orchestrator.run(any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.providerFailed("LLM_TIMEOUT", "timeout", null));
 
         AtomicBoolean completed = new AtomicBoolean(false);

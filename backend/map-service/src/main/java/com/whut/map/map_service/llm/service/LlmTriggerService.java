@@ -82,9 +82,11 @@ public class LlmTriggerService {
         }
 
         Consumer<LlmExplanation> wrappedOnExplanation = explanation -> {
+            // Confirm with actual response level (handles rollback if engine level changed mid-flight)
             RiskLevel level = RiskLevel.fromValue(explanation.getRiskLevel());
             if (level != null && explanation.getTargetId() != null) {
-                lastExplainedLevelMap.put(explanation.getTargetId(), level);
+                lastExplainedLevelMap.merge(explanation.getTargetId(), level,
+                        (existing, incoming) -> incoming.compareTo(existing) >= 0 ? incoming : existing);
             }
             onExplanation.accept(explanation);
         };
@@ -100,7 +102,9 @@ public class LlmTriggerService {
     private LlmExplanationService.ExplanationTrigger buildExplanationTrigger(LlmRiskTargetContext target) {
         RiskLevel lastExplainedLevel = lastExplainedLevelMap.get(target.getTargetId());
         if (isLevelUpgrade(target, lastExplainedLevel)) {
-            // Reset cooldown timer so the next same-level frame uses the cooldown gate
+            // Eagerly mark the new level so subsequent ticks (while the async request is in-flight)
+            // don't repeatedly satisfy isLevelUpgrade and fire redundant requests.
+            lastExplainedLevelMap.put(target.getTargetId(), target.getRiskLevel());
             nextAllowedTimeMap.put(target.getTargetId(), Instant.now().plus(cooldown()));
             return new LlmExplanationService.ExplanationTrigger(
                     target,
@@ -113,6 +117,8 @@ public class LlmTriggerService {
             return null;
         }
 
+        // Eagerly mark the level so re-entrant ticks during the in-flight window don't re-trigger
+        lastExplainedLevelMap.put(target.getTargetId(), target.getRiskLevel());
         return new LlmExplanationService.ExplanationTrigger(
                 target,
                 LlmExplanationService.TriggerReason.COOLDOWN_REFRESH,

@@ -17,7 +17,7 @@ import java.lang.reflect.Field;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "llm.provider", havingValue = "gemini")
+@ConditionalOnProperty(name = "llm.enabled", havingValue = "true")
 public class GeminiConfig {
 
     private final LlmProperties llmProperties;

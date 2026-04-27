@@ -24,6 +24,7 @@ import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -33,8 +34,9 @@ import java.util.UUID;
 
 @Slf4j
 @Component
+@Qualifier("gemini")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "llm.provider", havingValue = "gemini")
+@ConditionalOnProperty(name = "llm.enabled", havingValue = "true")
 public class GeminiLlmClient implements LlmClient {
 
     private final Client geminiClient;

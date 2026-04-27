@@ -206,6 +206,7 @@ class ChatWebSocketHandlerTest {
         verify(llmChatService).handleChat(
                 captor.capture(),
                 any(),
+                any(),
                 any()
         );
         LlmChatRequest request = captor.getValue();
@@ -224,8 +225,9 @@ class ChatWebSocketHandlerTest {
     }
 
     private JsonNode lastResponse(RecordingWebSocketSession session) throws IOException {
-        assertThat(session.sentMessages).hasSize(1);
-        return objectMapper.readTree(session.sentMessages.get(0).getPayload());
+        assertThat(session.sentMessages).isNotEmpty();
+        TextMessage lastMessage = session.sentMessages.get(session.sentMessages.size() - 1);
+        return objectMapper.readTree(lastMessage.getPayload());
     }
 
     private static final class RecordingWebSocketSession implements WebSocketSession {

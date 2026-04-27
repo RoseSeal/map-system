@@ -9,7 +9,8 @@ public sealed interface AgentLoopResult
     record Completed(
             String finalText,
             int iterations,
-            int toolCallCount
+            int toolCallCount,
+            String finalizingStepId
     ) implements AgentLoopResult {}
 
     record MaxIterationsExceeded(
@@ -31,7 +32,11 @@ public sealed interface AgentLoopResult
     ) implements AgentLoopResult {}
 
     static Completed completed(String finalText, int iterations, int toolCallCount) {
-        return new Completed(finalText, iterations, toolCallCount);
+                return new Completed(finalText, iterations, toolCallCount, null);
+        }
+
+        static Completed completed(String finalText, int iterations, int toolCallCount, String finalizingStepId) {
+                return new Completed(finalText, iterations, toolCallCount, finalizingStepId);
     }
 
     static MaxIterationsExceeded maxIterationsExceeded(int iterations, int toolCallCount) {

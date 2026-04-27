@@ -7,6 +7,7 @@ import com.whut.map.map_service.llm.agent.AgentSnapshot;
 import com.whut.map.map_service.llm.agent.AgentSnapshotFactory;
 import com.whut.map.map_service.llm.agent.AgentStepEvent;
 import com.whut.map.map_service.llm.agent.AgentStepSink;
+import com.whut.map.map_service.llm.agent.AgentStepStatus;
 import com.whut.map.map_service.llm.agent.chat.ChatAgentPromptBuilder;
 import com.whut.map.map_service.llm.config.LlmExecutorConfig;
 import com.whut.map.map_service.llm.config.LlmProperties;
@@ -41,6 +42,7 @@ import java.util.concurrent.TimeoutException;
 @RequiredArgsConstructor
 public class LlmChatService {
 
+    @Qualifier("gemini")
     private final LlmClient llmClient;
     private final LlmProperties llmProperties;
     private final PromptTemplateService promptTemplateService;
@@ -201,7 +203,7 @@ public class LlmChatService {
     }
 
     private String resolveProviderName() {
-        return StringUtils.hasText(llmProperties.getProvider()) ? llmProperties.getProvider() : "llm";
+        return "gemini";
     }
 
     private List<LlmChatMessage> trimToTokenBudget(
@@ -317,6 +319,14 @@ public class LlmChatService {
                                 } else {
                                     conversationMemory.append(request.conversationId(), userMessage);
                                     conversationMemory.append(request.conversationId(), assistantMessage);
+                                }
+                                if (StringUtils.hasText(completed.finalizingStepId())) {
+                                    onStep.accept(new AgentStepEvent(
+                                            completed.finalizingStepId(),
+                                            null,
+                                            AgentStepStatus.SUCCEEDED,
+                                            "势态整理完成"
+                                    ));
                                 }
                                 onSuccess.accept(new ChatReplyResult(completed.finalText(), resolveProviderName()));
                             }

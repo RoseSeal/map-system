@@ -5,8 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.util.Locale;
-
 @Component
 @RequiredArgsConstructor
 public class LlmConfigurationValidator {
@@ -19,27 +17,16 @@ public class LlmConfigurationValidator {
             return;
         }
 
-        String provider = normalize(llmProperties.getProvider());
-        if (!StringUtils.hasText(provider)) {
-            throw new IllegalStateException("Missing required property 'llm.provider' when llm.enabled=true");
-        }
-
-        switch (provider) {
-            case "gemini" -> {
-                requireApiKey("llm.gemini.api-key", llmProperties.getGemini().getApiKey());
-                validateProxy("llm.gemini.proxy", llmProperties.getGemini().getProxy());
-                validateRetry("llm.gemini.retry", llmProperties.getGemini().getRetry());
-            }
-            case "zhipu" -> requireApiKey("llm.zhipu.api-key", llmProperties.getZhipu().getApiKey());
-            default -> throw new IllegalStateException(
-                    "Unsupported llm.provider '" + llmProperties.getProvider() + "'. Expected one of: gemini, zhipu");
-        }
+        requireApiKey("llm.zhipu.api-key", llmProperties.getZhipu().getApiKey());
+        requireApiKey("llm.gemini.api-key", llmProperties.getGemini().getApiKey());
+        validateProxy("llm.gemini.proxy", llmProperties.getGemini().getProxy());
+        validateRetry("llm.gemini.retry", llmProperties.getGemini().getRetry());
     }
 
     private void requireApiKey(String propertyName, String apiKey) {
         if (!StringUtils.hasText(apiKey)) {
-            throw new IllegalStateException(
-                    "Missing required property '" + propertyName + "' for provider '" + llmProperties.getProvider() + "'");
+            throw new IllegalStateException("Missing required property '" + propertyName
+                    + "' when llm.enabled=true. Current task routing requires Zhipu for explanation and Gemini for chat/agent.");
         }
     }
 
@@ -76,7 +63,4 @@ public class LlmConfigurationValidator {
         }
     }
 
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
-    }
 }

@@ -4,6 +4,7 @@ import com.whut.map.map_service.llm.agent.tool.AgentToolRegistry;
 import com.whut.map.map_service.llm.client.LlmClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AgentLoopOrchestrator {
 
+    @Qualifier("gemini")
     private final LlmClient llmClient;
     private final AgentToolRegistry toolRegistry;
 
@@ -49,8 +51,9 @@ public class AgentLoopOrchestrator {
 
             switch (stepResult) {
                 case ToolCallRequest tcr -> {
+                    String stepId = resolveStepId(tcr.callId());
                     stepSink.accept(new AgentStepEvent(
-                            UUID.randomUUID().toString(), tcr.toolName(), AgentStepStatus.RUNNING, "正在调用工具"));
+                            stepId, tcr.toolName(), AgentStepStatus.RUNNING, "正在调用工具"));
                     messages.add(new ToolCallAgentMessage(tcr.callId(), tcr.toolName(), tcr.arguments()));
                     ToolResult toolResult;
                     try {
@@ -59,24 +62,32 @@ public class AgentLoopOrchestrator {
                                 snapshot
                         );
                         stepSink.accept(new AgentStepEvent(
-                                UUID.randomUUID().toString(), tcr.toolName(), AgentStepStatus.SUCCEEDED, "工具调用完成"));
+                                stepId, tcr.toolName(), AgentStepStatus.SUCCEEDED, "工具调用完成"));
                     } catch (Exception e) {
                         log.warn("Tool {} (callId={}) threw unexpected exception: {}", tcr.toolName(), tcr.callId(), e.getMessage());
                         stepSink.accept(new AgentStepEvent(
-                                UUID.randomUUID().toString(), tcr.toolName(), AgentStepStatus.FAILED, "工具调用失败"));
+                                stepId, tcr.toolName(), AgentStepStatus.FAILED, "工具调用失败"));
                         return AgentLoopResult.toolFailed(tcr.callId(), tcr.toolName(), e.getMessage(), e);
                     }
                     messages.add(new ToolResultAgentMessage(toolResult.callId(), toolResult.toolName(), toolResult.payload()));
                     toolCallCount++;
                 }
                 case FinalText ft -> {
+                    String finalizingStepId = UUID.randomUUID().toString();
                     stepSink.accept(new AgentStepEvent(
-                            UUID.randomUUID().toString(), null, AgentStepStatus.FINALIZING, "正在整理态势"));
-                    return AgentLoopResult.completed(ft.text(), iteration, toolCallCount);
+                            finalizingStepId, null, AgentStepStatus.FINALIZING, "正在整理态势"));
+                    return AgentLoopResult.completed(ft.text(), iteration, toolCallCount, finalizingStepId);
                 }
             }
         }
 
         return AgentLoopResult.maxIterationsExceeded(iteration, toolCallCount);
+    }
+
+    private String resolveStepId(String callId) {
+        if (callId == null || callId.isBlank()) {
+            return UUID.randomUUID().toString();
+        }
+        return callId;
     }
 }

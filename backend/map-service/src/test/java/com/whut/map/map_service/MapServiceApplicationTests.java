@@ -8,8 +8,8 @@ import com.whut.map.map_service.chart.repository.S57TileRepository;
 @SpringBootTest(
 		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
 		properties = {
-				"llm.provider=gemini",
 				"llm.gemini.api-key=test-key",
+				"llm.zhipu.api-key=testid.testsecret",
 				"spring.autoconfigure.exclude="
 						+ "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,"
 						+ "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,"

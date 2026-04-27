@@ -34,7 +34,10 @@
 
 - **上下文质量优化**：继续优化 chat 对当前风险上下文的注入质量、选中目标定向补充和消费边界治理，避免 chat 会话与 risk explanation 语义混杂。
 - **对话记忆策略治理**：在现有 `ConversationMemory` 基础上继续收敛并发语义、历史压缩策略与上下文来源可解释性，而不是再次重做基础 memory 能力。
-- **任务级模型路由与前端模型选择**：将 `risk explanation`、`chat`、`advisory agent` 从全局单一 `llm.provider` 绑定中解耦，支持按任务类型选择 provider / model，并为前端开放受控的模型选择入口。后续实现需先完成后端任务级路由、provider 能力声明、默认回退与运行时校验，再决定是否把 `risk explanation` / `advisory` 一并暴露为前端可切换项。
+- **任务级模型路由与前端模型选择（第二阶段）**：当前已完成阶段一：`risk explanation` 绑定 Zhipu、`chat / agent` 绑定 Gemini，通过 `@Qualifier("zhipu"|"gemini")` 硬编码分离（`LlmExplanationService`、`LlmChatService`、`AgentLoopOrchestrator`）。后续完整方案分三步：
+  - **Step A — 后端动态路由**：在 `LlmProperties` 增加 `explanationProvider` / `chatProvider` 字段，将当前 `@Qualifier` 硬编码替换为运行时按字段选择；引入 `LlmClientRegistry` 组件封装 provider → `LlmClient` 映射，支持运行时切换与回退。
+  - **Step B — Provider 能力声明 API**：后端新增 `GET /api/llm/providers` 端点，返回各 provider 的可用性、支持任务类型（explanation / chat / agent）、当前配额状态；前端拿到后驱动 UI 中的可选项。
+  - **Step C — 前端模型选择 UI**：在 AI 中心设置面板中为 `chat` 和 `risk explanation` 各增加 provider 选择器（受 Step B 能力声明限制），前端通过 WebSocket 消息或设置接口将选择传至后端，后端在本次会话内使用指定 provider。
 - **多目标场景建议聚合**：在生成操纵建议时，从”逐一评估目标”升级为”全局视角决策与冲突消解”。
 - **时序稳定性优化**：避免 LLM 建议的帧间高频抖动，引入短时间缓存、意图复用与阈值触发机制。
 - **解释卡片作为对话上下文**：支持用户选择特定的风险解释卡片作为后续 Chat 对话的补充上下文。

@@ -32,6 +32,7 @@ import java.util.concurrent.TimeoutException;
 @RequiredArgsConstructor
 public class LlmExplanationService {
     private final LlmProperties llmProperties;
+    @Qualifier("zhipu")
     private final LlmClient llmClient;
     private final PromptTemplateService promptTemplateService;
     @Qualifier(LlmExecutorConfig.LLM_EXECUTOR)
@@ -67,7 +68,7 @@ public class LlmExplanationService {
         log.info("LLM explanation triggered asynchronously for ownShip={}, riskyTargets={}, provider={}",
                 ownShip.getId(),
                 triggeredTargets.size(),
-                llmProperties.getProvider());
+                resolveProviderName());
 
         for (ExplanationTrigger trigger : triggeredTargets) {
             LlmRiskTargetContext target = trigger.target();
@@ -122,26 +123,7 @@ public class LlmExplanationService {
                 ),
                 new LlmChatMessage(
                         ChatRole.USER,
-                        """
-                        【本船】
-                        ID: %s
-                        位置: (%.4f, %.4f)
-                        航速: %.1f 节，船首向: %s
-
-                        【目标船】
-                        ID: %s
-                        位置: (%.4f, %.4f)
-                        航速: %.1f 节，航向: %.1f°
-                        风险等级: %s
-                        触发原因: %s
-                        现距: %s
-                        相对方位: %s
-                        DCPA: %.2f 海里，TCPA: %.0f 秒
-                        接近中: %s
-                        规则说明: %s
-
-                        请输出风险描述。
-                        """.formatted(
+                        promptTemplateService.getSystemPrompt(PromptScene.RISK_EXPLANATION_USER_CONTEXT).formatted(
                                 ownShip.getId(),
                                 ownShip.getLongitude(), ownShip.getLatitude(),
                                 ownShip.getSog(), formatOwnShipHeading(ownShip),
@@ -200,7 +182,7 @@ public class LlmExplanationService {
     }
 
     private String resolveProviderName() {
-        return StringUtils.hasText(llmProperties.getProvider()) ? llmProperties.getProvider() : "llm";
+        return "zhipu";
     }
 
     private String formatDistanceNm(Double currentDistanceNm) {

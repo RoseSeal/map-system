@@ -142,7 +142,7 @@ latest CHAT turn -> editing -> confirm(edit_last_user_message=true)
 
 - `own_ship`：位置、动力学、平台健康、预测轨迹、安全域
 - `targets[*]`：`risk_level`、`cpa_metrics`、`graphic_cpa_line`、`ozt_sector`、`encounter_type`、`risk_score`、`risk_confidence`、`predicted_trajectory`
-- `governance.trust_factor`：全局可信度告警来源
+- `governance.trust_factor`：本船状态置信度告警来源；缺失时按 `0.0` 展示低可信告警
 
 `EXPLANATION` 事件与 `RISK_UPDATE` 解耦，通过 risk SSE 单独下发并按 `target_id` 写入前端解释缓存。
 

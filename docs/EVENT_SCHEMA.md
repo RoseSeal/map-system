@@ -137,7 +137,7 @@ data: {"event_id":"server-event-xxx", ...payload}
   "event_id": "server-event-xxx",
   "risk_object_id": "123456789-2026-04-01T03:21:15Z",
   "timestamp": "2026-04-01T03:21:15Z",
-  "governance": { "mode": "adaptive", "trust_factor": 0.9 },
+  "governance": { "mode": "adaptive", "trust_factor": 1.0 },
   "own_ship": {
     "id": "123456789",
     "position": { "lon": 114.3, "lat": 30.5 },
@@ -200,6 +200,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 - `target.risk_assessment.encounter_type` 为可选字段；取值为 `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED`
 - `environment_context.weather` 为可选字段；无实时天气源或超过陈旧阈值时取 `null`
 - `environment_context.active_alerts` 可包含天气告警枚举：`LOW_VISIBILITY` / `HIGH_WIND` / `HEAVY_PRECIPITATION` / `STRONG_CURRENT_SET`
+- `governance.trust_factor` 表示本船状态置信度；本船置信度缺失或不可解析时取 `0.0`
 
 ### 4.4 `ERROR` payload（risk）
 

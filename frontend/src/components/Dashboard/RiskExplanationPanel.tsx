@@ -23,6 +23,7 @@ import {
   selectEnvironment,
   selectExplanationsByTargetId,
   selectIsChatSending,
+  selectRiskConnectionError,
   selectSelectedTargetIds,
   selectSpeechEnabled,
   selectSpeechSupported,
@@ -49,6 +50,7 @@ import { CpaArc } from './CpaArc';
 
 const PANEL_WIDTH = 420;
 const EXIT_ANIMATION_MS = 220;
+const RISK_ERROR_VISIBLE_MS = 4000;
 
 type ExplainedCardData = {
   target: RiskTarget;
@@ -59,6 +61,11 @@ type DisplayedRiskCard = ExplainedCardData & {
   isLeaving: boolean;
   renderKey: string;
 };
+
+type VisibleRiskError = {
+  kind: 'connection' | 'event';
+  message: string;
+} | null;
 
 const riskColors: Record<RiskLevel, string> = {
   SAFE: 'oklch(0.76 0.11 158)',
@@ -88,7 +95,8 @@ export function RiskExplanationPanel() {
   const activeAdvisory = useRiskStore(selectActiveAdvisory);
   const selectedTargetIds = useRiskStore(selectSelectedTargetIds);
   const droppedTargetNotices = useRiskStore(selectDroppedTargetNotices);
-  const lastSseError = useRiskStore((state) => state.lastError);
+  const riskConnectionError = useRiskStore(selectRiskConnectionError);
+  const lastRiskError = useRiskStore((state) => state.lastError);
   const selectTarget = useRiskStore((state) => state.selectTarget);
   const deselectTarget = useRiskStore((state) => state.deselectTarget);
   const clearDroppedTargetNotices = useRiskStore((state) => state.clearDroppedTargetNotices);
@@ -147,7 +155,7 @@ export function RiskExplanationPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [topSectionHeight, setTopSectionHeight] = useState(55);
   const [chatSendError, setChatSendError] = useState<string | null>(null);
-  const [visibleSseError, setVisibleSseError] = useState<string | null>(null);
+  const [visibleRiskError, setVisibleRiskError] = useState<VisibleRiskError>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
 
@@ -158,18 +166,25 @@ export function RiskExplanationPanel() {
   const renderOrderRef = useRef<string[]>([]);
 
   useEffect(() => {
-    if (!lastSseError) {
+    const nextError: VisibleRiskError = riskConnectionError
+      ? { kind: 'connection', message: riskConnectionError }
+      : lastRiskError
+        ? { kind: 'event', message: lastRiskError.error_message }
+        : null;
+
+    if (!nextError) {
+      setVisibleRiskError(null);
       return;
     }
 
-    setVisibleSseError(lastSseError.error_message);
-    const timerId = setTimeout(() => {
-      setVisibleSseError(null);
+    setVisibleRiskError(nextError);
+    const timerId = window.setTimeout(() => {
+      setVisibleRiskError(null);
       clearRiskError();
-    }, 4000);
+    }, RISK_ERROR_VISIBLE_MS);
 
-    return () => clearTimeout(timerId);
-  }, [clearRiskError, lastSseError]);
+    return () => window.clearTimeout(timerId);
+  }, [clearRiskError, lastRiskError, riskConnectionError]);
 
   useEffect(() => {
     if (aiCenterOpenRequestVersion > 0) {
@@ -851,12 +866,12 @@ export function RiskExplanationPanel() {
               </span>
             </div>
 
-            {visibleSseError && (
+            {visibleRiskError && (
               <div
                 className="anim-soft-pulse px-5 py-1.5 text-[10px] font-medium"
                 style={{ color: 'var(--risk-alarm)' }}
               >
-                服务连接异常：{visibleSseError}
+                {visibleRiskError.kind === 'connection' ? '服务连接异常' : '风险事件异常'}：{visibleRiskError.message}
               </div>
             )}
 

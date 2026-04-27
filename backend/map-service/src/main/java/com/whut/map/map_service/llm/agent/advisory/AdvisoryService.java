@@ -143,7 +143,7 @@ public class AdvisoryService implements AdvisoryTriggerPort {
                 .supersedesId(prevId)
                 .validUntil(validUntil)
                 .riskLevel(highestRiskLevel(snapshot))
-                .provider(llmProperties.getProvider())
+                .provider("gemini")
                 .timestamp(now.toString())
                 .summary(parsed.summary())
                 .affectedTargets(parsed.affectedTargets())

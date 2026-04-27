@@ -95,6 +95,25 @@ function shouldKeepExistingExplanation(
     && existing.timestamp === incoming.timestamp;
 }
 
+function mergeDroppedTargetNotices(existing: string[], incoming: string[]): string[] {
+  if (incoming.length === 0) {
+    return existing;
+  }
+
+  const seen = new Set(existing);
+  let changed = false;
+  const next = [...existing];
+  incoming.forEach((targetId) => {
+    if (!seen.has(targetId)) {
+      seen.add(targetId);
+      next.push(targetId);
+      changed = true;
+    }
+  });
+
+  return changed ? next : existing;
+}
+
 export const useRiskStore = create<RiskState>()(
   subscribeWithSelector((set) => ({
     ...initialState,
@@ -112,6 +131,7 @@ export const useRiskStore = create<RiskState>()(
         );
         const selectedTargetIds = state.selectedTargetIds.filter((id) => trackedTargetIds.has(id));
         const droppedTargetNotices = state.selectedTargetIds.filter((id) => !trackedTargetIds.has(id));
+        const nextDroppedTargetNotices = mergeDroppedTargetNotices(state.droppedTargetNotices, droppedTargetNotices);
 
         return {
           latestRiskUpdate: payload,
@@ -123,7 +143,7 @@ export const useRiskStore = create<RiskState>()(
           environment: payload.environment_context,
           explanationsByTargetId,
           selectedTargetIds,
-          droppedTargetNotices: [...new Set([...state.droppedTargetNotices, ...droppedTargetNotices])],
+          droppedTargetNotices: nextDroppedTargetNotices,
           riskConnectionState: 'connected',
           connectionError: null,
           isLowTrust: payload.governance.trust_factor < PERFORMANCE.LOW_TRUST_THRESHOLD,

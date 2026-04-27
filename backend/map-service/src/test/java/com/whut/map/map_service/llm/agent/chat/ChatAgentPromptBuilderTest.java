@@ -4,6 +4,7 @@ import com.whut.map.map_service.llm.agent.AgentMessage;
 import com.whut.map.map_service.llm.agent.AgentSnapshot;
 import com.whut.map.map_service.llm.agent.TextAgentMessage;
 import com.whut.map.map_service.llm.dto.ChatRole;
+import com.whut.map.map_service.llm.prompt.PromptTemplateService;
 import com.whut.map.map_service.llm.service.ChatAgentMode;
 import com.whut.map.map_service.llm.service.LlmChatRequest;
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ChatAgentPromptBuilderTest {
 
-    private final ChatAgentPromptBuilder builder = new ChatAgentPromptBuilder();
+    private final ChatAgentPromptBuilder builder = new ChatAgentPromptBuilder(new PromptTemplateService());
     private final AgentSnapshot snapshot = new AgentSnapshot(1L, null, Map.of());
 
     @Test

@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 public class LlmProperties {
 
     private boolean enabled = false;
-    private String provider;
     private long timeoutMs = 5000L;
     private int maxTargetsPerCall = 1;
     private int chatContextMaxTargets = 5;

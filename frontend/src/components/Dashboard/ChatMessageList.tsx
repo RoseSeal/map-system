@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { AiCenterChatMessage } from '../../types/aiCenter';
 import type { AgentStepPayload } from '../../types/schema';
 
@@ -41,7 +41,7 @@ export function ChatMessageList({
     }
 
     container.scrollTop = container.scrollHeight;
-  }, [messages]);
+  }, [messages, agentStepsByReplyToEventId]);
 
   if (messages.length === 0) {
     return (
@@ -164,32 +164,16 @@ export function ChatMessageList({
             </div>
 
             {agentSteps.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {agentSteps.map((step) => (
-                  <div
-                    key={step.event_id}
-                    className="flex items-center gap-2 rounded-full border px-3 py-1 text-[10px]"
-                    style={agentStepStyle(step.status)}
-                  >
-                    {step.status === 'RUNNING' && (
-                      <span className="h-2 w-2 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                    )}
-                    {(step.status === 'SUCCEEDED' || step.status === 'FINALIZING') && (
-                      <span className="h-2 w-2 rounded-full bg-current" />
-                    )}
-                    {step.status === 'FAILED' && (
-                      <span className="h-2 w-2 rounded-full bg-current" />
-                    )}
-                    <span className="font-medium">{step.message}</span>
-                  </div>
-                ))}
-              </div>
+              <AgentStepTrace
+                steps={agentSteps}
+                requestPending={isUser && message.status === 'pending'}
+              />
             )}
             {showInterruptPlaceholder && agentSteps.length === 0 && (
-              <div className="mt-2 flex items-center gap-2 rounded-full border border-cyan-500/10 bg-cyan-500/5 px-3 py-1 text-[10px] text-cyan-600 dark:text-cyan-400">
-                <span className="h-2 w-2 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                <span className="font-bold tracking-tight uppercase">Processing</span>
-              </div>
+              <AgentStepTrace
+                steps={[]}
+                requestPending
+              />
             )}
 
             {showError && (
@@ -229,17 +213,83 @@ function getEditableLastUserMessage(messages: AiCenterChatMessage[]): AiCenterCh
   return userMessage;
 }
 
-function agentStepStyle(status: AgentStepPayload['status']): React.CSSProperties {
-  switch (status) {
-    case 'RUNNING':
-      return { borderColor: 'rgba(59,130,246,0.2)', background: 'rgba(59,130,246,0.05)', color: 'rgb(59,130,246)' };
-    case 'SUCCEEDED':
-      return { borderColor: 'rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.05)', color: 'rgb(16,185,129)' };
-    case 'FAILED':
-      return { borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)', color: 'rgb(239,68,68)' };
-    case 'FINALIZING':
-      return { borderColor: 'rgba(148,163,184,0.2)', background: 'rgba(148,163,184,0.05)', color: 'rgb(100,116,139)' };
+function AgentStepTrace({ steps, requestPending }: { steps: AgentStepPayload[]; requestPending: boolean }) {
+  const lastStep = steps.length > 0 ? steps[steps.length - 1] : null;
+  const lastStepIsActive = !!lastStep && (lastStep.status === 'RUNNING' || lastStep.status === 'FINALIZING');
+  const showThinkingPlaceholder = requestPending && !lastStepIsActive;
+
+  return (
+    <div className="mt-3 mb-1 ml-2 w-full max-w-[92%] self-start">
+      <div className="relative py-1 pl-7">
+        <div
+          className="absolute left-[6px] top-2 bottom-2 w-px bg-slate-200 dark:bg-slate-700/70"
+          aria-hidden="true"
+        />
+      {steps.map((step, idx) => {
+        const isLast = idx === steps.length - 1;
+        const isFailed = step.status === 'FAILED';
+        const isActive = requestPending && isLast && (step.status === 'RUNNING' || step.status === 'FINALIZING');
+        const toolLabel = formatToolName(step.tool_name);
+        return (
+          <div key={step.event_id} className="relative pb-3 last:pb-0">
+            <span
+              className={[
+                'absolute -left-7 top-[6px] h-2.5 w-2.5 rounded-full border',
+                isFailed
+                  ? 'border-red-400 bg-red-400'
+                  : 'border-emerald-400 bg-emerald-400',
+              ].join(' ')}
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 pt-[1px] text-[12px] leading-snug">
+                <span
+                  className={[
+                    'font-semibold',
+                    isFailed
+                      ? 'text-red-500 dark:text-red-400'
+                      : isActive
+                        ? 'text-slate-500 dark:text-slate-400'
+                        : 'text-slate-700 dark:text-slate-200',
+                  ].join(' ')}
+                >
+                  {step.message}
+                </span>
+                {toolLabel && (
+                  <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                    {toolLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {showThinkingPlaceholder && (
+        <div className="relative pb-3 last:pb-0">
+          <span
+              className="absolute -left-7 top-[6px] h-2.5 w-2.5 rounded-full border border-slate-400 border-t-transparent dark:border-slate-500 animate-spin"
+            aria-hidden="true"
+          />
+          <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 pt-[1px] text-[12px] leading-snug">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">
+                思考中
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+}
+
+function formatToolName(toolName: string | null): string | null {
+  if (!toolName) {
+    return null;
   }
+  return toolName;
 }
 
 function formatStatus(message: AiCenterChatMessage): string {

@@ -9,7 +9,6 @@ import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
-import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionResult;
 import org.springframework.stereotype.Component;
@@ -49,7 +48,7 @@ public class RiskObjectAssembler {
         }
 
         String snapshotTimestamp = riskObjectMetaAssembler.buildSnapshotTimestamp(allShips, ownShip);
-        double trustFactor = computeAvgConfidence(riskResult);
+        double trustFactor = computeOwnShipTrustFactor(ownShip);
 
         return RiskObjectDto.builder()
                 .riskObjectId(riskObjectMetaAssembler.buildRiskObjectId(ownShip, snapshotTimestamp))
@@ -62,22 +61,11 @@ public class RiskObjectAssembler {
                 .build();
     }
 
-    private double computeAvgConfidence(RiskAssessmentResult riskResult) {
-        if (riskResult == null
-                || riskResult.getTargetAssessments() == null
-                || riskResult.getTargetAssessments().isEmpty()) {
+    private double computeOwnShipTrustFactor(ShipStatus ownShip) {
+        Double confidence = ownShip.getConfidence();
+        if (confidence == null || Double.isNaN(confidence)) {
             return 0.0;
         }
-
-        double sum = 0.0;
-        int count = 0;
-        for (TargetRiskAssessment assessment : riskResult.getTargetAssessments().values()) {
-            if (assessment == null || Double.isNaN(assessment.getRiskConfidence())) {
-                continue;
-            }
-            sum += assessment.getRiskConfidence();
-            count += 1;
-        }
-        return count == 0 ? 0.0 : sum / count;
+        return Math.max(0.0, Math.min(1.0, confidence));
     }
 }

@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "llm.provider", havingValue = "zhipu")
+@ConditionalOnProperty(name = "llm.enabled", havingValue = "true")
 public class ZhipuConfig {
     private final LlmProperties llmProperties;
 

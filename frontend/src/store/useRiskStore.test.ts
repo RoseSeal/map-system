@@ -86,6 +86,38 @@ describe('useRiskStore', () => {
     expect(state.droppedTargetNotices).toEqual(['TGT-ALARM']);
   });
 
+  it('keeps dropped target notice reference stable until new notices arrive', () => {
+    const store = useRiskStore.getState();
+
+    store.setRiskUpdate(riskUpdateFixture);
+    store.selectTarget('TGT-ALARM');
+    store.setRiskUpdate(riskUpdateWithoutAlarmFixture);
+    const firstNoticeRef = useRiskStore.getState().droppedTargetNotices;
+
+    store.setRiskUpdate({
+      ...riskUpdateWithoutAlarmFixture,
+      event_id: 'risk-event-3',
+      risk_object_id: 'risk-object-3',
+    });
+
+    expect(useRiskStore.getState().droppedTargetNotices).toBe(firstNoticeRef);
+  });
+
+  it('uses backend trust factor directly for the low-trust flag', () => {
+    useRiskStore.getState().setRiskUpdate({
+      ...riskUpdateFixture,
+      targets: [],
+      governance: {
+        mode: 'adaptive',
+        trust_factor: 0,
+      },
+    });
+
+    const state = useRiskStore.getState();
+    expect(state.governance?.trust_factor).toBe(0);
+    expect(state.isLowTrust).toBe(true);
+  });
+
   it('clears explanation when a tracked target downgrades to SAFE', () => {
     const store = useRiskStore.getState();
 

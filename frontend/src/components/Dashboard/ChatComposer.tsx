@@ -135,9 +135,16 @@ export function ChatComposer({
         </div>
       )}
       {visibleDropped.length > 0 && (
-        <div className="anim-soft-pulse text-[10px]" style={{ color: 'var(--risk-warning)' }}>
-          目标 {visibleDropped.join('、')} 已失去跟踪，已自动移除
-        </div>
+        <button
+          type="button"
+          onClick={() => { setVisibleDropped([]); onClearDroppedNotices?.(); }}
+          className="block w-full text-left text-[10px]"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--risk-warning)', padding: 0 }}
+        >
+          <span className="anim-soft-pulse">
+            目标 {visibleDropped.join('、')} 已失去跟踪，已自动移除
+          </span>
+        </button>
       )}
       <textarea
         value={value}

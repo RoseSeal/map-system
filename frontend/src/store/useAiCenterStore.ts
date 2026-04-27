@@ -616,10 +616,14 @@ export const useAiCenterStore = create<AiCenterState>()(
     appendAgentStep: (payload: AgentStepPayload) => {
       set((state) => {
         const existing = state.agentStepsByReplyToEventId[payload.reply_to_event_id] ?? [];
+        const idx = existing.findIndex((s) => s.step_id === payload.step_id);
+        const updated = idx >= 0
+          ? existing.map((s, i) => (i === idx ? payload : s))
+          : [...existing, payload];
         return {
           agentStepsByReplyToEventId: {
             ...state.agentStepsByReplyToEventId,
-            [payload.reply_to_event_id]: [...existing, payload],
+            [payload.reply_to_event_id]: updated,
           },
         };
       });

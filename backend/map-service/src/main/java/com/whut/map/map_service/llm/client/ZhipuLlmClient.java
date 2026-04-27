@@ -25,6 +25,7 @@ import com.whut.map.map_service.llm.agent.ToolResultAgentMessage;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -32,8 +33,9 @@ import java.util.List;
 import java.util.UUID;
 
 @Component
+@Qualifier("zhipu")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "llm.provider", havingValue = "zhipu")
+@ConditionalOnProperty(name = "llm.enabled", havingValue = "true")
 public class ZhipuLlmClient implements LlmClient {
 
     private final ZhipuAiClient zhipuAiClient;

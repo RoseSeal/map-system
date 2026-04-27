@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -72,6 +73,33 @@ class AgentLoopOrchestratorTest {
         AgentLoopResult.Completed completed = (AgentLoopResult.Completed) result;
         assertThat(completed.toolCallCount()).isEqualTo(1);
         assertThat(completed.iterations()).isEqualTo(2);
+    }
+
+    @Test
+    void emitsStableStepIdsForToolLifecycleAndCarriesFinalizingStepId() {
+        var tcr = new ToolCallRequest("call-123", "get_risk_snapshot", MAPPER.createObjectNode());
+        var toolResult = new ToolResult("call-123", "get_risk_snapshot", MAPPER.createObjectNode().put("status", "OK"));
+
+        when(llmClient.chatWithTools(anyList(), anyList()))
+                .thenReturn(tcr)
+                .thenReturn(new FinalText("advisory text"));
+        when(toolRegistry.execute(any(ToolCall.class), any(AgentSnapshot.class))).thenReturn(toolResult);
+
+        List<AgentStepEvent> events = new ArrayList<>();
+        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 5, events::add);
+
+        assertThat(result).isInstanceOf(AgentLoopResult.Completed.class);
+        AgentLoopResult.Completed completed = (AgentLoopResult.Completed) result;
+        assertThat(events).hasSize(3);
+
+        assertThat(events.get(0).status()).isEqualTo(AgentStepStatus.RUNNING);
+        assertThat(events.get(0).stepId()).isEqualTo("call-123");
+
+        assertThat(events.get(1).status()).isEqualTo(AgentStepStatus.SUCCEEDED);
+        assertThat(events.get(1).stepId()).isEqualTo("call-123");
+
+        assertThat(events.get(2).status()).isEqualTo(AgentStepStatus.FINALIZING);
+        assertThat(completed.finalizingStepId()).isEqualTo(events.get(2).stepId());
     }
 
     @Test

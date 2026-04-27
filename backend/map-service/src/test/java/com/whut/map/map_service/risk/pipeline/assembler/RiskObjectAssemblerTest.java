@@ -37,8 +37,9 @@ class RiskObjectAssemblerTest {
     );
 
     @Test
-    void assembleRiskObjectAveragesTargetRiskConfidenceIntoTrustFactor() {
+    void assembleRiskObjectUsesOwnShipConfidenceForTrustFactor() {
         ShipStatus ownShip = ownShip();
+        ownShip.setConfidence(0.7);
         RiskAssessmentResult riskResult = RiskAssessmentResult.builder()
                 .targetAssessments(Map.of(
                         "target-1", TargetRiskAssessment.builder().targetId("target-1").riskConfidence(0.2).build(),
@@ -57,11 +58,11 @@ class RiskObjectAssemblerTest {
                 Map.of()
         );
 
-        assertThat(riskObject.getGovernance()).containsEntry("trust_factor", 0.5);
+        assertThat(riskObject.getGovernance()).containsEntry("trust_factor", 0.7);
     }
 
     @Test
-    void assembleRiskObjectFallsBackToZeroTrustFactorWithoutAssessments() {
+    void assembleRiskObjectDefaultsToZeroTrustWhenOwnShipConfidenceIsMissing() {
         ShipStatus ownShip = ownShip();
 
         RiskObjectDto riskObject = assembler.assembleRiskObject(
@@ -79,26 +80,22 @@ class RiskObjectAssemblerTest {
     }
 
     @Test
-    void assembleRiskObjectFallsBackToZeroTrustFactorWhenAllAssessmentsAreInvalid() {
+    void assembleRiskObjectClampsOwnShipConfidenceIntoValidRange() {
         ShipStatus ownShip = ownShip();
-        RiskAssessmentResult riskResult = RiskAssessmentResult.builder()
-                .targetAssessments(Map.of(
-                        "target-1", TargetRiskAssessment.builder().targetId("target-1").riskConfidence(Double.NaN).build()
-                ))
-                .build();
+        ownShip.setConfidence(1.5);
 
         RiskObjectDto riskObject = assembler.assembleRiskObject(
                 ownShip,
                 List.of(ownShip),
                 Map.of(),
                 Map.of(),
-                riskResult,
+                RiskAssessmentResult.empty(),
                 domainResult(),
                 Map.of(),
                 Map.of()
         );
 
-        assertThat(riskObject.getGovernance()).containsEntry("trust_factor", 0.0);
+        assertThat(riskObject.getGovernance()).containsEntry("trust_factor", 1.0);
     }
 
     private ShipStatus ownShip() {
