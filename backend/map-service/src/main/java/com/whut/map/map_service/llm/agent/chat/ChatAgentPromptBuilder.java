@@ -20,17 +20,24 @@ public class ChatAgentPromptBuilder {
     private final PromptTemplateService promptTemplateService;
 
     public List<AgentMessage> build(LlmChatRequest request, AgentSnapshot snapshot) {
+        return build(request, snapshot, null);
+    }
+
+    public List<AgentMessage> build(LlmChatRequest request, AgentSnapshot snapshot, String resolvedExplanationContext) {
         List<AgentMessage> messages = new ArrayList<>();
         messages.add(new TextAgentMessage(ChatRole.SYSTEM, promptTemplateService.getSystemPrompt(PromptScene.AGENT_CHAT)));
-        messages.add(new TextAgentMessage(ChatRole.USER, buildUserMessage(request, snapshot)));
+        messages.add(new TextAgentMessage(ChatRole.USER, buildUserMessage(request, snapshot, resolvedExplanationContext)));
         return messages;
     }
 
-    private String buildUserMessage(LlmChatRequest request, AgentSnapshot snapshot) {
+    private String buildUserMessage(LlmChatRequest request, AgentSnapshot snapshot, String resolvedExplanationContext) {
         StringBuilder sb = new StringBuilder(request.content());
         List<String> selectedIds = request.selectedTargetIds();
         if (selectedIds != null && !selectedIds.isEmpty()) {
             sb.append("\n\n【用户当前关注的目标 ID】：").append(String.join(", ", selectedIds));
+        }
+        if (org.springframework.util.StringUtils.hasText(resolvedExplanationContext)) {
+            sb.append("\n\n").append(resolvedExplanationContext);
         }
         sb.append("\n\n当前快照版本：").append(snapshot.snapshotVersion());
         return sb.toString();

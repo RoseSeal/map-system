@@ -84,7 +84,7 @@ Step 3 将 Step 0 的冻结快照、Step 1 的 provider tool-calling 合同、St
 - deferred：`QueryRegulatoryContextTool`、`EvaluateManeuverTool`、COLREGS evidence 与操纵假设 evidence，归属 Step 5
 - deferred：Chat agent path、`selected_target_ids` 驱动的 agent loop、chat feature flag，归属 Step 4
 - deferred：真实 tool execution trace / streaming advisory 过程展示，保留在 `docs/TODO.md` 的 agent backlog 中，触发条件是后续新增独立 `tool_calls` / `evidence_trace` 生命周期协议
-- deferred：任务级模型路由与前端模型选择，保留在 `docs/TODO.md`，触发条件是后端 provider 能力声明与任务级路由设计完成
+- deferred：任务级模型路由与前端模型选择，归属 [`step4C.md`](./step4C.md)
 - not doing：替换或删除现有 `EXPLANATION` 事件
 - not doing：把 tool call 中间消息写入 `ConversationMemory`
 - not doing：为过期 advisory 建立持久化历史表；Step 3 仅维护前端运行态 active / archived 展示状态

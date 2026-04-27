@@ -1,8 +1,10 @@
 package com.whut.map.map_service.llm.context;
 
+import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.shared.dto.sse.ExplanationPayload;
 import com.whut.map.map_service.risk.event.RiskAssessmentCompletedEvent;
 import com.whut.map.map_service.llm.dto.LlmExplanation;
+import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.service.LlmErrorCode;
 import com.whut.map.map_service.llm.service.LlmTriggerService;
 import com.whut.map.map_service.llm.agent.trigger.SceneRiskStateTracker;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -43,7 +46,12 @@ public class LlmRiskEventListener {
                 event.riskResult()
         );
         riskContextHolder.update(event.snapshotVersion(), context);
-        explanationCache.refreshTargetState(buildCurrentTargetIds(event), buildCurrentNonSafeTargetIds(context));
+        explanationCache.refreshTargetState(
+                buildCurrentTargetIds(event),
+                buildCurrentNonSafeTargetIds(context),
+                buildCurrentRiskLevels(context),
+                Instant.now()
+        );
         sceneRiskStateTracker.onSceneUpdate(context);
 
         if (!event.triggerExplanations()) {
@@ -58,7 +66,7 @@ public class LlmRiskEventListener {
                         log.debug("Drop stale explanation for targetId={}", explanation.getTargetId());
                         return;
                     }
-                    explanationCache.put(explanation.getTargetId(), explanation.getText(), payload.getTimestamp());
+                    explanationCache.putActive(payload);
                     riskStreamPublisher.publishExplanation(payload);
                 },
                 (target, error) -> riskStreamPublisher.publishError(
@@ -92,17 +100,32 @@ public class LlmRiskEventListener {
                 .collect(Collectors.toSet());
     }
 
-    private Set<String> buildCurrentNonSafeTargetIds(com.whut.map.map_service.llm.dto.LlmRiskContext context) {
+    private Set<String> buildCurrentNonSafeTargetIds(LlmRiskContext context) {
         if (context == null || context.getTargets() == null) {
             return Set.of();
         }
         return context.getTargets().stream()
                 .filter(target -> target != null
                         && target.getRiskLevel() != null
-                        && target.getRiskLevel() != com.whut.map.map_service.shared.domain.RiskLevel.SAFE
+                        && target.getRiskLevel() != RiskLevel.SAFE
                         && StringUtils.hasText(target.getTargetId()))
                 .map(target -> target.getTargetId())
                 .collect(Collectors.toSet());
+    }
+
+    private Map<String, RiskLevel> buildCurrentRiskLevels(LlmRiskContext context) {
+        if (context == null || context.getTargets() == null) {
+            return Map.of();
+        }
+        return context.getTargets().stream()
+                .filter(target -> target != null
+                        && StringUtils.hasText(target.getTargetId())
+                        && target.getRiskLevel() != null)
+                .collect(Collectors.toMap(
+                        target -> target.getTargetId(),
+                        target -> target.getRiskLevel(),
+                        (a, b) -> b
+                ));
     }
 
     private String mapExplanationErrorCode(LlmErrorCode errorCode) {

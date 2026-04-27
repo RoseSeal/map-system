@@ -1,7 +1,7 @@
 # v1.0 Agent Loop Foundation — 总览规划
 
 > 文档状态：active
-> 最后更新：2026-04-25
+> 最后更新：2026-04-27
 > 用途：v1.0 阶段方向判断、范围收敛与 step 拆分的中间层规划文档。
 > 非目标：不是 step-plan 实施细则；不替代 `EVENT_SCHEMA.md`、`ARCHITECTURE.md` 等当前真值文档。
 
@@ -554,3 +554,21 @@ COLREGS 72 条主规则总量有限（全文约 3 万词），内存图在 v1.0 
 - reason：better-approach
 - temporary handling：[`step4A.md`](./step4A.md) 将 chat agent 工具调用过程定义为 WebSocket `AGENT_STEP` 下行事件；该事件按 `reply_to_event_id` 归属于用户请求，展示工具名、执行状态和简短过程文案，但不改变最终 `CHAT_REPLY` / `ERROR` 结果语义，也不实现 SSE advisory 流式协议
 - canonical resolution：§5.3 应区分“chat WebSocket agent step visibility”和“advisory SSE streaming”。前者纳入 Step 4A，后者仍作为后续独立协议能力处理
+
+### A.6 Step 4A 与 Step 5 之间插入 Step 4B
+
+- affected body item：§4 Step 依赖关系图与 Step 5 前置顺序、§5.4 需要同步更新的真值文档
+- triggered by：Step 4B
+- date：2026-04-27
+- reason：better-approach
+- temporary handling：[`step4B.md`](./step4B.md) 作为 Step 4A 与 Step 5 之间的额外实施步骤，接管“已解除风险解释生命周期”能力：后端和前端均把已解除风险 explanation 从直接删除改为 `RESOLVED` 状态限时限量保留，按最多 20 条、最长 30 分钟的统一规则驱逐；前端不新增独立“已解除”区域，只在同一 explanation 列表内将 resolved 卡片沉底、透明化并标记 `已解除`；前端“清理过期风险解释”按钮必须以后端回执的 `event_id` 删除列表为准，以保持前后端缓存一致；基于 resolved 卡片追问时，LLM 上下文注入“该风险已解除”标签和当前状态
+- canonical resolution：§4 阶段拆分应在 Step 4A 后增加“Step 4B：Resolved Risk Explanation Lifecycle”，依赖 Step 4A，完成后可继续进入模型路由或 Step 5；`docs/TODO.md` 不再重复登记“已解除风险解释生命周期”
+
+### A.7 Step 4B 与 Step 5 之间插入 Step 4C
+
+- affected body item：§4 Step 依赖关系图与 Step 5 前置顺序、§5.4 需要同步更新的真值文档
+- triggered by：Step 4C
+- date：2026-04-27
+- reason：better-approach
+- temporary handling：[`step4C.md`](./step4C.md) 作为 Step 4B 与 Step 5 之间的额外实施步骤，接管任务级模型路由与前端 provider 选择；后端通过 `LlmClientRegistry` 替换 `@Qualifier("zhipu"|"gemini")` 硬编码路由，前端 provider 可用性并入现有 WebSocket `CAPABILITY` 消息，不新增 `GET /api/llm/providers` 主路径
+- canonical resolution：§4 阶段拆分应在 Step 4B 后增加“Step 4C：Task-Level Model Routing And Frontend Provider Selection”，依赖 Step 4A 的 `CAPABILITY` 握手；`docs/TODO.md` 不再重复登记“任务级模型路由与前端模型选择（第二阶段）”

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.config.WhisperProperties;
+import com.whut.map.map_service.llm.context.ExplanationCache;
 import com.whut.map.map_service.llm.service.LlmChatRequest;
 import com.whut.map.map_service.llm.service.LlmChatService;
 import com.whut.map.map_service.llm.transport.ws.validation.AudioValidator;
@@ -43,7 +44,8 @@ class ChatWebSocketHandlerTest {
                 null,
                 null,
                 null,
-                new AudioValidator(whisperProperties())
+                new AudioValidator(whisperProperties()),
+                new ExplanationCache()
         );
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 
@@ -77,7 +79,8 @@ class ChatWebSocketHandlerTest {
                 null,
                 null,
                 null,
-                new AudioValidator(whisperProperties)
+                new AudioValidator(whisperProperties),
+                new ExplanationCache()
         );
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 
@@ -113,7 +116,8 @@ class ChatWebSocketHandlerTest {
                 null,
                 null,
                 null,
-                new AudioValidator(whisperProperties)
+                new AudioValidator(whisperProperties),
+                new ExplanationCache()
         );
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 
@@ -149,7 +153,8 @@ class ChatWebSocketHandlerTest {
                 null,
                 null,
                 null,
-                new AudioValidator(whisperProperties)
+                new AudioValidator(whisperProperties),
+                new ExplanationCache()
         );
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 
@@ -184,7 +189,8 @@ class ChatWebSocketHandlerTest {
                 llmChatService,
                 null,
                 null,
-                new AudioValidator(whisperProperties())
+                new AudioValidator(whisperProperties()),
+                new ExplanationCache()
         );
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 

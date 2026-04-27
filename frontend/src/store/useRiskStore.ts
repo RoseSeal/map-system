@@ -4,15 +4,39 @@ import type {
   AdvisoryPayload,
   EnvironmentContext,
   ExplanationPayload,
+  ExplanationResolutionReason,
   Governance,
   OwnShip,
   RiskTarget,
   RiskUpdatePayload,
   SseErrorPayload,
+  StoredExplanation,
 } from '../types/schema';
 import { PERFORMANCE } from '../config/constants';
 import { riskSseService } from '../services/riskSseService';
 import type { DisplayConnectionState } from '../types/connection';
+
+const RESOLVED_MAX_ENTRIES = 20;
+const RESOLVED_TTL_MS = 30 * 60 * 1000;
+
+function evictResolvedExplanations(entries: StoredExplanation[], now: number): StoredExplanation[] {
+  let result = entries.filter((e) => {
+    if (!e.resolved_at) return true;
+    const resolvedAt = Date.parse(e.resolved_at);
+    if (Number.isNaN(resolvedAt)) return true;
+    return now - resolvedAt <= RESOLVED_TTL_MS;
+  });
+  if (result.length > RESOLVED_MAX_ENTRIES) {
+    result = [...result].sort((a, b) => {
+      const aTime = a.resolved_at ? Date.parse(a.resolved_at) : 0;
+      const bTime = b.resolved_at ? Date.parse(b.resolved_at) : 0;
+      if (aTime !== bTime) return aTime - bTime;
+      return (a.event_id || '').localeCompare(b.event_id || '');
+    });
+    result = result.slice(result.length - RESOLVED_MAX_ENTRIES);
+  }
+  return result;
+}
 
 interface RiskState {
   latestRiskUpdate: RiskUpdatePayload | null;
@@ -23,7 +47,8 @@ interface RiskState {
   targets: RiskTarget[];
   governance: Governance | null;
   environment: EnvironmentContext | null;
-  explanationsByTargetId: Record<string, ExplanationPayload>;
+  explanationsByTargetId: Record<string, StoredExplanation>;
+  resolvedExplanations: StoredExplanation[];
 
   activeAdvisory: AdvisoryPayload | null;
   archivedAdvisories: AdvisoryPayload[];
@@ -38,6 +63,7 @@ interface RiskState {
 
   setRiskUpdate: (payload: RiskUpdatePayload) => void;
   upsertExplanation: (payload: ExplanationPayload) => void;
+  applyExpiredExplanationsCleared: (removedEventIds: string[]) => void;
   upsertAdvisory: (payload: AdvisoryPayload) => void;
   expireActiveAdvisory: (advisoryId: string) => void;
   setRiskConnectionState: (state: DisplayConnectionState, error?: string | null) => void;
@@ -57,7 +83,8 @@ const initialState = {
   targets: [] as RiskTarget[],
   governance: null,
   environment: null,
-  explanationsByTargetId: {} as Record<string, ExplanationPayload>,
+  explanationsByTargetId: {} as Record<string, StoredExplanation>,
+  resolvedExplanations: [] as StoredExplanation[],
   activeAdvisory: null as AdvisoryPayload | null,
   archivedAdvisories: [] as AdvisoryPayload[],
   riskConnectionState: 'disconnected' as DisplayConnectionState,
@@ -74,7 +101,7 @@ function parseTimestampMs(timestamp: string): number | null {
 }
 
 function shouldKeepExistingExplanation(
-  existing: ExplanationPayload | undefined,
+  existing: StoredExplanation | undefined,
   incoming: ExplanationPayload,
 ): boolean {
   if (!existing) {
@@ -126,9 +153,35 @@ export const useRiskStore = create<RiskState>()(
             .map((target) => target.id),
         );
         const trackedTargetIds = new Set(payload.targets.map((target) => target.id));
-        const explanationsByTargetId = Object.fromEntries(
-          Object.entries(state.explanationsByTargetId).filter(([targetId]) => activeRiskTargetIds.has(targetId)),
+        const now = Date.now();
+        const nowIso = new Date(now).toISOString();
+
+        const newlyResolved: StoredExplanation[] = [];
+        const keptActive: Record<string, StoredExplanation> = {};
+        Object.entries(state.explanationsByTargetId).forEach(([targetId, entry]) => {
+          if (activeRiskTargetIds.has(targetId)) {
+            keptActive[targetId] = entry;
+          } else {
+            const currentTarget = payload.targets.find((t) => t.id === targetId);
+            const currentRiskLevel = currentTarget?.risk_assessment.risk_level ?? null;
+            const resolvedReason: ExplanationResolutionReason = trackedTargetIds.has(targetId)
+              ? 'TARGET_SAFE'
+              : 'TARGET_MISSING';
+            newlyResolved.push({
+              ...entry,
+              status: 'RESOLVED',
+              resolved_at: nowIso,
+              resolved_reason: resolvedReason,
+              current_risk_level: currentRiskLevel,
+            });
+          }
+        });
+
+        const resolvedExplanations = evictResolvedExplanations(
+          [...state.resolvedExplanations, ...newlyResolved],
+          now,
         );
+
         const selectedTargetIds = state.selectedTargetIds.filter((id) => trackedTargetIds.has(id));
         const droppedTargetNotices = state.selectedTargetIds.filter((id) => !trackedTargetIds.has(id));
         const nextDroppedTargetNotices = mergeDroppedTargetNotices(state.droppedTargetNotices, droppedTargetNotices);
@@ -136,12 +189,13 @@ export const useRiskStore = create<RiskState>()(
         return {
           latestRiskUpdate: payload,
           currentRiskObjectId: payload.risk_object_id,
-          lastUpdateTime: Date.now(),
+          lastUpdateTime: now,
           ownShip: payload.own_ship,
           targets: payload.targets,
           governance: payload.governance,
           environment: payload.environment_context,
-          explanationsByTargetId,
+          explanationsByTargetId: keptActive,
+          resolvedExplanations,
           selectedTargetIds,
           droppedTargetNotices: nextDroppedTargetNotices,
           riskConnectionState: 'connected',
@@ -187,12 +241,28 @@ export const useRiskStore = create<RiskState>()(
           return state;
         }
 
+        const stored: StoredExplanation = { ...payload, status: 'ACTIVE' };
         return {
           explanationsByTargetId: {
             ...state.explanationsByTargetId,
-            [payload.target_id]: payload,
+            [payload.target_id]: stored,
           },
         };
+      });
+    },
+
+    applyExpiredExplanationsCleared: (removedEventIds: string[]) => {
+      const removedSet = new Set(removedEventIds ?? []);
+      set((state) => {
+        const now = Date.now();
+        const afterIdRemoval = removedSet.size > 0
+          ? state.resolvedExplanations.filter((e) => !removedSet.has(e.event_id))
+          : state.resolvedExplanations;
+        const evicted = evictResolvedExplanations(afterIdRemoval, now);
+        if (evicted.length === state.resolvedExplanations.length) {
+          return state;
+        }
+        return { resolvedExplanations: evicted };
       });
     },
 
@@ -254,6 +324,7 @@ export const selectIsLowTrust = (state: RiskState) => state.isLowTrust;
 export const selectRiskConnectionState = (state: RiskState) => state.riskConnectionState;
 export const selectRiskConnectionError = (state: RiskState) => state.connectionError;
 export const selectExplanationsByTargetId = (state: RiskState) => state.explanationsByTargetId;
+export const selectResolvedExplanations = (state: RiskState) => state.resolvedExplanations;
 export const selectSelectedTargetIds = (state: RiskState) => state.selectedTargetIds;
 export const selectDroppedTargetNotices = (state: RiskState) => state.droppedTargetNotices;
 export const selectActiveAdvisory = (state: RiskState) => state.activeAdvisory;

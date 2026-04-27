@@ -12,6 +12,7 @@ export {
   selectDroppedTargetNotices,
   selectActiveAdvisory,
   selectArchivedAdvisories,
+  selectResolvedExplanations,
 } from './useRiskStore';
 
 export {

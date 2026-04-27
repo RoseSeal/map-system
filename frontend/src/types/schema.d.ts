@@ -229,6 +229,21 @@ export interface ExplanationPayload {
   timestamp: string;
 }
 
+export type ExplanationLifecycleStatus = 'ACTIVE' | 'RESOLVED';
+export type ExplanationResolutionReason = 'TARGET_SAFE' | 'TARGET_MISSING';
+
+export interface StoredExplanation extends ExplanationPayload {
+  status: ExplanationLifecycleStatus;
+  resolved_at?: string;
+  resolved_reason?: ExplanationResolutionReason;
+  current_risk_level?: RiskLevel | null;
+}
+
+export interface ExplanationReference {
+  target_id: string;
+  explanation_event_id: string;
+}
+
 export interface SseErrorPayload {
   event_id: string;
   connection: 'risk';
@@ -242,8 +257,8 @@ export interface SseErrorPayload {
 // Chat WebSocket types
 // ============================================================
 
-export type ChatUplinkType = 'PING' | 'CHAT' | 'SPEECH' | 'CLEAR_HISTORY';
-export type ChatDownlinkType = 'PONG' | 'CAPABILITY' | 'CHAT_REPLY' | 'AGENT_STEP' | 'SPEECH_TRANSCRIPT' | 'ERROR' | 'CLEAR_HISTORY_ACK';
+export type ChatUplinkType = 'PING' | 'CHAT' | 'SPEECH' | 'CLEAR_HISTORY' | 'CLEAR_EXPIRED_EXPLANATIONS';
+export type ChatDownlinkType = 'PONG' | 'CAPABILITY' | 'CHAT_REPLY' | 'AGENT_STEP' | 'SPEECH_TRANSCRIPT' | 'ERROR' | 'CLEAR_HISTORY_ACK' | 'EXPIRED_EXPLANATIONS_CLEARED';
 
 export interface ChatRequestPayload {
   conversation_id: string;
@@ -251,7 +266,20 @@ export interface ChatRequestPayload {
   content: string;
   agent_mode?: ChatAgentMode;
   selected_target_ids?: string[];
+  selected_explanation_refs?: ExplanationReference[];
   edit_last_user_message?: boolean;
+}
+
+export interface ClearExpiredExplanationsPayload {
+  event_id: string;
+}
+
+export interface ExpiredExplanationsClearedPayload {
+  event_id: string;
+  reply_to_event_id: string;
+  removed_event_ids: string[];
+  cutoff_time: string;
+  timestamp: string;
 }
 
 export interface ChatCapabilityPayload {
@@ -330,12 +358,12 @@ export interface ClearHistoryAckPayload {
 export interface ChatUplinkEnvelope {
   type: ChatUplinkType;
   source: 'client';
-  payload: ChatRequestPayload | SpeechRequestPayload | ClearHistoryPayload | null;
+  payload: ChatRequestPayload | SpeechRequestPayload | ClearHistoryPayload | ClearExpiredExplanationsPayload | null;
 }
 
 export interface ChatDownlinkEnvelope {
   type: ChatDownlinkType;
   source: 'server';
   sequence_id: string;
-  payload: ChatReplyPayload | SpeechTranscriptPayload | ChatErrorPayload | ClearHistoryAckPayload | ChatCapabilityPayload | AgentStepPayload | null;
+  payload: ChatReplyPayload | SpeechTranscriptPayload | ChatErrorPayload | ClearHistoryAckPayload | ChatCapabilityPayload | AgentStepPayload | ExpiredExplanationsClearedPayload | null;
 }

@@ -31,4 +31,7 @@ public class ChatRequestPayload {
 
     @JsonProperty("agent_mode")
     private String agentMode;
+
+    @JsonProperty("selected_explanation_refs")
+    private List<SelectedExplanationRefPayload> selectedExplanationRefs;
 }

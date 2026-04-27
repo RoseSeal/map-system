@@ -1,7 +1,7 @@
 # Map-System 待办与延后事项清单 (TODO)
 
 > 文档状态：active
-> 最后更新：2026-04-25
+> 最后更新：2026-04-27
 > 摘要：仅记录“未实现且未挂到当前有效实施链”的事项；凡已进入 `docs/v*` 总 plan、step 文档或已命名 milestone 的工作，均不得在此重复登记。
 
 ## 0. 使用规则
@@ -34,10 +34,6 @@
 
 - **上下文质量优化**：继续优化 chat 对当前风险上下文的注入质量、选中目标定向补充和消费边界治理，避免 chat 会话与 risk explanation 语义混杂。
 - **对话记忆策略治理**：在现有 `ConversationMemory` 基础上继续收敛并发语义、历史压缩策略与上下文来源可解释性，而不是再次重做基础 memory 能力。
-- **任务级模型路由与前端模型选择（第二阶段）**：当前已完成阶段一：`risk explanation` 绑定 Zhipu、`chat / agent` 绑定 Gemini，通过 `@Qualifier("zhipu"|"gemini")` 硬编码分离（`LlmExplanationService`、`LlmChatService`、`AgentLoopOrchestrator`）。后续完整方案分三步：
-  - **Step A — 后端动态路由**：在 `LlmProperties` 增加 `explanationProvider` / `chatProvider` 字段，将当前 `@Qualifier` 硬编码替换为运行时按字段选择；引入 `LlmClientRegistry` 组件封装 provider → `LlmClient` 映射，支持运行时切换与回退。
-  - **Step B — Provider 能力声明 API**：后端新增 `GET /api/llm/providers` 端点，返回各 provider 的可用性、支持任务类型（explanation / chat / agent）、当前配额状态；前端拿到后驱动 UI 中的可选项。
-  - **Step C — 前端模型选择 UI**：在 AI 中心设置面板中为 `chat` 和 `risk explanation` 各增加 provider 选择器（受 Step B 能力声明限制），前端通过 WebSocket 消息或设置接口将选择传至后端，后端在本次会话内使用指定 provider。
 - **多目标场景建议聚合**：在生成操纵建议时，从”逐一评估目标”升级为”全局视角决策与冲突消解”。
 - **时序稳定性优化**：避免 LLM 建议的帧间高频抖动，引入短时间缓存、意图复用与阈值触发机制。
 - **解释卡片作为对话上下文**：支持用户选择特定的风险解释卡片作为后续 Chat 对话的补充上下文。
@@ -49,7 +45,6 @@
 - **已发送语音请求取消 / 后端转录中断**：在音频已发送且进入 `transcribing` 后支持主动取消；需协议新增 `CANCEL`、后端维护可中断任务注册表，并定义迟到 transcript/reply 的丢弃规则。
 - **真正取消 LLM 回复**：在消息已发送且 LLM 尚未返回时支持主动取消；前端需提供取消入口与状态回退，协议与前后端需联动支持真正中断而非仅本地忽略结果。
 - **编辑任意历史消息**：在当前“仅支持编辑最后一条 user 消息”的基础上，支持指定历史轮次重答，并明确后续消息的保留、截断或重建规则。
-- **已解除风险解释区**：后端不再直接删除解除风险目标的 LLM explanation，而是将其移入“已解除”区；前端也不再直接移除这类 explanation，而是标记 `resolved` / `已解除` 状态，增加透明度、自动沉底并允许用户手动清理。前后端需维持一致的数据语义：均最多保留 `N` 条、最长保留 `X` 分钟，超限按统一规则驱逐；当用户基于已解除卡片继续提问时，LLM 上下文需同时注入“该风险已解除”标签与当前状态，避免把历史 explanation 误当作当前风险。
 - **海图主渲染链路收敛到 composite tile**：当前水文 Step 1 明确保留单图层 vector source 方案；若后续需要统一主渲染链路，应单独规划并完成前后端收敛。
 - **海图专题补全（`FAIRWY` / `RESARE` / `DEPCNT` 深值标签）**：当前水文 track 仅完成 `OBSTRN` 与 `DEPARE` 视觉主线，这些附加专题仍未挂入现有 Step 1–3。
 

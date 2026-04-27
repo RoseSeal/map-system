@@ -265,4 +265,173 @@ describe('useRiskStore', () => {
     expect(state.archivedAdvisories).toHaveLength(0);
     expect(state.activeAdvisory?.advisory_id).toBe('advisory-uuid-1');
   });
+
+  it('migrates explanation to resolvedExplanations when target turns SAFE', () => {
+    const store = useRiskStore.getState();
+
+    store.setRiskUpdate(riskUpdateFixture);
+    store.upsertExplanation(explanationForAlarmFixture);
+
+    store.setRiskUpdate({
+      ...riskUpdateFixture,
+      event_id: 'risk-event-safe',
+      targets: riskUpdateFixture.targets.map((t) =>
+        t.id === 'TGT-ALARM'
+          ? { ...t, risk_assessment: { ...t.risk_assessment, risk_level: 'SAFE' } }
+          : t,
+      ),
+    });
+
+    const state = useRiskStore.getState();
+    expect(Object.keys(state.explanationsByTargetId)).not.toContain('TGT-ALARM');
+    expect(state.resolvedExplanations).toHaveLength(1);
+    const resolved = state.resolvedExplanations[0];
+    expect(resolved.event_id).toBe('explanation-1');
+    expect(resolved.status).toBe('RESOLVED');
+    expect(resolved.resolved_reason).toBe('TARGET_SAFE');
+    expect(resolved.risk_level).toBe('ALARM');
+    expect(resolved.current_risk_level).toBe('SAFE');
+    expect(resolved.resolved_at).toBeTruthy();
+  });
+
+  it('migrates explanation to resolvedExplanations when target leaves snapshot', () => {
+    const store = useRiskStore.getState();
+
+    store.setRiskUpdate(riskUpdateFixture);
+    store.upsertExplanation(explanationForAlarmFixture);
+    store.setRiskUpdate(riskUpdateWithoutAlarmFixture);
+
+    const state = useRiskStore.getState();
+    expect(state.resolvedExplanations).toHaveLength(1);
+    const resolved = state.resolvedExplanations[0];
+    expect(resolved.event_id).toBe('explanation-1');
+    expect(resolved.resolved_reason).toBe('TARGET_MISSING');
+    expect(resolved.current_risk_level).toBeNull();
+  });
+
+  it('applyExpiredExplanationsCleared removes only the listed event_ids', () => {
+    const store = useRiskStore.getState();
+
+    store.setRiskUpdate(riskUpdateFixture);
+    store.upsertExplanation(explanationForAlarmFixture);
+    store.upsertExplanation(explanationForCautionFixture);
+
+    store.setRiskUpdate({
+      ...riskUpdateFixture,
+      event_id: 'risk-event-all-safe',
+      targets: riskUpdateFixture.targets.map((t) => ({
+        ...t,
+        risk_assessment: { ...t.risk_assessment, risk_level: 'SAFE' },
+      })),
+    });
+
+    expect(useRiskStore.getState().resolvedExplanations).toHaveLength(2);
+
+    store.applyExpiredExplanationsCleared(['explanation-1']);
+
+    const after = useRiskStore.getState().resolvedExplanations;
+    expect(after).toHaveLength(1);
+    expect(after[0].event_id).toBe('explanation-2');
+  });
+
+  it('resolvedExplanations count limit evicts oldest resolved entries beyond 20', () => {
+    const store = useRiskStore.getState();
+
+    vi.useFakeTimers();
+    try {
+      const baseMs = new Date('2026-04-27T09:00:00.000Z').getTime();
+
+      for (let i = 0; i < 21; i++) {
+        vi.setSystemTime(baseMs + i * 60_000);
+
+        const targetId = `TGT-MULTI-${i}`;
+        store.setRiskUpdate({
+          ...riskUpdateFixture,
+          event_id: `risk-setup-${i}`,
+          targets: [{
+            id: targetId,
+            tracking_status: 'tracking',
+            position: { lon: 0, lat: 0 },
+            vector: { speed_kn: 0, course_deg: 0 },
+            risk_assessment: { risk_level: 'CAUTION', cpa_metrics: { dcpa_nm: 1, tcpa_sec: 1000 } },
+          }],
+        });
+        store.upsertExplanation({
+          event_id: `exp-${i}`,
+          risk_object_id: 'risk-object-1',
+          target_id: targetId,
+          risk_level: 'CAUTION',
+          provider: 'gemini',
+          text: `Explanation ${i}`,
+          timestamp: new Date(baseMs + i * 60_000).toISOString(),
+        });
+        store.setRiskUpdate({
+          ...riskUpdateFixture,
+          event_id: `risk-resolve-${i}`,
+          targets: [],
+        });
+      }
+
+      const state = useRiskStore.getState();
+      expect(state.resolvedExplanations).toHaveLength(20);
+      expect(state.resolvedExplanations.every((e) => e.event_id !== 'exp-0')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('applyExpiredExplanationsCleared evicts TTL-expired entries even when removed list is empty', () => {
+    const store = useRiskStore.getState();
+
+    vi.useFakeTimers();
+    try {
+      const baseMs = new Date('2026-04-27T08:00:00.000Z').getTime();
+      vi.setSystemTime(baseMs);
+
+      store.setRiskUpdate(riskUpdateFixture);
+      store.upsertExplanation(explanationForAlarmFixture);
+      store.setRiskUpdate(riskUpdateWithoutAlarmFixture);
+
+      expect(useRiskStore.getState().resolvedExplanations).toHaveLength(1);
+
+      vi.setSystemTime(baseMs + 31 * 60_000);
+
+      // Backend already pruned the entry; returns empty list
+      store.applyExpiredExplanationsCleared([]);
+
+      expect(useRiskStore.getState().resolvedExplanations).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('resolvedExplanations TTL eviction triggers on write, not on selector read', () => {
+    const store = useRiskStore.getState();
+
+    vi.useFakeTimers();
+    try {
+      const baseMs = new Date('2026-04-27T10:00:00.000Z').getTime();
+      vi.setSystemTime(baseMs);
+
+      store.setRiskUpdate(riskUpdateFixture);
+      store.upsertExplanation(explanationForAlarmFixture);
+      store.setRiskUpdate(riskUpdateWithoutAlarmFixture);
+
+      vi.setSystemTime(baseMs + 31 * 60_000);
+
+      // Reading state does NOT trigger eviction
+      expect(useRiskStore.getState().resolvedExplanations).toHaveLength(1);
+
+      // Next write evicts the expired entry
+      store.setRiskUpdate({
+        ...riskUpdateFixture,
+        event_id: 'risk-event-trigger',
+        targets: [riskUpdateFixture.targets[1]],
+      });
+
+      expect(useRiskStore.getState().resolvedExplanations).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

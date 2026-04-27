@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -224,8 +225,10 @@ class RiskContextFormatterTest {
         LlmProperties properties = new LlmProperties();
         RiskContextFormatter formatter = new RiskContextFormatter(properties);
         ExplanationCache explanationCache = new ExplanationCache();
-        explanationCache.refreshTargetState(Set.of("warning-1"), Set.of("warning-1"));
-        explanationCache.put("warning-1", "建议右转避让。", "2026-04-09T11:00:00Z");
+        explanationCache.refreshTargetState(Set.of("warning-1"), Set.of("warning-1"), Map.of("warning-1", RiskLevel.WARNING), Instant.parse("2026-04-09T10:00:00Z"));
+        explanationCache.putActive(com.whut.map.map_service.shared.dto.sse.ExplanationPayload.builder()
+                .eventId("e1").targetId("warning-1").riskLevel("WARNING")
+                .provider("gemini").text("建议右转避让。").timestamp("2026-04-09T11:00:00Z").build());
 
         LlmRiskContext context = LlmRiskContext.builder()
                 .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())
@@ -251,8 +254,7 @@ class RiskContextFormatterTest {
         LlmProperties properties = new LlmProperties();
         RiskContextFormatter formatter = new RiskContextFormatter(properties);
         ExplanationCache explanationCache = new ExplanationCache();
-        explanationCache.refreshTargetState(Set.of("safe-1"), Set.of());
-        explanationCache.put("safe-1", "不会显示。", "2026-04-09T11:05:00Z");
+        explanationCache.refreshTargetState(Set.of("safe-1"), Set.of(), Map.of("safe-1", RiskLevel.SAFE), Instant.parse("2026-04-09T10:00:00Z"));
 
         LlmRiskContext context = LlmRiskContext.builder()
                 .ownShip(LlmRiskOwnShipContext.builder().id("own-1").build())

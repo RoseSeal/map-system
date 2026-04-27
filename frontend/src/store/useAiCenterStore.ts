@@ -5,6 +5,7 @@ import type {
   ChatCapabilityPayload,
   ChatErrorPayload,
   ChatReplyPayload,
+  ExplanationReference,
   SpeechMode,
   SpeechTranscriptPayload,
 } from '../types/schema';
@@ -62,9 +63,12 @@ interface AiCenterState {
   activeVoiceMode: SpeechMode | null;
 
   isChatFocused: boolean;
+  pendingExplanationRef: ExplanationReference | null;
 
   setChatInput: (value: string) => void;
   sendTextMessage: (content: string) => boolean;
+  setPendingExplanationRef: (ref: ExplanationReference | null) => void;
+  clearExpiredExplanations: () => void;
   sendSpeechMessage: (options: SendSpeechMessageOptions) => boolean;
   startEditingLastUserMessage: () => boolean;
   updateEditingDraft: (value: string) => void;
@@ -125,6 +129,7 @@ const initialState = () => ({
   activeVoiceEventId: null as string | null,
   activeVoiceMode: null as SpeechMode | null,
   isChatFocused: false,
+  pendingExplanationRef: null as ExplanationReference | null,
 });
 
 const pendingRequestTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
@@ -151,14 +156,19 @@ export const useAiCenterStore = create<AiCenterState>()(
 
       const conversationId = get().conversationId;
       const selectedTargetIds = useRiskStore.getState().selectedTargetIds;
+      const pendingExplanationRef = get().pendingExplanationRef;
       const eventId = chatWsService.send('CHAT', {
         conversation_id: conversationId,
         content: text,
         agent_mode: get().assistantMode,
         ...(selectedTargetIds.length > 0 && { selected_target_ids: selectedTargetIds }),
+        ...(pendingExplanationRef && { selected_explanation_refs: [pendingExplanationRef] }),
       });
 
       if (!eventId) {
+        if (pendingExplanationRef) {
+          set({ pendingExplanationRef: null });
+        }
         return false;
       }
 
@@ -181,11 +191,20 @@ export const useAiCenterStore = create<AiCenterState>()(
           ...state.chatErrorByEventId,
           [eventId]: null,
         },
+        pendingExplanationRef: null,
         ...createClearedEditingState(),
       }));
       schedulePendingRequestTimeout(eventId, 'chat');
 
       return true;
+    },
+
+    setPendingExplanationRef: (ref: ExplanationReference | null) => {
+      set({ pendingExplanationRef: ref });
+    },
+
+    clearExpiredExplanations: () => {
+      chatWsService.sendClearExpiredExplanations();
     },
 
     sendSpeechMessage: ({ audioData, audioFormat, mode }: SendSpeechMessageOptions) => {
@@ -234,6 +253,7 @@ export const useAiCenterStore = create<AiCenterState>()(
           ...state.chatErrorByEventId,
           [eventId]: null,
         },
+        pendingExplanationRef: null,
         voiceCaptureState: 'transcribing',
         voiceCaptureError: null,
         activeVoiceEventId: eventId,
@@ -690,6 +710,7 @@ export const useAiCenterStore = create<AiCenterState>()(
         lastSpokenAt: Object.fromEntries(
           Object.entries(state.lastSpokenAt).filter(([key]) => key.startsWith('llm-explanation::')),
         ),
+        pendingExplanationRef: null,
         voiceCaptureState: 'idle',
         voiceCaptureError: null,
         activeVoiceEventId: null,
@@ -841,6 +862,10 @@ function initializeAiCenterStoreSubscriptions(): void {
 
   chatWsService.onAgentStep((payload) => {
     useAiCenterStore.getState().appendAgentStep(payload);
+  });
+
+  chatWsService.onExpiredExplanationsCleared((payload) => {
+    useRiskStore.getState().applyExpiredExplanationsCleared(payload.removed_event_ids);
   });
 }
 

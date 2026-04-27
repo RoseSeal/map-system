@@ -196,10 +196,27 @@ public class LlmChatService {
         return trimToTokenBudget(messages, historyStartIndex, historyEndIndex);
     }
 
+    private String resolveAgentResolvedContext(LlmChatRequest request) {
+        if (request.selectedExplanationRefs() == null || request.selectedExplanationRefs().isEmpty()) {
+            return null;
+        }
+        return riskContextFormatter.formatResolvedExplanations(
+                riskContextHolder.getCurrent(),
+                explanationCache,
+                request.selectedExplanationRefs()
+        );
+    }
+
     private String resolveRiskContext(LlmChatRequest request) {
         var context = riskContextHolder.getCurrent();
         var updatedAt = riskContextHolder.getUpdatedAt();
-        return riskContextFormatter.formatConsolidated(context, request.selectedTargetIds(), updatedAt, explanationCache);
+        return riskContextFormatter.formatConsolidated(
+                context,
+                request.selectedTargetIds(),
+                updatedAt,
+                explanationCache,
+                request.selectedExplanationRefs()
+        );
     }
 
     private String resolveProviderName() {
@@ -268,7 +285,8 @@ public class LlmChatService {
 
         CompletableFuture<AgentLoopResult> future;
         try {
-            var initialMessages = chatAgentPromptBuilder.build(request, snapshot);
+            String resolvedContext = resolveAgentResolvedContext(request);
+            var initialMessages = chatAgentPromptBuilder.build(request, snapshot, resolvedContext);
             int maxIterations = llmProperties.getAdvisory().getMaxIterations();
             future = CompletableFuture.supplyAsync(
                     () -> agentLoopOrchestrator.run(snapshot, initialMessages, maxIterations, onStep),

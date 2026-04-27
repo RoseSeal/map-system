@@ -106,7 +106,7 @@ class LlmChatServiceTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             LlmChatService service = buildService(llmClient, properties, new ConversationMemory(properties), executor, null, null, null);
-            LlmChatRequest request = new LlmChatRequest("conversation-1", "event-1", "   ", List.of(), false, ChatAgentMode.CHAT);
+            LlmChatRequest request = new LlmChatRequest("conversation-1", "event-1", "   ", List.of(), false, ChatAgentMode.CHAT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -287,7 +287,7 @@ class LlmChatServiceTest {
                     llmClient, properties, promptTemplateService, holder,
                     new RiskContextFormatter(properties), new ExplanationCache(), new ConversationMemory(properties), executor,
                     null, null, null);
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "它距离多少", List.of("target-1"), false, ChatAgentMode.CHAT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "它距离多少", List.of("target-1"), false, ChatAgentMode.CHAT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -333,7 +333,7 @@ class LlmChatServiceTest {
                     llmClient, properties, promptTemplateService, holder,
                     new RiskContextFormatter(properties), new ExplanationCache(), new ConversationMemory(properties), executor,
                     null, null, null);
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of("nonexistent"), false, ChatAgentMode.CHAT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of("nonexistent"), false, ChatAgentMode.CHAT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -369,7 +369,7 @@ class LlmChatServiceTest {
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(
-                    new LlmChatRequest("conversation-1", "edit-1", "edited follow up", null, true, ChatAgentMode.CHAT),
+                    new LlmChatRequest("conversation-1", "edit-1", "edited follow up", null, true, ChatAgentMode.CHAT, null),
                     callback::captureReply,
                     callback::captureError
             );
@@ -409,7 +409,7 @@ class LlmChatServiceTest {
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(
-                    new LlmChatRequest("conversation-1", "edit-1", "edited hello", null, true, ChatAgentMode.CHAT),
+                    new LlmChatRequest("conversation-1", "edit-1", "edited hello", null, true, ChatAgentMode.CHAT, null),
                     callback::captureReply,
                     callback::captureError
             );
@@ -447,7 +447,8 @@ class LlmChatServiceTest {
                     "follow up",
                     null,
                     false,
-                    ChatAgentMode.CHAT
+                    ChatAgentMode.CHAT,
+                    null
             );
             llmClient.response = "assistant-2";
             CapturingChatCallback secondCallback = new CapturingChatCallback();
@@ -479,7 +480,7 @@ class LlmChatServiceTest {
 
             CapturingChatCallback secondCallback = new CapturingChatCallback();
                 service.handleChat(
-                    new LlmChatRequest("conversation-1", "user-2", "second", null, false, ChatAgentMode.CHAT),
+                    new LlmChatRequest("conversation-1", "user-2", "second", null, false, ChatAgentMode.CHAT, null),
                     secondCallback::captureReply,
                     secondCallback::captureError
             );
@@ -508,7 +509,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(llmClient, properties, new ConversationMemory(properties), executor,
                     null, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of("target-1"), false, ChatAgentMode.CHAT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of("target-1"), false, ChatAgentMode.CHAT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -533,7 +534,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(llmClient, properties, new ConversationMemory(properties), executor,
                     null, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of(), false, ChatAgentMode.CHAT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of(), false, ChatAgentMode.CHAT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -563,7 +564,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(llmClient, properties, conversationMemory, executor,
                     snapshotFactory, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "target detail?", List.of("target-1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "target detail?", List.of("target-1"), false, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -593,7 +594,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(new StubLlmClient(), properties, conversationMemory, executor,
                     snapshotFactory, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "user question", List.of("t1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "user question", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -623,7 +624,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(new StubLlmClient(), properties, conversationMemory, executor,
                     snapshotFactory, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hi", List.of("t1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hi", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -652,7 +653,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(new StubLlmClient(), properties, new ConversationMemory(properties), executor,
                     snapshotFactory, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "question", List.of("t1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "question", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
             java.util.concurrent.CopyOnWriteArrayList<AgentStepEvent> stepEvents = new java.util.concurrent.CopyOnWriteArrayList<>();
             java.util.concurrent.CopyOnWriteArrayList<String> order = new java.util.concurrent.CopyOnWriteArrayList<>();
@@ -700,7 +701,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(new StubLlmClient(), properties, conversationMemory, executor,
                     snapshotFactory, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "question", List.of("t1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "question", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -727,7 +728,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(new StubLlmClient(), properties, new ConversationMemory(properties), executor,
                     snapshotFactory, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -752,7 +753,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(new StubLlmClient(), properties, new ConversationMemory(properties), executor,
                     snapshotFactory, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -775,7 +776,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(new StubLlmClient(), properties, conversationMemory, executor,
                     snapshotFactory, null, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -789,7 +790,7 @@ class LlmChatServiceTest {
             llmClient.response = "ok";
             LlmChatService service2 = buildService(llmClient, properties, conversationMemory, executor,
                     null, null, null);
-            service2.handleChat(new LlmChatRequest("c-1", "e-2", "next", null, false, ChatAgentMode.CHAT),
+            service2.handleChat(new LlmChatRequest("c-1", "e-2", "next", null, false, ChatAgentMode.CHAT, null),
                     nextCallback::captureReply, nextCallback::captureError);
             nextCallback.await();
             assertThat(nextCallback.errorCode()).isNull();
@@ -805,13 +806,13 @@ class LlmChatServiceTest {
         AgentSnapshotFactory snapshotFactory = mock(AgentSnapshotFactory.class);
         when(snapshotFactory.build()).thenReturn(new AgentSnapshot(1L, null, java.util.Map.of()));
         ChatAgentPromptBuilder promptBuilder = mock(ChatAgentPromptBuilder.class);
-        when(promptBuilder.build(any(), any())).thenThrow(new IllegalStateException("prompt build failed"));
+        when(promptBuilder.build(any(), any(), any())).thenThrow(new IllegalStateException("prompt build failed"));
         ConversationMemory conversationMemory = new ConversationMemory(properties);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             LlmChatService service = buildService(new StubLlmClient(), properties, conversationMemory, executor,
                     snapshotFactory, null, promptBuilder);
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -825,7 +826,7 @@ class LlmChatServiceTest {
             llmClient.response = "ok";
             LlmChatService service2 = buildService(llmClient, properties, conversationMemory, executor,
                     null, null, null);
-            service2.handleChat(new LlmChatRequest("c-1", "e-2", "next", null, false, ChatAgentMode.CHAT),
+            service2.handleChat(new LlmChatRequest("c-1", "e-2", "next", null, false, ChatAgentMode.CHAT, null),
                     nextCallback::captureReply, nextCallback::captureError);
             nextCallback.await();
             assertThat(nextCallback.errorCode()).isNull();
@@ -853,7 +854,7 @@ class LlmChatServiceTest {
 
             LlmChatService service = buildService(new StubLlmClient(), properties, conversationMemory, executor,
                     snapshotFactory, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "edited", List.of("t1"), true, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "edited", List.of("t1"), true, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -883,7 +884,7 @@ class LlmChatServiceTest {
                 riskContextFormatter, new ExplanationCache(), conversationMemory, rejectingExecutor,
                 snapshotFactory, null, new ChatAgentPromptBuilder(promptTemplateService)
         );
-        LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT);
+        LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
         CapturingChatCallback callback = new CapturingChatCallback();
         service.handleChat(request, callback::captureReply, callback::captureError);
@@ -900,7 +901,7 @@ class LlmChatServiceTest {
             LlmChatService service2 = buildService(llmClient2, properties, conversationMemory, executor2,
                     null, null, null);
             CapturingChatCallback nextCallback = new CapturingChatCallback();
-            service2.handleChat(new LlmChatRequest("c-1", "e-2", "next", null, false, ChatAgentMode.CHAT),
+            service2.handleChat(new LlmChatRequest("c-1", "e-2", "next", null, false, ChatAgentMode.CHAT, null),
                     nextCallback::captureReply, nextCallback::captureError);
             nextCallback.await();
             assertThat(nextCallback.errorCode()).isNull();
@@ -926,7 +927,7 @@ class LlmChatServiceTest {
         try {
             LlmChatService service = buildService(new StubLlmClient(), properties, conversationMemory, executor,
                     snapshotFactory, orchestrator, new ChatAgentPromptBuilder(promptTemplateService));
-            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT);
+            LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "q", List.of("t1"), false, ChatAgentMode.AGENT, null);
 
             CapturingChatCallback callback = new CapturingChatCallback();
             service.handleChat(request, callback::captureReply, callback::captureError);
@@ -950,7 +951,7 @@ class LlmChatServiceTest {
     }
 
     private LlmChatRequest buildRequest() {
-        return new LlmChatRequest("conversation-1", "user-1", "hello", null, false, ChatAgentMode.CHAT);
+        return new LlmChatRequest("conversation-1", "user-1", "hello", null, false, ChatAgentMode.CHAT, null);
     }
 
     private LlmChatService buildService(

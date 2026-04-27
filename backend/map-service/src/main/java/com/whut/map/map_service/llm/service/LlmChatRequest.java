@@ -8,10 +8,12 @@ public record LlmChatRequest(
         String content,
         List<String> selectedTargetIds,
         boolean editLastUserMessage,
-        ChatAgentMode agentMode
+        ChatAgentMode agentMode,
+        List<SelectedExplanationRef> selectedExplanationRefs
 ) {
     public LlmChatRequest {
         selectedTargetIds = selectedTargetIds == null ? List.of() : List.copyOf(selectedTargetIds);
         agentMode = agentMode == null ? ChatAgentMode.CHAT : agentMode;
+        selectedExplanationRefs = selectedExplanationRefs == null ? List.of() : List.copyOf(selectedExplanationRefs);
     }
 }

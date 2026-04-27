@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whut.map.map_service.llm.agent.AgentStepEvent;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.config.WhisperProperties;
+import com.whut.map.map_service.llm.context.ExplanationCache;
 import com.whut.map.map_service.llm.memory.ConversationMemory;
 import com.whut.map.map_service.llm.service.ChatAgentMode;
 import com.whut.map.map_service.llm.service.LlmChatRequest;
@@ -12,6 +13,7 @@ import com.whut.map.map_service.llm.service.LlmChatService;
 import com.whut.map.map_service.llm.service.LlmErrorCode;
 import com.whut.map.map_service.llm.service.LlmVoiceMode;
 import com.whut.map.map_service.llm.service.LlmVoiceRequest;
+import com.whut.map.map_service.llm.service.SelectedExplanationRef;
 import com.whut.map.map_service.llm.service.VoiceChatService;
 import com.whut.map.map_service.llm.transport.ws.validation.AudioValidator;
 import com.whut.map.map_service.shared.transport.protocol.ProtocolConnections;
@@ -26,6 +28,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -41,6 +44,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final VoiceChatService voiceChatService;
     private final ConversationMemory conversationMemory;
     private final AudioValidator audioValidator;
+    private final ExplanationCache explanationCache;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -84,6 +88,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             case CHAT -> handleChat(session, envelope.getPayload());
             case SPEECH -> handleSpeech(session, envelope.getPayload());
             case CLEAR_HISTORY -> handleClearHistory(session, envelope.getPayload());
+            case CLEAR_EXPIRED_EXPLANATIONS -> handleClearExpiredExplanations(session, envelope.getPayload());
             default -> sendError(session, readText(envelope.getPayload(), ProtocolFields.EVENT_ID), ChatErrorCode.INVALID_CHAT_REQUEST, "Unsupported message type.");
         }
     }
@@ -125,13 +130,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         String conversationId = payload.getConversationId();
         String eventId = payload.getEventId();
 
+        List<SelectedExplanationRef> explanationRefs = buildExplanationRefs(payload.getSelectedExplanationRefs());
+
         LlmChatRequest request = new LlmChatRequest(
                 conversationId,
                 eventId,
                 payload.getContent(),
                 payload.getSelectedTargetIds(),
                 payload.getEditLastUserMessage() != null && payload.getEditLastUserMessage(),
-                agentMode
+                agentMode,
+                explanationRefs
         );
 
         llmChatService.handleChat(
@@ -202,6 +210,53 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         sendClearHistoryAck(session, payload.getConversationId(), payload.getEventId());
+    }
+
+    private void handleClearExpiredExplanations(WebSocketSession session, JsonNode payloadNode) {
+        if (payloadNode == null || payloadNode.isNull()) {
+            sendError(session, null, ChatErrorCode.INVALID_CHAT_REQUEST, "CLEAR_EXPIRED_EXPLANATIONS payload is required.");
+            return;
+        }
+
+        ClearExpiredExplanationsPayload payload = tryParsePayload(session, payloadNode, ClearExpiredExplanationsPayload.class, ChatErrorCode.INVALID_CHAT_REQUEST, "CLEAR_EXPIRED_EXPLANATIONS");
+        if (payload == null) return;
+
+        if (!StringUtils.hasText(payload.getEventId())) {
+            sendError(session, null, ChatErrorCode.INVALID_CHAT_REQUEST, "event_id is required for CLEAR_EXPIRED_EXPLANATIONS.");
+            return;
+        }
+
+        Instant now = Instant.now();
+        List<String> removedEventIds = explanationCache.clearExpiredResolvedExplanations(now);
+        sendExpiredExplanationsCleared(session, payload.getEventId(), removedEventIds, now);
+    }
+
+    private void sendExpiredExplanationsCleared(
+            WebSocketSession session,
+            String replyToEventId,
+            List<String> removedEventIds,
+            Instant cutoffTime
+    ) {
+        ExpiredExplanationsClearedPayload payload = ExpiredExplanationsClearedPayload.builder()
+                .eventId(generateEventId())
+                .replyToEventId(replyToEventId)
+                .removedEventIds(removedEventIds)
+                .cutoffTime(cutoffTime.toString())
+                .timestamp(Instant.now().toString())
+                .build();
+        sendDownlink(session, ChatMessageType.EXPIRED_EXPLANATIONS_CLEARED, payload);
+    }
+
+    private List<SelectedExplanationRef> buildExplanationRefs(List<SelectedExplanationRefPayload> payloadRefs) {
+        if (payloadRefs == null || payloadRefs.isEmpty()) {
+            return List.of();
+        }
+        return payloadRefs.stream()
+                .filter(ref -> ref != null
+                        && StringUtils.hasText(ref.getTargetId())
+                        && StringUtils.hasText(ref.getExplanationEventId()))
+                .map(ref -> new SelectedExplanationRef(ref.getTargetId(), ref.getExplanationEventId()))
+                .toList();
     }
 
     private void sendChatReply(

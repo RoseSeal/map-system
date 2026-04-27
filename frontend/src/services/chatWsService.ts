@@ -7,8 +7,10 @@ import type {
   ChatRequestPayload,
   ChatUplinkEnvelope,
   ChatUplinkType,
+  ClearExpiredExplanationsPayload,
   ClearHistoryAckPayload,
   ClearHistoryPayload,
+  ExpiredExplanationsClearedPayload,
   SpeechRequestPayload,
   SpeechTranscriptPayload,
 } from '../types/schema';
@@ -21,6 +23,7 @@ type ChatReplyCallback = (payload: ChatReplyPayload) => void;
 type SpeechTranscriptCallback = (payload: SpeechTranscriptPayload) => void;
 type ErrorCallback = (payload: ChatErrorPayload) => void;
 type ClearHistoryAckCallback = (payload: ClearHistoryAckPayload) => void;
+type ExpiredExplanationsClearedCallback = (payload: ExpiredExplanationsClearedPayload) => void;
 type PongCallback = () => void;
 type CapabilityCallback = (state: CapabilityState, payload: ChatCapabilityPayload | null) => void;
 type AgentStepCallback = (payload: AgentStepPayload) => void;
@@ -45,6 +48,7 @@ class ChatWsService {
   private speechTranscriptCallbacks = new Set<SpeechTranscriptCallback>();
   private errorCallbacks = new Set<ErrorCallback>();
   private clearHistoryAckCallbacks = new Set<ClearHistoryAckCallback>();
+  private expiredExplanationsClearedCallbacks = new Set<ExpiredExplanationsClearedCallback>();
   private pongCallbacks = new Set<PongCallback>();
   private connectionStateCallbacks = new Set<(state: DisplayConnectionState) => void>();
   private capabilityCallbacks = new Set<CapabilityCallback>();
@@ -146,11 +150,13 @@ class ChatWsService {
   send(type: 'CHAT', payload: Omit<ChatRequestPayload, 'event_id'>): string | null;
   send(type: 'SPEECH', payload: Omit<SpeechRequestPayload, 'event_id'>): string | null;
   send(type: 'CLEAR_HISTORY', payload: Omit<ClearHistoryPayload, 'event_id'>): string | null;
+  send(type: 'CLEAR_EXPIRED_EXPLANATIONS', payload: Omit<ClearExpiredExplanationsPayload, 'event_id'>): string | null;
   send(
     type: ChatUplinkType,
     payload: Omit<ChatRequestPayload, 'event_id'>
       | Omit<SpeechRequestPayload, 'event_id'>
       | Omit<ClearHistoryPayload, 'event_id'>
+      | Omit<ClearExpiredExplanationsPayload, 'event_id'>
       | null,
   ): boolean | string | null {
     if (!this.socket || this.state !== 'connected') {
@@ -164,6 +170,10 @@ class ChatWsService {
 
   sendClearHistory(conversationId: string): string | null {
     return this.send('CLEAR_HISTORY', { conversation_id: conversationId });
+  }
+
+  sendClearExpiredExplanations(): string | null {
+    return this.send('CLEAR_EXPIRED_EXPLANATIONS', {});
   }
 
   onChatReply(cb: ChatReplyCallback): () => void {
@@ -191,6 +201,13 @@ class ChatWsService {
     this.clearHistoryAckCallbacks.add(cb);
     return () => {
       this.clearHistoryAckCallbacks.delete(cb);
+    };
+  }
+
+  onExpiredExplanationsCleared(cb: ExpiredExplanationsClearedCallback): () => void {
+    this.expiredExplanationsClearedCallbacks.add(cb);
+    return () => {
+      this.expiredExplanationsClearedCallbacks.delete(cb);
     };
   }
 
@@ -248,6 +265,7 @@ class ChatWsService {
     payload: Omit<ChatRequestPayload, 'event_id'>
       | Omit<SpeechRequestPayload, 'event_id'>
       | Omit<ClearHistoryPayload, 'event_id'>
+      | Omit<ClearExpiredExplanationsPayload, 'event_id'>
       | null,
   ): { envelope: ChatUplinkEnvelope; eventId: string | null } {
     if (type === 'PING') {
@@ -325,6 +343,12 @@ class ChatWsService {
         if (isClearHistoryAckPayload(message.payload)) {
           const payload = message.payload;
           this.clearHistoryAckCallbacks.forEach((cb) => cb(payload));
+        }
+        return;
+      case 'EXPIRED_EXPLANATIONS_CLEARED':
+        if (isExpiredExplanationsClearedPayload(message.payload)) {
+          const payload = message.payload;
+          this.expiredExplanationsClearedCallbacks.forEach((cb) => cb(payload));
         }
         return;
       default:
@@ -435,6 +459,15 @@ function isClearHistoryAckPayload(payload: ChatDownlinkEnvelope['payload']): pay
     && 'conversation_id' in payload
     && 'reply_to_event_id' in payload
     && 'timestamp' in payload,
+  );
+}
+
+function isExpiredExplanationsClearedPayload(payload: ChatDownlinkEnvelope['payload']): payload is ExpiredExplanationsClearedPayload {
+  return Boolean(
+    payload
+    && typeof payload === 'object'
+    && 'removed_event_ids' in payload
+    && 'cutoff_time' in payload,
   );
 }
 

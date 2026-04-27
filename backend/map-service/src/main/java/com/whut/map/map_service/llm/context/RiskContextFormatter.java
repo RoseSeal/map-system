@@ -1,6 +1,8 @@
 package com.whut.map.map_service.llm.context;
 
 import com.whut.map.map_service.llm.config.LlmProperties;
+import com.whut.map.map_service.llm.context.ExplanationCache.CachedExplanationEntry;
+import com.whut.map.map_service.llm.service.SelectedExplanationRef;
 import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
@@ -15,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Component
@@ -107,7 +110,7 @@ public class RiskContextFormatter {
     }
 
     public String formatConsolidated(LlmRiskContext context, List<String> selectedTargetIds, Instant updatedAt) {
-        return formatConsolidated(context, selectedTargetIds, updatedAt, null);
+        return formatConsolidated(context, selectedTargetIds, updatedAt, null, List.of());
     }
 
     public String formatConsolidated(
@@ -115,6 +118,16 @@ public class RiskContextFormatter {
             List<String> selectedTargetIds,
             Instant updatedAt,
             ExplanationCache explanationCache
+    ) {
+        return formatConsolidated(context, selectedTargetIds, updatedAt, explanationCache, List.of());
+    }
+
+    public String formatConsolidated(
+            LlmRiskContext context,
+            List<String> selectedTargetIds,
+            Instant updatedAt,
+            ExplanationCache explanationCache,
+            List<SelectedExplanationRef> selectedExplanationRefs
     ) {
         if (context == null || context.getOwnShip() == null) {
             return null;
@@ -179,7 +192,64 @@ public class RiskContextFormatter {
                 .append(" 艘，未注入 ")
                 .append(Math.max(0, allTargets.size() - injectedTargets))
                 .append(" 艘。");
+
+        if (explanationCache != null && selectedExplanationRefs != null && !selectedExplanationRefs.isEmpty()) {
+            appendResolvedExplanations(builder, context, explanationCache, selectedExplanationRefs, targetById);
+        }
+
         return builder.toString();
+    }
+
+    public String formatResolvedExplanations(
+            LlmRiskContext context,
+            ExplanationCache explanationCache,
+            List<SelectedExplanationRef> refs
+    ) {
+        if (refs == null || refs.isEmpty() || explanationCache == null) {
+            return null;
+        }
+        List<LlmRiskTargetContext> allTargets = context == null || context.getTargets() == null
+                ? List.of() : context.getTargets();
+        Map<String, LlmRiskTargetContext> targetById = targetById(allTargets);
+        StringBuilder builder = new StringBuilder();
+        appendResolvedExplanations(builder, context, explanationCache, refs, targetById);
+        return builder.toString();
+    }
+
+    private void appendResolvedExplanations(
+            StringBuilder builder,
+            LlmRiskContext context,
+            ExplanationCache explanationCache,
+            List<SelectedExplanationRef> refs,
+            Map<String, LlmRiskTargetContext> targetById
+    ) {
+        builder.append('\n').append("-----").append('\n');
+        builder.append("【已解除风险解释】该 explanation 对应的风险已解除；不得把它当作当前活动风险。").append('\n');
+
+        for (SelectedExplanationRef ref : refs) {
+            Optional<CachedExplanationEntry> cached = explanationCache.findForChatContext(ref.targetId(), ref.explanationEventId());
+            builder.append('\n');
+            builder.append("引用目标: ").append(defaultText(ref.targetId())).append('\n');
+            if (cached.isPresent()) {
+                CachedExplanationEntry entry = cached.get();
+                builder.append("历史风险等级: ").append(org.springframework.util.StringUtils.hasText(entry.riskLevel()) ? entry.riskLevel() : "未知").append('\n');
+                builder.append("解释时间: ").append(defaultText(entry.timestamp())).append('\n');
+                builder.append("解除时间: ").append(defaultText(entry.resolvedAt())).append('\n');
+                builder.append("历史解释内容: ").append(defaultText(entry.text())).append('\n');
+            } else {
+                builder.append("用户引用的历史风险解释已过期，当前仅可依据实时态势回答。").append('\n');
+            }
+            LlmRiskTargetContext currentTarget = targetById.get(ref.targetId());
+            if (currentTarget != null) {
+                builder.append("目标当前状态: 风险等级 ").append(formatRiskLevel(currentTarget.getRiskLevel()))
+                        .append(", 现距 ").append(formatDistanceNm(currentTarget.getCurrentDistanceNm()))
+                        .append("海里, DCPA ").append(formatDecimal(currentTarget.getDcpaNm(), 2))
+                        .append("海里, TCPA ").append(formatDecimal(currentTarget.getTcpaSec(), 0))
+                        .append("秒").append('\n');
+            } else {
+                builder.append("目标当前不在最新风险快照中。").append('\n');
+            }
+        }
     }
 
     private void appendTargetDetail(StringBuilder builder, LlmRiskTargetContext target) {

@@ -112,7 +112,8 @@ public class VoiceChatService {
                 content,
                 request.selectedTargetIds(),
                 false,
-                ChatAgentMode.CHAT
+                ChatAgentMode.CHAT,
+                null
         );
     }
 

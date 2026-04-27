@@ -24,6 +24,7 @@ import {
   selectExplanationsByTargetId,
   selectIsChatSending,
   selectRiskConnectionError,
+  selectResolvedExplanations,
   selectSelectedTargetIds,
   selectSpeechEnabled,
   selectSpeechSupported,
@@ -40,7 +41,7 @@ import {
   CONTOUR_STEP,
 } from '../../utils/safetyContour';
 import type { AiCenterChatMessage } from '../../types/aiCenter';
-import type { ExplanationPayload, RiskLevel, RiskTarget } from '../../types/schema';
+import type { RiskLevel, RiskTarget, StoredExplanation } from '../../types/schema';
 import { translateEncounterType } from '../../utils/riskDisplay';
 import { useVoiceCapture } from '../../hooks/useVoiceCapture';
 import { speechService } from '../../services/speechService';
@@ -54,7 +55,7 @@ const RISK_ERROR_VISIBLE_MS = 4000;
 
 type ExplainedCardData = {
   target: RiskTarget;
-  explanation: ExplanationPayload;
+  explanation: StoredExplanation;
 };
 
 type DisplayedRiskCard = ExplainedCardData & {
@@ -101,6 +102,7 @@ export function RiskExplanationPanel() {
   const deselectTarget = useRiskStore((state) => state.deselectTarget);
   const clearDroppedTargetNotices = useRiskStore((state) => state.clearDroppedTargetNotices);
   const clearRiskError = useRiskStore((state) => state.clearRiskError);
+  const resolvedExplanations = useRiskStore(selectResolvedExplanations);
 
   const aiCenterOpenRequestVersion = useAiCenterStore(selectAiCenterOpenRequestVersion);
   const chatMessages = useAiCenterStore(selectChatMessages);
@@ -129,6 +131,8 @@ export function RiskExplanationPanel() {
   const resetConversation = useAiCenterStore((state) => state.resetConversation);
   const setSpeechEnabled = useAiCenterStore((state) => state.setSpeechEnabled);
   const setSpeechUnlocked = useAiCenterStore((state) => state.setSpeechUnlocked);
+  const clearExpiredExplanations = useAiCenterStore((state) => state.clearExpiredExplanations);
+  const setPendingExplanationRef = useAiCenterStore((state) => state.setPendingExplanationRef);
 
   const environment = useRiskStore(selectEnvironment);
   const { isDarkMode, toggleTheme } = useThemeStore();
@@ -246,7 +250,7 @@ export function RiskExplanationPanel() {
 
         return { target, explanation };
       })
-      .filter((item): item is { target: RiskTarget; explanation: ExplanationPayload } => Boolean(item))
+      .filter((item): item is { target: RiskTarget; explanation: StoredExplanation } => Boolean(item))
       .sort((left, right) => getRiskPriority(right.explanation.risk_level) - getRiskPriority(left.explanation.risk_level))
   ), [explanationsByTargetId, targets]);
 
@@ -861,9 +865,26 @@ export function RiskExplanationPanel() {
               <span className="text-[11px] font-semibold" style={{ color: 'var(--ink-900)' }}>
                 风险评估
               </span>
-              <span className="tnum font-mono text-[10px]" style={{ color: 'var(--ink-500)' }}>
-                {sortedExplainedTargets.length} 目标
-              </span>
+              <div className="flex items-center gap-2">
+                {resolvedExplanations.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearExpiredExplanations}
+                    className="rounded-lg px-2 py-0.5 text-[9px]"
+                    style={{
+                      border: '0.5px solid color-mix(in oklch, var(--ink-500) 20%, transparent)',
+                      color: 'var(--ink-500)',
+                      cursor: 'pointer',
+                      background: 'transparent',
+                    }}
+                  >
+                    清理过期
+                  </button>
+                )}
+                <span className="tnum font-mono text-[10px]" style={{ color: 'var(--ink-500)' }}>
+                  {sortedExplainedTargets.length} 目标
+                </span>
+              </div>
             </div>
 
             {visibleRiskError && (
@@ -882,7 +903,7 @@ export function RiskExplanationPanel() {
             )}
 
             <div className="scrollbar-apple flex-1 min-h-0 space-y-2.5 overflow-y-auto p-4">
-              {displayedCards.length === 0 ? (
+              {displayedCards.length === 0 && resolvedExplanations.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                   <div
                     style={{
@@ -916,84 +937,187 @@ export function RiskExplanationPanel() {
                   </p>
                 </div>
               ) : (
-                displayedCards.map(({ target, explanation, isLeaving, renderKey }) => {
-                  const color = riskColors[explanation.risk_level];
-                  const isSelected = selectedTargetIds.includes(target.id);
-                  const encounterLabel = translateEncounterType(target.risk_assessment.encounter_type);
+                <>
+                  {displayedCards.map(({ target, explanation, isLeaving, renderKey }) => {
+                    const color = riskColors[explanation.risk_level];
+                    const isSelected = selectedTargetIds.includes(target.id);
+                    const encounterLabel = translateEncounterType(target.risk_assessment.encounter_type);
 
-                  return (
-                    <div
-                      key={renderKey}
-                      onClick={() => selectTarget(target.id)}
-                      className={`${isLeaving ? 'card-exit' : 'anim-rise'} cursor-pointer overflow-hidden rounded-2xl transition-all duration-200`}
-                      style={{
-                        transformOrigin: 'top center',
-                        background: isSelected
-                          ? `color-mix(in oklch, ${color} 8%, ${isDarkMode ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.9)'})`
-                          : isDarkMode
-                            ? 'rgba(255,255,255,0.04)'
-                            : 'rgba(255,255,255,0.6)',
-                        border: `0.5px solid color-mix(in oklch, ${color} ${isSelected ? 35 : 20}%, transparent)`,
-                        boxShadow: isSelected
-                          ? `0 4px 16px -6px color-mix(in oklch, ${color} 28%, transparent)`
-                          : 'none',
-                      }}
-                    >
+                    return (
                       <div
-                        className="flex items-center gap-3 px-4 py-2.5"
-                        style={{ borderBottom: `0.5px solid color-mix(in oklch, ${color} 18%, transparent)` }}
+                        key={renderKey}
+                        onClick={() => selectTarget(target.id)}
+                        className={`${isLeaving ? 'card-exit' : 'anim-rise'} cursor-pointer overflow-hidden rounded-2xl transition-all duration-200`}
+                        style={{
+                          transformOrigin: 'top center',
+                          background: isSelected
+                            ? `color-mix(in oklch, ${color} 8%, ${isDarkMode ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.9)'})`
+                            : isDarkMode
+                              ? 'rgba(255,255,255,0.04)'
+                              : 'rgba(255,255,255,0.6)',
+                          border: `0.5px solid color-mix(in oklch, ${color} ${isSelected ? 35 : 20}%, transparent)`,
+                          boxShadow: isSelected
+                            ? `0 4px 16px -6px color-mix(in oklch, ${color} 28%, transparent)`
+                            : 'none',
+                        }}
                       >
-                        <CpaArc
-                          tcpa_sec={target.risk_assessment.cpa_metrics.tcpa_sec}
-                          dcpa_nm={target.risk_assessment.cpa_metrics.dcpa_nm}
-                          riskLevel={explanation.risk_level}
-                          size={40}
-                        />
+                        <div
+                          className="flex items-center gap-3 px-4 py-2.5"
+                          style={{ borderBottom: `0.5px solid color-mix(in oklch, ${color} 18%, transparent)` }}
+                        >
+                          <CpaArc
+                            tcpa_sec={target.risk_assessment.cpa_metrics.tcpa_sec}
+                            dcpa_nm={target.risk_assessment.cpa_metrics.dcpa_nm}
+                            riskLevel={explanation.risk_level}
+                            size={40}
+                          />
 
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-0.5 flex items-center gap-2">
-                            <span
-                              className="tnum font-mono text-[12px] font-semibold"
-                              style={{ color: 'var(--ink-900)' }}
-                            >
-                              {target.id}
-                            </span>
-                            {encounterLabel && (
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-0.5 flex items-center gap-2">
                               <span
-                                className="rounded px-1.5 py-0.5 text-[8px] font-medium"
+                                className="tnum font-mono text-[12px] font-semibold"
+                                style={{ color: 'var(--ink-900)' }}
+                              >
+                                {target.id}
+                              </span>
+                              {encounterLabel && (
+                                <span
+                                  className="rounded px-1.5 py-0.5 text-[8px] font-medium"
+                                  style={{
+                                    background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                                    color: 'var(--ink-500)',
+                                  }}
+                                >
+                                  {encounterLabel}
+                                </span>
+                              )}
+                              <span
+                                className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
                                 style={{
-                                  background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
-                                  color: 'var(--ink-500)',
+                                  color,
+                                  background: `color-mix(in oklch, ${color} 15%, transparent)`,
                                 }}
                               >
-                                {encounterLabel}
+                                {riskLabels[explanation.risk_level]}
                               </span>
-                            )}
-                            <span
-                              className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
-                              style={{
-                                color,
-                                background: `color-mix(in oklch, ${color} 15%, transparent)`,
-                              }}
-                            >
-                              {riskLabels[explanation.risk_level]}
-                            </span>
-                          </div>
-                          <div className="text-[10px]" style={{ color: 'var(--ink-500)' }}>
-                            {explanation.provider} · {explanation.timestamp}
+                            </div>
+                            <div className="text-[10px]" style={{ color: 'var(--ink-500)' }}>
+                              {explanation.provider} · {explanation.timestamp}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <p
-                        className="px-4 py-3 text-[12.5px] leading-relaxed"
-                        style={{ color: 'var(--ink-700)' }}
-                      >
-                        {explanation.text}
-                      </p>
+                        <p
+                          className="px-4 py-3 text-[12.5px] leading-relaxed"
+                          style={{ color: 'var(--ink-700)' }}
+                        >
+                          {explanation.text}
+                        </p>
+                      </div>
+                    );
+                  })}
+                  {resolvedExplanations.length > 0 && (
+                    <div className="space-y-2.5" style={{ opacity: 0.65 }}>
+                      {[...resolvedExplanations].sort((a, b) => {
+                        const aTime = a.resolved_at ? Date.parse(a.resolved_at) : 0;
+                        const bTime = b.resolved_at ? Date.parse(b.resolved_at) : 0;
+                        return bTime - aTime;
+                      }).map((explanation) => {
+                        const color = riskColors[explanation.risk_level];
+                        const resolvedAtFormatted = explanation.resolved_at
+                          ? new Date(explanation.resolved_at).toLocaleTimeString('zh-CN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })
+                          : null;
+                        const resolvedReasonLabel = explanation.resolved_reason === 'TARGET_SAFE'
+                          ? '已转安全'
+                          : explanation.resolved_reason === 'TARGET_MISSING'
+                            ? '已离开'
+                            : '已解除';
+
+                        return (
+                          <div
+                            key={explanation.event_id}
+                            className="overflow-hidden rounded-2xl"
+                            style={{
+                              background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.4)',
+                              border: `0.5px solid color-mix(in oklch, ${color} 12%, transparent)`,
+                            }}
+                          >
+                            <div
+                              className="flex items-center px-4 py-2.5"
+                              style={{ borderBottom: `0.5px solid color-mix(in oklch, ${color} 10%, transparent)` }}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="mb-0.5 flex items-center gap-2">
+                                  <span
+                                    className="tnum font-mono text-[12px] font-semibold"
+                                    style={{ color: 'var(--ink-700)' }}
+                                  >
+                                    {explanation.target_id}
+                                  </span>
+                                  <span
+                                    className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+                                    style={{
+                                      color: 'var(--ink-500)',
+                                      background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                                    }}
+                                  >
+                                    {resolvedReasonLabel}
+                                  </span>
+                                  <span
+                                    className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-medium"
+                                    style={{
+                                      color,
+                                      background: `color-mix(in oklch, ${color} 10%, transparent)`,
+                                    }}
+                                  >
+                                    原 {riskLabels[explanation.risk_level]}
+                                  </span>
+                                </div>
+                                <div className="text-[10px]" style={{ color: 'var(--ink-500)' }}>
+                                  {explanation.provider}{resolvedAtFormatted && ` · ${resolvedAtFormatted}`}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="px-4 py-3">
+                              <p
+                                className="text-[12px] leading-relaxed"
+                                style={{ color: 'var(--ink-700)' }}
+                              >
+                                {explanation.text}
+                              </p>
+                              <div className="mt-2 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPendingExplanationRef({
+                                      target_id: explanation.target_id,
+                                      explanation_event_id: explanation.event_id,
+                                    });
+                                    selectTarget(explanation.target_id);
+                                  }}
+                                  className="rounded-lg px-2.5 py-1 text-[10px] font-medium"
+                                  style={{
+                                    border: '0.5px solid color-mix(in oklch, var(--accent) 30%, transparent)',
+                                    color: 'var(--accent)',
+                                    cursor: 'pointer',
+                                    background: 'color-mix(in oklch, var(--accent) 8%, transparent)',
+                                  }}
+                                >
+                                  追问
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })
+                  )}
+                </>
               )}
             </div>
           </section>
