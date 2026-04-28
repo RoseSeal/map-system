@@ -1,5 +1,9 @@
 package com.whut.map.map_service.risk.pipeline;
 
+import com.whut.map.map_service.risk.environment.EnvironmentContextService;
+import com.whut.map.map_service.risk.environment.EnvironmentRefreshResult;
+import com.whut.map.map_service.risk.environment.EnvironmentUpdateReason;
+import com.whut.map.map_service.risk.environment.OwnShipPositionHolder;
 import com.whut.map.map_service.risk.pipeline.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.shared.domain.ShipRole;
 import com.whut.map.map_service.shared.domain.ShipStatus;
@@ -53,6 +57,8 @@ public class ShipDispatcher {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final ShipKinematicQualityChecker kinematicChecker;
     private final DerivedTargetStateStore derivedTargetStateStore;
+    private final EnvironmentContextService environmentContextService;
+    private final OwnShipPositionHolder ownShipPositionHolder;
     private volatile ShipDomainResult cachedOwnShipDomainResult;
 
     public ShipDispatcher(
@@ -68,7 +74,9 @@ public class ShipDispatcher {
             RiskStreamPublisher riskStreamPublisher,
             ApplicationEventPublisher applicationEventPublisher,
             ShipKinematicQualityChecker kinematicChecker,
-            DerivedTargetStateStore derivedTargetStateStore
+            DerivedTargetStateStore derivedTargetStateStore,
+            EnvironmentContextService environmentContextService,
+            OwnShipPositionHolder ownShipPositionHolder
     ) {
         this.shipDomainEngine = shipDomainEngine;
         this.cvPredictionEngine = cvPredictionEngine;
@@ -86,6 +94,8 @@ public class ShipDispatcher {
         this.applicationEventPublisher = applicationEventPublisher;
         this.kinematicChecker = kinematicChecker;
         this.derivedTargetStateStore = derivedTargetStateStore;
+        this.environmentContextService = environmentContextService;
+        this.ownShipPositionHolder = ownShipPositionHolder;
     }
 
     public void dispatch(ShipStatus message) {
@@ -305,6 +315,9 @@ public class ShipDispatcher {
         }
 
         RiskAssessmentResult riskResult = buildRiskAssessmentResult(context, outputs);
+        ownShipPositionHolder.update(context.ownShip());
+        EnvironmentRefreshResult environmentRefresh = environmentContextService.refresh(
+                EnvironmentUpdateReason.OWN_SHIP_ENV_REEVALUATED);
 
         RiskObjectDto dto = riskObjectAssembler.assembleRiskObject(
                 context.ownShip(),
@@ -314,7 +327,8 @@ public class ShipDispatcher {
                 riskResult,
                 outputs.shipDomainResult(),
                 outputs.cvPredictionResults(),
-                outputs.encounterResults()
+                outputs.encounterResults(),
+                environmentRefresh.snapshot().version()
         );
         if (dto == null) {
             return null;
@@ -326,11 +340,20 @@ public class ShipDispatcher {
                 outputs.cpaResults(),
                 riskResult,
                 dto,
+                environmentRefresh,
                 triggerExplanations
         );
     }
 
     void publishRiskSnapshot(RiskDispatchSnapshot snapshot) {
+        EnvironmentRefreshResult environmentRefresh = snapshot.environmentRefresh();
+        if (environmentRefresh != null && environmentRefresh.shouldPublish()) {
+            riskStreamPublisher.publishEnvironmentUpdate(
+                    environmentRefresh.snapshot(),
+                    environmentRefresh.reason(),
+                    environmentRefresh.changedFields()
+            );
+        }
         riskStreamPublisher.publishRiskFrame(new RiskFrame(
                 snapshot.riskObject(),
                 snapshotVersion -> applicationEventPublisher.publishEvent(new RiskAssessmentCompletedEvent(

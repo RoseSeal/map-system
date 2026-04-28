@@ -1,5 +1,6 @@
 import type {
   AdvisoryPayload,
+  EnvironmentUpdatePayload,
   ExplanationPayload,
   RiskUpdatePayload,
   SseErrorPayload,
@@ -8,6 +9,7 @@ import { BACKEND_CONFIG } from '../config/constants';
 import type { DisplayConnectionState } from '../types/connection';
 
 type RiskUpdateCallback = (payload: RiskUpdatePayload) => void;
+type EnvironmentUpdateCallback = (payload: EnvironmentUpdatePayload) => void;
 type ExplanationCallback = (payload: ExplanationPayload) => void;
 type AdvisoryCallback = (payload: AdvisoryPayload) => void;
 type ErrorCallback = (payload: SseErrorPayload) => void;
@@ -18,6 +20,7 @@ const DEFAULT_RISK_SSE_URL: string = BACKEND_CONFIG.RISK_SSE_URL;
 class RiskSseService {
   private eventSource: EventSource | null = null;
   private riskUpdateCallbacks = new Set<RiskUpdateCallback>();
+  private environmentUpdateCallbacks = new Set<EnvironmentUpdateCallback>();
   private explanationCallbacks = new Set<ExplanationCallback>();
   private advisoryCallbacks = new Set<AdvisoryCallback>();
   private errorCallbacks = new Set<ErrorCallback>();
@@ -37,6 +40,7 @@ class RiskSseService {
       this.connectionStatusCallbacks.forEach((cb) => cb('connected', null));
     };
     eventSource.addEventListener('RISK_UPDATE', this.handleRiskUpdate as EventListener);
+    eventSource.addEventListener('ENVIRONMENT_UPDATE', this.handleEnvironmentUpdate as EventListener);
     eventSource.addEventListener('EXPLANATION', this.handleExplanation as EventListener);
     eventSource.addEventListener('ADVISORY', this.handleAdvisory as EventListener);
     eventSource.addEventListener('ERROR', this.handleErrorEvent as EventListener);
@@ -56,6 +60,7 @@ class RiskSseService {
     }
 
     this.eventSource.removeEventListener('RISK_UPDATE', this.handleRiskUpdate as EventListener);
+    this.eventSource.removeEventListener('ENVIRONMENT_UPDATE', this.handleEnvironmentUpdate as EventListener);
     this.eventSource.removeEventListener('EXPLANATION', this.handleExplanation as EventListener);
     this.eventSource.removeEventListener('ADVISORY', this.handleAdvisory as EventListener);
     this.eventSource.removeEventListener('ERROR', this.handleErrorEvent as EventListener);
@@ -68,6 +73,13 @@ class RiskSseService {
     this.riskUpdateCallbacks.add(cb);
     return () => {
       this.riskUpdateCallbacks.delete(cb);
+    };
+  }
+
+  onEnvironmentUpdate(cb: EnvironmentUpdateCallback): () => void {
+    this.environmentUpdateCallbacks.add(cb);
+    return () => {
+      this.environmentUpdateCallbacks.delete(cb);
     };
   }
 
@@ -106,6 +118,15 @@ class RiskSseService {
     }
 
     this.riskUpdateCallbacks.forEach((cb) => cb(payload));
+  };
+
+  private handleEnvironmentUpdate = (event: Event): void => {
+    const payload = parseSsePayload<EnvironmentUpdatePayload>(event);
+    if (!payload) {
+      return;
+    }
+
+    this.environmentUpdateCallbacks.forEach((cb) => cb(payload));
   };
 
   private handleExplanation = (event: Event): void => {

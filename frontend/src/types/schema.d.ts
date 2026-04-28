@@ -207,7 +207,13 @@ export interface EnvironmentContext {
 // Risk SSE types
 // ============================================================
 
-export type RiskSseEventType = 'RISK_UPDATE' | 'EXPLANATION' | 'ADVISORY' | 'ERROR';
+export type RiskSseEventType = 'RISK_UPDATE' | 'ENVIRONMENT_UPDATE' | 'EXPLANATION' | 'ADVISORY' | 'ERROR';
+export type EnvironmentUpdateReason =
+  | 'WEATHER_UPDATED'
+  | 'WEATHER_EXPIRED'
+  | 'SAFETY_CONTOUR_UPDATED'
+  | 'SAFETY_CONTOUR_RESET'
+  | 'OWN_SHIP_ENV_REEVALUATED';
 
 export interface RecommendedAction {
   type: AdvisoryActionType;
@@ -237,9 +243,18 @@ export interface RiskUpdatePayload {
   event_id: string;
   risk_object_id: string;
   timestamp: string;
+  environment_state_version: number;
   governance: Governance;
   own_ship: OwnShip;
   targets: RiskTarget[];
+}
+
+export interface EnvironmentUpdatePayload {
+  event_id: string;
+  timestamp: string;
+  environment_state_version: number;
+  reason: EnvironmentUpdateReason;
+  changed_fields: string[];
   environment_context: EnvironmentContext;
 }
 

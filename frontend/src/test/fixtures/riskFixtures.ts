@@ -1,5 +1,6 @@
 import type {
   AdvisoryPayload,
+  EnvironmentUpdatePayload,
   ExplanationPayload,
   RiskTarget,
   RiskUpdatePayload,
@@ -39,6 +40,7 @@ export const riskUpdateFixture: RiskUpdatePayload = {
   event_id: 'risk-event-1',
   risk_object_id: 'risk-object-1',
   timestamp: '2026-04-15T12:00:00.000Z',
+  environment_state_version: 1,
   governance: {
     mode: 'adaptive',
     trust_factor: 0.35,
@@ -55,6 +57,14 @@ export const riskUpdateFixture: RiskUpdatePayload = {
     },
   },
   targets: baseTargets,
+};
+
+export const environmentUpdateFixture: EnvironmentUpdatePayload = {
+  event_id: 'environment-event-1',
+  timestamp: '2026-04-15T12:00:00.000Z',
+  environment_state_version: 1,
+  reason: 'WEATHER_UPDATED',
+  changed_fields: ['weather', 'weather_zones', 'active_alerts'],
   environment_context: {
     safety_contour_val: 15,
     active_alerts: ['LOW_VISIBILITY'],
@@ -76,6 +86,7 @@ export const riskUpdateWithoutAlarmFixture: RiskUpdatePayload = {
   event_id: 'risk-event-2',
   risk_object_id: 'risk-object-2',
   timestamp: '2026-04-15T12:01:00.000Z',
+  environment_state_version: 2,
   targets: [baseTargets[1]],
 };
 

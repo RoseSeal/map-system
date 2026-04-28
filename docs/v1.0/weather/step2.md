@@ -1,7 +1,7 @@
 # Weather Step 2：区域化天气建模 + simulator 驱动 weather zones
 
 > 文档状态：active
-> 最后更新：2026-04-21
+> 最后更新：2026-04-28
 > 执行状态：completed
 > 所属 track：[`WEATHER_PLAN.md`](./WEATHER_PLAN.md)
 > 目标：在不破坏 Step 1 已落地链路的前提下，把天气从单帧全局快照升级为区域化天气，并继续由 simulator 驱动。
@@ -11,6 +11,8 @@
 ## 1. Summary
 
 Step 2 的核心变化是引入 `weather_zones`：simulator 下发带有 GeoJSON 几何的天气区块，后端按本船当前位置求解 `effective weather`，`environment_context.weather` 的语义从"全局快照"收敛为"本船当前位置命中的天气摘要"，前端 fog / rain 等天气图层改为按 `weather_zones` 分区渲染。
+
+2026-04-28 的环境更新拆分修复落地后，`environment_context` 不再由 `RISK_UPDATE` 承载。Step 2 的天气事实仍保持同一 payload 结构，但下发入口改为 `ENVIRONMENT_UPDATE.environment_context`，`RISK_UPDATE` 只携带 `environment_state_version`。
 
 **兼容性是硬约束**：旧的 `--scene fog` 单快照 payload（无 `weather_zones`）必须继续运行，行为退化为 Step 1 语义，不要求前后端同步升级才能工作。风险引擎与 LLM 的消费不在本步骤内修改，分别转 Step 3 / Step 4。
 
@@ -33,10 +35,9 @@ Step 2 的核心变化是引入 `weather_zones`：simulator 下发带有 GeoJSON
 - 扩展 `WeatherContextHolder.Snapshot`，追加 `List<WeatherZoneContext> zones` 字段；`update` 方法同时接受全局天气与 zones 列表，二者在同一 `volatile` 写入内保持原子性
 - 扩展 `WeatherMessageHandler`：从 MQTT payload 反序列化可选 `weather_zones[]`；若 payload 不含该字段，将 zones 设为空列表（兼容 Step 1 消息格式）
 - 新增 `RegionalWeatherResolver`（包 `source/weather`）：按本船位置检索第一个命中 zone，支持 `Polygon` 与 `MultiPolygon` 几何（见 §4.3）
-- 修改 [`RiskObjectMetaAssembler.buildEnvironmentContext`](../../../backend/map-service/src/main/java/com/whut/map/map_service/risk/pipeline/assembler/riskobject/RiskObjectMetaAssembler.java#L64) 签名为 `buildEnvironmentContext(ShipStatus ownShip)`；zones 非空时调用 `RegionalWeatherResolver` 求 effective weather，zones 为空时退化为 Step 1 全局快照语义（见 §4.4）
+- [`EnvironmentContextService`](../../../backend/map-service/src/main/java/com/whut/map/map_service/risk/environment/EnvironmentContextService.java) 在组装环境快照时调用 `RegionalWeatherResolver` 求 effective weather；zones 为空时退化为 Step 1 全局快照语义（见 §4.4）
 - `active_alerts` 仅根据 `effective weather` 生成，不对所有 zone 做并集告警
-- `environment_context.weather_zones` 作为可选字段写入 SSE payload：zones 非空时输出完整有效 zone 数组（含 geometry），否则输出 `null`；geometry 缺失或类型非法的 zone 不进入 SSE payload；此字段仅供前端图层消费，引擎与 LLM 不读取
-- 同步修改 [`RiskObjectAssembler:59`](../../../backend/map-service/src/main/java/com/whut/map/map_service/risk/pipeline/assembler/RiskObjectAssembler.java#L59) 调用点，传入 `ownShip`
+- `environment_context.weather_zones` 作为可选字段写入 `ENVIRONMENT_UPDATE` payload：zones 非空时输出完整有效 zone 数组（含 geometry），否则输出 `null`；geometry 缺失或类型非法的 zone 不进入 SSE payload；此字段仅供前端图层消费，引擎与 LLM 不读取
 
 ### 2.3 前端
 
@@ -158,17 +159,14 @@ public Optional<WeatherZoneContext> resolve(double lat, double lon, List<Weather
 
 Ray-casting 参数传入 GeoJSON 惯例的 `(lon, lat)` 顺序（与 `geometry.coordinates` 格式一致）。`resolve` 方法的外部调用参数保持 `(lat, lon)` 顺序（与 Java 惯例一致），内部传给 `containsPoint` 时对调。
 
-### 4.4 `buildEnvironmentContext` 改造
+### 4.4 `EnvironmentContextService` 环境组装
 
-签名变更：
-
-```java
-public Map<String, Object> buildEnvironmentContext(ShipStatus ownShip)
-```
+环境组装入口为 [`EnvironmentContextService`](../../../backend/map-service/src/main/java/com/whut/map/map_service/risk/environment/EnvironmentContextService.java)，本船位置由 `OwnShipPositionHolder` 缓存，weather / safety contour / stale 等非 AIS 触发不再需要把 `ownShip` 作为参数传入。
 
 逻辑（伪代码）：
 
 ```
+ownShipPosition = ownShipPositionHolder.getCurrentPosition()
 snapshot = weatherContextHolder.getFreshSnapshot(staleThreshold)
 if snapshot == null:
     globalContext = null
@@ -177,8 +175,8 @@ else:
     globalContext = snapshot.globalContext()
     zones = snapshot.zones()
 
-if zones 非空 && ownShip 非 null:
-    matchedZone = resolver.resolve(ownShip.lat, ownShip.lon, zones)
+if zones 非空 && ownShipPosition 非 null:
+    matchedZone = resolver.resolve(ownShipPosition.lat, ownShipPosition.lon, zones)
     effectiveWeather = matchedZone 存在
         ? zoneToWeatherContext(matchedZone, snapshot.updatedAt())
         : globalContext
@@ -193,7 +191,7 @@ weatherPayload = effectiveWeather != null
     : null
 zonesPayload = zones 非空 ? toZonesPayload(zones) : null
 
-→ environmentContext = { safety_contour_val, active_alerts: alerts, weather: weatherPayload, weather_zones: zonesPayload }
+→ environmentContext = { safety_contour_val, active_alerts: alerts, weather: weatherPayload, weather_zones: zonesPayload, hydrology }
 ```
 
 `zoneToWeatherContext(WeatherZoneContext zone, Instant snapshotUpdatedAt)` 把 zone 字段映射为等价 `WeatherContext`，以复用现有 `evaluateWeatherAlerts` 和 `toWeatherPayload` 方法，不为 zone 路径单独复制告警逻辑。其 `updated_at` 取 `zone.updatedAt()`，若 zone 未显式携带则回退到 `snapshotUpdatedAt`。
@@ -202,7 +200,7 @@ zonesPayload = zones 非空 ? toZonesPayload(zones) : null
 
 `toZonesPayload` 把 `List<WeatherZoneContext>` 序列化为 `List<Map<String, Object>>`，geometry 与 `updated_at` 一并写出；`geometry == null` 或类型非法的 zone 在进入该步骤前即被过滤，避免向前端传播不可渲染数据。
 
-`WeatherContextHolder` 同步新增 `getFreshSnapshot(Duration)` 方法，返回完整 `Optional<Snapshot>`，供 `buildEnvironmentContext` 在一次调用内同时取得 `globalContext` 与 `zones`（避免两次读取之间发生 volatile 替换）。
+`WeatherContextHolder` 同步新增 `getFreshSnapshot(Duration)` 方法，返回完整 `Optional<Snapshot>`，供 `EnvironmentContextService` 在一次调用内同时取得 `globalContext` 与 `zones`（避免两次读取之间发生 volatile 替换）。
 
 ### 4.5 前端类型扩展
 
@@ -265,7 +263,7 @@ interface EnvironmentContext {
 ### 5.1 区域天气场景（核心验收）
 
 - `python simulator/weather_mqtt_publisher.py --scene zoned_fog` 启动后，前端海图仅在 fog zone 多边形内出现雾化，多边形外区域保持清晰
-- SSE `RISK_UPDATE` 的 `environment_context.weather_zones` 含 `fog-bank-east` zone 数据与 geometry
+- SSE `ENVIRONMENT_UPDATE` 的 `environment_context.weather_zones` 含 `fog-bank-east` zone 数据与 geometry
 
 ### 5.2 本船进出区域切换
 
@@ -280,7 +278,7 @@ interface EnvironmentContext {
 
 ### 5.4 回归
 
-- 所有现有后端单测保持绿色；`buildEnvironmentContext` 签名变更后，`RiskObjectMetaAssemblerTest` 同步更新（传入 mock `ShipStatus`）
+- 所有现有后端单测保持绿色；环境组装迁移后，`EnvironmentContextServiceTest` 同步覆盖 weather-only、hydrology 与 alerts 共存场景
 - 前端 `schema.d.ts` 变更后，现有测试夹具（如 `useRiskStore.test.ts`）需同步覆盖 `weather.source_zone_id` 与 `weather_zones` 的 Step 2 契约；显式构造完整 `EnvironmentContext` 字面量的夹具需一并更新
 - 天气 zone 区域内的目标仍可点选，地图拖拽不受天气层遮挡（回归点击测试）
 

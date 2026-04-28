@@ -1,7 +1,7 @@
 # Architecture Decisions and Review Findings
 
 > 用途：记录当前稳定架构决策，以及围绕这些决策沉淀出的实现级 review finding
-> 最后更新：2026-04-11（前端播报 / 录音竞态 review 补充）
+> 最后更新：2026-04-28（risk / environment SSE 事件切分决策）
 > 关系说明：架构概览以 `docs/ARCHITECTURE.md` 为准；协议真值以 `docs/EVENT_SCHEMA.md` 为准；本文档承接关键设计取舍与相关复盘结论
 
 ---
@@ -397,6 +397,107 @@ Trade-off: 对话重答（regenerate）的状态管理模型
 - 后端 `ConversationMemory` 在 `regenerate=true` 时：读取最后一组 USER/ASSISTANT 但不立即删除；LLM 成功返回后再原子替换；LLM 失败时不修改历史，返回失败结果。
 - 前端 store：发送重答请求后，旧的最后一组 user+assistant 消息标记为"待替换"；成功回包后替换；失败时展示失败态并提供 restore 入口。
 - 失败可恢复的旧回答仅保留至下一次成功重答或用户主动清空会话，不长期维护分支。
+
+### ADR-009
+
+风险 SSE 中 `RISK_UPDATE` 与环境状态更新拆分，安全等深线采用 HTTP command + SSE authoritative state broadcast
+
+Trade-off: 风险快照与环境状态的事件边界
+
+#### 背景问题
+
+- 当前 `RISK_UPDATE` 同时承载船舶风险快照与 `environment_context`。这使 `RISK_UPDATE` 变成过宽的上帝消息。
+- 天气、区域天气、安全等深线、水文摘要与环境告警并不都由 AIS 触发；当 AIS 停止推送时，天气更新、安全等深线更新与天气过期清除均无法通过下一帧 `RISK_UPDATE` 同步到前端。
+- 安全等深线由前端交互发起，但后端持有全局运行时真值；该状态既不是纯前端 local state，也不是纯后端后台更新。
+- 若继续让 `RISK_UPDATE` 与新增环境事件同时携带同一份 `environment_context`，会引入双写一致性、前端优先级与测试断言复杂度。
+
+#### 可选方案
+
+##### 方案一：继续使用 `RISK_UPDATE` 承载全部状态
+
+- 优点：协议表面上最少，前端仍只消费一个主事件。
+- 缺点：环境状态被 AIS 风险管线节奏绑架；非 AIS 状态变化无法独立下发；上帝消息继续扩张。
+
+##### 方案二：并行新增 `ENVIRONMENT_UPDATE`，但 `RISK_UPDATE` 继续携带完整 `environment_context`
+
+- 优点：兼容迁移成本较低，旧前端仍可从 `RISK_UPDATE` 读取环境字段。
+- 缺点：同一环境事实存在两个下发位置，必须定义冲突优先级、版本一致性与重复 merge 规则；长期会扩大语义混乱。
+
+##### 方案三：直接切分 `RISK_UPDATE` 与 `ENVIRONMENT_UPDATE`
+
+```text
+AIS / risk pipeline changed
+  -> ENVIRONMENT_UPDATE（若本船位置导致 effective environment 变化）
+  -> RISK_UPDATE（引用 environment_state_version，不携带 environment_context）
+
+Weather changed / expired
+  -> ENVIRONMENT_UPDATE
+
+Safety contour PUT / reset
+  -> update backend state
+  -> ENVIRONMENT_UPDATE
+```
+
+- 优点：按状态来源和触发因果切分事件；环境状态不再依赖 AIS 帧；前端分别维护 risk state 与 environment state，职责清晰。
+- 缺点：是协议变更，需要同步更新 `docs/EVENT_SCHEMA.md`、后端 payload、SSE publisher、前端类型、store 与测试夹具。
+
+#### 评估维度
+
+##### 1. 状态所有权
+
+- `RISK_UPDATE` 的所有权在风险管线，核心是 own ship、targets、risk assessment 与 governance。
+- `ENVIRONMENT_UPDATE` 的所有权在环境上下文，核心是 safety contour、weather、weather zones、hydrology 与 environment alerts。
+- 安全等深线写入由前端发起，但一旦写入成功，后端运行时状态是唯一权威；因此其后续同步属于 authoritative state broadcast，而不是前端本地 optimistic state。
+
+##### 2. Transport 选择
+
+- 安全等深线写入使用 HTTP `PUT` / reset 使用 HTTP `POST`，因为它是明确的 command / response 交互，HTTP response 可以作为发起方 ack。
+- 环境状态变化通过 risk SSE 连接下发 `ENVIRONMENT_UPDATE`，因为它是后端权威状态的单向广播，且需要同步给所有已连接前端。
+- 不为安全等深线改用 WebSocket。WebSocket 当前承载 chat / speech / provider selection 等会话交互；将环境配置写入迁入 WebSocket 会让 chat 通道扩张为第二个上帝通道。
+
+##### 3. 切分粒度
+
+- 不继续细拆为 `WEATHER_UPDATE`、`HYDROLOGY_UPDATE`、`SAFETY_CONTOUR_UPDATE`。
+- `active_alerts` 是 weather 与 hydrology 的合成结果；`hydrology` 依赖 own ship 位置与 safety contour；`effective weather` 依赖 own ship 位置与 weather zones。
+- 前端需要的是同一版本的一份完整环境快照，而不是多个字段级 patch 自行 merge。
+
+#### 最终选择
+
+选择方案三：直接切分 `RISK_UPDATE` 与 `ENVIRONMENT_UPDATE`。
+
+##### 选择原因
+
+- 环境状态与风险状态的触发源不同，不应长期绑定在同一个 `RISK_UPDATE` 上。
+- 当前项目仍处于内部 v1.0 协议演进期，没有外部稳定客户端兼容压力；直接切分比长期并行更清晰。
+- `ENVIRONMENT_UPDATE` 以完整 `environment_context` 快照下发，避免字段级 patch merge 与局部事件顺序问题。
+- `RISK_UPDATE` 通过 `environment_state_version` 引用当前环境版本，避免重复携带同一份环境 payload。
+
+##### 实现约束
+
+- `RISK_UPDATE` 不再携带 `environment_context`；仅携带 `environment_state_version` 作为引用。
+- `ENVIRONMENT_UPDATE` 携带：
+  - `event_id`
+  - `timestamp`
+  - `environment_state_version`
+  - `reason`
+  - `changed_fields`
+  - `environment_context`
+- `reason` 至少覆盖：
+  - `WEATHER_UPDATED`
+  - `WEATHER_EXPIRED`
+  - `SAFETY_CONTOUR_UPDATED`
+  - `SAFETY_CONTOUR_RESET`
+  - `OWN_SHIP_ENV_REEVALUATED`
+- `EnvironmentContextService` 应成为唯一环境组装点，负责读取 `SafetyContourStateHolder`、`WeatherContextHolder`、own ship 位置与 hydrology 查询结果，并统一生成 `environment_context` 与 `active_alerts`。
+- AIS 位置变化导致 effective environment 变化时，服务端应先发布对应 `ENVIRONMENT_UPDATE`，再发布引用该版本的 `RISK_UPDATE`。
+- `RiskStreamPublisher` 的 replay 策略应分别缓存最新 risk snapshot 与最新 environment snapshot；新 SSE 连接需要拿到两类当前态。
+- 前端 store 应拆分 risk setter 与 environment setter；`ENVIRONMENT_UPDATE` 整体替换 environment，不做字段级 patch merge。
+
+##### 明确否决的方向
+
+- 不将安全等深线写入改为 WebSocket；HTTP command + SSE authoritative broadcast 更符合当前无会话全局状态模型。
+- 不长期保留 `RISK_UPDATE.environment_context` 与 `ENVIRONMENT_UPDATE.environment_context` 双下发。
+- 不把环境更新继续拆成 weather / hydrology / safety contour 多个字段级事件，除非后续出现高频大 payload、独立 replay 或 per-client 环境状态需求。
 
 ---
 

@@ -6,7 +6,7 @@
  * to ensure ship stays in Jamaica Bay safe waters
  */
 
-import type { PlatformHealthStatus, RiskLevel, RiskTarget, RiskUpdatePayload } from '../types/schema';
+import type { EnvironmentUpdatePayload, PlatformHealthStatus, RiskLevel, RiskTarget, RiskUpdatePayload } from '../types/schema';
 import { deadReckon } from '../utils/geoUtils';
 import type { LonLat } from '../types/schema';
 import { useRiskStore } from '../store/useRiskStore';
@@ -212,6 +212,7 @@ function generateRiskObject(): RiskUpdatePayload {
     event_id: `mock-event-${frameCount.toString().padStart(6, '0')}`,
     risk_object_id: `mock_${frameCount.toString().padStart(6, '0')}`,
     timestamp: new Date().toISOString(),
+    environment_state_version: 1,
     governance: {
       mode: 'adaptive',
       trust_factor: 0.75 + Math.sin(frameCount * 0.05) * 0.2,
@@ -240,6 +241,16 @@ function generateRiskObject(): RiskUpdatePayload {
       },
     },
     targets: trackedTargets,
+  };
+}
+
+function generateEnvironmentUpdate(): EnvironmentUpdatePayload {
+  return {
+    event_id: `mock-environment-${frameCount.toString().padStart(6, '0')}`,
+    timestamp: new Date().toISOString(),
+    environment_state_version: 1,
+    reason: 'OWN_SHIP_ENV_REEVALUATED',
+    changed_fields: ['weather', 'hydrology', 'active_alerts'],
     environment_context: {
       safety_contour_val: 10.0,
       active_alerts: [],
@@ -264,10 +275,12 @@ export function startMockDataGenerator(intervalMs: number = 1000): void {
   initTargets();
 
   useRiskStore.getState().setRiskUpdate(generateRiskObject());
+  useRiskStore.getState().setEnvironmentUpdate(generateEnvironmentUpdate());
 
   updateInterval = setInterval(() => {
     updatePositions(intervalMs / 1000);
     useRiskStore.getState().setRiskUpdate(generateRiskObject());
+    useRiskStore.getState().setEnvironmentUpdate(generateEnvironmentUpdate());
   }, intervalMs);
 }
 

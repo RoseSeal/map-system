@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   advisoryFixture,
   advisoryFixture2,
+  environmentUpdateFixture,
   explanationForAlarmFixture,
   explanationForCautionFixture,
   explanationForMissingTargetFixture,
@@ -13,6 +14,7 @@ import type { DisplayConnectionState } from '../types/connection';
 
 const riskSubscribers = vi.hoisted(() => ({
   onRiskUpdate: undefined as ((payload: unknown) => void) | undefined,
+  onEnvironmentUpdate: undefined as ((payload: unknown) => void) | undefined,
   onExplanation: undefined as ((payload: unknown) => void) | undefined,
   onAdvisory: undefined as ((payload: unknown) => void) | undefined,
   onError: undefined as ((payload: unknown) => void) | undefined,
@@ -22,6 +24,10 @@ const riskSubscribers = vi.hoisted(() => ({
 const riskSseServiceMock = vi.hoisted(() => ({
   onRiskUpdate: vi.fn((cb: (payload: unknown) => void) => {
     riskSubscribers.onRiskUpdate = cb;
+    return vi.fn();
+  }),
+  onEnvironmentUpdate: vi.fn((cb: (payload: unknown) => void) => {
+    riskSubscribers.onEnvironmentUpdate = cb;
     return vi.fn();
   }),
   onExplanation: vi.fn((cb: (payload: unknown) => void) => {
@@ -62,11 +68,24 @@ describe('useRiskStore', () => {
     expect(state.ownShip?.id).toBe('OWN-001');
     expect(state.targets).toHaveLength(2);
     expect(state.governance?.trust_factor).toBe(0.35);
-    expect(state.environment?.safety_contour_val).toBe(15);
+    expect(state.environment).toBeNull();
     expect(state.riskConnectionState).toBe('connected');
     expect(state.connectionError).toBeNull();
     expect(state.isLowTrust).toBe(true);
     expect(state.lastUpdateTime).toBeGreaterThan(0);
+  });
+
+  it('writes environment update without changing risk fields', () => {
+    const store = useRiskStore.getState();
+    store.setRiskUpdate(riskUpdateFixture);
+    store.setEnvironmentUpdate(environmentUpdateFixture);
+
+    const state = useRiskStore.getState();
+    expect(state.currentRiskObjectId).toBe('risk-object-1');
+    expect(state.targets).toHaveLength(2);
+    expect(state.environment?.safety_contour_val).toBe(15);
+    expect(state.environment?.active_alerts).toEqual(['LOW_VISIBILITY']);
+    expect(state.lastEnvironmentUpdateTime).toBeGreaterThan(0);
   });
 
   it('clears dropped selections and explanations when target disappears', () => {
@@ -200,12 +219,14 @@ describe('useRiskStore', () => {
 
   it('responds to risk service subscription callbacks', () => {
     expect(typeof riskSubscribers.onRiskUpdate).toBe('function');
+    expect(typeof riskSubscribers.onEnvironmentUpdate).toBe('function');
     expect(typeof riskSubscribers.onExplanation).toBe('function');
     expect(typeof riskSubscribers.onAdvisory).toBe('function');
     expect(typeof riskSubscribers.onError).toBe('function');
     expect(typeof riskSubscribers.onConnectionStatusChange).toBe('function');
 
     riskSubscribers.onRiskUpdate?.(riskUpdateFixture);
+    riskSubscribers.onEnvironmentUpdate?.(environmentUpdateFixture);
     riskSubscribers.onExplanation?.(explanationForAlarmFixture);
     riskSubscribers.onAdvisory?.(advisoryFixture);
     riskSubscribers.onError?.(sseErrorFixture);
@@ -213,6 +234,7 @@ describe('useRiskStore', () => {
 
     const state = useRiskStore.getState();
     expect(state.targets).toHaveLength(2);
+    expect(state.environment?.safety_contour_val).toBe(15);
     expect(state.explanationsByTargetId['TGT-ALARM']?.provider).toBe('gemini');
     expect(state.activeAdvisory?.advisory_id).toBe('advisory-uuid-1');
     expect(state.lastError?.error_code).toBe('RISK_STREAM_INTERRUPTED');

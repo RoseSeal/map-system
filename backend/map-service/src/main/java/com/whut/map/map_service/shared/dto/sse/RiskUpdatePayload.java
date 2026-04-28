@@ -23,6 +23,9 @@ public class RiskUpdatePayload {
     @JsonProperty("timestamp")
     private String timestamp;
 
+    @JsonProperty("environment_state_version")
+    private long environmentStateVersion;
+
     @JsonProperty("governance")
     private Map<String, Object> governance;
 
@@ -31,7 +34,4 @@ public class RiskUpdatePayload {
 
     @JsonProperty("targets")
     private Object targets;
-
-    @JsonProperty("environment_context")
-    private Map<String, Object> environmentContext;
 }

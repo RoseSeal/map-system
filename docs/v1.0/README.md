@@ -1,7 +1,7 @@
 # v1.0 Milestone Overview
 
 > 文档状态：active
-> 最后更新：2026-04-17
+> 最后更新：2026-04-28
 > 用途：定义 `v1.0` 里程碑下的并行 track、阻塞关系与文档入口。
 > 非目标：不替代各 track 的总 plan；不直接承担 step 级实施细则。
 
@@ -28,6 +28,7 @@
 - [`hydrology/step1.md`](./hydrology/step1.md)：水文线首步草稿。
 - [`weather/WEATHER_PLAN.md`](./weather/WEATHER_PLAN.md)：天气线总 plan。
 - [`weather/step1.md`](./weather/step1.md)：天气线首步草稿。
+- [`bugfix/ENVIRONMENT_UPDATE_SPLIT.md`](./bugfix/ENVIRONMENT_UPDATE_SPLIT.md)：拆分 `RISK_UPDATE` / `ENVIRONMENT_UPDATE`，修复 AIS 停止时环境状态无法同步的问题。
 
 ## 3. 治理规则
 
@@ -41,9 +42,9 @@
 跨 track 约束如下：
 
 - `agent` 只定义 `hydrology` / `weather` 的接入点与消费边界，不代替其实现专题数据与渲染能力。
-- `hydrology` 与 `weather` 共享同一个 `environment_context` 顶层结构与 `EnvAlertCode` 枚举（定义点见 [`hydrology/HYDROLOGY_PLAN.md`](./hydrology/HYDROLOGY_PLAN.md) §3.2–3.3 与 [`weather/WEATHER_PLAN.md`](./weather/WEATHER_PLAN.md) §3.2–3.3）。任一 track 对共享 schema 的变更必须双边同步，不得单边扩展顶层字段。
+- `hydrology` 与 `weather` 共享同一个 `ENVIRONMENT_UPDATE.environment_context` 顶层结构与 `EnvAlertCode` 枚举（定义点见 [`hydrology/HYDROLOGY_PLAN.md`](./hydrology/HYDROLOGY_PLAN.md) §3.2–3.3 与 [`weather/WEATHER_PLAN.md`](./weather/WEATHER_PLAN.md) §3.2–3.3）。任一 track 对共享 schema 的变更必须双边同步，不得单边扩展顶层字段。
 - `hydrology` 与 `weather` 在 v1.0 规划范围内交付三项终态（前端 2.5D 渲染、风险引擎接入、LLM / agent 接入）。**v1.0 对这两条线的最低交付要求是 Step 1 视觉链路**；Step 2 / Step 3 已属于当前规划链，因而不进入 [`../TODO.md`](../TODO.md)。若 v1.0 关闭时仍未完成，应先迁移到新的 milestone / step 链；只有失去明确 owner 的剩余项才回收至 TODO。
-- 若环境专题能力需要进入 `risk` payload、`environment_context` 或 agent tool schema，必须先在各自总 plan 中定义契约边界，再同步更新后续真值文档；只有未挂入现有规划链的剩余 backlog 才进入 [`../TODO.md`](../TODO.md)。
+- 若环境专题能力需要进入 `ENVIRONMENT_UPDATE.environment_context`、`RISK_UPDATE.environment_state_version` 或 agent tool schema，必须先在各自总 plan 中定义契约边界，再同步更新后续真值文档；只有未挂入现有规划链的剩余 backlog 才进入 [`../TODO.md`](../TODO.md)。
 - `v1.0` 目录只保留已挂在当前实现链上的内容。参考稿中的“v1.1 / post-v1.0 / 后续可做”事项若没有明确 step 或 milestone owner，应回收到 [`../TODO.md`](../TODO.md)，而不是继续作为 `v1.0` 内部待办保留。
 
 ## 4. 当前完成标准

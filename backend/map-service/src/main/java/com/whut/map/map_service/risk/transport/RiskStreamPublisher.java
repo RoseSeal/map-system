@@ -1,8 +1,10 @@
 package com.whut.map.map_service.risk.transport;
 
-import com.whut.map.map_service.shared.dto.RiskObjectDto;
+import com.whut.map.map_service.risk.environment.EnvironmentStateSnapshot;
+import com.whut.map.map_service.risk.environment.EnvironmentUpdateReason;
 import com.whut.map.map_service.risk.event.RiskFrame;
 import com.whut.map.map_service.shared.dto.sse.AdvisoryPayload;
+import com.whut.map.map_service.shared.dto.sse.EnvironmentUpdatePayload;
 import com.whut.map.map_service.shared.dto.sse.ExplanationPayload;
 import com.whut.map.map_service.shared.dto.sse.RiskUpdatePayload;
 import com.whut.map.map_service.shared.dto.sse.SseErrorPayload;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -32,6 +35,7 @@ public class RiskStreamPublisher {
     private final SseEmitterRegistry sseEmitterRegistry;
     private final ExecutorService publishExecutor = Executors.newSingleThreadExecutor(riskPublishThreadFactory());
     private volatile RiskFrameSnapshot latestRiskFrame;
+    private volatile RiskFrameSnapshot latestEnvironmentFrame;
 
     public void register(SseEmitter emitter) {
         submit("register risk SSE emitter", () -> {
@@ -59,6 +63,21 @@ public class RiskStreamPublisher {
             }
 
             publishAndCacheLatestRiskFrame(payload);
+        });
+    }
+
+    public void publishEnvironmentUpdate(
+            EnvironmentStateSnapshot snapshot,
+            EnvironmentUpdateReason reason,
+            List<String> changedFields
+    ) {
+        submit("publish environment update", () -> {
+            EnvironmentUpdatePayload payload = sseEventFactory.buildEnvironmentUpdate(snapshot, reason, changedFields);
+            if (payload == null) {
+                return;
+            }
+
+            publishAndCacheLatestEnvironmentFrame(payload);
         });
     }
 
@@ -120,6 +139,16 @@ public class RiskStreamPublisher {
         sseEmitterRegistry.broadcastJson(snapshot.eventType(), snapshot.sequenceId(), snapshot.jsonPayload());
     }
 
+    private void publishAndCacheLatestEnvironmentFrame(EnvironmentUpdatePayload payload) {
+        RiskFrameSnapshot snapshot = buildSnapshot(SseEventType.ENVIRONMENT_UPDATE, payload);
+        if (snapshot == null) {
+            return;
+        }
+
+        latestEnvironmentFrame = snapshot;
+        sseEmitterRegistry.broadcastJson(snapshot.eventType(), snapshot.sequenceId(), snapshot.jsonPayload());
+    }
+
     private void publish(SseEventType eventType, Object payload) {
         RiskFrameSnapshot snapshot = buildSnapshot(eventType, payload);
         if (snapshot == null) {
@@ -147,12 +176,25 @@ public class RiskStreamPublisher {
     }
 
     private void replayLatestTo(SseEmitter emitter) {
-        RiskFrameSnapshot snapshot = latestRiskFrame;
-        if (snapshot == null) {
-            return;
+        RiskFrameSnapshot environmentSnapshot = latestEnvironmentFrame;
+        if (environmentSnapshot != null) {
+            sseEmitterRegistry.sendJson(
+                    emitter,
+                    environmentSnapshot.eventType(),
+                    environmentSnapshot.sequenceId(),
+                    environmentSnapshot.jsonPayload()
+            );
         }
 
-        sseEmitterRegistry.sendJson(emitter, snapshot.eventType(), snapshot.sequenceId(), snapshot.jsonPayload());
+        RiskFrameSnapshot riskSnapshot = latestRiskFrame;
+        if (riskSnapshot != null) {
+            sseEmitterRegistry.sendJson(
+                    emitter,
+                    riskSnapshot.eventType(),
+                    riskSnapshot.sequenceId(),
+                    riskSnapshot.jsonPayload()
+            );
+        }
     }
 
     private void submit(String action, Runnable task) {

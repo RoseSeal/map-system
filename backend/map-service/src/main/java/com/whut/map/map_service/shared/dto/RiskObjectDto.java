@@ -15,13 +15,13 @@ public class RiskObjectDto {
 
     private String timestamp;
 
+    @JsonProperty("environment_state_version")
+    private long environmentStateVersion;
+
     private Map<String, Object> governance;
 
     @JsonProperty("own_ship")
     private Map<String, Object> ownShip;
 
     private Object targets;
-
-    @JsonProperty("environment_context")
-    private Map<String, Object> environmentContext;
 }

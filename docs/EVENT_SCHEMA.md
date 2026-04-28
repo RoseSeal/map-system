@@ -17,6 +17,7 @@
 | v2 | 2026-04-24 | risk SSE 新增 `ADVISORY` 事件；新增错误码 `ADVISORY_SCHEMA_FAILED` |
 | v2 | 2026-04-25 | CHAT payload 新增 `agent_mode`；WebSocket 连接建立时下发 `CAPABILITY` 握手消息；chat agent path 新增 `AGENT_STEP` 下行事件 |
 | v2 | 2026-04-27 | `CAPABILITY` 扩展 LLM provider 能力声明；新增 `SET_LLM_PROVIDER_SELECTION` / `LLM_PROVIDER_SELECTION` 运行时 provider 选择协议 |
+| v2 | 2026-04-28 | risk SSE 新增 `ENVIRONMENT_UPDATE`；`RISK_UPDATE` 移除 `environment_context` 并新增 `environment_state_version` |
 
 ## 1. 文档定位
 
@@ -80,10 +81,10 @@
 
 ### 3.4 SSE 重连语义
 
-- risk SSE 断线重连后，只补发最新一帧
+- risk SSE 断线重连后，只补发最新环境快照与最新风险快照
 - 不保证逐条补历史事件
 - `Last-Event-ID` 仅用于帮助服务端识别客户端是否断线重连
-- 服务端恢复后返回当前最新 `RISK_UPDATE` 或当前最新 `ERROR`
+- 服务端恢复后按 `ENVIRONMENT_UPDATE`、`RISK_UPDATE` 顺序返回当前最新状态；若某类快照尚不存在，则跳过该类
 
 ### 3.5 `event_id`
 
@@ -102,6 +103,10 @@ SSE 原生字段承担 envelope 职责，不再额外包一层统一 JSON：
 
 id: {sequence_id}
 event: RISK_UPDATE
+data: {"event_id":"server-event-xxx", ...payload}
+
+id: {sequence_id}
+event: ENVIRONMENT_UPDATE
 data: {"event_id":"server-event-xxx", ...payload}
 
 id: {sequence_id}
@@ -127,6 +132,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | event | 说明 |
 |---|---|
 | `RISK_UPDATE` | 风险快照事件 |
+| `ENVIRONMENT_UPDATE` | 环境状态快照事件 |
 | `EXPLANATION` | 风险解释事件 |
 | `ADVISORY` | 场景级 AI 航行建议事件 |
 | `ERROR` | risk 连接错误事件 |
@@ -138,6 +144,7 @@ data: {"event_id":"server-event-xxx", ...payload}
   "event_id": "server-event-xxx",
   "risk_object_id": "123456789-2026-04-01T03:21:15Z",
   "timestamp": "2026-04-01T03:21:15Z",
+  "environment_state_version": 17,
   "governance": { "mode": "adaptive", "trust_factor": 1.0 },
   "own_ship": {
     "id": "123456789",
@@ -174,7 +181,30 @@ data: {"event_id":"server-event-xxx", ...payload}
         "encounter_type": "CROSSING"
       }
     }
-  ],
+  ]
+}
+```
+
+约束：
+
+- `risk_assessment.explanation` 在 v2 中移除
+- `all_targets` 不再出现在 risk payload 中
+- `simulation_layer` 不再出现在 risk payload 中
+- `target.predicted_trajectory` 为可选字段；存在时结构固定为 `{ prediction_type, horizon_seconds, points[] }`
+- CTR 升级后 `target.predicted_trajectory.prediction_type` 仍保持 `"cv"`
+- `target.risk_assessment.encounter_type` 为可选字段；取值为 `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED`
+- `environment_state_version` 指向该风险快照引用的最新环境状态版本；前端不得用该字段重建环境内容
+- `governance.trust_factor` 表示本船状态置信度；本船置信度缺失或不可解析时取 `0.0`
+
+### 4.4 `ENVIRONMENT_UPDATE` payload
+
+```json
+{
+  "event_id": "server-event-xxx",
+  "timestamp": "2026-04-28T06:00:00Z",
+  "environment_state_version": 17,
+  "reason": "WEATHER_UPDATED",
+  "changed_fields": ["weather", "weather_zones", "active_alerts"],
   "environment_context": {
     "safety_contour_val": 10.0,
     "active_alerts": ["LOW_VISIBILITY", "SHOAL_PROXIMITY"],
@@ -185,8 +215,10 @@ data: {"event_id":"server-event-xxx", ...payload}
       "wind": { "speed_kn": 3.2, "direction_from_deg": 225.0 },
       "surface_current": { "speed_kn": 0.4, "set_deg": 90.0 },
       "sea_state": 2,
+      "source_zone_id": "fog-bank-east",
       "updated_at": "2026-04-18T10:22:15Z"
     },
+    "weather_zones": null,
     "hydrology": {
       "own_ship_min_depth_m": 8.3,
       "nearest_shoal_nm": 0.0,
@@ -202,18 +234,14 @@ data: {"event_id":"server-event-xxx", ...payload}
 
 约束：
 
-- `risk_assessment.explanation` 在 v2 中移除
-- `all_targets` 不再出现在 risk payload 中
-- `simulation_layer` 不再出现在 risk payload 中
-- `target.predicted_trajectory` 为可选字段；存在时结构固定为 `{ prediction_type, horizon_seconds, points[] }`
-- CTR 升级后 `target.predicted_trajectory.prediction_type` 仍保持 `"cv"`
-- `target.risk_assessment.encounter_type` 为可选字段；取值为 `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED`
+- `reason` 取值为 `WEATHER_UPDATED` / `WEATHER_EXPIRED` / `SAFETY_CONTOUR_UPDATED` / `SAFETY_CONTOUR_RESET` / `OWN_SHIP_ENV_REEVALUATED`
+- `changed_fields` 仅用于前端优化和调试提示，不作为语义真值；前端收到事件后整体替换环境状态
 - `environment_context.weather` 为可选字段；无实时天气源或超过陈旧阈值时取 `null`
+- `environment_context.weather_zones` 与 `weather` 联动；当 `weather == null` 时同步取 `null`
 - `environment_context.hydrology` 为可选字段；水文查询完全不可用时取 `null`，子字段未知时取 `null`
 - `environment_context.active_alerts` 可包含共享环境告警枚举：`LOW_VISIBILITY` / `HIGH_WIND` / `HEAVY_PRECIPITATION` / `STRONG_CURRENT_SET` / `SHOAL_PROXIMITY` / `OBSTRUCTION_NEARBY` / `DEPTH_DATA_MISSING`
-- `governance.trust_factor` 表示本船状态置信度；本船置信度缺失或不可解析时取 `0.0`
 
-### 4.4 `ERROR` payload（risk）
+### 4.5 `ERROR` payload（risk）
 
 ```json
 {
@@ -226,7 +254,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 }
 ```
 
-### 4.5 `EXPLANATION` payload（risk）
+### 4.6 `EXPLANATION` payload（risk）
 
 说明：
 
@@ -259,13 +287,13 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `text` | `string` | 解释文本 |
 | `timestamp` | `string` | 解释生成时间 |
 
-### 4.6 `ADVISORY` payload（risk）
+### 4.7 `ADVISORY` payload（risk）
 
 说明：
 
 - 用于场景级 AI 航行建议卡片
 - 通过 risk SSE 通道下发，独立于 `EXPLANATION`
-- 不进入 `latestRiskFrame` replay 缓存，新连接不补发
+- 不进入最新快照 replay 缓存，新连接不补发
 - 生命周期：前端收到新 advisory 时将旧 active advisory 标记为 `SUPERSEDED` 并归档
 
 ```json
@@ -758,7 +786,7 @@ SSE 与 WebSocket chat 下行共用：
 | PredictionType | `linear` / `cv` |
 | EncounterType | `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED` |
 | SafetyDomainShape | `ellipse` |
-| RiskSseEventType | `RISK_UPDATE` / `EXPLANATION` / `ADVISORY` / `ERROR` |
+| RiskSseEventType | `RISK_UPDATE` / `ENVIRONMENT_UPDATE` / `EXPLANATION` / `ADVISORY` / `ERROR` |
 | AdvisoryScope | `SCENE` |
 | AdvisoryStatus | `ACTIVE` / `SUPERSEDED` |
 | AdvisoryActionType | `COURSE_CHANGE` / `SPEED_CHANGE` / `MAINTAIN_COURSE` / `MONITOR` / `UNKNOWN` |

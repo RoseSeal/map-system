@@ -3,6 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type {
   AdvisoryPayload,
   EnvironmentContext,
+  EnvironmentUpdatePayload,
   ExplanationPayload,
   ExplanationResolutionReason,
   Governance,
@@ -42,6 +43,7 @@ interface RiskState {
   latestRiskUpdate: RiskUpdatePayload | null;
   currentRiskObjectId: string | null;
   lastUpdateTime: number;
+  lastEnvironmentUpdateTime: number;
 
   ownShip: OwnShip | null;
   targets: RiskTarget[];
@@ -62,6 +64,7 @@ interface RiskState {
   droppedTargetNotices: string[];
 
   setRiskUpdate: (payload: RiskUpdatePayload) => void;
+  setEnvironmentUpdate: (payload: EnvironmentUpdatePayload) => void;
   upsertExplanation: (payload: ExplanationPayload) => void;
   applyExpiredExplanationsCleared: (removedEventIds: string[]) => void;
   upsertAdvisory: (payload: AdvisoryPayload) => void;
@@ -79,6 +82,7 @@ const initialState = {
   latestRiskUpdate: null,
   currentRiskObjectId: null,
   lastUpdateTime: 0,
+  lastEnvironmentUpdateTime: 0,
   ownShip: null,
   targets: [] as RiskTarget[],
   governance: null,
@@ -193,7 +197,6 @@ export const useRiskStore = create<RiskState>()(
           ownShip: payload.own_ship,
           targets: payload.targets,
           governance: payload.governance,
-          environment: payload.environment_context,
           explanationsByTargetId: keptActive,
           resolvedExplanations,
           selectedTargetIds,
@@ -202,6 +205,15 @@ export const useRiskStore = create<RiskState>()(
           connectionError: null,
           isLowTrust: payload.governance.trust_factor < PERFORMANCE.LOW_TRUST_THRESHOLD,
         };
+      });
+    },
+
+    setEnvironmentUpdate: (payload: EnvironmentUpdatePayload) => {
+      set({
+        environment: payload.environment_context,
+        lastEnvironmentUpdateTime: Date.now(),
+        riskConnectionState: 'connected',
+        connectionError: null,
       });
     },
 
@@ -340,6 +352,10 @@ function initializeRiskStoreSubscriptions(): void {
 
   riskSseService.onRiskUpdate((payload) => {
     useRiskStore.getState().setRiskUpdate(payload);
+  });
+
+  riskSseService.onEnvironmentUpdate((payload) => {
+    useRiskStore.getState().setEnvironmentUpdate(payload);
   });
 
   riskSseService.onExplanation((payload) => {

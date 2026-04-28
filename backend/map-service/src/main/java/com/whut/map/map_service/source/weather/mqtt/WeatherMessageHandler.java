@@ -1,6 +1,10 @@
 package com.whut.map.map_service.source.weather.mqtt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.whut.map.map_service.risk.environment.EnvironmentContextService;
+import com.whut.map.map_service.risk.environment.EnvironmentRefreshResult;
+import com.whut.map.map_service.risk.environment.EnvironmentUpdateReason;
+import com.whut.map.map_service.risk.transport.RiskStreamPublisher;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.source.weather.dto.WeatherContext;
 import com.whut.map.map_service.source.weather.dto.WeatherZoneContext;
@@ -26,10 +30,19 @@ public class WeatherMessageHandler implements MqttCallback {
 
     private final ObjectMapper objectMapper;
     private final WeatherContextHolder weatherContextHolder;
+    private final EnvironmentContextService environmentContextService;
+    private final RiskStreamPublisher riskStreamPublisher;
 
-    public WeatherMessageHandler(ObjectMapper objectMapper, WeatherContextHolder weatherContextHolder) {
+    public WeatherMessageHandler(
+            ObjectMapper objectMapper,
+            WeatherContextHolder weatherContextHolder,
+            EnvironmentContextService environmentContextService,
+            RiskStreamPublisher riskStreamPublisher
+    ) {
         this.objectMapper = objectMapper;
         this.weatherContextHolder = weatherContextHolder;
+        this.environmentContextService = environmentContextService;
+        this.riskStreamPublisher = riskStreamPublisher;
     }
 
     @Override
@@ -47,6 +60,7 @@ public class WeatherMessageHandler implements MqttCallback {
             WeatherContext context = toContext(weatherMqttDto, snapshotTime);
             List<WeatherZoneContext> zones = toZones(weatherMqttDto, snapshotTime);
             weatherContextHolder.update(context, zones);
+            publishEnvironmentUpdate();
             log.debug("Weather snapshot updated, topic={}, weather_code={}, visibility_nm={}, zones={}",
                     topic,
                     context.weatherCode(),
@@ -135,5 +149,13 @@ public class WeatherMessageHandler implements MqttCallback {
         }
 
         return normalized;
+    }
+
+    private void publishEnvironmentUpdate() {
+        EnvironmentRefreshResult refresh = environmentContextService.refresh(EnvironmentUpdateReason.WEATHER_UPDATED);
+        if (!refresh.shouldPublish()) {
+            return;
+        }
+        riskStreamPublisher.publishEnvironmentUpdate(refresh.snapshot(), refresh.reason(), refresh.changedFields());
     }
 }

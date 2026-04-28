@@ -3,6 +3,10 @@ package com.whut.map.map_service.risk.pipeline;
 import com.whut.map.map_service.chart.service.HydrologyContextService;
 import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
 import com.whut.map.map_service.risk.config.EncounterProperties;
+import com.whut.map.map_service.risk.environment.EnvironmentContextService;
+import com.whut.map.map_service.risk.environment.EnvironmentStateSnapshot;
+import com.whut.map.map_service.risk.environment.EnvironmentUpdateReason;
+import com.whut.map.map_service.risk.environment.OwnShipPositionHolder;
 import com.whut.map.map_service.source.ais.config.AisQualityProperties;
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
 import com.whut.map.map_service.risk.config.ShipStateProperties;
@@ -55,6 +59,9 @@ import static org.mockito.Mockito.when;
 
 class ShipDispatcherTest {
 
+    private final OwnShipPositionHolder ownShipPositionHolder = new OwnShipPositionHolder();
+    private final EnvironmentContextService environmentContextService = environmentContextService(ownShipPositionHolder);
+
     @Test
     void publishRiskSnapshotPublishesRiskFrameAndEvent() {
         RecordingRiskStreamPublisher publisher = new RecordingRiskStreamPublisher();
@@ -67,6 +74,7 @@ class ShipDispatcherTest {
                 Map.of(),
                 RiskAssessmentResult.empty(),
                 riskObject,
+                null,
                 true
         );
 
@@ -116,7 +124,9 @@ class ShipDispatcherTest {
                 publisher,
                 eventPublisher,
                 new ShipKinematicQualityChecker(new AisQualityProperties()),
-                new DerivedTargetStateStore()
+                new DerivedTargetStateStore(),
+                environmentContextService,
+                ownShipPositionHolder
         );
 
         dispatcher.dispatch(targetShip);
@@ -166,7 +176,9 @@ class ShipDispatcherTest {
                 publisher,
                 eventPublisher,
                 new ShipKinematicQualityChecker(new AisQualityProperties()),
-                new DerivedTargetStateStore()
+                new DerivedTargetStateStore(),
+                environmentContextService,
+                ownShipPositionHolder
         );
 
         dispatcher.refreshAfterCleanup();
@@ -193,7 +205,9 @@ class ShipDispatcherTest {
                 publisher,
                 eventPublisher,
                 new ShipKinematicQualityChecker(new AisQualityProperties()),
-                new DerivedTargetStateStore()
+                new DerivedTargetStateStore(),
+                environmentContextService,
+                ownShipPositionHolder
         );
     }
 
@@ -228,7 +242,9 @@ class ShipDispatcherTest {
                 publisher,
                 eventPublisher,
                 new ShipKinematicQualityChecker(new AisQualityProperties()),
-                new DerivedTargetStateStore()
+                new DerivedTargetStateStore(),
+                environmentContextService,
+                ownShipPositionHolder
         );
 
         dispatcher.dispatch(targetUpdate);
@@ -282,7 +298,9 @@ class ShipDispatcherTest {
                 publisher,
                 eventPublisher,
                 new ShipKinematicQualityChecker(new AisQualityProperties()),
-                derivedStore
+                derivedStore,
+                environmentContextService,
+                ownShipPositionHolder
         );
 
         dispatcher.dispatch(ownShip);
@@ -330,7 +348,9 @@ class ShipDispatcherTest {
                 publisher,
                 eventPublisher,
                 new ShipKinematicQualityChecker(new AisQualityProperties()),
-                derivedStore
+                derivedStore,
+                environmentContextService,
+                ownShipPositionHolder
         );
 
         shipStateStore.update(targetShip);
@@ -375,7 +395,9 @@ class ShipDispatcherTest {
                 publisher,
                 eventPublisher,
                 new ShipKinematicQualityChecker(new AisQualityProperties()),
-                derivedStore
+                derivedStore,
+                environmentContextService,
+                ownShipPositionHolder
         );
 
         shipStateStore.update(targetShip);
@@ -417,7 +439,9 @@ class ShipDispatcherTest {
                 publisher,
                 eventPublisher,
                 new ShipKinematicQualityChecker(new AisQualityProperties()),
-                derivedStore
+                derivedStore,
+                environmentContextService,
+                ownShipPositionHolder
         );
 
         dispatcher.refreshAfterCleanup();
@@ -451,7 +475,9 @@ class ShipDispatcherTest {
                 publisher,
                 eventPublisher,
                 new ShipKinematicQualityChecker(new AisQualityProperties()),
-                derivedStore
+                derivedStore,
+                environmentContextService,
+                ownShipPositionHolder
         );
 
         ShipStatus frame1 = ship("target-1", ShipRole.TARGET_SHIP, 120.0100, 30.0100, 12.0, OffsetDateTime.parse("2026-04-12T09:00:00+08:00"));
@@ -486,15 +512,26 @@ class ShipDispatcherTest {
 
     private RiskObjectAssembler riskObjectAssembler() {
         RiskObjectMetaProperties metaProperties = new RiskObjectMetaProperties();
+        return new RiskObjectAssembler(
+            new RiskObjectMetaAssembler(metaProperties),
+                new OwnShipAssembler(),
+                new TargetAssembler(new RiskVisualizationAssembler())
+        );
+    }
+
+    private EnvironmentContextService environmentContextService(OwnShipPositionHolder positionHolder) {
+        RiskObjectMetaProperties metaProperties = new RiskObjectMetaProperties();
         WeatherAlertProperties weatherAlertProperties = new WeatherAlertProperties();
         HydrologyContextService hydrologyContextService = mock(HydrologyContextService.class);
         when(hydrologyContextService.resolve(anyDouble(), anyDouble(), anyDouble())).thenReturn(null);
-        return new RiskObjectAssembler(
-            new RiskObjectMetaAssembler(metaProperties, new WeatherContextHolder(), weatherAlertProperties, new RegionalWeatherResolver()),
-                new OwnShipAssembler(),
-                new TargetAssembler(new RiskVisualizationAssembler()),
+        return new EnvironmentContextService(
+                metaProperties,
+                new WeatherContextHolder(),
+                weatherAlertProperties,
+                new RegionalWeatherResolver(),
                 hydrologyContextService,
-                new SafetyContourStateHolder(metaProperties)
+                new SafetyContourStateHolder(metaProperties),
+                positionHolder
         );
     }
 
@@ -543,6 +580,14 @@ class ShipDispatcherTest {
             if (frame.beforePublish() != null) {
                 frame.beforePublish().accept(1L);
             }
+        }
+
+        @Override
+        public void publishEnvironmentUpdate(
+                EnvironmentStateSnapshot snapshot,
+                EnvironmentUpdateReason reason,
+                List<String> changedFields
+        ) {
         }
     }
 

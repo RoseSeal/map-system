@@ -2,6 +2,10 @@ package com.whut.map.map_service.chart.api;
 
 import com.whut.map.map_service.chart.repository.S57TileRepository;
 import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
+import com.whut.map.map_service.risk.environment.EnvironmentContextService;
+import com.whut.map.map_service.risk.environment.EnvironmentRefreshResult;
+import com.whut.map.map_service.risk.environment.EnvironmentUpdateReason;
+import com.whut.map.map_service.risk.transport.RiskStreamPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +29,8 @@ public class S57Controller {
 
     private final S57TileRepository s57TileRepository;
     private final SafetyContourStateHolder safetyContourStateHolder;
+    private final EnvironmentContextService environmentContextService;
+    private final RiskStreamPublisher riskStreamPublisher;
 
     /**
      * 1. Vector Tile Endpoint - Standard MVT service
@@ -217,13 +223,23 @@ public class S57Controller {
             ));
         }
         double updatedDepth = safetyContourStateHolder.updateDepthMeters(depth);
+        publishEnvironmentUpdate(EnvironmentUpdateReason.SAFETY_CONTOUR_UPDATED);
         return ResponseEntity.ok(buildSafetyContourResponse(updatedDepth));
     }
 
     @PostMapping("/safety-contour/reset")
     public ResponseEntity<Map<String, Object>> resetSafetyContour() {
         double defaultDepth = safetyContourStateHolder.resetToDefault();
+        publishEnvironmentUpdate(EnvironmentUpdateReason.SAFETY_CONTOUR_RESET);
         return ResponseEntity.ok(buildSafetyContourResponse(defaultDepth));
+    }
+
+    private void publishEnvironmentUpdate(EnvironmentUpdateReason reason) {
+        EnvironmentRefreshResult refresh = environmentContextService.refresh(reason);
+        if (!refresh.shouldPublish()) {
+            return;
+        }
+        riskStreamPublisher.publishEnvironmentUpdate(refresh.snapshot(), refresh.reason(), refresh.changedFields());
     }
 
     private Map<String, Object> buildSafetyContourResponse(double depth) {
