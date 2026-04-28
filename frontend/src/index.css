@@ -130,6 +130,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+.divider-grip:hover {
+  background: color-mix(in oklch, var(--ink-500) 48%, transparent);
+}
+
 .maplibregl-map {
   position: absolute;
   top: 0;

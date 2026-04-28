@@ -11,12 +11,23 @@
 
 | Item | Plan | Implementation |
 | --- | --- | --- |
-| Milestone overview ([`docs/v1.0/README.md`](./docs/v1.0/README.md)) | completed | not applicable |
-| `agent` track ([`docs/v1.0/agent/AGENT_LOOP_PLAN.md`](./docs/v1.0/agent/AGENT_LOOP_PLAN.md)) | completed | in_progress |
-| `hydrology` track ([`docs/v1.0/hydrology/HYDROLOGY_PLAN.md`](./docs/v1.0/hydrology/HYDROLOGY_PLAN.md)) | completed | in_progress |
-| `hydrology` Step 1 ([`docs/v1.0/hydrology/step1.md`](./docs/v1.0/hydrology/step1.md)) | completed | completed |
-| `weather` track ([`docs/v1.0/weather/WEATHER_PLAN.md`](./docs/v1.0/weather/WEATHER_PLAN.md)) | completed | in_progress |
-| `weather` Step 1 ([`docs/v1.0/weather/step1.md`](./docs/v1.0/weather/step1.md)) | completed | completed |
+| Milestone overview | completed | not applicable |
+| Agent Steps 0 | completed | completed |
+| Agent Steps 1 | completed | completed |
+| Agent Steps 2 | completed | completed |
+| Agent Steps 3 | completed | completed |
+| Agent Steps 4 | completed | completed |
+| Agent Steps 4A | completed | completed |
+| Agent Steps 4B | completed | completed |
+| Agent Steps 4C | completed | completed |
+| Agent Steps 5 | pending | pending |
+| Hydrology Step 1 | completed | completed |
+| Hydrology Step 2 | completed | pending |
+| Hydrology Step 3 | pending | pending |
+| Weather Step 1 | completed | completed |
+| Weather Step 2 | completed | completed |
+| Weather Step 3 | pending | pending |
+| Weather Step 4 | pending | pending |
 
 ## 3. Update Rule
 

@@ -1,3 +1,4 @@
+mqtt.active=local
 llm.provider=zhipu
 llm.zhipu.api-key=YOUR_ZHIPU_API_KEY
 llm.gemini.api-key=YOUR_GEMINI_API_KEY

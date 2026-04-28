@@ -2,7 +2,7 @@
 
 > 文档状态：active
 > 最后更新：2026-04-21
-> 执行状态：pending
+> 执行状态：completed
 > 所属 track：[`WEATHER_PLAN.md`](./WEATHER_PLAN.md)
 > 目标：在不破坏 Step 1 已落地链路的前提下，把天气从单帧全局快照升级为区域化天气，并继续由 simulator 驱动。
 
