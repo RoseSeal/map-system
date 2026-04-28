@@ -1,5 +1,7 @@
 package com.whut.map.map_service.risk.pipeline.assembler;
 
+import com.whut.map.map_service.chart.service.HydrologyContextService;
+import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
 import com.whut.map.map_service.shared.domain.ShipRole;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
@@ -20,21 +22,32 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class RiskObjectAssemblerTest {
 
     private static final WeatherAlertProperties WEATHER_ALERT_PROPERTIES = new WeatherAlertProperties();
+    private static final RiskObjectMetaProperties RISK_OBJECT_META_PROPERTIES = new RiskObjectMetaProperties();
+    private static final HydrologyContextService HYDROLOGY_CONTEXT_SERVICE = mock(HydrologyContextService.class);
 
     private final RiskObjectAssembler assembler = new RiskObjectAssembler(
             new RiskObjectMetaAssembler(
-                    new RiskObjectMetaProperties(),
+                    RISK_OBJECT_META_PROPERTIES,
                     new WeatherContextHolder(),
                     WEATHER_ALERT_PROPERTIES,
                     new RegionalWeatherResolver()
             ),
             new OwnShipAssembler(),
-            new TargetAssembler(new RiskVisualizationAssembler())
+            new TargetAssembler(new RiskVisualizationAssembler()),
+            HYDROLOGY_CONTEXT_SERVICE,
+            new SafetyContourStateHolder(RISK_OBJECT_META_PROPERTIES)
     );
+
+    RiskObjectAssemblerTest() {
+        when(HYDROLOGY_CONTEXT_SERVICE.resolve(anyDouble(), anyDouble(), anyDouble())).thenReturn(null);
+    }
 
     @Test
     void assembleRiskObjectUsesOwnShipConfidenceForTrustFactor() {

@@ -49,6 +49,7 @@ import type { RiskLevel, RiskTarget, StoredExplanation } from '../../types/schem
 import { translateEncounterType } from '../../utils/riskDisplay';
 import { useVoiceCapture } from '../../hooks/useVoiceCapture';
 import { speechService } from '../../services/speechService';
+import { getSafetyContour, resetSafetyContour, updateSafetyContour } from '../../services/s57Service';
 import { ChatComposer } from './ChatComposer';
 import { ChatMessageList } from './ChatMessageList';
 import { CpaArc } from './CpaArc';
@@ -146,14 +147,19 @@ export function RiskExplanationPanel() {
   const environment = useRiskStore(selectEnvironment);
   const { isDarkMode, toggleTheme } = useThemeStore();
   const {
-    safetyContourOverride,
-    setSafetyContourOverride,
+    pendingSafetyContourValue,
+    defaultSafetyContourValue,
+    safetyContourError,
+    setPendingSafetyContourValue,
+    setDefaultSafetyContourValue,
+    setSafetyContourError,
     followMode,
     setFollowMode,
   } = useMapSettingsStore();
 
   const liveSafetyContourVal = environment?.safety_contour_val ?? 10;
-  const effectiveSafetyContourVal = safetyContourOverride ?? liveSafetyContourVal;
+  const resetTargetSafetyContourVal = defaultSafetyContourValue ?? 10;
+  const effectiveSafetyContourVal = pendingSafetyContourValue ?? liveSafetyContourVal;
 
   const {
     activeVoiceMode,
@@ -177,6 +183,8 @@ export function RiskExplanationPanel() {
   const leavingTimerIdsRef = useRef<Map<string, number>>(new Map());
   const prevCardIdsRef = useRef<Set<string>>(new Set());
   const renderOrderRef = useRef<string[]>([]);
+  const contourUpdateTimerRef = useRef<number | null>(null);
+  const contourErrorTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const nextError: VisibleRiskError = riskConnectionError
@@ -210,6 +218,71 @@ export function RiskExplanationPanel() {
       setFollowMode('SOFT');
     }
   }, [followMode, setFollowMode]);
+
+  useEffect(() => {
+    getSafetyContour()
+      .then((response) => {
+        setDefaultSafetyContourValue(response?.defaultSafetyContourDepth ?? null);
+      })
+      .catch(() => {
+        setDefaultSafetyContourValue(null);
+      });
+  }, [setDefaultSafetyContourValue]);
+
+  useEffect(() => {
+    if (pendingSafetyContourValue !== null && pendingSafetyContourValue === liveSafetyContourVal) {
+      setPendingSafetyContourValue(null);
+      setSafetyContourError(null);
+    }
+  }, [liveSafetyContourVal, pendingSafetyContourValue, setPendingSafetyContourValue, setSafetyContourError]);
+
+  useEffect(() => () => {
+    if (contourUpdateTimerRef.current !== null) {
+      window.clearTimeout(contourUpdateTimerRef.current);
+    }
+    if (contourErrorTimerRef.current !== null) {
+      window.clearTimeout(contourErrorTimerRef.current);
+    }
+  }, []);
+
+  const showSafetyContourError = useCallback((message: string) => {
+    setSafetyContourError(message);
+    if (contourErrorTimerRef.current !== null) {
+      window.clearTimeout(contourErrorTimerRef.current);
+    }
+    contourErrorTimerRef.current = window.setTimeout(() => {
+      setSafetyContourError(null);
+      contourErrorTimerRef.current = null;
+    }, 3000);
+  }, [setSafetyContourError]);
+
+  const scheduleSafetyContourUpdate = useCallback((nextValue: number) => {
+    setPendingSafetyContourValue(nextValue);
+    setSafetyContourError(null);
+    if (contourUpdateTimerRef.current !== null) {
+      window.clearTimeout(contourUpdateTimerRef.current);
+    }
+    contourUpdateTimerRef.current = window.setTimeout(() => {
+      contourUpdateTimerRef.current = null;
+      updateSafetyContour(nextValue)
+        .catch(() => {
+          setPendingSafetyContourValue(null);
+          showSafetyContourError('更新失败，已恢复服务端值');
+        });
+    }, 300);
+  }, [setPendingSafetyContourValue, setSafetyContourError, showSafetyContourError]);
+
+  const handleResetSafetyContour = useCallback(() => {
+    if (contourUpdateTimerRef.current !== null) {
+      window.clearTimeout(contourUpdateTimerRef.current);
+      contourUpdateTimerRef.current = null;
+    }
+    setPendingSafetyContourValue(null);
+    setSafetyContourError(null);
+    resetSafetyContour().catch(() => {
+      showSafetyContourError('恢复默认值失败');
+    });
+  }, [setPendingSafetyContourValue, setSafetyContourError, showSafetyContourError]);
 
   useEffect(() => {
     if (voiceCaptureState === 'recording' || voiceCaptureState === 'transcribing') {
@@ -960,10 +1033,10 @@ export function RiskExplanationPanel() {
                 <span
                   className="rounded-full px-2 py-0.5 font-mono text-[10px]"
                   style={{
-                    background: safetyContourOverride === null
+                    background: pendingSafetyContourValue === null
                       ? 'color-mix(in oklch, var(--risk-safe) 12%, transparent)'
                       : 'color-mix(in oklch, var(--risk-warning) 12%, transparent)',
-                    color: safetyContourOverride === null ? 'var(--risk-safe)' : 'var(--risk-warning)',
+                    color: pendingSafetyContourValue === null ? 'var(--risk-safe)' : 'var(--risk-warning)',
                   }}
                 >
                   {effectiveSafetyContourVal.toFixed(1)}m
@@ -976,25 +1049,30 @@ export function RiskExplanationPanel() {
                 max={CONTOUR_MAX}
                 step={CONTOUR_STEP}
                 value={Math.round(effectiveSafetyContourVal)}
-                onChange={(event) => setSafetyContourOverride(Number(event.target.value))}
+                onChange={(event) => scheduleSafetyContourUpdate(Number(event.target.value))}
                 className="h-1.5 w-full cursor-pointer appearance-none rounded-full"
                 style={{ background: 'color-mix(in oklch, var(--ink-500) 15%, transparent)' }}
               />
+              {safetyContourError && (
+                <div className="mt-1 text-[9px] font-medium" style={{ color: 'var(--risk-alarm)' }}>
+                  {safetyContourError}
+                </div>
+              )}
               <div className="mt-1 flex items-center justify-between">
                 <span className="font-mono text-[9px]" style={{ color: 'var(--ink-500)' }}>
                   {CONTOUR_MIN}m
                 </span>
                 <button
                   type="button"
-                  disabled={safetyContourOverride === null}
-                  onClick={() => setSafetyContourOverride(null)}
+                  disabled={pendingSafetyContourValue === null && liveSafetyContourVal === resetTargetSafetyContourVal}
+                  onClick={handleResetSafetyContour}
                   className="rounded-full px-2 py-0.5 text-[9px] font-medium transition disabled:cursor-default disabled:opacity-40"
                   style={{
                     background: 'color-mix(in oklch, var(--ink-500) 10%, transparent)',
                     color: 'var(--ink-700)',
                   }}
                 >
-                  恢复实时值
+                  恢复默认值
                 </button>
                 <span className="font-mono text-[9px]" style={{ color: 'var(--ink-500)' }}>
                   {CONTOUR_MAX}m

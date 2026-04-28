@@ -244,6 +244,7 @@ function generateRiskObject(): RiskUpdatePayload {
       safety_contour_val: 10.0,
       active_alerts: [],
       weather: null,
+      hydrology: null,
     },
   };
 }

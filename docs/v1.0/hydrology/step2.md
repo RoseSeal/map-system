@@ -2,7 +2,7 @@
 
 > 文档状态：active
 > 最后更新：2026-04-28
-> 执行状态：planned
+> 执行状态：completed
 > 所属 track：[`HYDROLOGY_PLAN.md`](./HYDROLOGY_PLAN.md)
 > 目标：把水文信息从“仅前端渲染可见”收敛为“服务端风险快照可见”，并让 safety contour 从前端本地 override 收敛为后端可见的运行时配置。
 
@@ -154,6 +154,12 @@ SQL 选型原则：
 - 所在区域判断优先使用拓扑关系（`ST_Intersects` / `ST_Contains`）
 - 邻近性查询使用 `ST_DWithin + ST_Distance`
 - 查询字段只取 `DRVAL1 / CATOBS / VALSOU / geometry` 的必要投影，不拉完整属性集
+
+实现补充：
+
+- `HydrologyContextService` 通过 `ObjectProvider<JdbcTemplate>` 获取查询入口；正常运行存在 `JdbcTemplate` 时执行 PostGIS 查询
+- 在无数据源测试 / 启动模式下，`JdbcTemplate` 可不存在，此时 service 返回 `null`，`environment_context.hydrology` 保持 `null`
+- 该处理只用于保持无数据库上下文可启动，不改变生产路径的 PostGIS 查询语义
 
 ### 6.2 运行时 safety contour 状态
 

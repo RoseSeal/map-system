@@ -177,7 +177,7 @@ data: {"event_id":"server-event-xxx", ...payload}
   ],
   "environment_context": {
     "safety_contour_val": 10.0,
-    "active_alerts": ["LOW_VISIBILITY"],
+    "active_alerts": ["LOW_VISIBILITY", "SHOAL_PROXIMITY"],
     "weather": {
       "weather_code": "FOG",
       "visibility_nm": 0.8,
@@ -186,6 +186,15 @@ data: {"event_id":"server-event-xxx", ...payload}
       "surface_current": { "speed_kn": 0.4, "set_deg": 90.0 },
       "sea_state": 2,
       "updated_at": "2026-04-18T10:22:15Z"
+    },
+    "hydrology": {
+      "own_ship_min_depth_m": 8.3,
+      "nearest_shoal_nm": 0.0,
+      "nearest_obstruction": {
+        "category": "WRECK",
+        "distance_nm": 0.71,
+        "bearing_deg": 37
+      }
     }
   }
 }
@@ -200,7 +209,8 @@ data: {"event_id":"server-event-xxx", ...payload}
 - CTR 升级后 `target.predicted_trajectory.prediction_type` 仍保持 `"cv"`
 - `target.risk_assessment.encounter_type` 为可选字段；取值为 `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED`
 - `environment_context.weather` 为可选字段；无实时天气源或超过陈旧阈值时取 `null`
-- `environment_context.active_alerts` 可包含天气告警枚举：`LOW_VISIBILITY` / `HIGH_WIND` / `HEAVY_PRECIPITATION` / `STRONG_CURRENT_SET`
+- `environment_context.hydrology` 为可选字段；水文查询完全不可用时取 `null`，子字段未知时取 `null`
+- `environment_context.active_alerts` 可包含共享环境告警枚举：`LOW_VISIBILITY` / `HIGH_WIND` / `HEAVY_PRECIPITATION` / `STRONG_CURRENT_SET` / `SHOAL_PROXIMITY` / `OBSTRUCTION_NEARBY` / `DEPTH_DATA_MISSING`
 - `governance.trust_factor` 表示本船状态置信度；本船置信度缺失或不可解析时取 `0.0`
 
 ### 4.4 `ERROR` payload（risk）

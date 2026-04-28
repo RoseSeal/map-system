@@ -29,6 +29,7 @@ export interface LayerMetadataResponse {
 
 export interface SafetyContourResponse {
   safetyContourDepth: number;
+  defaultSafetyContourDepth: number;
   unit: string;
   description: string;
   tileUrl: string;
@@ -85,6 +86,26 @@ export async function getSafetyContour(depth?: number): Promise<SafetyContourRes
     console.error('Error fetching safety contour:', error);
     return null;
   }
+}
+
+export async function updateSafetyContour(depth: number): Promise<SafetyContourResponse> {
+  const response = await fetch(`${MVT_CONFIG.SAFETY_CONTOUR_URL}?depth=${encodeURIComponent(depth)}`, {
+    method: 'PUT',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update safety contour: ' + response.statusText);
+  }
+  return await response.json();
+}
+
+export async function resetSafetyContour(): Promise<SafetyContourResponse> {
+  const response = await fetch(`${MVT_CONFIG.SAFETY_CONTOUR_URL}/reset`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to reset safety contour: ' + response.statusText);
+  }
+  return await response.json();
 }
 
 /**

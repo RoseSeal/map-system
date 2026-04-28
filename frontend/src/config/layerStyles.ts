@@ -416,7 +416,7 @@ function setLayerVisibility(map: MapLibreMap, layerId: string, isVisible: boolea
 export function syncHydrologyLayerVisibility(map: MapLibreMap): void {
   const showExtrusions = map.getPitch() > EXTRUSION.HYDROLOGY_PITCH_THRESHOLD;
 
-  setLayerVisibility(map, LAYER_IDS.WATER_DEPTH_FLAT, !showExtrusions);
+  setLayerVisibility(map, LAYER_IDS.WATER_DEPTH_FLAT, true);
   setLayerVisibility(map, LAYER_IDS.WATER_DEPTH_EXTRUSION, showExtrusions);
   setLayerVisibility(map, LAYER_IDS.HAZARD_FILL, true);
 }

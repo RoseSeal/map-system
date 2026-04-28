@@ -1,7 +1,10 @@
 package com.whut.map.map_service.risk.pipeline.assembler.riskobject;
 
+import com.whut.map.map_service.chart.dto.HydrologyContext;
+import com.whut.map.map_service.chart.dto.NearestObstructionSummary;
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
+import com.whut.map.map_service.shared.domain.EnvAlertCode;
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
 import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
@@ -23,11 +26,6 @@ import java.util.stream.Collectors;
 
 @Component
 public class RiskObjectMetaAssembler {
-
-    private static final String ALERT_LOW_VISIBILITY = "LOW_VISIBILITY";
-    private static final String ALERT_HIGH_WIND = "HIGH_WIND";
-    private static final String ALERT_HEAVY_PRECIPITATION = "HEAVY_PRECIPITATION";
-    private static final String ALERT_STRONG_CURRENT_SET = "STRONG_CURRENT_SET";
 
     private static final Set<String> VALID_GEOMETRY_TYPES = Set.of("Polygon", "MultiPolygon");
 
@@ -71,7 +69,11 @@ public class RiskObjectMetaAssembler {
         return Map.of("mode", properties.getGovernanceMode(), "trust_factor", trustFactor);
     }
 
-    public Map<String, Object> buildEnvironmentContext(ShipStatus ownShip) {
+    public Map<String, Object> buildEnvironmentContext(
+            ShipStatus ownShip,
+            double effectiveSafetyContourMeters,
+            HydrologyContext hydrologyContext
+    ) {
         Duration staleThreshold = Duration.ofSeconds(weatherAlertProperties.getStaleThresholdSeconds());
         Optional<WeatherContextHolder.Snapshot> snapshotOpt = weatherContextHolder.getFreshSnapshot(staleThreshold);
 
@@ -104,9 +106,12 @@ public class RiskObjectMetaAssembler {
             sourceZoneId = null;
         }
 
-        List<String> alerts = new ArrayList<>();
+        List<EnvAlertCode> alerts = new ArrayList<>();
         if (effectiveWeather != null) {
             evaluateWeatherAlerts(effectiveWeather, alerts);
+        }
+        if (hydrologyContext != null) {
+            evaluateHydrologyAlerts(hydrologyContext, alerts);
         }
 
         Map<String, Object> weatherPayload = null;
@@ -118,10 +123,11 @@ public class RiskObjectMetaAssembler {
         List<Map<String, Object>> zonesPayload = zones.isEmpty() ? null : toZonesPayload(zones);
 
         Map<String, Object> environmentContext = new LinkedHashMap<>();
-        environmentContext.put("safety_contour_val", properties.getSafetyContourVal());
-        environmentContext.put("active_alerts", List.copyOf(alerts));
+        environmentContext.put("safety_contour_val", effectiveSafetyContourMeters);
+        environmentContext.put("active_alerts", alerts.stream().map(Enum::name).toList());
         environmentContext.put("weather", weatherPayload);
         environmentContext.put("weather_zones", zonesPayload);
+        environmentContext.put("hydrology", toHydrologyPayload(hydrologyContext));
         return environmentContext;
     }
 
@@ -138,26 +144,39 @@ public class RiskObjectMetaAssembler {
         );
     }
 
-    private void evaluateWeatherAlerts(WeatherContext weather, List<String> alerts) {
+    private void evaluateWeatherAlerts(WeatherContext weather, List<EnvAlertCode> alerts) {
         if (weather.visibilityNm() != null && weather.visibilityNm() < weatherAlertProperties.getLowVisibilityNm()) {
-            alerts.add(ALERT_LOW_VISIBILITY);
+            alerts.add(EnvAlertCode.LOW_VISIBILITY);
         }
 
         WeatherContext.Wind wind = weather.wind();
         if (wind != null && wind.speedKn() != null && wind.speedKn() > weatherAlertProperties.getHighWindKn()) {
-            alerts.add(ALERT_HIGH_WIND);
+            alerts.add(EnvAlertCode.HIGH_WIND);
         }
 
         if (weather.precipitationMmPerHr() != null
                 && weather.precipitationMmPerHr() > weatherAlertProperties.getHeavyPrecipitationMmPerHr()) {
-            alerts.add(ALERT_HEAVY_PRECIPITATION);
+            alerts.add(EnvAlertCode.HEAVY_PRECIPITATION);
         }
 
         WeatherContext.SurfaceCurrent surfaceCurrent = weather.surfaceCurrent();
         if (surfaceCurrent != null
                 && surfaceCurrent.speedKn() != null
                 && surfaceCurrent.speedKn() > weatherAlertProperties.getStrongCurrentSetKn()) {
-            alerts.add(ALERT_STRONG_CURRENT_SET);
+            alerts.add(EnvAlertCode.STRONG_CURRENT_SET);
+        }
+    }
+
+    private void evaluateHydrologyAlerts(HydrologyContext hydrology, List<EnvAlertCode> alerts) {
+        if (hydrology.ownShipMinDepthM() == null) {
+            alerts.add(EnvAlertCode.DEPTH_DATA_MISSING);
+        }
+        if (hydrology.nearestShoalNm() != null
+                && hydrology.nearestShoalNm() <= properties.getShoalProximityAlertNm()) {
+            alerts.add(EnvAlertCode.SHOAL_PROXIMITY);
+        }
+        if (hydrology.nearestObstruction() != null) {
+            alerts.add(EnvAlertCode.OBSTRUCTION_NEARBY);
         }
     }
 
@@ -178,6 +197,30 @@ public class RiskObjectMetaAssembler {
                 .filter(z -> z.geometry() != null && VALID_GEOMETRY_TYPES.contains(z.geometry().type()))
                 .map(this::toZoneMap)
                 .collect(Collectors.toList());
+    }
+
+    private Map<String, Object> toHydrologyPayload(HydrologyContext hydrology) {
+        if (hydrology == null) {
+            return null;
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("own_ship_min_depth_m", hydrology.ownShipMinDepthM());
+        payload.put("nearest_shoal_nm", hydrology.nearestShoalNm());
+        payload.put("nearest_obstruction", toNearestObstructionPayload(hydrology.nearestObstruction()));
+        return payload;
+    }
+
+    private Map<String, Object> toNearestObstructionPayload(NearestObstructionSummary obstruction) {
+        if (obstruction == null) {
+            return null;
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("category", obstruction.category());
+        payload.put("distance_nm", obstruction.distanceNm());
+        payload.put("bearing_deg", obstruction.bearingDeg());
+        return payload;
     }
 
     private Map<String, Object> toZoneMap(WeatherZoneContext zone) {

@@ -39,6 +39,20 @@ class AisMessageMapperTest {
     }
 
     @Test
+    void negativeSpeedIsFlaggedAndClampedToZero() {
+        AisMessageMapper mapper = new AisMessageMapper(aisProperties(1.0));
+        MqttAisDto dto = baseDto();
+        dto.setSog(-3.0);
+
+        ShipStatus status = mapper.toDomain(dto);
+
+        assertNotNull(status);
+        assertTrue(status.getQualityFlags().contains(QualityFlag.SPEED_OUT_OF_RANGE));
+        assertEquals(0.0, status.getSog(), 1e-9);
+        assertEquals(0.7, status.getConfidence(), 1e-9);
+    }
+
+    @Test
     void positionOutOfRangeAddsFlagAndDeductsConfidence() {
         AisMessageMapper mapper = new AisMessageMapper(aisProperties(1.0));
         MqttAisDto dto = baseDto();

@@ -57,8 +57,17 @@ export const riskUpdateFixture: RiskUpdatePayload = {
   targets: baseTargets,
   environment_context: {
     safety_contour_val: 15,
-    active_alerts: ['traffic_density_high'],
+    active_alerts: ['LOW_VISIBILITY'],
     weather: null,
+    hydrology: {
+      own_ship_min_depth_m: 8.3,
+      nearest_shoal_nm: 0.0,
+      nearest_obstruction: {
+        category: 'WRECK',
+        distance_nm: 0.71,
+        bearing_deg: 37,
+      },
+    },
   },
 };
 

@@ -11,4 +11,5 @@ public class RiskObjectMetaProperties {
 
     private String governanceMode = "adaptive";
     private double safetyContourVal = 10.0;
+    private double shoalProximityAlertNm = 0.2;
 }

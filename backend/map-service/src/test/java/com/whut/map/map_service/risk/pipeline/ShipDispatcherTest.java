@@ -1,5 +1,7 @@
 package com.whut.map.map_service.risk.pipeline;
 
+import com.whut.map.map_service.chart.service.HydrologyContextService;
+import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
 import com.whut.map.map_service.risk.config.EncounterProperties;
 import com.whut.map.map_service.source.ais.config.AisQualityProperties;
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
@@ -47,6 +49,9 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ShipDispatcherTest {
 
@@ -482,10 +487,14 @@ class ShipDispatcherTest {
     private RiskObjectAssembler riskObjectAssembler() {
         RiskObjectMetaProperties metaProperties = new RiskObjectMetaProperties();
         WeatherAlertProperties weatherAlertProperties = new WeatherAlertProperties();
+        HydrologyContextService hydrologyContextService = mock(HydrologyContextService.class);
+        when(hydrologyContextService.resolve(anyDouble(), anyDouble(), anyDouble())).thenReturn(null);
         return new RiskObjectAssembler(
             new RiskObjectMetaAssembler(metaProperties, new WeatherContextHolder(), weatherAlertProperties, new RegionalWeatherResolver()),
                 new OwnShipAssembler(),
-                new TargetAssembler(new RiskVisualizationAssembler())
+                new TargetAssembler(new RiskVisualizationAssembler()),
+                hydrologyContextService,
+                new SafetyContourStateHolder(metaProperties)
         );
     }
 

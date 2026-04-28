@@ -135,18 +135,19 @@ export function MapContainer() {
   const currentZoneIdsRef = useRef<Set<string>>(new Set());
   const [mapLoaded, setMapLoaded] = useState(false);
   const [debouncedSafetyContourVal, setDebouncedSafetyContourVal] = useState<number>(10);
-  const { safetyContourOverride: localSafetyContourOverride, followMode, setFollowMode } = useMapSettingsStore();
 
   const ownShip = useRiskStore(selectOwnShip);
   const targets = useRiskStore(selectTargets);
   const allTargets = targets;
   const environment = useRiskStore(selectEnvironment);
+  const followMode = useMapSettingsStore((state) => state.followMode);
+  const setFollowMode = useMapSettingsStore((state) => state.setFollowMode);
   const selectedTargetIds = useRiskStore((state) => state.selectedTargetIds);
   const selectTarget = useRiskStore((state) => state.selectTarget);
   const { isDarkMode } = useThemeStore();
 
   const liveSafetyContourVal = environment?.safety_contour_val ?? 10;
-  const effectiveSafetyContourVal = localSafetyContourOverride ?? liveSafetyContourVal;
+  const effectiveSafetyContourVal = liveSafetyContourVal;
   const weatherZones = environment?.weather_zones;
   const fogOpacity = useMemo(
     () => {

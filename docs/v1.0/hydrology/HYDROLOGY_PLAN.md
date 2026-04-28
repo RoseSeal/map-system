@@ -167,7 +167,7 @@ v1.0 引入 `environment_context.hydrology` 子字段。**此契约与天气 tra
 - 调整 `RiskObjectAssembler` / `RiskObjectMetaAssembler` 装配链，使 hydrology 查询在组装 `RiskObjectDto` 时显式完成一次，再注入 `environment_context`
 - 扩展 `RiskObjectMetaAssembler` 把 hydrology 摘要注入 `environment_context`
 - 落地共享 `EnvAlertCode`，并填充 `active_alerts`：`SHOAL_PROXIMITY / OBSTRUCTION_NEARBY / DEPTH_DATA_MISSING`
-- 前端 `[useRiskStore.ts:83](../../../frontend/src/store/useRiskStore.ts#L83)` 的 `environment` 类型扩展 `hydrology` 可选字段
+- 前端 `[useRiskStore.ts:83](../../../frontend/src/store/useRiskStore.ts#L83)` 的 `environment` 类型扩展 `hydrology` 可选字段，slider 写入后端并跟随 SSE 回显值
 - Step 2 只把 hydrology 事实沉淀为服务端真值，不直接接入 `LlmRiskContext`；LLM / agent 的深度消费转 Step 3
 
 **验收**：本船进入 `safety_contour_val` 以浅区时，SSE `RISK_UPDATE` 的 `environment_context.hydrology.own_ship_min_depth_m` 正确反映；`active_alerts` 包含 `SHOAL_PROXIMITY`

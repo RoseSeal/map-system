@@ -1,6 +1,7 @@
 package com.whut.map.map_service.chart.api;
 
 import com.whut.map.map_service.chart.repository.S57TileRepository;
+import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -23,6 +24,7 @@ import java.util.*;
 public class S57Controller {
 
     private final S57TileRepository s57TileRepository;
+    private final SafetyContourStateHolder safetyContourStateHolder;
 
     /**
      * 1. Vector Tile Endpoint - Standard MVT service
@@ -36,10 +38,14 @@ public class S57Controller {
             @PathVariable int y,
             @RequestParam(required = false) Double safety_contour) {
 
-        log.debug("Tile request: z={}, x={}, y={}, safety_contour={}", z, x, y, safety_contour);
+        double effectiveSafetyContour = safety_contour == null
+                ? safetyContourStateHolder.getCurrentDepthMeters()
+                : safety_contour;
+
+        log.debug("Tile request: z={}, x={}, y={}, safety_contour={}", z, x, y, effectiveSafetyContour);
 
         // Generate composite tile with all S-57 layers
-        byte[] tile = generateCompositeTile(z, x, y, safety_contour);
+        byte[] tile = generateCompositeTile(z, x, y, effectiveSafetyContour);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("application/vnd.mapbox-vector-tile"));
@@ -197,15 +203,37 @@ public class S57Controller {
      * Returns safety contour configuration
      */
     @GetMapping("/safety-contour")
-    public ResponseEntity<Map<String, Object>> getSafetyContour(
-            @RequestParam(defaultValue = "10.0") double depth) {
+    public ResponseEntity<Map<String, Object>> getSafetyContour() {
+        double depth = safetyContourStateHolder.getCurrentDepthMeters();
 
-        return ResponseEntity.ok(Map.of(
+        return ResponseEntity.ok(buildSafetyContourResponse(depth));
+    }
+
+    @PutMapping("/safety-contour")
+    public ResponseEntity<Map<String, Object>> updateSafetyContour(@RequestParam double depth) {
+        if (!Double.isFinite(depth) || depth < 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "depth must be a non-negative finite number"
+            ));
+        }
+        double updatedDepth = safetyContourStateHolder.updateDepthMeters(depth);
+        return ResponseEntity.ok(buildSafetyContourResponse(updatedDepth));
+    }
+
+    @PostMapping("/safety-contour/reset")
+    public ResponseEntity<Map<String, Object>> resetSafetyContour() {
+        double defaultDepth = safetyContourStateHolder.resetToDefault();
+        return ResponseEntity.ok(buildSafetyContourResponse(defaultDepth));
+    }
+
+    private Map<String, Object> buildSafetyContourResponse(double depth) {
+        return Map.of(
                 "safetyContourDepth", depth,
+                "defaultSafetyContourDepth", safetyContourStateHolder.getDefaultDepthMeters(),
                 "unit", "meters",
                 "description", "Areas shallower than this depth are highlighted as navigation hazards",
-                "tileUrl", String.format("/api/s57/tiles/{z}/{x}/{y}.pbf?safety_contour=%.1f", depth)
-        ));
+                "tileUrl", String.format(Locale.US, "/api/s57/tiles/{z}/{x}/{y}.pbf?safety_contour=%.1f", depth)
+        );
     }
 
     /**

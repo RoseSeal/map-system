@@ -68,6 +68,8 @@ public class AisMessageMapper {
                 : ShipRole.TARGET_SHIP;
 
         Double heading = mqttAisDto.getHeading() != 511 ? mqttAisDto.getHeading() : null;
+        double rawSog = mqttAisDto.getSog();
+        double safeSog = (!Double.isFinite(rawSog) || rawSog < 0.0) ? 0.0 : rawSog;
         Set<QualityFlag> qualityFlags = EnumSet.noneOf(QualityFlag.class);
         double totalDeduction = 0.0;
 
@@ -75,7 +77,7 @@ public class AisMessageMapper {
             qualityFlags.add(QualityFlag.MISSING_HEADING);
             totalDeduction += DEDUCTION_MISSING_HEADING;
         }
-        if (mqttAisDto.getSog() < 0.0 || mqttAisDto.getSog() > 30.0) {
+        if (!Double.isFinite(rawSog) || rawSog < 0.0 || rawSog > 30.0) {
             qualityFlags.add(QualityFlag.SPEED_OUT_OF_RANGE);
             totalDeduction += DEDUCTION_SPEED_OUT_OF_RANGE;
         }
@@ -100,7 +102,7 @@ public class AisMessageMapper {
                 .id(mmsi) // 传入安全的 MMSI 值
                 .longitude(mqttAisDto.getLongitude())
                 .latitude(mqttAisDto.getLatitude())
-                .sog(mqttAisDto.getSog())
+                .sog(safeSog)
                 .cog(mqttAisDto.getCog())
                 .heading(heading) // 511 表示未知
                 .role(computedRole) // 状态一但确定，整个JVM生命周期内只读

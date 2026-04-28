@@ -43,7 +43,7 @@ describe('StatusPanel', () => {
         position: { lat: 30, lon: 120 },
         platform_health: { status: 'NORMAL' }
       },
-      environment: { active_alerts: ['traffic_density_high'] },
+      environment: { active_alerts: ['LOW_VISIBILITY'] },
       governance: { trust_factor: 1.0 },
       riskConnectionState: 'connected',
       chatConnectionState: 'connected',

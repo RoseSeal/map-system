@@ -141,6 +141,14 @@ export interface RiskTarget {
 }
 
 export type WeatherCode = 'CLEAR' | 'FOG' | 'RAIN' | 'SNOW' | 'STORM';
+export type EnvAlertCode =
+  | 'LOW_VISIBILITY'
+  | 'HIGH_WIND'
+  | 'HEAVY_PRECIPITATION'
+  | 'STRONG_CURRENT_SET'
+  | 'SHOAL_PROXIMITY'
+  | 'OBSTRUCTION_NEARBY'
+  | 'DEPTH_DATA_MISSING';
 
 export interface WeatherWind {
   speed_kn: number | null;
@@ -175,11 +183,24 @@ export interface WeatherZoneContext {
   geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown };
 }
 
+export interface NearestObstructionSummary {
+  category: string | null;
+  distance_nm: number | null;
+  bearing_deg: number | null;
+}
+
+export interface HydrologyContext {
+  own_ship_min_depth_m: number | null;
+  nearest_shoal_nm: number | null;
+  nearest_obstruction: NearestObstructionSummary | null;
+}
+
 export interface EnvironmentContext {
   safety_contour_val: number;
-  active_alerts: string[];
+  active_alerts: EnvAlertCode[];
   weather?: WeatherContext | null;
   weather_zones?: WeatherZoneContext[] | null;
+  hydrology?: HydrologyContext | null;
 }
 
 // ============================================================

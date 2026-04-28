@@ -136,7 +136,7 @@ v1.0 Step 1 已引入 `environment_context.weather` 子字段。新增的 Step 2
 - `HEAVY_PRECIPITATION`：`precipitation_mm_per_hr > 10`
 - `STRONG_CURRENT_SET`：`surface_current.speed_kn > 2.5`
 
-与水文 track 共用同一枚举 `EnvAlertCode`（定义点 [`../hydrology/HYDROLOGY_PLAN.md`](../hydrology/HYDROLOGY_PLAN.md) §3.3）。截至当前计划版本，weather 已输出这些告警，但实现仍是字符串字面量；统一迁移到共享枚举的动作在 hydrology Step 2 一并落地。
+与水文 track 共用同一枚举 `EnvAlertCode`（定义点 [`../hydrology/HYDROLOGY_PLAN.md`](../hydrology/HYDROLOGY_PLAN.md) §3.3）。hydrology Step 2 落地后，weather 告警输出通过共享枚举转为字符串 code，继续保持 SSE `active_alerts` 的字符串数组契约。
 
 ### 3.4 风险引擎接入形态：区域求值后以标量修正 + 独立 penalty
 

@@ -1,5 +1,8 @@
 package com.whut.map.map_service.risk.pipeline.assembler;
 
+import com.whut.map.map_service.chart.dto.HydrologyContext;
+import com.whut.map.map_service.chart.service.HydrologyContextService;
+import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.OwnShipAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskObjectMetaAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.TargetAssembler;
@@ -22,15 +25,21 @@ public class RiskObjectAssembler {
     private final RiskObjectMetaAssembler riskObjectMetaAssembler;
     private final OwnShipAssembler ownShipAssembler;
     private final TargetAssembler targetAssembler;
+    private final HydrologyContextService hydrologyContextService;
+    private final SafetyContourStateHolder safetyContourStateHolder;
 
     public RiskObjectAssembler(
             RiskObjectMetaAssembler riskObjectMetaAssembler,
             OwnShipAssembler ownShipAssembler,
-            TargetAssembler targetAssembler
+            TargetAssembler targetAssembler,
+            HydrologyContextService hydrologyContextService,
+            SafetyContourStateHolder safetyContourStateHolder
     ) {
         this.riskObjectMetaAssembler = riskObjectMetaAssembler;
         this.ownShipAssembler = ownShipAssembler;
         this.targetAssembler = targetAssembler;
+        this.hydrologyContextService = hydrologyContextService;
+        this.safetyContourStateHolder = safetyContourStateHolder;
     }
 
     public RiskObjectDto assembleRiskObject(
@@ -49,6 +58,12 @@ public class RiskObjectAssembler {
 
         String snapshotTimestamp = riskObjectMetaAssembler.buildSnapshotTimestamp(allShips, ownShip);
         double trustFactor = computeOwnShipTrustFactor(ownShip);
+        double effectiveSafetyContourMeters = safetyContourStateHolder.getCurrentDepthMeters();
+        HydrologyContext hydrologyContext = hydrologyContextService.resolve(
+                ownShip.getLatitude(),
+                ownShip.getLongitude(),
+                effectiveSafetyContourMeters
+        );
 
         return RiskObjectDto.builder()
                 .riskObjectId(riskObjectMetaAssembler.buildRiskObjectId(ownShip, snapshotTimestamp))
@@ -57,7 +72,8 @@ public class RiskObjectAssembler {
                 .ownShip(ownShipAssembler.assemble(ownShip, domainResult))
                 .targets(targetAssembler.assembleTargets(
                         ownShip, allShips, cpaResults, riskResult, cvResults, predictedCpaResults, encounterResults))
-                .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext(ownShip))
+                .environmentContext(riskObjectMetaAssembler.buildEnvironmentContext(
+                        ownShip, effectiveSafetyContourMeters, hydrologyContext))
                 .build();
     }
 
