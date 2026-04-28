@@ -2,7 +2,7 @@
 
 > 文档状态：active
 > 最后更新：2026-04-27
-> 执行状态：planned
+> 执行状态：completed
 > 所属 track：[`AGENT_LOOP_PLAN.md`](./AGENT_LOOP_PLAN.md)
 > 对应总览：`AGENT_LOOP_PLAN.md` Appendix A.7
 > 目标：将当前 `@Qualifier("zhipu"|"gemini")` 硬编码任务路由改为任务级动态路由，并在前端 AI 中心提供受后端能力声明约束的 provider 选择。

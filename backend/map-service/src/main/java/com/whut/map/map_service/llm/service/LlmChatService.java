@@ -9,9 +9,12 @@ import com.whut.map.map_service.llm.agent.AgentStepEvent;
 import com.whut.map.map_service.llm.agent.AgentStepSink;
 import com.whut.map.map_service.llm.agent.AgentStepStatus;
 import com.whut.map.map_service.llm.agent.chat.ChatAgentPromptBuilder;
+import com.whut.map.map_service.llm.client.LlmClient;
+import com.whut.map.map_service.llm.client.LlmClientRegistry;
+import com.whut.map.map_service.llm.client.LlmProvider;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.config.LlmExecutorConfig;
 import com.whut.map.map_service.llm.config.LlmProperties;
-import com.whut.map.map_service.llm.client.LlmClient;
 import com.whut.map.map_service.llm.context.ExplanationCache;
 import com.whut.map.map_service.llm.context.RiskContextFormatter;
 import com.whut.map.map_service.llm.context.RiskContextHolder;
@@ -28,6 +31,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
@@ -42,8 +46,7 @@ import java.util.concurrent.TimeoutException;
 @RequiredArgsConstructor
 public class LlmChatService {
 
-    @Qualifier("gemini")
-    private final LlmClient llmClient;
+    private final LlmClientRegistry llmClientRegistry;
     private final LlmProperties llmProperties;
     private final PromptTemplateService promptTemplateService;
     private final RiskContextHolder riskContextHolder;
@@ -105,6 +108,9 @@ public class LlmChatService {
         }
 
         try {
+            LlmProvider provider = llmClientRegistry.resolveProviderForTask(LlmTaskType.CHAT);
+            LlmClient llmClient = llmClientRegistry.requireForTask(LlmTaskType.CHAT);
+            String providerName = provider.getValue();
             List<LlmChatMessage> messages = buildMessages(request);
             CompletableFuture<String> future = CompletableFuture
                     .supplyAsync(() -> llmClient.chat(messages), llmExecutor);
@@ -131,7 +137,7 @@ public class LlmChatService {
                                     conversationMemory.append(conversationId, userMessage);
                                     conversationMemory.append(conversationId, assistantMessage);
                                 }
-                                onSuccess.accept(new ChatReplyResult(responseText, resolveProviderName()));
+                                onSuccess.accept(new ChatReplyResult(responseText, providerName));
                                 return;
                             }
 
@@ -146,7 +152,7 @@ public class LlmChatService {
 
                             if (cause instanceof ApiException apiException && apiException.code() == 503) {
                                 log.warn("LLM chat request hit temporary upstream overload, provider={}, status={}, message={}",
-                                        resolveProviderName(),
+                                    providerName,
                                         apiException.status(),
                                         apiException.message());
                                 onError.accept(LlmErrorCode.LLM_FAILED,
@@ -166,6 +172,10 @@ public class LlmChatService {
             permit.close();
             log.warn("LLM executor rejected chat request: {}", e.getMessage());
             onError.accept(LlmErrorCode.LLM_FAILED, "LLM request failed.");
+        } catch (IllegalStateException e) {
+            permit.close();
+            log.warn("No available provider for chat task: {}", e.getMessage());
+            onError.accept(LlmErrorCode.LLM_DISABLED, "LLM provider is unavailable.");
         } catch (RuntimeException e) {
             permit.close();
             throw e;
@@ -217,10 +227,6 @@ public class LlmChatService {
                 explanationCache,
                 request.selectedExplanationRefs()
         );
-    }
-
-    private String resolveProviderName() {
-        return "gemini";
     }
 
     private List<LlmChatMessage> trimToTokenBudget(
@@ -289,7 +295,7 @@ public class LlmChatService {
             var initialMessages = chatAgentPromptBuilder.build(request, snapshot, resolvedContext);
             int maxIterations = llmProperties.getAdvisory().getMaxIterations();
             future = CompletableFuture.supplyAsync(
-                    () -> agentLoopOrchestrator.run(snapshot, initialMessages, maxIterations, onStep),
+                    () -> agentLoopOrchestrator.run(LlmTaskType.AGENT, snapshot, initialMessages, maxIterations, onStep),
                     llmExecutor
             );
         } catch (RejectedExecutionException e) {
@@ -346,7 +352,11 @@ public class LlmChatService {
                                             "势态整理完成"
                                     ));
                                 }
-                                onSuccess.accept(new ChatReplyResult(completed.finalText(), resolveProviderName()));
+                                String provider = Objects.requireNonNull(
+                                        completed.provider(),
+                                        "orchestrator must set provider in completed result"
+                                );
+                                onSuccess.accept(new ChatReplyResult(completed.finalText(), provider));
                             }
                             case AgentLoopResult.MaxIterationsExceeded exceeded -> {
                                 log.warn("Agent chat loop exceeded max iterations ({})", exceeded.iterations());

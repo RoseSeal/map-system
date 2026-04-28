@@ -6,6 +6,9 @@ import type {
   ChatErrorPayload,
   ChatReplyPayload,
   ExplanationReference,
+  LlmProviderCapability,
+  LlmProviderSelection,
+  LlmProviderSelectionPayload,
   SpeechMode,
   SpeechTranscriptPayload,
 } from '../types/schema';
@@ -48,6 +51,12 @@ interface AiCenterState {
   assistantMode: AssistantMode;
   chatCapabilityState: CapabilityState;
   chatCapability: ChatCapabilityPayload | null;
+  providerCapabilities: LlmProviderCapability[];
+  providerSelection: LlmProviderSelection | null;
+  providerSelectionPending: boolean;
+  providerSelectionPendingEventId: string | null;
+  providerSelectionRollback: LlmProviderSelection | null;
+  providerSelectionError: string | null;
   agentStepsByReplyToEventId: Record<string, AgentStepPayload[]>;
 
   speechEnabled: boolean;
@@ -81,6 +90,8 @@ interface AiCenterState {
   setChatConnectionState: (state: DisplayConnectionState) => void;
   setAssistantMode: (mode: AssistantMode) => void;
   setChatCapabilityState: (state: CapabilityState, payload: ChatCapabilityPayload | null) => void;
+  setProviderSelection: (selection: Partial<LlmProviderSelection>) => void;
+  applyProviderSelectionAck: (payload: LlmProviderSelectionPayload) => void;
   appendAgentStep: (payload: AgentStepPayload) => void;
   clearAgentSteps: (replyToEventId: string) => void;
   setSpeechEnabled: (enabled: boolean) => void;
@@ -117,6 +128,12 @@ const initialState = () => ({
   assistantMode: 'CHAT' as AssistantMode,
   chatCapabilityState: 'pending' as CapabilityState,
   chatCapability: null as ChatCapabilityPayload | null,
+  providerCapabilities: [] as LlmProviderCapability[],
+  providerSelection: null as LlmProviderSelection | null,
+  providerSelectionPending: false,
+  providerSelectionPendingEventId: null as string | null,
+  providerSelectionRollback: null as LlmProviderSelection | null,
+  providerSelectionError: null as string | null,
   agentStepsByReplyToEventId: {} as Record<string, AgentStepPayload[]>,
   speechEnabled: false,
   speechUnlocked: false,
@@ -578,6 +595,17 @@ export const useAiCenterStore = create<AiCenterState>()(
           };
         }
 
+        if (targetEventId && targetEventId === state.providerSelectionPendingEventId) {
+          return {
+            latestChatError: payload,
+            providerSelection: state.providerSelectionRollback ?? state.providerSelection,
+            providerSelectionPending: false,
+            providerSelectionPendingEventId: null,
+            providerSelectionRollback: null,
+            providerSelectionError: payload.error_message,
+          };
+        }
+
         if (targetEventId) {
           const targetMessageExists = state.chatMessages.some((message) => message.event_id === targetEventId);
           if (!targetMessageExists && state.activeVoiceEventId !== targetEventId) {
@@ -627,9 +655,61 @@ export const useAiCenterStore = create<AiCenterState>()(
     },
 
     setChatCapabilityState: (capState: CapabilityState, payload: ChatCapabilityPayload | null) => {
-      set({
+      set((state) => ({
         chatCapabilityState: capState,
         chatCapability: payload ?? null,
+        providerCapabilities: payload?.llm_providers ?? state.providerCapabilities,
+        providerSelection: payload?.effective_provider_selection ?? state.providerSelection,
+        providerSelectionPending: payload ? false : state.providerSelectionPending,
+        providerSelectionPendingEventId: payload ? null : state.providerSelectionPendingEventId,
+        providerSelectionRollback: payload ? null : state.providerSelectionRollback,
+        providerSelectionError: payload ? null : state.providerSelectionError,
+      }));
+    },
+
+    setProviderSelection: (selection: Partial<LlmProviderSelection>) => {
+      const state = get();
+      const current = state.providerSelection;
+      if (!current || state.chatCapabilityState !== 'ready') {
+        return;
+      }
+
+      const next: Partial<LlmProviderSelection> = {};
+      if (selection.explanation_provider && selection.explanation_provider !== current.explanation_provider) {
+        next.explanation_provider = selection.explanation_provider;
+      }
+      if (selection.chat_provider && selection.chat_provider !== current.chat_provider) {
+        next.chat_provider = selection.chat_provider;
+      }
+      if (Object.keys(next).length === 0) {
+        return;
+      }
+
+      const eventId = chatWsService.send('SET_LLM_PROVIDER_SELECTION', next);
+      if (!eventId) {
+        return;
+      }
+
+      set({
+        providerSelectionPending: true,
+        providerSelectionPendingEventId: eventId,
+        providerSelectionRollback: current,
+        providerSelectionError: null,
+      });
+    },
+
+    applyProviderSelectionAck: (payload: LlmProviderSelectionPayload) => {
+      set((state) => {
+        if (!state.providerSelectionPendingEventId || payload.reply_to_event_id !== state.providerSelectionPendingEventId) {
+          return state;
+        }
+        return {
+          providerSelection: payload.effective_provider_selection,
+          providerSelectionPending: false,
+          providerSelectionPendingEventId: null,
+          providerSelectionRollback: null,
+          providerSelectionError: null,
+        };
       });
     },
 
@@ -813,6 +893,10 @@ export const selectChatConnectionState = (state: AiCenterState) => state.chatCon
 export const selectAssistantMode = (state: AiCenterState) => state.assistantMode;
 export const selectChatCapabilityState = (state: AiCenterState) => state.chatCapabilityState;
 export const selectChatCapability = (state: AiCenterState) => state.chatCapability;
+export const selectProviderCapabilities = (state: AiCenterState) => state.providerCapabilities;
+export const selectProviderSelection = (state: AiCenterState) => state.providerSelection;
+export const selectProviderSelectionPending = (state: AiCenterState) => state.providerSelectionPending;
+export const selectProviderSelectionError = (state: AiCenterState) => state.providerSelectionError;
 export const selectAgentStepsByReplyToEventId = (state: AiCenterState) => state.agentStepsByReplyToEventId;
 
 let hasInitializedAiCenterStoreSubscriptions = false;
@@ -858,6 +942,10 @@ function initializeAiCenterStoreSubscriptions(): void {
 
   chatWsService.onCapabilityState((capState, payload) => {
     useAiCenterStore.getState().setChatCapabilityState(capState, payload);
+  });
+
+  chatWsService.onLlmProviderSelection((payload) => {
+    useAiCenterStore.getState().applyProviderSelectionAck(payload);
   });
 
   chatWsService.onAgentStep((payload) => {

@@ -14,6 +14,9 @@ import com.whut.map.map_service.llm.agent.chat.ChatAgentPromptBuilder;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.llm.client.LlmClient;
+import com.whut.map.map_service.llm.client.LlmClientRegistry;
+import com.whut.map.map_service.llm.client.LlmProvider;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.context.ExplanationCache;
 import com.whut.map.map_service.llm.context.RiskContextFormatter;
 import com.whut.map.map_service.llm.context.RiskContextHolder;
@@ -179,7 +182,7 @@ class LlmChatServiceTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             LlmChatService service = new LlmChatService(
-                    llmClient,
+                    mockRegistry(llmClient),
                     properties,
                     promptTemplateService,
                     holder,
@@ -228,7 +231,7 @@ class LlmChatServiceTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             LlmChatService service = new LlmChatService(
-                    llmClient,
+                    mockRegistry(llmClient),
                     properties,
                     promptTemplateService,
                     holder,
@@ -284,7 +287,7 @@ class LlmChatServiceTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             LlmChatService service = new LlmChatService(
-                    llmClient, properties, promptTemplateService, holder,
+                    mockRegistry(llmClient), properties, promptTemplateService, holder,
                     new RiskContextFormatter(properties), new ExplanationCache(), new ConversationMemory(properties), executor,
                     null, null, null);
             LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "它距离多少", List.of("target-1"), false, ChatAgentMode.CHAT, null);
@@ -330,7 +333,7 @@ class LlmChatServiceTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             LlmChatService service = new LlmChatService(
-                    llmClient, properties, promptTemplateService, holder,
+                    mockRegistry(llmClient), properties, promptTemplateService, holder,
                     new RiskContextFormatter(properties), new ExplanationCache(), new ConversationMemory(properties), executor,
                     null, null, null);
             LlmChatRequest request = new LlmChatRequest("c-1", "e-1", "hello", List.of("nonexistent"), false, ChatAgentMode.CHAT, null);
@@ -557,8 +560,8 @@ class LlmChatServiceTest {
         AgentLoopOrchestrator orchestrator = mock(AgentLoopOrchestrator.class);
         AgentSnapshot snapshot = new AgentSnapshot(1L, null, java.util.Map.of());
         when(snapshotFactory.build()).thenReturn(snapshot);
-        when(orchestrator.run(any(), any(), anyInt(), any()))
-                .thenReturn(AgentLoopResult.completed("agent reply", 2, 1));
+        when(orchestrator.run(any(LlmTaskType.class), any(), any(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed("agent reply", 2, 1, null, "gemini"));
         ConversationMemory conversationMemory = new ConversationMemory(properties);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
@@ -574,7 +577,7 @@ class LlmChatServiceTest {
             assertThat(callback.reply().content()).isEqualTo("agent reply");
             assertThat(callback.reply().provider()).isEqualTo("gemini");
             assertThat(llmClient.lastMessages).isNull();
-            verify(orchestrator).run(any(), any(), anyInt(), any());
+            verify(orchestrator).run(any(LlmTaskType.class), any(), any(), anyInt(), any());
         } finally {
             executor.shutdownNow();
         }
@@ -587,8 +590,8 @@ class LlmChatServiceTest {
         AgentSnapshotFactory snapshotFactory = mock(AgentSnapshotFactory.class);
         AgentLoopOrchestrator orchestrator = mock(AgentLoopOrchestrator.class);
         when(snapshotFactory.build()).thenReturn(new AgentSnapshot(1L, null, java.util.Map.of()));
-        when(orchestrator.run(any(), any(), anyInt(), any()))
-                .thenReturn(AgentLoopResult.completed("agent answer", 1, 2));
+        when(orchestrator.run(any(LlmTaskType.class), any(), any(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed("agent answer", 1, 2, null, "gemini"));
         ConversationMemory conversationMemory = new ConversationMemory(properties);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
@@ -617,8 +620,8 @@ class LlmChatServiceTest {
         AgentLoopOrchestrator orchestrator = mock(AgentLoopOrchestrator.class);
         when(snapshotFactory.build()).thenReturn(new AgentSnapshot(1L, null, java.util.Map.of()));
         // toolCallCount == 0 is allowed in chat path
-        when(orchestrator.run(any(), any(), anyInt(), any()))
-                .thenReturn(AgentLoopResult.completed("conversational answer", 1, 0));
+        when(orchestrator.run(any(LlmTaskType.class), any(), any(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed("conversational answer", 1, 0, null, "gemini"));
         ConversationMemory conversationMemory = new ConversationMemory(properties);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
@@ -646,8 +649,8 @@ class LlmChatServiceTest {
         AgentSnapshotFactory snapshotFactory = mock(AgentSnapshotFactory.class);
         AgentLoopOrchestrator orchestrator = mock(AgentLoopOrchestrator.class);
         when(snapshotFactory.build()).thenReturn(new AgentSnapshot(1L, null, java.util.Map.of()));
-        when(orchestrator.run(any(), any(), anyInt(), any()))
-                .thenReturn(AgentLoopResult.completed("agent reply", 1, 1, "finalizing-step-1"));
+        when(orchestrator.run(any(LlmTaskType.class), any(), any(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed("agent reply", 1, 1, "finalizing-step-1", "gemini"));
 
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
@@ -694,7 +697,7 @@ class LlmChatServiceTest {
         AgentSnapshotFactory snapshotFactory = mock(AgentSnapshotFactory.class);
         AgentLoopOrchestrator orchestrator = mock(AgentLoopOrchestrator.class);
         when(snapshotFactory.build()).thenReturn(new AgentSnapshot(1L, null, java.util.Map.of()));
-        when(orchestrator.run(any(), any(), anyInt(), any()))
+        when(orchestrator.run(any(LlmTaskType.class), any(), any(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.maxIterationsExceeded(5, 5));
         ConversationMemory conversationMemory = new ConversationMemory(properties);
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -722,7 +725,7 @@ class LlmChatServiceTest {
         AgentSnapshotFactory snapshotFactory = mock(AgentSnapshotFactory.class);
         AgentLoopOrchestrator orchestrator = mock(AgentLoopOrchestrator.class);
         when(snapshotFactory.build()).thenReturn(new AgentSnapshot(1L, null, java.util.Map.of()));
-        when(orchestrator.run(any(), any(), anyInt(), any()))
+        when(orchestrator.run(any(LlmTaskType.class), any(), any(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.providerFailed("LLM_REQUEST_FAILED", "provider error", null));
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
@@ -747,7 +750,7 @@ class LlmChatServiceTest {
         AgentSnapshotFactory snapshotFactory = mock(AgentSnapshotFactory.class);
         AgentLoopOrchestrator orchestrator = mock(AgentLoopOrchestrator.class);
         when(snapshotFactory.build()).thenReturn(new AgentSnapshot(1L, null, java.util.Map.of()));
-        when(orchestrator.run(any(), any(), anyInt(), any()))
+        when(orchestrator.run(any(LlmTaskType.class), any(), any(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.toolFailed("call-1", "get_target_detail", "tool error", null));
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
@@ -842,8 +845,8 @@ class LlmChatServiceTest {
         AgentSnapshotFactory snapshotFactory = mock(AgentSnapshotFactory.class);
         AgentLoopOrchestrator orchestrator = mock(AgentLoopOrchestrator.class);
         when(snapshotFactory.build()).thenReturn(new AgentSnapshot(1L, null, java.util.Map.of()));
-        when(orchestrator.run(any(), any(), anyInt(), any()))
-                .thenReturn(AgentLoopResult.completed("edited reply", 1, 1));
+        when(orchestrator.run(any(LlmTaskType.class), any(), any(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed("edited reply", 1, 1, null, "gemini"));
         ConversationMemory conversationMemory = new ConversationMemory(properties);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
@@ -880,7 +883,7 @@ class LlmChatServiceTest {
                 .when(rejectingExecutor).execute(any());
         ConversationMemory conversationMemory = new ConversationMemory(properties);
         LlmChatService service = new LlmChatService(
-                new StubLlmClient(), properties, promptTemplateService, riskContextHolder,
+                mockRegistry(new StubLlmClient()), properties, promptTemplateService, riskContextHolder,
                 riskContextFormatter, new ExplanationCache(), conversationMemory, rejectingExecutor,
                 snapshotFactory, null, new ChatAgentPromptBuilder(promptTemplateService)
         );
@@ -918,9 +921,9 @@ class LlmChatServiceTest {
         AgentSnapshotFactory snapshotFactory = mock(AgentSnapshotFactory.class);
         AgentLoopOrchestrator orchestrator = mock(AgentLoopOrchestrator.class);
         when(snapshotFactory.build()).thenReturn(new AgentSnapshot(1L, null, java.util.Map.of()));
-        when(orchestrator.run(any(), any(), anyInt(), any())).thenAnswer(inv -> {
+        when(orchestrator.run(any(LlmTaskType.class), any(), any(), anyInt(), any())).thenAnswer(inv -> {
             Thread.sleep(5000);
-            return AgentLoopResult.completed("late reply", 1, 0);
+            return AgentLoopResult.completed("late reply", 1, 0, null, "gemini");
         });
         ConversationMemory conversationMemory = new ConversationMemory(properties);
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -964,7 +967,7 @@ class LlmChatServiceTest {
             ChatAgentPromptBuilder promptBuilder
     ) {
         return new LlmChatService(
-                llmClient,
+                mockRegistry(llmClient),
                 properties,
                 promptTemplateService,
                 riskContextHolder,
@@ -976,6 +979,14 @@ class LlmChatServiceTest {
                 orchestrator,
                 promptBuilder
         );
+    }
+
+    private LlmClientRegistry mockRegistry(LlmClient llmClient) {
+        LlmClientRegistry registry = mock(LlmClientRegistry.class);
+        when(registry.resolveProviderForTask(LlmTaskType.CHAT)).thenReturn(LlmProvider.GEMINI);
+        when(registry.resolveProviderForTask(LlmTaskType.AGENT)).thenReturn(LlmProvider.GEMINI);
+        when(registry.requireForTask(LlmTaskType.CHAT)).thenReturn(llmClient);
+        return registry;
     }
 
     private static final class CapturingChatCallback {

@@ -1,7 +1,9 @@
 import type {
+  ChatCapabilityPayload,
   ChatErrorPayload,
   ChatReplyPayload,
   ClearHistoryAckPayload,
+  LlmProviderSelectionPayload,
   SpeechTranscriptPayload,
 } from '../../types/schema';
 
@@ -47,4 +49,49 @@ export const clearHistoryAckFixture: ClearHistoryAckPayload = {
   conversation_id: 'conversation-1',
   reply_to_event_id: 'clear-history-event-1',
   timestamp: '2026-04-15T12:13:00.000Z',
+};
+
+export const chatCapabilityFixture: ChatCapabilityPayload = {
+  event_id: 'capability-event-1',
+  chat_available: true,
+  agent_available: true,
+  speech_transcription_available: true,
+  disabled_reasons: {
+    chat: null,
+    agent: null,
+    speech_transcription: null,
+  },
+  llm_providers: [
+    {
+      provider: 'gemini',
+      display_name: 'Gemini',
+      available: true,
+      supported_tasks: ['explanation', 'chat', 'agent'],
+      quota_status: 'UNKNOWN',
+    },
+    {
+      provider: 'zhipu',
+      display_name: 'Zhipu',
+      available: true,
+      supported_tasks: ['explanation', 'chat', 'agent'],
+      degraded_tasks: ['agent'],
+      quota_status: 'UNKNOWN',
+    },
+  ],
+  effective_provider_selection: {
+    explanation_provider: 'zhipu',
+    chat_provider: 'gemini',
+  },
+  provider_selection_mutable: true,
+  timestamp: '2026-04-15T12:14:00.000Z',
+};
+
+export const llmProviderSelectionAckFixture: LlmProviderSelectionPayload = {
+  event_id: 'provider-selection-ack-1',
+  reply_to_event_id: 'provider-selection-event-1',
+  effective_provider_selection: {
+    explanation_provider: 'gemini',
+    chat_provider: 'zhipu',
+  },
+  timestamp: '2026-04-15T12:15:00.000Z',
 };

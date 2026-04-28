@@ -3,6 +3,9 @@ package com.whut.map.map_service.llm.agent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whut.map.map_service.llm.agent.tool.AgentToolRegistry;
 import com.whut.map.map_service.llm.client.LlmClient;
+import com.whut.map.map_service.llm.client.LlmClientRegistry;
+import com.whut.map.map_service.llm.client.LlmProvider;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,10 +16,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,6 +35,9 @@ class AgentLoopOrchestratorTest {
     private LlmClient llmClient;
 
     @Mock
+    private LlmClientRegistry llmClientRegistry;
+
+    @Mock
     private AgentToolRegistry toolRegistry;
 
     private AgentLoopOrchestrator orchestrator;
@@ -41,7 +49,9 @@ class AgentLoopOrchestratorTest {
     @BeforeEach
     void setUp() {
         when(toolRegistry.getToolDefinitions()).thenReturn(List.of());
-        orchestrator = new AgentLoopOrchestrator(llmClient, toolRegistry);
+        when(llmClientRegistry.resolveProviderForTask(any(LlmTaskType.class))).thenReturn(LlmProvider.GEMINI);
+        when(llmClientRegistry.find(eq(LlmProvider.GEMINI))).thenReturn(Optional.of(llmClient));
+        orchestrator = new AgentLoopOrchestrator(llmClientRegistry, toolRegistry);
     }
 
     @Test

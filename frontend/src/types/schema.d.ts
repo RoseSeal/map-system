@@ -27,8 +27,11 @@ export type PredictionType = 'linear' | 'cv';
 export type SafetyDomainShape = 'ellipse';
 export type PlatformHealthStatus = 'NORMAL' | 'DEGRADED' | 'NUC';
 export type GovernanceMode = 'adaptive';
-export type ChatProvider = 'gemini' | 'zhipu';
-export type ExplanationProvider = 'gemini' | 'zhipu' | 'fallback';
+export type LlmProviderId = 'gemini' | 'zhipu';
+export type LlmTaskType = 'explanation' | 'chat' | 'agent';
+export type LlmQuotaStatus = 'UNKNOWN' | 'AVAILABLE' | 'LIMITED' | 'EXHAUSTED';
+export type ChatProvider = LlmProviderId;
+export type ExplanationProvider = LlmProviderId | 'fallback';
 export type AdvisoryScope = 'SCENE';
 export type AdvisoryStatus = 'ACTIVE' | 'SUPERSEDED';
 export type AdvisoryActionType = 'COURSE_CHANGE' | 'SPEED_CHANGE' | 'MAINTAIN_COURSE' | 'MONITOR' | 'UNKNOWN';
@@ -244,6 +247,21 @@ export interface ExplanationReference {
   explanation_event_id: string;
 }
 
+export interface LlmProviderCapability {
+  provider: LlmProviderId;
+  display_name: string;
+  available: boolean;
+  supported_tasks: LlmTaskType[];
+  degraded_tasks?: LlmTaskType[];
+  quota_status: LlmQuotaStatus;
+  disabled_reason?: string;
+}
+
+export interface LlmProviderSelection {
+  explanation_provider: LlmProviderId;
+  chat_provider: LlmProviderId;
+}
+
 export interface SseErrorPayload {
   event_id: string;
   connection: 'risk';
@@ -257,8 +275,8 @@ export interface SseErrorPayload {
 // Chat WebSocket types
 // ============================================================
 
-export type ChatUplinkType = 'PING' | 'CHAT' | 'SPEECH' | 'CLEAR_HISTORY' | 'CLEAR_EXPIRED_EXPLANATIONS';
-export type ChatDownlinkType = 'PONG' | 'CAPABILITY' | 'CHAT_REPLY' | 'AGENT_STEP' | 'SPEECH_TRANSCRIPT' | 'ERROR' | 'CLEAR_HISTORY_ACK' | 'EXPIRED_EXPLANATIONS_CLEARED';
+export type ChatUplinkType = 'PING' | 'CHAT' | 'SPEECH' | 'CLEAR_HISTORY' | 'CLEAR_EXPIRED_EXPLANATIONS' | 'SET_LLM_PROVIDER_SELECTION';
+export type ChatDownlinkType = 'PONG' | 'CAPABILITY' | 'LLM_PROVIDER_SELECTION' | 'CHAT_REPLY' | 'AGENT_STEP' | 'SPEECH_TRANSCRIPT' | 'ERROR' | 'CLEAR_HISTORY_ACK' | 'EXPIRED_EXPLANATIONS_CLEARED';
 
 export interface ChatRequestPayload {
   conversation_id: string;
@@ -282,16 +300,32 @@ export interface ExpiredExplanationsClearedPayload {
   timestamp: string;
 }
 
+export interface SetLlmProviderSelectionPayload {
+  event_id: string;
+  explanation_provider?: LlmProviderId;
+  chat_provider?: LlmProviderId;
+}
+
 export interface ChatCapabilityPayload {
   event_id: string;
   chat_available: boolean;
   agent_available: boolean;
   speech_transcription_available: boolean;
   disabled_reasons?: {
-    chat?: string;
-    agent?: string;
-    speech_transcription?: string;
+    chat?: string | null;
+    agent?: string | null;
+    speech_transcription?: string | null;
   };
+  llm_providers: LlmProviderCapability[];
+  effective_provider_selection: LlmProviderSelection;
+  provider_selection_mutable: boolean;
+  timestamp: string;
+}
+
+export interface LlmProviderSelectionPayload {
+  event_id: string;
+  reply_to_event_id: string;
+  effective_provider_selection: LlmProviderSelection;
   timestamp: string;
 }
 
@@ -358,12 +392,12 @@ export interface ClearHistoryAckPayload {
 export interface ChatUplinkEnvelope {
   type: ChatUplinkType;
   source: 'client';
-  payload: ChatRequestPayload | SpeechRequestPayload | ClearHistoryPayload | ClearExpiredExplanationsPayload | null;
+  payload: ChatRequestPayload | SpeechRequestPayload | ClearHistoryPayload | ClearExpiredExplanationsPayload | SetLlmProviderSelectionPayload | null;
 }
 
 export interface ChatDownlinkEnvelope {
   type: ChatDownlinkType;
   source: 'server';
   sequence_id: string;
-  payload: ChatReplyPayload | SpeechTranscriptPayload | ChatErrorPayload | ClearHistoryAckPayload | ChatCapabilityPayload | AgentStepPayload | ExpiredExplanationsClearedPayload | null;
+  payload: ChatReplyPayload | SpeechTranscriptPayload | ChatErrorPayload | ClearHistoryAckPayload | ChatCapabilityPayload | LlmProviderSelectionPayload | AgentStepPayload | ExpiredExplanationsClearedPayload | null;
 }

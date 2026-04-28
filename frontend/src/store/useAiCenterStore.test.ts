@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  chatCapabilityFixture,
   chatErrorFixture,
   chatGlobalErrorFixture,
   chatReplyFixture,
+  llmProviderSelectionAckFixture,
   speechTranscriptFixture,
 } from '../test/fixtures';
 import { CHAT_CONFIG } from '../config/constants';
@@ -13,6 +15,10 @@ const chatSubscribers = vi.hoisted(() => ({
   onError: undefined as ((payload: unknown) => void) | undefined,
   onClearHistoryAck: undefined as ((payload: unknown) => void) | undefined,
   onConnectionStateChange: undefined as ((state: string) => void) | undefined,
+  onCapabilityState: undefined as ((state: string, payload: unknown) => void) | undefined,
+  onAgentStep: undefined as ((payload: unknown) => void) | undefined,
+  onExpiredExplanationsCleared: undefined as ((payload: unknown) => void) | undefined,
+  onLlmProviderSelection: undefined as ((payload: unknown) => void) | undefined,
 }));
 
 const chatWsServiceMock = vi.hoisted(() => ({
@@ -38,6 +44,22 @@ const chatWsServiceMock = vi.hoisted(() => ({
     chatSubscribers.onConnectionStateChange = cb;
     return vi.fn();
   }),
+  onCapabilityState: vi.fn((cb: (state: any, payload: any) => void) => {
+    chatSubscribers.onCapabilityState = cb;
+    return vi.fn();
+  }),
+  onAgentStep: vi.fn((cb: (payload: unknown) => void) => {
+    chatSubscribers.onAgentStep = cb;
+    return vi.fn();
+  }),
+  onExpiredExplanationsCleared: vi.fn((cb: (payload: unknown) => void) => {
+    chatSubscribers.onExpiredExplanationsCleared = cb;
+    return vi.fn();
+  }),
+  onLlmProviderSelection: vi.fn((cb: (payload: unknown) => void) => {
+    chatSubscribers.onLlmProviderSelection = cb;
+    return vi.fn();
+  }),
 }));
 
 vi.mock('../services/chatWsService', () => ({
@@ -53,6 +75,7 @@ describe('useAiCenterStore', () => {
     useRiskStore.getState().reset();
     useAiCenterStore.getState().reset();
     chatWsServiceMock.send.mockImplementation(() => 'generated-event-id');
+    useAiCenterStore.getState().setChatCapabilityState('ready', chatCapabilityFixture);
   });
 
   afterEach(() => {
@@ -84,6 +107,7 @@ describe('useAiCenterStore', () => {
     expect(chatWsServiceMock.send).toHaveBeenCalledWith('CHAT', {
       conversation_id: conversationId,
       content: 'Assess closest risk',
+      agent_mode: 'CHAT',
       selected_target_ids: ['TGT-ALARM'],
     });
 
@@ -100,6 +124,55 @@ describe('useAiCenterStore', () => {
 
     expect(store.sendTextMessage('message')).toBe(false);
     expect(useAiCenterStore.getState().chatMessages).toHaveLength(0);
+  });
+
+  it('setProviderSelection keeps effective value until ack and applies selection on ack', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('provider-selection-event-1');
+
+    store.setProviderSelection({ chat_provider: 'zhipu' });
+
+    expect(chatWsServiceMock.send).toHaveBeenCalledWith('SET_LLM_PROVIDER_SELECTION', {
+      chat_provider: 'zhipu',
+    });
+
+    let state = useAiCenterStore.getState();
+    expect(state.providerSelection?.chat_provider).toBe('gemini');
+    expect(state.providerSelectionPending).toBe(true);
+
+    store.applyProviderSelectionAck({
+      ...llmProviderSelectionAckFixture,
+      reply_to_event_id: 'provider-selection-event-1',
+      effective_provider_selection: {
+        explanation_provider: 'zhipu',
+        chat_provider: 'zhipu',
+      },
+    });
+
+    state = useAiCenterStore.getState();
+    expect(state.providerSelection?.chat_provider).toBe('zhipu');
+    expect(state.providerSelectionPending).toBe(false);
+    expect(state.providerSelectionError).toBeNull();
+  });
+
+  it('provider selection error rolls back pending selection', () => {
+    const store = useAiCenterStore.getState();
+    chatWsServiceMock.send.mockReturnValueOnce('provider-selection-event-2');
+
+    store.setProviderSelection({ explanation_provider: 'gemini' });
+    expect(useAiCenterStore.getState().providerSelectionPending).toBe(true);
+
+    store.appendChatError({
+      ...chatErrorFixture,
+      reply_to_event_id: 'provider-selection-event-2',
+      error_message: 'provider not available',
+      error_code: 'INVALID_CHAT_REQUEST',
+    });
+
+    const state = useAiCenterStore.getState();
+    expect(state.providerSelectionPending).toBe(false);
+    expect(state.providerSelection?.explanation_provider).toBe('zhipu');
+    expect(state.providerSelectionError).toBe('provider not available');
   });
 
   it('sendSpeechMessage validates input and handles preview vs direct mode', () => {
@@ -253,6 +326,7 @@ describe('useAiCenterStore', () => {
     expect(chatWsServiceMock.send).toHaveBeenLastCalledWith('CHAT', {
       conversation_id: conversationId,
       content: 'Edited question',
+      agent_mode: 'CHAT',
       edit_last_user_message: true,
     });
 

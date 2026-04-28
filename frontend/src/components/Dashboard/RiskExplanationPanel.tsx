@@ -26,6 +26,10 @@ import {
   selectRiskConnectionError,
   selectResolvedExplanations,
   selectSelectedTargetIds,
+  selectProviderCapabilities,
+  selectProviderSelection,
+  selectProviderSelectionPending,
+  selectProviderSelectionError,
   selectSpeechEnabled,
   selectSpeechSupported,
   selectTargets,
@@ -115,8 +119,13 @@ export function RiskExplanationPanel() {
   const assistantMode = useAiCenterStore(selectAssistantMode);
   const chatCapabilityState = useAiCenterStore(selectChatCapabilityState);
   const chatCapability = useAiCenterStore(selectChatCapability);
+  const providerCapabilities = useAiCenterStore(selectProviderCapabilities);
+  const providerSelection = useAiCenterStore(selectProviderSelection);
+  const providerSelectionPending = useAiCenterStore(selectProviderSelectionPending);
+  const providerSelectionError = useAiCenterStore(selectProviderSelectionError);
   const agentStepsByReplyToEventId = useAiCenterStore(selectAgentStepsByReplyToEventId);
   const setAssistantMode = useAiCenterStore((state) => state.setAssistantMode);
+  const setProviderSelection = useAiCenterStore((state) => state.setProviderSelection);
   const speechEnabled = useAiCenterStore(selectSpeechEnabled);
 
   const speechSupported = useAiCenterStore(selectSpeechSupported);
@@ -414,6 +423,18 @@ export function RiskExplanationPanel() {
     handleSpeechToggle();
   };
 
+  const providerSelectionMutable = chatCapability?.provider_selection_mutable ?? true;
+
+  const explanationProviderOptions = useMemo(
+    () => providerCapabilities.filter((provider) => provider.supported_tasks.includes('explanation')),
+    [providerCapabilities],
+  );
+
+  const chatProviderOptions = useMemo(
+    () => providerCapabilities.filter((provider) => provider.supported_tasks.includes('chat')),
+    [providerCapabilities],
+  );
+
   const glassClass = isDarkMode ? 'glass-vision-dark' : 'glass-vision';
 
   return (
@@ -644,7 +665,7 @@ export function RiskExplanationPanel() {
         <div
           style={{
             overflow: 'hidden',
-            maxHeight: isSettingsOpen ? 420 : 0,
+            maxHeight: isSettingsOpen ? 620 : 0,
             opacity: isSettingsOpen ? 1 : 0,
             transition: 'max-height 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.2s',
             borderBottom: '0.5px solid color-mix(in oklch, var(--ink-500) 12%, transparent)',
@@ -748,6 +769,136 @@ export function RiskExplanationPanel() {
                 </div>
               </div>
             </div>
+
+            <div className="flex items-center">
+              <div className="w-[140px] flex-shrink-0">
+                <div className="text-[11px] font-semibold" style={{ color: 'var(--ink-700)' }}>
+                  Chat 模型
+                </div>
+                <div className="text-[10px] leading-tight" style={{ color: 'var(--ink-500)' }}>
+                  Chat / Agent 共用 provider
+                </div>
+              </div>
+              <div className="flex flex-1 justify-end">
+                <div
+                  className="inline-flex w-[146px] items-center gap-0.5 rounded-lg p-0.5"
+                  style={{
+                    background: 'color-mix(in oklch, var(--ink-500) 8%, transparent)',
+                    border: '0.5px solid color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                    opacity: (!providerSelection || !providerSelectionMutable) ? 0.5 : 1,
+                    transition: 'opacity 0.2s',
+                  }}
+                >
+                  {!providerSelection
+                    ? (
+                      <span className="flex-1 py-1 text-center text-[10px]" style={{ color: 'var(--ink-400)' }}>
+                        等待中...
+                      </span>
+                    )
+                    : chatProviderOptions.map((provider) => {
+                      const isActive = providerSelection.chat_provider === provider.provider;
+                      const isUnavailable = !provider.available;
+                      const isInteractive = !isUnavailable && !providerSelectionPending && providerSelectionMutable;
+                      return (
+                        <button
+                          key={provider.provider}
+                          type="button"
+                          disabled={isUnavailable || providerSelectionPending || !providerSelectionMutable}
+                          title={isUnavailable ? (provider.disabled_reason ?? '不可用') : undefined}
+                          onClick={() => {
+                            if (!isActive && isInteractive) {
+                              setProviderSelection({ chat_provider: provider.provider as 'gemini' | 'zhipu' });
+                            }
+                          }}
+                          className="flex-1 px-3 py-1 text-[10px] font-medium transition-all duration-200"
+                          style={{
+                            borderRadius: '6px',
+                            border: 'none',
+                            background: isActive
+                              ? (isDarkMode ? 'rgba(255,255,255,0.12)' : 'white')
+                              : 'transparent',
+                            boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            color: isActive ? 'var(--accent)' : (isUnavailable ? 'var(--ink-400)' : 'var(--ink-500)'),
+                            cursor: isInteractive ? (isActive ? 'default' : 'pointer') : 'not-allowed',
+                            opacity: isUnavailable ? 0.4 : 1,
+                          }}
+                        >
+                          {provider.display_name}
+                        </button>
+                      );
+                    })
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <div className="w-[140px] flex-shrink-0">
+                <div className="text-[11px] font-semibold" style={{ color: 'var(--ink-700)' }}>
+                  风险解释模型
+                </div>
+                <div className="text-[10px] leading-tight" style={{ color: 'var(--ink-500)' }}>
+                  新 explanation 生成 provider
+                </div>
+              </div>
+              <div className="flex flex-1 justify-end">
+                <div
+                  className="inline-flex w-[146px] items-center gap-0.5 rounded-lg p-0.5"
+                  style={{
+                    background: 'color-mix(in oklch, var(--ink-500) 8%, transparent)',
+                    border: '0.5px solid color-mix(in oklch, var(--ink-500) 10%, transparent)',
+                    opacity: (!providerSelection || !providerSelectionMutable) ? 0.5 : 1,
+                    transition: 'opacity 0.2s',
+                  }}
+                >
+                  {!providerSelection
+                    ? (
+                      <span className="flex-1 py-1 text-center text-[10px]" style={{ color: 'var(--ink-400)' }}>
+                        等待中...
+                      </span>
+                    )
+                    : explanationProviderOptions.map((provider) => {
+                      const isActive = providerSelection.explanation_provider === provider.provider;
+                      const isUnavailable = !provider.available;
+                      const isInteractive = !isUnavailable && !providerSelectionPending && providerSelectionMutable;
+                      return (
+                        <button
+                          key={provider.provider}
+                          type="button"
+                          disabled={isUnavailable || providerSelectionPending || !providerSelectionMutable}
+                          title={isUnavailable ? (provider.disabled_reason ?? '不可用') : undefined}
+                          onClick={() => {
+                            if (!isActive && isInteractive) {
+                              setProviderSelection({ explanation_provider: provider.provider as 'gemini' | 'zhipu' });
+                            }
+                          }}
+                          className="flex-1 px-3 py-1 text-[10px] font-medium transition-all duration-200"
+                          style={{
+                            borderRadius: '6px',
+                            border: 'none',
+                            background: isActive
+                              ? (isDarkMode ? 'rgba(255,255,255,0.12)' : 'white')
+                              : 'transparent',
+                            boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            color: isActive ? 'var(--accent)' : (isUnavailable ? 'var(--ink-400)' : 'var(--ink-500)'),
+                            cursor: isInteractive ? (isActive ? 'default' : 'pointer') : 'not-allowed',
+                            opacity: isUnavailable ? 0.4 : 1,
+                          }}
+                        >
+                          {provider.display_name}
+                        </button>
+                      );
+                    })
+                  }
+                </div>
+              </div>
+            </div>
+
+            {providerSelectionError && (
+              <div className="text-[10px]" style={{ color: 'var(--risk-alarm)' }}>
+                {providerSelectionError}
+              </div>
+            )}
 
             <div className="flex items-center">
               <div className="w-[140px] flex-shrink-0">

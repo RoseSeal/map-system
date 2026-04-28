@@ -4,6 +4,7 @@ import com.whut.map.map_service.llm.agent.AgentLoopOrchestrator;
 import com.whut.map.map_service.llm.agent.AgentLoopResult;
 import com.whut.map.map_service.llm.agent.AgentMessage;
 import com.whut.map.map_service.llm.agent.AgentSnapshot;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.context.RiskContextHolder;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
@@ -106,8 +107,8 @@ class AdvisoryServiceTest {
     @Test
     void successfulGenerationPublishesAdvisoryAndCallsOnComplete() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt(), any()))
-                .thenReturn(AgentLoopResult.completed("text", 3, 2));
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed("text", 3, 2, null, "zhipu"));
         when(outputParser.parse(eq("text"), any())).thenReturn(validParsed());
 
         AtomicBoolean completed = new AtomicBoolean(false);
@@ -117,14 +118,14 @@ class AdvisoryServiceTest {
         verify(riskStreamPublisher).publishAdvisory(captor.capture());
         assertThat(captor.getValue().getSummary()).isEqualTo("摘要");
         assertThat(captor.getValue().getRiskLevel()).isEqualTo(RiskLevel.ALARM);
-        assertThat(captor.getValue().getProvider()).isEqualTo("gemini");
+        assertThat(captor.getValue().getProvider()).isEqualTo("zhipu");
         assertThat(completed.get()).isTrue();
     }
 
     @Test
     void schemaFailurePublishesErrorAndCallsOnComplete() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt(), any()))
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.completed("bad", 3, 2));
         when(outputParser.parse(any(), any())).thenReturn(null);
 
@@ -139,7 +140,7 @@ class AdvisoryServiceTest {
     @Test
     void zeroToolCallCountTreatedAsSchemaFailure() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt(), any()))
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.completed("guessed", 1, 0));
 
         AtomicBoolean completed = new AtomicBoolean(false);
@@ -165,7 +166,7 @@ class AdvisoryServiceTest {
     @Test
     void supersedesIdFilledFromPreviousAdvisory() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt(), any()))
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.completed("text", 3, 2));
         when(outputParser.parse(any(), any())).thenReturn(validParsed());
 
@@ -183,7 +184,7 @@ class AdvisoryServiceTest {
     @Test
     void providerFailurePublishesErrorAndCallsOnComplete() {
         when(riskContextHolder.getVersion()).thenReturn(10L);
-        when(orchestrator.run(any(), anyList(), anyInt(), any()))
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.providerFailed("LLM_TIMEOUT", "timeout", null));
 
         AtomicBoolean completed = new AtomicBoolean(false);

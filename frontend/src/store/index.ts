@@ -41,5 +41,9 @@ export {
   selectAssistantMode,
   selectChatCapabilityState,
   selectChatCapability,
+  selectProviderCapabilities,
+  selectProviderSelection,
+  selectProviderSelectionPending,
+  selectProviderSelectionError,
   selectAgentStepsByReplyToEventId,
 } from './useAiCenterStore';

@@ -3,6 +3,7 @@ package com.whut.map.map_service.llm.agent.advisory;
 import com.whut.map.map_service.llm.agent.AgentLoopOrchestrator;
 import com.whut.map.map_service.llm.agent.AgentLoopResult;
 import com.whut.map.map_service.llm.agent.AgentSnapshot;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.agent.trigger.AdvisoryTriggerPort;
 import com.whut.map.map_service.llm.config.LlmExecutorConfig;
 import com.whut.map.map_service.llm.config.LlmProperties;
@@ -17,6 +18,7 @@ import com.whut.map.map_service.shared.dto.sse.AdvisoryStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -88,7 +90,11 @@ public class AdvisoryService implements AdvisoryTriggerPort {
             }
 
             var initialMessages = promptBuilder.build(snapshot);
-            AgentLoopResult loopResult = orchestrator.run(snapshot, initialMessages, config.getMaxIterations(),
+            AgentLoopResult loopResult = orchestrator.run(
+                    LlmTaskType.AGENT,
+                    snapshot,
+                    initialMessages,
+                    config.getMaxIterations(),
                     com.whut.map.map_service.llm.agent.AgentStepSink.NOOP);
 
             switch (loopResult) {
@@ -104,7 +110,7 @@ public class AdvisoryService implements AdvisoryTriggerPort {
                         publishSchemaFailed();
                         return;
                     }
-                    publishAdvisory(snapshot, parsed, config);
+                    publishAdvisory(snapshot, parsed, config, completed.provider());
                 }
                 case AgentLoopResult.MaxIterationsExceeded exceeded -> {
                     log.warn("Advisory loop exceeded max iterations ({}), discarding", exceeded.iterations());
@@ -126,7 +132,12 @@ public class AdvisoryService implements AdvisoryTriggerPort {
         }
     }
 
-    private void publishAdvisory(AgentSnapshot snapshot, AdvisoryOutputParser.ParsedAdvisory parsed, LlmProperties.Advisory config) {
+    private void publishAdvisory(
+            AgentSnapshot snapshot,
+            AdvisoryOutputParser.ParsedAdvisory parsed,
+            LlmProperties.Advisory config,
+            String provider
+    ) {
         String advisoryId = UUID.randomUUID().toString();
         String prevId = lastAdvisoryId.getAndSet(advisoryId);
 
@@ -143,7 +154,7 @@ public class AdvisoryService implements AdvisoryTriggerPort {
                 .supersedesId(prevId)
                 .validUntil(validUntil)
                 .riskLevel(highestRiskLevel(snapshot))
-                .provider("gemini")
+                .provider(StringUtils.hasText(provider) ? provider : "unknown")
                 .timestamp(now.toString())
                 .summary(parsed.summary())
                 .affectedTargets(parsed.affectedTargets())

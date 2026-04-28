@@ -1,5 +1,6 @@
 package com.whut.map.map_service.llm.config;
 
+import com.whut.map.map_service.llm.client.LlmProvider;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,16 +18,34 @@ public class LlmConfigurationValidator {
             return;
         }
 
-        requireApiKey("llm.zhipu.api-key", llmProperties.getZhipu().getApiKey());
-        requireApiKey("llm.gemini.api-key", llmProperties.getGemini().getApiKey());
+        requireProviderCredentials(llmProperties.resolveExplanationProvider(), "llm.explanation-provider");
+        requireProviderCredentials(llmProperties.resolveChatProvider(), "llm.chat-provider");
         validateProxy("llm.gemini.proxy", llmProperties.getGemini().getProxy());
         validateRetry("llm.gemini.retry", llmProperties.getGemini().getRetry());
     }
 
+    private void requireProviderCredentials(LlmProvider provider, String selectionProperty) {
+        if (provider == null) {
+            throw new IllegalStateException("Missing required provider selection '" + selectionProperty + "' when llm.enabled=true");
+        }
+
+        switch (provider) {
+            case GEMINI -> requireApiKey("llm.gemini.api-key", llmProperties.getGemini().getApiKey(), selectionProperty);
+            case ZHIPU -> requireApiKey("llm.zhipu.api-key", llmProperties.getZhipu().getApiKey(), selectionProperty);
+        }
+    }
+
     private void requireApiKey(String propertyName, String apiKey) {
+        requireApiKey(propertyName, apiKey, null);
+    }
+
+    private void requireApiKey(String propertyName, String apiKey, String selectionProperty) {
         if (!StringUtils.hasText(apiKey)) {
+            String suffix = StringUtils.hasText(selectionProperty)
+                    ? " Required by " + selectionProperty + "."
+                    : "";
             throw new IllegalStateException("Missing required property '" + propertyName
-                    + "' when llm.enabled=true. Current task routing requires Zhipu for explanation and Gemini for chat/agent.");
+                    + "' when llm.enabled=true." + suffix);
         }
     }
 

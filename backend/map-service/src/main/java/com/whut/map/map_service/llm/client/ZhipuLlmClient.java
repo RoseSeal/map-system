@@ -26,6 +26,7 @@ import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -36,6 +37,7 @@ import java.util.UUID;
 @Qualifier("zhipu")
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "llm.enabled", havingValue = "true")
+@ConditionalOnExpression("T(org.springframework.util.StringUtils).hasText('${llm.zhipu.api-key:}')")
 public class ZhipuLlmClient implements LlmClient {
 
     private final ZhipuAiClient zhipuAiClient;

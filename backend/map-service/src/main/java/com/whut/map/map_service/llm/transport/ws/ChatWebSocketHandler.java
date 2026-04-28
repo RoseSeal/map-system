@@ -3,6 +3,10 @@ package com.whut.map.map_service.llm.transport.ws;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whut.map.map_service.llm.agent.AgentStepEvent;
+import com.whut.map.map_service.llm.client.LlmClientRegistry;
+import com.whut.map.map_service.llm.client.LlmProvider;
+import com.whut.map.map_service.llm.client.LlmProviderSelectionStore;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.config.WhisperProperties;
 import com.whut.map.map_service.llm.context.ExplanationCache;
@@ -28,7 +32,9 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -45,6 +51,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final ConversationMemory conversationMemory;
     private final AudioValidator audioValidator;
     private final ExplanationCache explanationCache;
+    private final LlmClientRegistry llmClientRegistry;
+    private final LlmProviderSelectionStore llmProviderSelectionStore;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -88,9 +96,62 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             case CHAT -> handleChat(session, envelope.getPayload());
             case SPEECH -> handleSpeech(session, envelope.getPayload());
             case CLEAR_HISTORY -> handleClearHistory(session, envelope.getPayload());
+            case SET_LLM_PROVIDER_SELECTION -> handleSetLlmProviderSelection(session, envelope.getPayload());
             case CLEAR_EXPIRED_EXPLANATIONS -> handleClearExpiredExplanations(session, envelope.getPayload());
             default -> sendError(session, readText(envelope.getPayload(), ProtocolFields.EVENT_ID), ChatErrorCode.INVALID_CHAT_REQUEST, "Unsupported message type.");
         }
+    }
+
+    private void handleSetLlmProviderSelection(WebSocketSession session, JsonNode payloadNode) {
+        if (payloadNode == null || payloadNode.isNull()) {
+            sendError(session, null, ChatErrorCode.INVALID_CHAT_REQUEST, "SET_LLM_PROVIDER_SELECTION payload is required.");
+            return;
+        }
+
+        SetLlmProviderSelectionPayload payload = tryParsePayload(
+                session,
+                payloadNode,
+                SetLlmProviderSelectionPayload.class,
+                ChatErrorCode.INVALID_CHAT_REQUEST,
+                "SET_LLM_PROVIDER_SELECTION"
+        );
+        if (payload == null) {
+            return;
+        }
+
+        if (!StringUtils.hasText(payload.getEventId())) {
+            sendError(session, null, ChatErrorCode.INVALID_CHAT_REQUEST, "event_id is required for SET_LLM_PROVIDER_SELECTION.");
+            return;
+        }
+
+        if (payload.getExplanationProvider() == null && payload.getChatProvider() == null) {
+            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST,
+                    "At least one of explanation_provider or chat_provider must be provided.");
+            return;
+        }
+
+        if (payload.getExplanationProvider() != null
+                && !llmClientRegistry.isProviderAvailableForTask(payload.getExplanationProvider(), LlmTaskType.EXPLANATION)) {
+            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST,
+                    "explanation_provider is unavailable or unsupported.");
+            return;
+        }
+
+        if (payload.getChatProvider() != null
+                && !llmClientRegistry.isProviderAvailableForTask(payload.getChatProvider(), LlmTaskType.CHAT)) {
+            sendError(session, payload.getEventId(), ChatErrorCode.INVALID_CHAT_REQUEST,
+                    "chat_provider is unavailable or unsupported.");
+            return;
+        }
+
+        if (payload.getExplanationProvider() != null) {
+            llmProviderSelectionStore.updateSelection(LlmTaskType.EXPLANATION, payload.getExplanationProvider());
+        }
+        if (payload.getChatProvider() != null) {
+            llmProviderSelectionStore.updateSelection(LlmTaskType.CHAT, payload.getChatProvider());
+        }
+
+        sendLlmProviderSelectionAck(session, payload.getEventId());
     }
 
     private void handlePing(WebSocketSession session, JsonNode payload) {
@@ -326,14 +387,69 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void sendCapability(WebSocketSession session) {
+        boolean llmEnabled = llmProperties.isEnabled();
+        boolean chatAvailable = llmEnabled && llmClientRegistry.isTaskAvailable(LlmTaskType.CHAT);
+        boolean agentAvailable = llmEnabled
+                && llmProperties.isAgentModeEnabled()
+                && llmClientRegistry.isTaskAvailable(LlmTaskType.AGENT);
+        boolean speechAvailable = llmEnabled;
+
+        Map<String, String> disabledReasons = new LinkedHashMap<>();
+        if (!chatAvailable) {
+            disabledReasons.put("chat", llmEnabled
+                    ? "No available provider for chat task."
+                    : "LLM is disabled.");
+        }
+        if (!agentAvailable) {
+            if (!llmEnabled) {
+                disabledReasons.put("agent", "LLM is disabled.");
+            } else if (!llmProperties.isAgentModeEnabled()) {
+                disabledReasons.put("agent", "Agent mode is not enabled on this server.");
+            } else {
+                disabledReasons.put("agent", "No available provider for agent task.");
+            }
+        }
+        if (!speechAvailable) {
+            disabledReasons.put("speech_transcription", "LLM is disabled.");
+        }
+
         ChatCapabilityPayload payload = ChatCapabilityPayload.builder()
                 .eventId(generateEventId())
-                .chatAvailable(llmProperties.isEnabled())
-                .agentAvailable(llmProperties.isEnabled() && llmProperties.isAgentModeEnabled())
-                .speechTranscriptionAvailable(llmProperties.isEnabled())
+                .chatAvailable(chatAvailable)
+                .agentAvailable(agentAvailable)
+                .speechTranscriptionAvailable(speechAvailable)
+                .disabledReasons(disabledReasons.isEmpty() ? null : disabledReasons)
+                .llmProviders(llmClientRegistry.describeCapabilities())
+                .effectiveProviderSelection(buildEffectiveProviderSelection())
+                .providerSelectionMutable(true)
                 .timestamp(Instant.now().toString())
                 .build();
         sendDownlink(session, ChatMessageType.CAPABILITY, payload);
+    }
+
+    private void sendLlmProviderSelectionAck(WebSocketSession session, String replyToEventId) {
+        LlmProviderSelectionPayload payload = LlmProviderSelectionPayload.builder()
+                .eventId(generateEventId())
+                .replyToEventId(replyToEventId)
+                .effectiveProviderSelection(buildEffectiveProviderSelection())
+                .timestamp(Instant.now().toString())
+                .build();
+        sendDownlink(session, ChatMessageType.LLM_PROVIDER_SELECTION, payload);
+    }
+
+    private EffectiveProviderSelection buildEffectiveProviderSelection() {
+        return EffectiveProviderSelection.builder()
+                .explanationProvider(resolveEffectiveProvider(LlmTaskType.EXPLANATION))
+                .chatProvider(resolveEffectiveProvider(LlmTaskType.CHAT))
+                .build();
+    }
+
+    private LlmProvider resolveEffectiveProvider(LlmTaskType taskType) {
+        try {
+            return llmClientRegistry.resolveProviderForTask(taskType);
+        } catch (Exception e) {
+            return llmProviderSelectionStore.getSelection(taskType);
+        }
     }
 
     private void sendAgentStep(

@@ -123,7 +123,7 @@ class LlmTriggerServiceTest {
     // Returns an explanation whose riskLevel matches the triggered target's level,
     // so lastExplainedLevelMap is updated correctly for upgrade-gate tests.
     private static LlmExplanationService levelEchoService() {
-        return new LlmExplanationService(null, null, null, null) {
+        return new LlmExplanationService(null, null, null, null, null) {
             @Override
             public void generateTargetExplanationsAsync(
                     LlmRiskOwnShipContext ownShip,
@@ -141,7 +141,7 @@ class LlmTriggerServiceTest {
     }
 
     private static LlmExplanationService immediateService(LlmExplanation toReturn) {
-        return new LlmExplanationService(null, null, null, null) {
+        return new LlmExplanationService(null, null, null, null, null) {
             @Override
             public void generateTargetExplanationsAsync(
                     LlmRiskOwnShipContext ownShip,

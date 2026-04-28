@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WS_CONFIG } from '../config/constants';
 import {
+  chatCapabilityFixture,
   chatErrorFixture,
   chatReplyFixture,
   clearHistoryAckFixture,
+  llmProviderSelectionAckFixture,
   speechTranscriptFixture,
 } from '../test/fixtures';
 import { chatWsService } from './chatWsService';
@@ -101,7 +103,8 @@ describe('chatWsService', () => {
     randomSpy
       .mockReturnValueOnce('11111111-1111-1111-1111-111111111111')
       .mockReturnValueOnce('22222222-2222-2222-2222-222222222222')
-      .mockReturnValueOnce('33333333-3333-3333-3333-333333333333');
+      .mockReturnValueOnce('33333333-3333-3333-3333-333333333333')
+      .mockReturnValueOnce('44444444-4444-4444-4444-444444444444');
 
     const chatEventId = chatWsService.send('CHAT', {
       conversation_id: 'conversation-1',
@@ -121,11 +124,16 @@ describe('chatWsService', () => {
       conversation_id: 'conversation-1',
     });
 
+    const providerSelectionEventId = chatWsService.send('SET_LLM_PROVIDER_SELECTION', {
+      chat_provider: 'zhipu',
+    });
+
     expect(chatEventId).toBe('11111111-1111-1111-1111-111111111111');
     expect(speechEventId).toBe('22222222-2222-2222-2222-222222222222');
     expect(clearHistoryEventId).toBe('33333333-3333-3333-3333-333333333333');
+    expect(providerSelectionEventId).toBe('44444444-4444-4444-4444-444444444444');
 
-    const [chatEnvelope, speechEnvelope, clearHistoryEnvelope] = socket.sentMessages.map((message) => JSON.parse(message));
+    const [chatEnvelope, speechEnvelope, clearHistoryEnvelope, providerSelectionEnvelope] = socket.sentMessages.map((message) => JSON.parse(message));
 
     expect(chatEnvelope).toEqual({
       type: 'CHAT',
@@ -159,6 +167,15 @@ describe('chatWsService', () => {
         event_id: '33333333-3333-3333-3333-333333333333',
       },
     });
+
+    expect(providerSelectionEnvelope).toEqual({
+      type: 'SET_LLM_PROVIDER_SELECTION',
+      source: 'client',
+      payload: {
+        chat_provider: 'zhipu',
+        event_id: '44444444-4444-4444-4444-444444444444',
+      },
+    });
   });
 
   it('send returns null or false while disconnected', () => {
@@ -177,13 +194,17 @@ describe('chatWsService', () => {
     expect(chatWsService.send('PING', null)).toBe(false);
   });
 
-  it('handleMessage dispatches CHAT_REPLY, SPEECH_TRANSCRIPT, ERROR, CLEAR_HISTORY_ACK and PONG', () => {
+  it('handleMessage dispatches CAPABILITY, provider selection ack, CHAT_REPLY, SPEECH_TRANSCRIPT, ERROR, CLEAR_HISTORY_ACK and PONG', () => {
+    const capabilitySpy = vi.fn();
+    const providerSelectionSpy = vi.fn();
     const chatReplySpy = vi.fn();
     const transcriptSpy = vi.fn();
     const errorSpy = vi.fn();
     const clearHistoryAckSpy = vi.fn();
     const pongSpy = vi.fn();
 
+    const offCapability = chatWsService.onCapabilityState(capabilitySpy);
+    const offProviderSelection = chatWsService.onLlmProviderSelection(providerSelectionSpy);
     const offReply = chatWsService.onChatReply(chatReplySpy);
     const offTranscript = chatWsService.onSpeechTranscript(transcriptSpy);
     const offError = chatWsService.onError(errorSpy);
@@ -193,6 +214,20 @@ describe('chatWsService', () => {
     chatWsService.connect('ws://localhost:8080/api/v2/chat');
     const socket = MockWebSocket.instances[0];
     socket.triggerOpen();
+
+    socket.triggerMessage(JSON.stringify({
+      type: 'CAPABILITY',
+      source: 'server',
+      sequence_id: 'seq-0',
+      payload: chatCapabilityFixture,
+    }));
+
+    socket.triggerMessage(JSON.stringify({
+      type: 'LLM_PROVIDER_SELECTION',
+      source: 'server',
+      sequence_id: 'seq-0b',
+      payload: llmProviderSelectionAckFixture,
+    }));
 
     socket.triggerMessage(JSON.stringify({
       type: 'CHAT_REPLY',
@@ -229,12 +264,17 @@ describe('chatWsService', () => {
       payload: null,
     }));
 
+    expect(capabilitySpy).toHaveBeenCalledWith('pending', null);
+    expect(capabilitySpy).toHaveBeenCalledWith('ready', chatCapabilityFixture);
+    expect(providerSelectionSpy).toHaveBeenCalledWith(llmProviderSelectionAckFixture);
     expect(chatReplySpy).toHaveBeenCalledWith(chatReplyFixture);
     expect(transcriptSpy).toHaveBeenCalledWith(speechTranscriptFixture);
     expect(errorSpy).toHaveBeenCalledWith(chatErrorFixture);
     expect(clearHistoryAckSpy).toHaveBeenCalledWith(clearHistoryAckFixture);
     expect(pongSpy).toHaveBeenCalledTimes(1);
 
+    offCapability();
+    offProviderSelection();
     offReply();
     offTranscript();
     offError();
@@ -262,6 +302,12 @@ describe('chatWsService', () => {
     chatWsService.connect('ws://localhost:8080/api/v2/chat');
     const socket = MockWebSocket.instances[0];
     socket.triggerOpen();
+    socket.triggerMessage(JSON.stringify({
+      type: 'CAPABILITY',
+      source: 'server',
+      sequence_id: 'seq-cap',
+      payload: chatCapabilityFixture,
+    }));
 
     vi.advanceTimersByTime(WS_CONFIG.HEARTBEAT_INTERVAL_MS);
     expect(socket.sentMessages).toHaveLength(1);

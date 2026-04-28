@@ -3,6 +3,7 @@ import type {
   ChatCapabilityPayload,
   ChatDownlinkEnvelope,
   ChatErrorPayload,
+  LlmProviderSelectionPayload,
   ChatReplyPayload,
   ChatRequestPayload,
   ChatUplinkEnvelope,
@@ -11,6 +12,7 @@ import type {
   ClearHistoryAckPayload,
   ClearHistoryPayload,
   ExpiredExplanationsClearedPayload,
+  SetLlmProviderSelectionPayload,
   SpeechRequestPayload,
   SpeechTranscriptPayload,
 } from '../types/schema';
@@ -24,6 +26,7 @@ type SpeechTranscriptCallback = (payload: SpeechTranscriptPayload) => void;
 type ErrorCallback = (payload: ChatErrorPayload) => void;
 type ClearHistoryAckCallback = (payload: ClearHistoryAckPayload) => void;
 type ExpiredExplanationsClearedCallback = (payload: ExpiredExplanationsClearedPayload) => void;
+type LlmProviderSelectionCallback = (payload: LlmProviderSelectionPayload) => void;
 type PongCallback = () => void;
 type CapabilityCallback = (state: CapabilityState, payload: ChatCapabilityPayload | null) => void;
 type AgentStepCallback = (payload: AgentStepPayload) => void;
@@ -49,6 +52,7 @@ class ChatWsService {
   private errorCallbacks = new Set<ErrorCallback>();
   private clearHistoryAckCallbacks = new Set<ClearHistoryAckCallback>();
   private expiredExplanationsClearedCallbacks = new Set<ExpiredExplanationsClearedCallback>();
+  private llmProviderSelectionCallbacks = new Set<LlmProviderSelectionCallback>();
   private pongCallbacks = new Set<PongCallback>();
   private connectionStateCallbacks = new Set<(state: DisplayConnectionState) => void>();
   private capabilityCallbacks = new Set<CapabilityCallback>();
@@ -151,12 +155,14 @@ class ChatWsService {
   send(type: 'SPEECH', payload: Omit<SpeechRequestPayload, 'event_id'>): string | null;
   send(type: 'CLEAR_HISTORY', payload: Omit<ClearHistoryPayload, 'event_id'>): string | null;
   send(type: 'CLEAR_EXPIRED_EXPLANATIONS', payload: Omit<ClearExpiredExplanationsPayload, 'event_id'>): string | null;
+  send(type: 'SET_LLM_PROVIDER_SELECTION', payload: Omit<SetLlmProviderSelectionPayload, 'event_id'>): string | null;
   send(
     type: ChatUplinkType,
     payload: Omit<ChatRequestPayload, 'event_id'>
       | Omit<SpeechRequestPayload, 'event_id'>
       | Omit<ClearHistoryPayload, 'event_id'>
       | Omit<ClearExpiredExplanationsPayload, 'event_id'>
+      | Omit<SetLlmProviderSelectionPayload, 'event_id'>
       | null,
   ): boolean | string | null {
     if (!this.socket || this.state !== 'connected') {
@@ -208,6 +214,13 @@ class ChatWsService {
     this.expiredExplanationsClearedCallbacks.add(cb);
     return () => {
       this.expiredExplanationsClearedCallbacks.delete(cb);
+    };
+  }
+
+  onLlmProviderSelection(cb: LlmProviderSelectionCallback): () => void {
+    this.llmProviderSelectionCallbacks.add(cb);
+    return () => {
+      this.llmProviderSelectionCallbacks.delete(cb);
     };
   }
 
@@ -266,6 +279,7 @@ class ChatWsService {
       | Omit<SpeechRequestPayload, 'event_id'>
       | Omit<ClearHistoryPayload, 'event_id'>
       | Omit<ClearExpiredExplanationsPayload, 'event_id'>
+      | Omit<SetLlmProviderSelectionPayload, 'event_id'>
       | null,
   ): { envelope: ChatUplinkEnvelope; eventId: string | null } {
     if (type === 'PING') {
@@ -287,7 +301,7 @@ class ChatWsService {
         payload: {
           ...payload,
           event_id: eventId,
-        } as ChatRequestPayload | SpeechRequestPayload,
+        } as ChatRequestPayload | SpeechRequestPayload | ClearHistoryPayload | ClearExpiredExplanationsPayload | SetLlmProviderSelectionPayload,
       },
       eventId,
     };
@@ -313,6 +327,12 @@ class ChatWsService {
           this.clearCapabilityTimer();
           this.capabilityState = 'ready';
           this.notifyCapabilityState(payload);
+        }
+        return;
+      case 'LLM_PROVIDER_SELECTION':
+        if (isLlmProviderSelectionPayload(message.payload)) {
+          const payload = message.payload;
+          this.llmProviderSelectionCallbacks.forEach((cb) => cb(payload));
         }
         return;
       case 'CHAT_REPLY':
@@ -408,7 +428,18 @@ function isChatCapabilityPayload(payload: ChatDownlinkEnvelope['payload']): payl
     && typeof payload === 'object'
     && 'chat_available' in payload
     && 'agent_available' in payload
-    && 'speech_transcription_available' in payload,
+    && 'speech_transcription_available' in payload
+    && 'llm_providers' in payload
+    && 'effective_provider_selection' in payload,
+  );
+}
+
+function isLlmProviderSelectionPayload(payload: ChatDownlinkEnvelope['payload']): payload is LlmProviderSelectionPayload {
+  return Boolean(
+    payload
+    && typeof payload === 'object'
+    && 'effective_provider_selection' in payload
+    && 'reply_to_event_id' in payload,
   );
 }
 

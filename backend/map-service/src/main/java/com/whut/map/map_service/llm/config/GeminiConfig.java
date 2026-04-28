@@ -7,6 +7,7 @@ import org.apache.http.HttpHost;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +24,7 @@ public class GeminiConfig {
     private final LlmProperties llmProperties;
 
     @Bean
+    @ConditionalOnExpression("T(org.springframework.util.StringUtils).hasText('${llm.gemini.api-key:}')")
     public Client geminiClient() {
         Client client = new Client.Builder()
                 .apiKey(llmProperties.getGemini().getApiKey())

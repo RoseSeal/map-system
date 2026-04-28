@@ -42,7 +42,11 @@ const chatWsServiceMock = vi.hoisted(() => ({
   onSpeechTranscript: vi.fn(() => vi.fn()),
   onError: vi.fn(() => vi.fn()),
   onClearHistoryAck: vi.fn(() => vi.fn()),
+  onExpiredExplanationsCleared: vi.fn(() => vi.fn()),
   onConnectionStateChange: vi.fn(() => vi.fn()),
+  onCapabilityState: vi.fn(() => vi.fn()),
+  onLlmProviderSelection: vi.fn(() => vi.fn()),
+  onAgentStep: vi.fn(() => vi.fn()),
 }));
 
 vi.mock('../../services/riskSseService', () => ({

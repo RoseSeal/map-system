@@ -1,5 +1,6 @@
 package com.whut.map.map_service.llm.config;
 
+import com.whut.map.map_service.llm.client.LlmProvider;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,11 @@ public class LlmProperties {
     private int conversationTokenBudget = 6000;
     private boolean agentModeEnabled = false;
     private long agentChatTimeoutMs = 18_000L;
+
+    // Legacy global provider selector. Task-level selectors take precedence.
+    private LlmProvider provider;
+    private LlmProvider explanationProvider;
+    private LlmProvider chatProvider;
 
     private ProviderProperties gemini = new ProviderProperties();
     private ProviderProperties zhipu = new ProviderProperties();
@@ -56,5 +62,25 @@ public class LlmProperties {
         private int maxIterations = 5;
         private int maxSnapshotVersionLag = 5;
         private int validSeconds = 120;
+    }
+
+    public LlmProvider resolveExplanationProvider() {
+        if (explanationProvider != null) {
+            return explanationProvider;
+        }
+        if (provider != null) {
+            return provider;
+        }
+        return LlmProvider.ZHIPU;
+    }
+
+    public LlmProvider resolveChatProvider() {
+        if (chatProvider != null) {
+            return chatProvider;
+        }
+        if (provider != null) {
+            return provider;
+        }
+        return LlmProvider.GEMINI;
     }
 }

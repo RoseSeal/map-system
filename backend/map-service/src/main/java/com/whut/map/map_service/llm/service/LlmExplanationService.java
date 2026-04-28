@@ -2,6 +2,10 @@ package com.whut.map.map_service.llm.service;
 
 import com.whut.map.map_service.llm.config.LlmExecutorConfig;
 import com.whut.map.map_service.llm.config.LlmProperties;
+import com.whut.map.map_service.llm.client.LlmClientRegistry;
+import com.whut.map.map_service.llm.client.LlmProvider;
+import com.whut.map.map_service.llm.client.LlmProviderSelectionStore;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.client.LlmClient;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmChatMessage;
@@ -12,9 +16,9 @@ import com.whut.map.map_service.llm.prompt.PromptScene;
 import com.whut.map.map_service.llm.prompt.PromptTemplateService;
 import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.shared.util.GeoUtils;
-import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -32,8 +36,8 @@ import java.util.concurrent.TimeoutException;
 @RequiredArgsConstructor
 public class LlmExplanationService {
     private final LlmProperties llmProperties;
-    @Qualifier("zhipu")
-    private final LlmClient llmClient;
+    private final LlmClientRegistry llmClientRegistry;
+    private final LlmProviderSelectionStore llmProviderSelectionStore;
     private final PromptTemplateService promptTemplateService;
     @Qualifier(LlmExecutorConfig.LLM_EXECUTOR)
     private final ExecutorService llmExecutor;
@@ -65,10 +69,28 @@ public class LlmExplanationService {
             return;
         }
 
+        LlmProvider configuredProvider = llmProviderSelectionStore.getSelection(LlmTaskType.EXPLANATION);
+        LlmProvider provider;
+        LlmClient llmClient;
+        try {
+            provider = llmClientRegistry.resolveProviderForTask(LlmTaskType.EXPLANATION);
+            llmClient = llmClientRegistry.find(provider)
+                    .orElseThrow(() -> new IllegalStateException("provider unavailable: " + provider));
+        } catch (Exception e) {
+            log.warn("No provider available for explanation batch: {}", e.getMessage());
+            for (ExplanationTrigger trigger : triggeredTargets) {
+                onError.accept(trigger.target(), new LlmExplanationError(
+                        LlmErrorCode.LLM_DISABLED,
+                        "LLM explanation provider is unavailable."
+                ));
+            }
+            return;
+        }
+        String providerName = provider.getValue();
         log.info("LLM explanation triggered asynchronously for ownShip={}, riskyTargets={}, provider={}",
                 ownShip.getId(),
                 triggeredTargets.size(),
-                resolveProviderName());
+                configuredProvider);
 
         for (ExplanationTrigger trigger : triggeredTargets) {
             LlmRiskTargetContext target = trigger.target();
@@ -83,7 +105,7 @@ public class LlmExplanationService {
                             log.debug("LLM response for target {}: {}", target.getTargetId(), text);
                             onSuccess.accept(LlmExplanation.builder()
                                     .source(LlmExplanation.SOURCE_LLM)
-                                    .provider(resolveProviderName())
+                                    .provider(providerName)
                                     .targetId(target.getTargetId())
                                     .riskLevel(target.getRiskLevel() == null ? null : target.getRiskLevel().name())
                                     .text(text)
@@ -179,10 +201,6 @@ public class LlmExplanationService {
             return throwable.getCause();
         }
         return throwable;
-    }
-
-    private String resolveProviderName() {
-        return "zhipu";
     }
 
     private String formatDistanceNm(Double currentDistanceNm) {

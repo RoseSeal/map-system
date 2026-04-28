@@ -2,9 +2,14 @@ package com.whut.map.map_service.llm.transport.ws;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.whut.map.map_service.llm.client.LlmClientRegistry;
+import com.whut.map.map_service.llm.client.LlmProvider;
+import com.whut.map.map_service.llm.client.LlmProviderSelectionStore;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.config.WhisperProperties;
 import com.whut.map.map_service.llm.context.ExplanationCache;
+import com.whut.map.map_service.llm.memory.ConversationMemory;
 import com.whut.map.map_service.llm.service.LlmChatRequest;
 import com.whut.map.map_service.llm.service.LlmChatService;
 import com.whut.map.map_service.llm.transport.ws.validation.AudioValidator;
@@ -29,6 +34,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
 class ChatWebSocketHandlerTest {
@@ -37,16 +43,7 @@ class ChatWebSocketHandlerTest {
 
     @Test
     void blankChatContentReturnsInvalidChatRequest() throws Exception {
-        ChatWebSocketHandler handler = new ChatWebSocketHandler(
-                objectMapper,
-                llmProperties(),
-                whisperProperties(),
-                null,
-                null,
-                null,
-                new AudioValidator(whisperProperties()),
-                new ExplanationCache()
-        );
+        ChatWebSocketHandler handler = buildHandler(null, whisperProperties());
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 
         handler.afterConnectionEstablished(session);
@@ -72,16 +69,7 @@ class ChatWebSocketHandlerTest {
     @Test
     void invalidSpeechAudioReturnsInvalidAudioFormat() throws Exception {
         WhisperProperties whisperProperties = whisperProperties();
-        ChatWebSocketHandler handler = new ChatWebSocketHandler(
-                objectMapper,
-                llmProperties(),
-                whisperProperties,
-                null,
-                null,
-                null,
-                new AudioValidator(whisperProperties),
-                new ExplanationCache()
-        );
+        ChatWebSocketHandler handler = buildHandler(null, whisperProperties);
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 
         handler.afterConnectionEstablished(session);
@@ -109,16 +97,7 @@ class ChatWebSocketHandlerTest {
     @Test
     void malformedBase64PaddingReturnsInvalidAudioFormat() throws Exception {
         WhisperProperties whisperProperties = whisperProperties();
-        ChatWebSocketHandler handler = new ChatWebSocketHandler(
-                objectMapper,
-                llmProperties(),
-                whisperProperties,
-                null,
-                null,
-                null,
-                new AudioValidator(whisperProperties),
-                new ExplanationCache()
-        );
+        ChatWebSocketHandler handler = buildHandler(null, whisperProperties);
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 
         handler.afterConnectionEstablished(session);
@@ -146,16 +125,7 @@ class ChatWebSocketHandlerTest {
     @Test
     void missingSpeechModeReturnsInvalidSpeechRequest() throws Exception {
         WhisperProperties whisperProperties = whisperProperties();
-        ChatWebSocketHandler handler = new ChatWebSocketHandler(
-                objectMapper,
-                llmProperties(),
-                whisperProperties,
-                null,
-                null,
-                null,
-                new AudioValidator(whisperProperties),
-                new ExplanationCache()
-        );
+        ChatWebSocketHandler handler = buildHandler(null, whisperProperties);
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 
         handler.afterConnectionEstablished(session);
@@ -182,16 +152,7 @@ class ChatWebSocketHandlerTest {
     @Test
     void chatPayloadPassesEditLastUserMessageFlagToChatService() throws Exception {
         LlmChatService llmChatService = mock(LlmChatService.class);
-        ChatWebSocketHandler handler = new ChatWebSocketHandler(
-                objectMapper,
-                llmProperties(),
-                whisperProperties(),
-                llmChatService,
-                null,
-                null,
-                new AudioValidator(whisperProperties()),
-                new ExplanationCache()
-        );
+        ChatWebSocketHandler handler = buildHandler(llmChatService, whisperProperties());
         RecordingWebSocketSession session = new RecordingWebSocketSession();
 
         handler.afterConnectionEstablished(session);
@@ -220,6 +181,113 @@ class ChatWebSocketHandlerTest {
         assertThat(request.content()).isEqualTo("edited content");
     }
 
+    @Test
+    void setLlmProviderSelectionUpdatesBothFieldsAndReturnsAck() throws Exception {
+        LlmProperties llmProperties = llmProperties();
+        LlmProviderSelectionStore selectionStore = new LlmProviderSelectionStore(llmProperties);
+        LlmClientRegistry registry = registrySupporting(selectionStore, true);
+        ChatWebSocketHandler handler = buildHandler(null, whisperProperties(), llmProperties, registry, selectionStore);
+        RecordingWebSocketSession session = new RecordingWebSocketSession();
+
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("""
+                {
+                  "type": "SET_LLM_PROVIDER_SELECTION",
+                  "source": "client",
+                  "payload": {
+                    "event_id": "event-provider-1",
+                    "explanation_provider": "gemini",
+                    "chat_provider": "zhipu"
+                  }
+                }
+                """));
+
+        JsonNode response = lastResponse(session);
+        assertThat(response.path("type").asText()).isEqualTo("LLM_PROVIDER_SELECTION");
+        JsonNode selection = response.path("payload").path("effective_provider_selection");
+        assertThat(selection.path("explanation_provider").asText()).isEqualTo("gemini");
+        assertThat(selection.path("chat_provider").asText()).isEqualTo("zhipu");
+        assertThat(response.path("payload").path("reply_to_event_id").asText()).isEqualTo("event-provider-1");
+        assertThat(selectionStore.getSelection(LlmTaskType.EXPLANATION)).isEqualTo(LlmProvider.GEMINI);
+        assertThat(selectionStore.getSelection(LlmTaskType.CHAT)).isEqualTo(LlmProvider.ZHIPU);
+    }
+
+    @Test
+    void setLlmProviderSelectionAllowsPartialUpdate() throws Exception {
+        LlmProperties llmProperties = llmProperties();
+        LlmProviderSelectionStore selectionStore = new LlmProviderSelectionStore(llmProperties);
+        LlmClientRegistry registry = registrySupporting(selectionStore, true);
+        ChatWebSocketHandler handler = buildHandler(null, whisperProperties(), llmProperties, registry, selectionStore);
+        RecordingWebSocketSession session = new RecordingWebSocketSession();
+
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("""
+                {
+                  "type": "SET_LLM_PROVIDER_SELECTION",
+                  "source": "client",
+                  "payload": {
+                    "event_id": "event-provider-2",
+                    "explanation_provider": "gemini"
+                  }
+                }
+                """));
+
+        JsonNode selection = lastResponse(session).path("payload").path("effective_provider_selection");
+        assertThat(selection.path("explanation_provider").asText()).isEqualTo("gemini");
+        assertThat(selection.path("chat_provider").asText()).isEqualTo("gemini");
+        assertThat(selectionStore.getSelection(LlmTaskType.EXPLANATION)).isEqualTo(LlmProvider.GEMINI);
+        assertThat(selectionStore.getSelection(LlmTaskType.CHAT)).isEqualTo(LlmProvider.GEMINI);
+    }
+
+    @Test
+    void setLlmProviderSelectionWithEmptyPayloadReturnsError() throws Exception {
+        ChatWebSocketHandler handler = buildHandler(null, whisperProperties());
+        RecordingWebSocketSession session = new RecordingWebSocketSession();
+
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("""
+                {
+                  "type": "SET_LLM_PROVIDER_SELECTION",
+                  "source": "client",
+                  "payload": {
+                    "event_id": "event-provider-3"
+                  }
+                }
+                """));
+
+        JsonNode response = lastResponse(session);
+        assertThat(response.path("type").asText()).isEqualTo("ERROR");
+        assertThat(response.path("payload").path("error_code").asText()).isEqualTo(ChatErrorCode.INVALID_CHAT_REQUEST.getValue());
+        assertThat(response.path("payload").path("reply_to_event_id").asText()).isEqualTo("event-provider-3");
+    }
+
+    @Test
+    void setLlmProviderSelectionWithUnavailableProviderReturnsError() throws Exception {
+        LlmProperties llmProperties = llmProperties();
+        LlmProviderSelectionStore selectionStore = new LlmProviderSelectionStore(llmProperties);
+        LlmClientRegistry registry = registrySupporting(selectionStore, false);
+        ChatWebSocketHandler handler = buildHandler(null, whisperProperties(), llmProperties, registry, selectionStore);
+        RecordingWebSocketSession session = new RecordingWebSocketSession();
+
+        handler.afterConnectionEstablished(session);
+        handler.handleTextMessage(session, new TextMessage("""
+                {
+                  "type": "SET_LLM_PROVIDER_SELECTION",
+                  "source": "client",
+                  "payload": {
+                    "event_id": "event-provider-4",
+                    "explanation_provider": "gemini"
+                  }
+                }
+                """));
+
+        JsonNode response = lastResponse(session);
+        assertThat(response.path("type").asText()).isEqualTo("ERROR");
+        assertThat(response.path("payload").path("error_code").asText()).isEqualTo(ChatErrorCode.INVALID_CHAT_REQUEST.getValue());
+        assertThat(response.path("payload").path("reply_to_event_id").asText()).isEqualTo("event-provider-4");
+        assertThat(selectionStore.getSelection(LlmTaskType.EXPLANATION)).isEqualTo(LlmProvider.ZHIPU);
+    }
+
     private LlmProperties llmProperties() {
         return new LlmProperties();
     }
@@ -228,6 +296,49 @@ class ChatWebSocketHandlerTest {
         WhisperProperties properties = new WhisperProperties();
         properties.setMaxAudioSizeBytes(1024);
         return properties;
+    }
+
+    private ChatWebSocketHandler buildHandler(LlmChatService llmChatService, WhisperProperties whisperProperties) {
+        LlmProperties llmProperties = llmProperties();
+        LlmClientRegistry registry = mock(LlmClientRegistry.class);
+        when(registry.isTaskAvailable(any(LlmTaskType.class))).thenReturn(false);
+        when(registry.describeCapabilities()).thenReturn(List.of());
+        when(registry.resolveProviderForTask(LlmTaskType.EXPLANATION)).thenReturn(LlmProvider.ZHIPU);
+        when(registry.resolveProviderForTask(LlmTaskType.CHAT)).thenReturn(LlmProvider.GEMINI);
+        LlmProviderSelectionStore selectionStore = new LlmProviderSelectionStore(llmProperties);
+        return buildHandler(llmChatService, whisperProperties, llmProperties, registry, selectionStore);
+    }
+
+    private ChatWebSocketHandler buildHandler(
+            LlmChatService llmChatService,
+            WhisperProperties whisperProperties,
+            LlmProperties llmProperties,
+            LlmClientRegistry registry,
+            LlmProviderSelectionStore selectionStore
+    ) {
+        return new ChatWebSocketHandler(
+                objectMapper,
+                llmProperties,
+                whisperProperties,
+                llmChatService,
+                null,
+                new ConversationMemory(llmProperties),
+                new AudioValidator(whisperProperties),
+                new ExplanationCache(),
+                registry,
+                selectionStore
+        );
+    }
+
+    private LlmClientRegistry registrySupporting(LlmProviderSelectionStore selectionStore, boolean available) {
+        LlmClientRegistry registry = mock(LlmClientRegistry.class);
+        when(registry.isTaskAvailable(any(LlmTaskType.class))).thenReturn(available);
+        when(registry.isProviderAvailableForTask(any(LlmProvider.class), any(LlmTaskType.class))).thenReturn(available);
+        when(registry.describeCapabilities()).thenReturn(List.of());
+        when(registry.resolveProviderForTask(any(LlmTaskType.class))).thenAnswer(invocation ->
+                selectionStore.getSelection(invocation.getArgument(0))
+        );
+        return registry;
     }
 
     private JsonNode lastResponse(RecordingWebSocketSession session) throws IOException {

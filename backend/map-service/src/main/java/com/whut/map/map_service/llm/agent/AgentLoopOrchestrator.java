@@ -2,9 +2,11 @@ package com.whut.map.map_service.llm.agent;
 
 import com.whut.map.map_service.llm.agent.tool.AgentToolRegistry;
 import com.whut.map.map_service.llm.client.LlmClient;
+import com.whut.map.map_service.llm.client.LlmClientRegistry;
+import com.whut.map.map_service.llm.client.LlmProvider;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,16 +18,24 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AgentLoopOrchestrator {
 
-    @Qualifier("gemini")
-    private final LlmClient llmClient;
+    private final LlmClientRegistry llmClientRegistry;
     private final AgentToolRegistry toolRegistry;
+
+    public AgentLoopResult run(
+            LlmTaskType taskType,
+            AgentSnapshot snapshot,
+            List<AgentMessage> initialMessages,
+            int maxIterations
+    ) {
+        return run(taskType, snapshot, initialMessages, maxIterations, AgentStepSink.NOOP);
+    }
 
     public AgentLoopResult run(
             AgentSnapshot snapshot,
             List<AgentMessage> initialMessages,
             int maxIterations
     ) {
-        return run(snapshot, initialMessages, maxIterations, AgentStepSink.NOOP);
+        return run(LlmTaskType.AGENT, snapshot, initialMessages, maxIterations, AgentStepSink.NOOP);
     }
 
     public AgentLoopResult run(
@@ -34,6 +44,27 @@ public class AgentLoopOrchestrator {
             int maxIterations,
             AgentStepSink stepSink
     ) {
+        return run(LlmTaskType.AGENT, snapshot, initialMessages, maxIterations, stepSink);
+    }
+
+    public AgentLoopResult run(
+            LlmTaskType taskType,
+            AgentSnapshot snapshot,
+            List<AgentMessage> initialMessages,
+            int maxIterations,
+            AgentStepSink stepSink
+    ) {
+        LlmProvider provider;
+        LlmClient llmClient;
+        try {
+            provider = llmClientRegistry.resolveProviderForTask(taskType);
+            llmClient = llmClientRegistry.find(provider)
+                    .orElseThrow(() -> new IllegalStateException("provider is unavailable for task " + taskType + ": " + provider));
+        } catch (Exception e) {
+            log.warn("Provider resolution failed for task {}: {}", taskType, e.getMessage());
+            return AgentLoopResult.providerFailed("LLM_REQUEST_FAILED", e.getMessage(), e);
+        }
+
         List<AgentMessage> messages = new ArrayList<>(initialMessages);
         List<ToolDefinition> toolDefs = toolRegistry.getToolDefinitions();
         int iteration = 0;
@@ -76,7 +107,13 @@ public class AgentLoopOrchestrator {
                     String finalizingStepId = UUID.randomUUID().toString();
                     stepSink.accept(new AgentStepEvent(
                             finalizingStepId, null, AgentStepStatus.FINALIZING, "正在整理态势"));
-                    return AgentLoopResult.completed(ft.text(), iteration, toolCallCount, finalizingStepId);
+                    return AgentLoopResult.completed(
+                            ft.text(),
+                            iteration,
+                            toolCallCount,
+                            finalizingStepId,
+                            provider.getValue()
+                    );
                 }
             }
         }

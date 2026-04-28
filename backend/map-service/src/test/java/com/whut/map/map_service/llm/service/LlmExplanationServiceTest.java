@@ -3,6 +3,10 @@ package com.whut.map.map_service.llm.service;
 import com.whut.map.map_service.llm.agent.AgentMessage;
 import com.whut.map.map_service.llm.agent.AgentStepResult;
 import com.whut.map.map_service.llm.agent.ToolDefinition;
+import com.whut.map.map_service.llm.client.LlmClientRegistry;
+import com.whut.map.map_service.llm.client.LlmProvider;
+import com.whut.map.map_service.llm.client.LlmProviderSelectionStore;
+import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.llm.client.LlmClient;
@@ -22,6 +26,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class LlmExplanationServiceTest {
 
@@ -32,9 +38,16 @@ class LlmExplanationServiceTest {
         LlmProperties properties = buildProperties(true, 1000L);
         StubLlmClient llmClient = new StubLlmClient();
         llmClient.response = "risk reply";
+        LlmClientRegistry llmClientRegistry = mockRegistry(llmClient, LlmProvider.ZHIPU);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            LlmExplanationService service = new LlmExplanationService(properties, llmClient, promptTemplateService, executor);
+            LlmExplanationService service = new LlmExplanationService(
+                    properties,
+                    llmClientRegistry,
+                    new LlmProviderSelectionStore(properties),
+                    promptTemplateService,
+                    executor
+            );
             LlmRiskOwnShipContext ownShip = LlmRiskOwnShipContext.builder()
                     .id("own-1")
                     .longitude(120.1234)
@@ -106,9 +119,16 @@ class LlmExplanationServiceTest {
         LlmProperties properties = buildProperties(true, 1000L);
         StubLlmClient llmClient = new StubLlmClient();
         llmClient.response = "risk reply";
+        LlmClientRegistry llmClientRegistry = mockRegistry(llmClient, LlmProvider.ZHIPU);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            LlmExplanationService service = new LlmExplanationService(properties, llmClient, promptTemplateService, executor);
+            LlmExplanationService service = new LlmExplanationService(
+                    properties,
+                    llmClientRegistry,
+                    new LlmProviderSelectionStore(properties),
+                    promptTemplateService,
+                    executor
+            );
             LlmRiskOwnShipContext ownShip = LlmRiskOwnShipContext.builder()
                     .id("own-1")
                     .longitude(120.1234)
@@ -158,6 +178,13 @@ class LlmExplanationServiceTest {
         properties.setEnabled(enabled);
         properties.setTimeoutMs(timeoutMs);
         return properties;
+    }
+
+    private LlmClientRegistry mockRegistry(LlmClient llmClient, LlmProvider provider) {
+        LlmClientRegistry registry = mock(LlmClientRegistry.class);
+        when(registry.resolveProviderForTask(LlmTaskType.EXPLANATION)).thenReturn(provider);
+        when(registry.find(provider)).thenReturn(java.util.Optional.of(llmClient));
+        return registry;
     }
 
     private static final class CapturingExplanationCallback {
