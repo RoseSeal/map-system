@@ -31,6 +31,7 @@ public class LlmProperties {
     private ProviderProperties gemini = new ProviderProperties();
     private ProviderProperties zhipu = new ProviderProperties();
     private Advisory advisory = new Advisory();
+    private Graph graph = new Graph();
 
     @Data
     public static class ProviderProperties {
@@ -62,6 +63,12 @@ public class LlmProperties {
         private int maxIterations = 5;
         private int maxSnapshotVersionLag = 5;
         private int validSeconds = 120;
+    }
+
+    @Data
+    public static class Graph {
+        private boolean enabled = false;
+        private String resourcePath = "classpath:colregs/rules.json";
     }
 
     public LlmProvider resolveExplanationProvider() {

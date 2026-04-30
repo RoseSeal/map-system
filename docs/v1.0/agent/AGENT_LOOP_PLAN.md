@@ -1,7 +1,7 @@
 # v1.0 Agent Loop Foundation — 总览规划
 
 > 文档状态：active
-> 最后更新：2026-04-27
+> 最后更新：2026-04-30
 > 用途：v1.0 阶段方向判断、范围收敛与 step 拆分的中间层规划文档。
 > 非目标：不是 step-plan 实施细则；不替代 `EVENT_SCHEMA.md`、`ARCHITECTURE.md` 等当前真值文档。
 

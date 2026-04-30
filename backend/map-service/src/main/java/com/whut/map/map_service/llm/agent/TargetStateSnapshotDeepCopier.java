@@ -85,6 +85,7 @@ public class TargetStateSnapshotDeepCopier {
                 .encounterType(source.getEncounterType())
                 .relativeBearingDeg(source.getRelativeBearingDeg())
                 .courseDifferenceDeg(source.getCourseDifferenceDeg())
+                .ownShipRole(source.getOwnShipRole())
                 .build();
     }
 

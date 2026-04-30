@@ -1,8 +1,8 @@
 # Agent Step 5：GraphRAG Foundation + EvaluateManeuverTool（COLREGS 知识图谱）
 
 > 文档状态：active
-> 最后更新：2026-04-29
-> 执行状态：pending
+> 最后更新：2026-04-30
+> 执行状态：completed
 > 所属 track：[`AGENT_LOOP_PLAN.md`](./AGENT_LOOP_PLAN.md)
 > 对应总览：`AGENT_LOOP_PLAN.md` §3.8 / §4 Step 5
 > 目标：构建 COLREGS Part B 规则知识图谱并暴露为 advisory agent 可调用的 `query_regulatory_context` 工具；同期引入 `evaluate_maneuver` 操纵假设评估工具，使 advisory `evidence_items` 中的规则依据与定量假设均有可审计来源。
@@ -667,9 +667,25 @@ public static final String EVALUATE_MANEUVER = "evaluate_maneuver";
 
 ## 13. Deviations
 
-本步骤目标与 `AGENT_LOOP_PLAN.md` §3.8 / §4 Step 5 一致，未超出总览定义的范围。当前未引入对总览正文的实质性偏离，因此不向 `AGENT_LOOP_PLAN.md` Appendix A 新增条目。
+本步骤目标与 `AGENT_LOOP_PLAN.md` §3.8 / §4 Step 5 一致，未超出总览定义的范围。以下三处偏离均属于 `better-approach`，不影响对外接口，不向 `AGENT_LOOP_PLAN.md` Appendix A 新增条目。
 
-若实施期间出现以下情况，应在本节追加 deviation 子条目并同步更新总览 Appendix A：
+### 13.1 MemoryGraphAdapter 能见度门控（超出"字段透传"描述）
 
-- 决定将 `ManeuverActionType` 提升为 SSE 协议公开枚举（属于协议层偏离，需要同步前端）。
-- 决定在 chat agent prompt 也加入强约束（违背 §8.2，属于范围偏离）。
+- **计划描述**：§5.3 及 §3.2 均将 `visibilityCondition` 定性为"v1.0 只作字段透传"。
+- **实际实现**：`MemoryGraphAdapter.findRegulatoryContext` 当查询 `visibilityCondition` 为 `OPEN_VISIBILITY`（或 `null`）时，主动过滤掉 `limitations` 列表中含 `visibility_condition_not_integrated_with_weather_context` 的规则（即 Rule 19）；受限能见度查询则不过滤，保留 Rule 19 命中能力。
+- **原因**：§4 "deferred" 项已明确 "v1.0 默认 OPEN_VISIBILITY，Rule 19 留待 weather context 集成"；实现时将该语义直接落在查询过滤层，而非让 Rule 19 进入命中集合再靠 LLM 甄别，避免误引用。
+- **影响**：`OPEN_VISIBILITY` 查询不返回 Rule 19，与 §4 deferred 语义一致；后续 weather context 集成时，只需在工具调用时传入正确的 `visibilityCondition` 即可自动命中。
+
+### 13.2 AgentSnapshot record 新增向后兼容 3-arg 构造器
+
+- **计划描述**：§3.3 描述 `AgentSnapshot` 新增 `frozenOwnShip` / `frozenTargetShips` 两个字段。
+- **实际实现**：Java record 新增两字段后，35+ 个现有测试使用 3-arg 构造（无新字段）会编译失败。为避免批量修改测试文件，添加了 3-arg delegation constructor `AgentSnapshot(version, riskContext, targetDetails)` 内部以 `null` 填充两新字段。新字段显式构造仍使用完整 5-arg 形式。
+- **原因**：最小侵入原则；测试文件主要测试工具读取行为，与新字段无关，不应为此引入维护负担。
+- **影响**：无合同变更；代码侧已完整实现，向后兼容构造器仅为测试保护。
+
+### 13.3 magnitude 类型验证改用 isNumber() 前置检查
+
+- **计划描述**：§7.2 描述 `magnitude` 字段为"必填数值"，未给出具体校验实现。
+- **实际实现**：使用 Jackson `JsonNode.isNumber()` 前置检查代替 try-catch；原因是 `JsonNode.doubleValue()` 对文本节点会静默强制转换为 `0.0`（不抛异常），导致字符串类型 magnitude 被接受并产生零度转向这一无声错误。`isNumber()` 是 Jackson 对数值节点的正确类型断言方式。
+- **原因**：`doc-code-inconsistency`——如果按 try-catch 实现，代码路径在事实上错误（字符串 magnitude 会被当做 `0` 处理）。
+- **影响**：校验更严格，非数值 magnitude 现在正确返回 `INVALID_ARGUMENT`；不影响合规入参的行为。

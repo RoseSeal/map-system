@@ -15,4 +15,6 @@ public class EncounterClassificationResult {
     private double relativeBearingDeg;
     /** 两船航向的最小角度差，[0, 180]。 */
     private double courseDifferenceDeg;
+    @Builder.Default
+    private OwnShipRole ownShipRole = OwnShipRole.UNKNOWN;
 }

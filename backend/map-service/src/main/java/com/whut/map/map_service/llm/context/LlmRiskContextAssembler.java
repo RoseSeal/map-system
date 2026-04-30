@@ -5,12 +5,14 @@ import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassifier;
+import com.whut.map.map_service.risk.engine.encounter.EncounterRoleResolver;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.shared.util.GeoUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -23,9 +25,16 @@ import java.util.HashMap;
 public class LlmRiskContextAssembler {
 
     private final EncounterClassifier encounterClassifier;
+    private final EncounterRoleResolver encounterRoleResolver;
+
+    @Autowired
+    public LlmRiskContextAssembler(EncounterClassifier encounterClassifier, EncounterRoleResolver encounterRoleResolver) {
+        this.encounterClassifier = encounterClassifier;
+        this.encounterRoleResolver = encounterRoleResolver;
+    }
 
     public LlmRiskContextAssembler(EncounterClassifier encounterClassifier) {
-        this.encounterClassifier = encounterClassifier;
+        this(encounterClassifier, new EncounterRoleResolver());
     }
 
     public LlmRiskContext assemble(
@@ -78,6 +87,7 @@ public class LlmRiskContextAssembler {
             TargetRiskAssessment assessment = riskResult == null ? null : riskResult.getTargetAssessment(ship.getId());
             CpaTcpaResult cpaResult = cpaResults == null ? null : cpaResults.get(ship.getId());
             EncounterClassificationResult enc = encounterClassifier.classify(ownShip, ship);
+            enc.setOwnShipRole(encounterRoleResolver.resolve(enc));
 
             targets.add(LlmRiskTargetContext.builder()
                     .targetId(ship.getId())

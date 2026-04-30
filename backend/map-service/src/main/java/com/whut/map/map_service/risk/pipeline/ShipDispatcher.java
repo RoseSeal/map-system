@@ -16,6 +16,7 @@ import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaBatchCalcu
 import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassifier;
+import com.whut.map.map_service.risk.engine.encounter.EncounterRoleResolver;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentEngine;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.risk.engine.ShipKinematicQualityChecker;
@@ -30,6 +31,7 @@ import com.whut.map.map_service.tracking.store.TargetDerivedSnapshot;
 import com.whut.map.map_service.risk.engine.risk.TargetRiskAssessment;
 import com.whut.map.map_service.risk.transport.RiskStreamPublisher;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -49,6 +51,7 @@ public class ShipDispatcher {
     private final CpaTcpaBatchCalculator cpaTcpaBatchCalculator;
     private final PredictedCpaTcpaBatchCalculator predictedCpaTcpaBatchCalculator;
     private final EncounterClassifier encounterClassifier;
+    private final EncounterRoleResolver encounterRoleResolver;
     private final RiskAssessmentEngine riskAssessmentEngine;
     private final RiskObjectAssembler riskObjectAssembler;
     private final ShipStateStore shipStateStore;
@@ -78,6 +81,32 @@ public class ShipDispatcher {
             EnvironmentContextService environmentContextService,
             OwnShipPositionHolder ownShipPositionHolder
     ) {
+        this(shipDomainEngine, cvPredictionEngine, cpaTcpaBatchCalculator,
+                predictedCpaTcpaBatchCalculator, encounterClassifier, new EncounterRoleResolver(),
+                riskAssessmentEngine, riskObjectAssembler, shipStateStore, shipTrajectoryStore,
+                riskStreamPublisher, applicationEventPublisher, kinematicChecker,
+                derivedTargetStateStore, environmentContextService, ownShipPositionHolder);
+    }
+
+    @Autowired
+    public ShipDispatcher(
+            ShipDomainEngine shipDomainEngine,
+            CvPredictionEngine cvPredictionEngine,
+            CpaTcpaBatchCalculator cpaTcpaBatchCalculator,
+            PredictedCpaTcpaBatchCalculator predictedCpaTcpaBatchCalculator,
+            EncounterClassifier encounterClassifier,
+            EncounterRoleResolver encounterRoleResolver,
+            RiskAssessmentEngine riskAssessmentEngine,
+            RiskObjectAssembler riskObjectAssembler,
+            ShipStateStore shipStateStore,
+            ShipTrajectoryStore shipTrajectoryStore,
+            RiskStreamPublisher riskStreamPublisher,
+            ApplicationEventPublisher applicationEventPublisher,
+            ShipKinematicQualityChecker kinematicChecker,
+            DerivedTargetStateStore derivedTargetStateStore,
+            EnvironmentContextService environmentContextService,
+            OwnShipPositionHolder ownShipPositionHolder
+    ) {
         this.shipDomainEngine = shipDomainEngine;
         this.cvPredictionEngine = cvPredictionEngine;
         this.cpaTcpaBatchCalculator = cpaTcpaBatchCalculator;
@@ -86,6 +115,7 @@ public class ShipDispatcher {
                 "predictedCpaTcpaBatchCalculator"
         );
         this.encounterClassifier = encounterClassifier;
+        this.encounterRoleResolver = encounterRoleResolver;
         this.riskAssessmentEngine = riskAssessmentEngine;
         this.riskObjectAssembler = riskObjectAssembler;
         this.shipStateStore = shipStateStore;
@@ -192,6 +222,7 @@ public class ShipDispatcher {
         CpaTcpaResult cpa = cpaTcpaBatchCalculator.calculateOne(context.ownShip(), targetShip);
         PredictedCpaTcpaResult predictedCpa = predictedCpaTcpaBatchCalculator.calculateOne(context.ownShip(), pred);
         EncounterClassificationResult enc = encounterClassifier.classify(context.ownShip(), targetShip);
+        enc.setOwnShipRole(encounterRoleResolver.resolve(enc));
         
         TargetRiskAssessment riskAssessment = riskAssessmentEngine.buildTargetAssessment(
                 tId, cpa, context.ownShip(), targetShip, this.cachedOwnShipDomainResult, pred, enc);
@@ -267,7 +298,9 @@ public class ShipDispatcher {
             if (ship == null || ship.getId() == null || ship.getId().equals(ownId)) {
                 continue;
             }
-            results.put(ship.getId(), encounterClassifier.classify(ownShip, ship));
+            EncounterClassificationResult enc = encounterClassifier.classify(ownShip, ship);
+            enc.setOwnShipRole(encounterRoleResolver.resolve(enc));
+            results.put(ship.getId(), enc);
         }
         return results;
     }

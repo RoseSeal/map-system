@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-04-21
+> Last updated: 2026-04-30
 
 ## 1. Current Baseline
 
@@ -20,13 +20,13 @@
 | Agent Steps 4A | completed | completed |
 | Agent Steps 4B | completed | completed |
 | Agent Steps 4C | completed | completed |
-| Agent Steps 5 | pending | pending |
+| Agent Steps 5 | completed | completed |
 | Hydrology Step 1 | completed | completed |
-| Hydrology Step 2 | completed | pending |
+| Hydrology Step 2 | completed | completed |
 | Hydrology Step 3 | pending | pending |
 | Weather Step 1 | completed | completed |
 | Weather Step 2 | completed | completed |
-| Weather Step 3 | pending | pending |
+| Weather Step 3 | completed | pending |
 | Weather Step 4 | pending | pending |
 
 ## 3. Update Rule
