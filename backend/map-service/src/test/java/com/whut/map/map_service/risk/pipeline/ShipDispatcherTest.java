@@ -3,6 +3,7 @@ package com.whut.map.map_service.risk.pipeline;
 import com.whut.map.map_service.chart.service.HydrologyContextService;
 import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
 import com.whut.map.map_service.risk.config.EncounterProperties;
+import com.whut.map.map_service.risk.config.WeatherRiskProperties;
 import com.whut.map.map_service.risk.environment.EnvironmentContextService;
 import com.whut.map.map_service.risk.environment.EnvironmentStateSnapshot;
 import com.whut.map.map_service.risk.environment.EnvironmentUpdateReason;
@@ -14,6 +15,7 @@ import com.whut.map.map_service.risk.pipeline.assembler.RiskObjectAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.OwnShipAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskObjectMetaAssembler;
 import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
+import com.whut.map.map_service.risk.weather.WeatherRiskAdjustmentEvaluator;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskVisualizationAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.TargetAssembler;
 import com.whut.map.map_service.shared.domain.QualityFlag;
@@ -29,6 +31,8 @@ import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaBatchCalculator;
 import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaCalculator;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassifier;
+import com.whut.map.map_service.risk.engine.risk.DomainPenetrationCalculator;
+import com.whut.map.map_service.risk.engine.risk.PredictedCpaCalculator;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentEngine;
 import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.risk.engine.risk.RiskConstants;
@@ -531,7 +535,8 @@ class ShipDispatcherTest {
                 new RegionalWeatherResolver(),
                 hydrologyContextService,
                 new SafetyContourStateHolder(metaProperties),
-                positionHolder
+                positionHolder,
+                new WeatherRiskAdjustmentEvaluator(new WeatherRiskProperties())
         );
     }
 
@@ -666,7 +671,16 @@ class ShipDispatcherTest {
         private int buildTargetAssessmentCount;
 
         StubRiskAssessmentEngine(RiskAssessmentResult result) {
-            super(new com.whut.map.map_service.risk.config.RiskAssessmentProperties(), null, null, null);
+            super(
+                    new com.whut.map.map_service.risk.config.RiskAssessmentProperties(),
+                    new com.whut.map.map_service.risk.config.RiskScoringProperties(),
+                    new DomainPenetrationCalculator(),
+                    new PredictedCpaCalculator(new PredictedCpaTcpaCalculator()),
+                    new WeatherContextHolder(),
+                    new RegionalWeatherResolver(),
+                    new WeatherAlertProperties(),
+                    new WeatherRiskAdjustmentEvaluator(new WeatherRiskProperties())
+            );
             this.result = result;
         }
 

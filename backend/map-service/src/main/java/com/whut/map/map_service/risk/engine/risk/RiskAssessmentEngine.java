@@ -8,14 +8,24 @@ import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationRes
 import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.risk.weather.WeatherRiskAdjustment;
+import com.whut.map.map_service.risk.weather.WeatherRiskAdjustmentEvaluator;
+import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.shared.util.GeoUtils;
 import com.whut.map.map_service.shared.util.MathUtils;
+import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
+import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
+import com.whut.map.map_service.source.weather.dto.WeatherContext;
+import com.whut.map.map_service.source.weather.dto.WeatherZoneContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -28,16 +38,28 @@ public class RiskAssessmentEngine {
     private final RiskScoringProperties scoringProperties;
     private final DomainPenetrationCalculator domainPenetrationCalculator;
     private final PredictedCpaCalculator predictedCpaCalculator;
+    private final WeatherContextHolder weatherContextHolder;
+    private final RegionalWeatherResolver regionalWeatherResolver;
+    private final WeatherAlertProperties weatherAlertProperties;
+    private final WeatherRiskAdjustmentEvaluator weatherRiskAdjustmentEvaluator;
 
     public RiskAssessmentEngine(
             RiskAssessmentProperties riskProperties,
             RiskScoringProperties scoringProperties,
             DomainPenetrationCalculator domainPenetrationCalculator,
-            PredictedCpaCalculator predictedCpaCalculator) {
+            PredictedCpaCalculator predictedCpaCalculator,
+            WeatherContextHolder weatherContextHolder,
+            RegionalWeatherResolver regionalWeatherResolver,
+            WeatherAlertProperties weatherAlertProperties,
+            WeatherRiskAdjustmentEvaluator weatherRiskAdjustmentEvaluator) {
         this.riskProperties = riskProperties;
         this.scoringProperties = scoringProperties;
         this.domainPenetrationCalculator = domainPenetrationCalculator;
         this.predictedCpaCalculator = predictedCpaCalculator;
+        this.weatherContextHolder = weatherContextHolder;
+        this.regionalWeatherResolver = regionalWeatherResolver;
+        this.weatherAlertProperties = weatherAlertProperties;
+        this.weatherRiskAdjustmentEvaluator = weatherRiskAdjustmentEvaluator;
     }
 
     public RiskAssessmentResult consume(
@@ -109,6 +131,11 @@ public class RiskAssessmentEngine {
         double cpaDistanceMeters = cpaResult.getCpaDistance();
         double dcpaNm = GeoUtils.metersToNm(cpaDistanceMeters);
         double rawTcpaSec = cpaResult.getTcpaTime();
+        WeatherContext weather = resolveEffectiveWeather(ownShip).orElse(null);
+        WeatherRiskAdjustment weatherAdjustment = weatherRiskAdjustmentEvaluator.evaluate(weather);
+        double effectiveAlarmDcpaNm = riskProperties.getAlarmDcpaNm() * weatherAdjustment.visibilityScale();
+        double effectiveWarningDcpaNm = riskProperties.getWarningDcpaNm() * weatherAdjustment.visibilityScale();
+        double effectiveCautionDcpaNm = riskProperties.getCautionDcpaNm() * weatherAdjustment.visibilityScale();
         
         String riskLevel;
         double tcpaScore = 0.0;
@@ -121,7 +148,16 @@ public class RiskAssessmentEngine {
             riskLevel = RiskConstants.SAFE;
         } else {
             // 离散等级由阈值规则决定。
-            riskLevel = classifyRisk(dcpaNm, rawTcpaSec);
+            riskLevel = classifyRisk(
+                    dcpaNm,
+                    rawTcpaSec,
+                    effectiveAlarmDcpaNm,
+                    riskProperties.getAlarmTcpaSec(),
+                    effectiveWarningDcpaNm,
+                    riskProperties.getWarningTcpaSec(),
+                    effectiveCautionDcpaNm,
+                    riskProperties.getCautionTcpaSec()
+            );
             approaching = (rawTcpaSec >= -TCPA_CPA_EPS_SEC);
             if (approaching) {
                 // TCPA越小越危险，线性映射到[0,1]。
@@ -190,6 +226,7 @@ public class RiskAssessmentEngine {
         }
         
         finalRiskScore = MathUtils.clamp(finalRiskScore, 0.0, 1.0);
+        finalRiskScore = MathUtils.clamp(finalRiskScore + weatherAdjustment.stormPenalty(), 0.0, 1.0);
 
         // 置信度取本船与目标船中的较低值，体现“短板效应”。
         double riskConfidence = Math.min(
@@ -212,15 +249,59 @@ public class RiskAssessmentEngine {
                 .build();
     }
 
-    private String classifyRisk(double dcpaNm, double tcpaSec) {
+    private Optional<WeatherContext> resolveEffectiveWeather(ShipStatus ownShip) {
+        Optional<WeatherContextHolder.Snapshot> snapshotOpt = weatherContextHolder.getFreshSnapshot(staleThreshold());
+        if (snapshotOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        WeatherContextHolder.Snapshot snapshot = snapshotOpt.get();
+        if (!snapshot.zones().isEmpty() && ownShip != null) {
+            Optional<WeatherZoneContext> matchedZone = regionalWeatherResolver.resolve(
+                    ownShip.getLatitude(), ownShip.getLongitude(), snapshot.zones());
+            if (matchedZone.isPresent()) {
+                return Optional.of(zoneToWeatherContext(matchedZone.get(), snapshot.updatedAt()));
+            }
+        }
+
+        return Optional.ofNullable(snapshot.globalContext());
+    }
+
+    private WeatherContext zoneToWeatherContext(WeatherZoneContext zone, Instant snapshotUpdatedAt) {
+        Instant updatedAt = zone.updatedAt() != null ? zone.updatedAt() : snapshotUpdatedAt;
+        return new WeatherContext(
+                zone.weatherCode(),
+                zone.visibilityNm(),
+                zone.precipitationMmPerHr(),
+                zone.wind(),
+                zone.surfaceCurrent(),
+                zone.seaState(),
+                updatedAt
+        );
+    }
+
+    private Duration staleThreshold() {
+        return Duration.ofSeconds(weatherAlertProperties.getStaleThresholdSeconds());
+    }
+
+    private String classifyRisk(
+            double dcpaNm,
+            double tcpaSec,
+            double alarmDcpaNm,
+            double alarmTcpaSec,
+            double warningDcpaNm,
+            double warningTcpaSec,
+            double cautionDcpaNm,
+            double cautionTcpaSec
+    ) {
         // 按 alarm -> warning -> caution 逐级判定，命中即返回。
-        if (dcpaNm <= riskProperties.getAlarmDcpaNm() && tcpaSec >= -TCPA_CPA_EPS_SEC && tcpaSec <= riskProperties.getAlarmTcpaSec()) {
+        if (dcpaNm <= alarmDcpaNm && tcpaSec >= -TCPA_CPA_EPS_SEC && tcpaSec <= alarmTcpaSec) {
             return RiskConstants.ALARM;
         }
-        if (dcpaNm <= riskProperties.getWarningDcpaNm() && tcpaSec >= -TCPA_CPA_EPS_SEC && tcpaSec <= riskProperties.getWarningTcpaSec()) {
+        if (dcpaNm <= warningDcpaNm && tcpaSec >= -TCPA_CPA_EPS_SEC && tcpaSec <= warningTcpaSec) {
             return RiskConstants.WARNING;
         }
-        if (dcpaNm <= riskProperties.getCautionDcpaNm() && tcpaSec >= -TCPA_CPA_EPS_SEC && tcpaSec <= riskProperties.getCautionTcpaSec()) {
+        if (dcpaNm <= cautionDcpaNm && tcpaSec >= -TCPA_CPA_EPS_SEC && tcpaSec <= cautionTcpaSec) {
             return RiskConstants.CAUTION;
         }
         return RiskConstants.SAFE;

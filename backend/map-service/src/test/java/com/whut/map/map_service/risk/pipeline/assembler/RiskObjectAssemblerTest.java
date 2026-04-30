@@ -6,6 +6,7 @@ import com.whut.map.map_service.risk.environment.EnvironmentContextService;
 import com.whut.map.map_service.risk.environment.EnvironmentUpdateReason;
 import com.whut.map.map_service.risk.environment.OwnShipPositionHolder;
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
+import com.whut.map.map_service.risk.config.WeatherRiskProperties;
 import com.whut.map.map_service.shared.domain.ShipRole;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.shared.domain.ShipStatus;
@@ -17,6 +18,7 @@ import com.whut.map.map_service.risk.pipeline.assembler.riskobject.OwnShipAssemb
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskObjectMetaAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.RiskVisualizationAssembler;
 import com.whut.map.map_service.risk.pipeline.assembler.riskobject.TargetAssembler;
+import com.whut.map.map_service.risk.weather.WeatherRiskAdjustmentEvaluator;
 import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
 import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
 import org.junit.jupiter.api.Test;
@@ -138,7 +140,8 @@ class RiskObjectAssemblerTest {
                 new RegionalWeatherResolver(),
                 HYDROLOGY_CONTEXT_SERVICE,
                 new SafetyContourStateHolder(RISK_OBJECT_META_PROPERTIES),
-                ownShipPositionHolder
+                ownShipPositionHolder,
+                new WeatherRiskAdjustmentEvaluator(new WeatherRiskProperties())
         );
     }
 

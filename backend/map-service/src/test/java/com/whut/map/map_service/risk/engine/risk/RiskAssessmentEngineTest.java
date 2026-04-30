@@ -2,20 +2,29 @@ package com.whut.map.map_service.risk.engine.risk;
 
 import com.whut.map.map_service.risk.config.RiskAssessmentProperties;
 import com.whut.map.map_service.risk.config.RiskScoringProperties;
+import com.whut.map.map_service.risk.config.WeatherRiskProperties;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
 import com.whut.map.map_service.risk.engine.collision.PredictedCpaTcpaCalculator;
 import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationResult;
 import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.risk.weather.WeatherRiskAdjustmentEvaluator;
+import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.shared.util.GeoUtils;
+import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
+import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
+import com.whut.map.map_service.source.weather.dto.WeatherContext;
+import com.whut.map.map_service.source.weather.dto.WeatherZoneContext;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 class RiskAssessmentEngineTest {
 
@@ -27,11 +36,25 @@ class RiskAssessmentEngineTest {
             RiskAssessmentProperties properties,
             DomainPenetrationCalculator domainPenetrationCalculator
     ) {
+        return createEngine(properties, domainPenetrationCalculator, new WeatherContextHolder(), new WeatherRiskProperties(), new WeatherAlertProperties());
+    }
+
+    private RiskAssessmentEngine createEngine(
+            RiskAssessmentProperties properties,
+            DomainPenetrationCalculator domainPenetrationCalculator,
+            WeatherContextHolder weatherContextHolder,
+            WeatherRiskProperties weatherRiskProperties,
+            WeatherAlertProperties weatherAlertProperties
+    ) {
         return new RiskAssessmentEngine(
                 properties,
                 new RiskScoringProperties(),
                 domainPenetrationCalculator,
-                new PredictedCpaCalculator(new PredictedCpaTcpaCalculator())
+                new PredictedCpaCalculator(new PredictedCpaTcpaCalculator()),
+                weatherContextHolder,
+                new RegionalWeatherResolver(),
+                weatherAlertProperties,
+                new WeatherRiskAdjustmentEvaluator(weatherRiskProperties)
         );
     }
 
@@ -79,7 +102,11 @@ class RiskAssessmentEngineTest {
                 new RiskAssessmentProperties(),
                 scoring,
                 new DomainPenetrationCalculator(),
-                new PredictedCpaCalculator(new PredictedCpaTcpaCalculator())
+                new PredictedCpaCalculator(new PredictedCpaTcpaCalculator()),
+                new WeatherContextHolder(),
+                new RegionalWeatherResolver(),
+                new WeatherAlertProperties(),
+                new WeatherRiskAdjustmentEvaluator(new WeatherRiskProperties())
         );
         ShipStatus own = ship("own");
         ShipStatus target = ship("target-1");
@@ -152,6 +179,229 @@ class RiskAssessmentEngineTest {
                 .isApproaching(tcpaSec > -1.0)
                 .cpaValid(true)
                 .build();
+    }
+
+    @Test
+    void visibilityScalingRaisesRiskLevelWhenEnabled() {
+        WeatherContextHolder weatherContextHolder = new WeatherContextHolder();
+        weatherContextHolder.update(weather("FOG", 0.8, 2), List.of());
+        WeatherRiskProperties weatherRiskProperties = new WeatherRiskProperties();
+        weatherRiskProperties.getVisibility().setEnabled(true);
+        RiskAssessmentEngine engine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                weatherContextHolder,
+                weatherRiskProperties,
+                new WeatherAlertProperties()
+        );
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+
+        RiskAssessmentResult result = engine.consume(
+                own,
+                List.of(own, target),
+                Map.of(target.getId(), cpaTcpa(0.55, 300.0)),
+                null,
+                null,
+                null
+        );
+
+        assertThat(result.getTargetAssessment(target.getId()).getRiskLevel()).isEqualTo(RiskConstants.CAUTION);
+    }
+
+    @Test
+    void visibilityScalingDisabledKeepsBaselineRiskLevelAndScore() {
+        WeatherContextHolder weatherContextHolder = new WeatherContextHolder();
+        weatherContextHolder.update(weather("FOG", 0.8, 2), List.of());
+        RiskAssessmentEngine disabledEngine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                weatherContextHolder,
+                new WeatherRiskProperties(),
+                new WeatherAlertProperties()
+        );
+        WeatherRiskProperties enabledProperties = new WeatherRiskProperties();
+        enabledProperties.getVisibility().setEnabled(true);
+        RiskAssessmentEngine enabledEngine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                weatherContextHolder,
+                enabledProperties,
+                new WeatherAlertProperties()
+        );
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+        CpaTcpaResult cpaResult = cpaTcpa(0.55, 300.0);
+
+        TargetRiskAssessment disabled = disabledEngine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+        TargetRiskAssessment enabled = enabledEngine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+
+        assertThat(disabled.getRiskLevel()).isEqualTo(RiskConstants.SAFE);
+        assertThat(enabled.getRiskScore()).isGreaterThanOrEqualTo(disabled.getRiskScore());
+    }
+
+    @Test
+    void stormPenaltyAddsToRiskScoreWhenEnabled() {
+        WeatherContextHolder weatherContextHolder = new WeatherContextHolder();
+        weatherContextHolder.update(weather("STORM", 1.5, 7), List.of());
+        WeatherRiskProperties weatherRiskProperties = new WeatherRiskProperties();
+        weatherRiskProperties.getStorm().setEnabled(true);
+        RiskAssessmentEngine stormEngine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                weatherContextHolder,
+                weatherRiskProperties,
+                new WeatherAlertProperties()
+        );
+        RiskAssessmentEngine baselineEngine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                weatherContextHolder,
+                new WeatherRiskProperties(),
+                new WeatherAlertProperties()
+        );
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+        CpaTcpaResult cpaResult = cpaTcpa(0.2, 360.0);
+
+        double baselineScore = baselineEngine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId())
+                .getRiskScore();
+        double stormScore = stormEngine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId())
+                .getRiskScore();
+
+        assertThat(stormScore).isCloseTo(baselineScore + 0.15, within(1e-9));
+        assertThat(stormScore).isLessThanOrEqualTo(1.0);
+    }
+
+    @Test
+    void highSeaStateTriggersStormPenaltyWithoutStormCode() {
+        WeatherContextHolder weatherContextHolder = new WeatherContextHolder();
+        weatherContextHolder.update(weather("RAIN", 3.0, 7), List.of());
+        WeatherRiskProperties weatherRiskProperties = new WeatherRiskProperties();
+        weatherRiskProperties.getStorm().setEnabled(true);
+        RiskAssessmentEngine engine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                weatherContextHolder,
+                weatherRiskProperties,
+                new WeatherAlertProperties()
+        );
+        RiskAssessmentEngine baselineEngine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                weatherContextHolder,
+                new WeatherRiskProperties(),
+                new WeatherAlertProperties()
+        );
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+        CpaTcpaResult cpaResult = cpaTcpa(0.2, 360.0);
+
+        double baseline = baselineEngine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId())
+                .getRiskScore();
+        double withStorm = engine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId())
+                .getRiskScore();
+
+        assertThat(withStorm).isGreaterThan(baseline);
+    }
+
+    @Test
+    void staleWeatherDoesNotAdjustRisk() {
+        WeatherContextHolder weatherContextHolder = new WeatherContextHolder();
+        weatherContextHolder.update(weather("FOG", 0.8, 2), List.of());
+        WeatherRiskProperties weatherRiskProperties = new WeatherRiskProperties();
+        weatherRiskProperties.getVisibility().setEnabled(true);
+        WeatherAlertProperties weatherAlertProperties = new WeatherAlertProperties();
+        // -1 makes the freshness window end in the future, forcing the current snapshot to be stale.
+        weatherAlertProperties.setStaleThresholdSeconds(-1);
+        RiskAssessmentEngine engine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                weatherContextHolder,
+                weatherRiskProperties,
+                weatherAlertProperties
+        );
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+
+        RiskAssessmentResult result = engine.consume(
+                own,
+                List.of(own, target),
+                Map.of(target.getId(), cpaTcpa(0.55, 300.0)),
+                null,
+                null,
+                null
+        );
+
+        assertThat(result.getTargetAssessment(target.getId()).getRiskLevel()).isEqualTo(RiskConstants.SAFE);
+    }
+
+    @Test
+    void regionalWeatherOnlyAdjustsWhenOwnShipIsInsideFogZone() {
+        WeatherContextHolder weatherContextHolder = new WeatherContextHolder();
+        weatherContextHolder.update(
+                weather("CLEAR", 10.0, 1),
+                List.of(new WeatherZoneContext(
+                        "fog-zone",
+                        "FOG",
+                        0.8,
+                        0.0,
+                        null,
+                        null,
+                        2,
+                        Instant.now(),
+                        new WeatherZoneContext.ZoneGeometry("Polygon", List.of(List.of(
+                                List.of(119.9, 29.9),
+                                List.of(120.1, 29.9),
+                                List.of(120.1, 30.1),
+                                List.of(119.9, 30.1),
+                                List.of(119.9, 29.9)
+                        )))
+                ))
+        );
+        WeatherRiskProperties weatherRiskProperties = new WeatherRiskProperties();
+        weatherRiskProperties.getVisibility().setEnabled(true);
+        RiskAssessmentEngine engine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                weatherContextHolder,
+                weatherRiskProperties,
+                new WeatherAlertProperties()
+        );
+        ShipStatus ownInside = ship("own");
+        ShipStatus ownOutside = ShipStatus.builder()
+                .id("own")
+                .longitude(121.0).latitude(31.0)
+                .sog(10.0).cog(90.0).heading(90.0).confidence(1.0)
+                .build();
+        ShipStatus target = ship("target-1");
+        CpaTcpaResult cpaResult = cpaTcpa(0.55, 300.0);
+
+        TargetRiskAssessment inside = engine.consume(ownInside, List.of(ownInside, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+        TargetRiskAssessment outside = engine.consume(ownOutside, List.of(ownOutside, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+
+        assertThat(inside.getRiskLevel()).isEqualTo(RiskConstants.CAUTION);
+        assertThat(outside.getRiskLevel()).isEqualTo(RiskConstants.SAFE);
+    }
+
+    private WeatherContext weather(String weatherCode, Double visibilityNm, Integer seaState) {
+        return new WeatherContext(
+                weatherCode,
+                visibilityNm,
+                0.0,
+                null,
+                null,
+                seaState,
+                Instant.now()
+        );
     }
 
     @Test

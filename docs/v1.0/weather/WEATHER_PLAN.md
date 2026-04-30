@@ -253,6 +253,8 @@ agent track 的 `EvaluateManeuverTool`（AGENT_LOOP_PLAN §3.8）当前只评估
 
 ### Step 3：风险引擎消费天气
 
+状态：pending review（2026-04-29）
+
 **目标**：让天气因素以受控方式修正风险分级与评分。
 
 **主要工作**：

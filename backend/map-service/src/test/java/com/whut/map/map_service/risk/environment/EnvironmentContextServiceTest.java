@@ -5,6 +5,8 @@ import com.whut.map.map_service.chart.dto.NearestObstructionSummary;
 import com.whut.map.map_service.chart.service.HydrologyContextService;
 import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
+import com.whut.map.map_service.risk.config.WeatherRiskProperties;
+import com.whut.map.map_service.risk.weather.WeatherRiskAdjustmentEvaluator;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.shared.domain.ShipRole;
 import com.whut.map.map_service.shared.domain.ShipStatus;
@@ -115,12 +117,125 @@ class EnvironmentContextServiceTest {
                 .containsExactlyInAnyOrder("LOW_VISIBILITY", "DEPTH_DATA_MISSING");
     }
 
+    @Test
+    void refreshIncludesActiveWeatherRiskAdjustmentState() {
+        WeatherContextHolder weatherContextHolder = new WeatherContextHolder();
+        weatherContextHolder.update(new WeatherContext(
+                "FOG",
+                0.8,
+                0.0,
+                null,
+                null,
+                2,
+                Instant.now()
+        ), List.of());
+        WeatherRiskProperties weatherRiskProperties = new WeatherRiskProperties();
+        weatherRiskProperties.getVisibility().setEnabled(true);
+        EnvironmentContextService service = service(
+                new RiskObjectMetaProperties(),
+                weatherContextHolder,
+                new SafetyContourStateHolder(new RiskObjectMetaProperties()),
+                mock(HydrologyContextService.class),
+                new OwnShipPositionHolder(),
+                weatherRiskProperties
+        );
+
+        Map<String, Object> environmentContext = service.refresh(
+                EnvironmentUpdateReason.WEATHER_UPDATED).snapshot().environmentContext();
+
+        assertThat(environmentContext.get("weather"))
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("risk_adjustment_active", true)
+                .extractingByKey("risk_adjustment_reasons")
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .containsExactly("VISIBILITY");
+    }
+
+    @Test
+    void refreshDoesNotInferWeatherRiskAdjustmentFromAlertsWhenDisabled() {
+        WeatherContextHolder weatherContextHolder = new WeatherContextHolder();
+        weatherContextHolder.update(new WeatherContext(
+                "FOG",
+                0.8,
+                0.0,
+                null,
+                null,
+                2,
+                Instant.now()
+        ), List.of());
+        EnvironmentContextService service = service(
+                new RiskObjectMetaProperties(),
+                weatherContextHolder,
+                new SafetyContourStateHolder(new RiskObjectMetaProperties()),
+                mock(HydrologyContextService.class),
+                new OwnShipPositionHolder()
+        );
+
+        Map<String, Object> environmentContext = service.refresh(
+                EnvironmentUpdateReason.WEATHER_UPDATED).snapshot().environmentContext();
+
+        assertThat(environmentContext.get("active_alerts"))
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .contains("LOW_VISIBILITY");
+        assertThat(environmentContext.get("weather"))
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("risk_adjustment_active", false)
+                .extractingByKey("risk_adjustment_reasons")
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .isEmpty();
+    }
+
+    @Test
+    void refreshIncludesStormWeatherRiskAdjustmentReason() {
+        WeatherContextHolder weatherContextHolder = new WeatherContextHolder();
+        weatherContextHolder.update(new WeatherContext(
+                "RAIN",
+                4.0,
+                0.0,
+                null,
+                null,
+                7,
+                Instant.now()
+        ), List.of());
+        WeatherRiskProperties weatherRiskProperties = new WeatherRiskProperties();
+        weatherRiskProperties.getStorm().setEnabled(true);
+        EnvironmentContextService service = service(
+                new RiskObjectMetaProperties(),
+                weatherContextHolder,
+                new SafetyContourStateHolder(new RiskObjectMetaProperties()),
+                mock(HydrologyContextService.class),
+                new OwnShipPositionHolder(),
+                weatherRiskProperties
+        );
+
+        Map<String, Object> environmentContext = service.refresh(
+                EnvironmentUpdateReason.WEATHER_UPDATED).snapshot().environmentContext();
+
+        assertThat(environmentContext.get("weather"))
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("risk_adjustment_active", true)
+                .extractingByKey("risk_adjustment_reasons")
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+                .containsExactly("STORM");
+    }
+
     private EnvironmentContextService service(
             RiskObjectMetaProperties properties,
             WeatherContextHolder weatherContextHolder,
             SafetyContourStateHolder safetyContourStateHolder,
             HydrologyContextService hydrologyContextService,
             OwnShipPositionHolder positionHolder
+    ) {
+        return service(properties, weatherContextHolder, safetyContourStateHolder, hydrologyContextService, positionHolder, new WeatherRiskProperties());
+    }
+
+    private EnvironmentContextService service(
+            RiskObjectMetaProperties properties,
+            WeatherContextHolder weatherContextHolder,
+            SafetyContourStateHolder safetyContourStateHolder,
+            HydrologyContextService hydrologyContextService,
+            OwnShipPositionHolder positionHolder,
+            WeatherRiskProperties weatherRiskProperties
     ) {
         return new EnvironmentContextService(
                 properties,
@@ -129,7 +244,8 @@ class EnvironmentContextServiceTest {
                 new RegionalWeatherResolver(),
                 hydrologyContextService,
                 safetyContourStateHolder,
-                positionHolder
+                positionHolder,
+                new WeatherRiskAdjustmentEvaluator(weatherRiskProperties)
         );
     }
 

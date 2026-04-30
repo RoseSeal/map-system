@@ -5,6 +5,8 @@ import com.whut.map.map_service.chart.dto.NearestObstructionSummary;
 import com.whut.map.map_service.chart.service.HydrologyContextService;
 import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
 import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
+import com.whut.map.map_service.risk.weather.WeatherRiskAdjustment;
+import com.whut.map.map_service.risk.weather.WeatherRiskAdjustmentEvaluator;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.shared.domain.EnvAlertCode;
 import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
@@ -37,6 +39,7 @@ public class EnvironmentContextService {
     private final HydrologyContextService hydrologyContextService;
     private final SafetyContourStateHolder safetyContourStateHolder;
     private final OwnShipPositionHolder ownShipPositionHolder;
+    private final WeatherRiskAdjustmentEvaluator weatherRiskAdjustmentEvaluator;
     private final AtomicLong environmentStateVersion = new AtomicLong(0L);
 
     private volatile EnvironmentStateSnapshot latestSnapshot;
@@ -48,7 +51,8 @@ public class EnvironmentContextService {
             RegionalWeatherResolver regionalWeatherResolver,
             HydrologyContextService hydrologyContextService,
             SafetyContourStateHolder safetyContourStateHolder,
-            OwnShipPositionHolder ownShipPositionHolder
+            OwnShipPositionHolder ownShipPositionHolder,
+            WeatherRiskAdjustmentEvaluator weatherRiskAdjustmentEvaluator
     ) {
         this.properties = properties;
         this.weatherContextHolder = weatherContextHolder;
@@ -57,6 +61,7 @@ public class EnvironmentContextService {
         this.hydrologyContextService = hydrologyContextService;
         this.safetyContourStateHolder = safetyContourStateHolder;
         this.ownShipPositionHolder = ownShipPositionHolder;
+        this.weatherRiskAdjustmentEvaluator = weatherRiskAdjustmentEvaluator;
     }
 
     public EnvironmentRefreshResult refresh(EnvironmentUpdateReason reason) {
@@ -138,7 +143,7 @@ public class EnvironmentContextService {
 
         Map<String, Object> weatherPayload = null;
         if (effectiveWeather != null) {
-            weatherPayload = toWeatherPayload(effectiveWeather);
+            weatherPayload = toWeatherPayload(effectiveWeather, weatherRiskAdjustmentEvaluator.evaluate(effectiveWeather));
             weatherPayload.put("source_zone_id", sourceZoneId);
         }
 
@@ -223,7 +228,7 @@ public class EnvironmentContextService {
         }
     }
 
-    private Map<String, Object> toWeatherPayload(WeatherContext weather) {
+    private Map<String, Object> toWeatherPayload(WeatherContext weather, WeatherRiskAdjustment weatherRiskAdjustment) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("weather_code", weather.weatherCode());
         payload.put("visibility_nm", weather.visibilityNm());
@@ -232,6 +237,8 @@ public class EnvironmentContextService {
         payload.put("surface_current", toSurfaceCurrentPayload(weather.surfaceCurrent()));
         payload.put("sea_state", weather.seaState());
         payload.put("updated_at", formatUpdatedAt(weather.updatedAt()));
+        payload.put("risk_adjustment_active", weatherRiskAdjustment.active());
+        payload.put("risk_adjustment_reasons", weatherRiskAdjustment.reasons());
         return payload;
     }
 

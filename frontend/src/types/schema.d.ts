@@ -141,6 +141,7 @@ export interface RiskTarget {
 }
 
 export type WeatherCode = 'CLEAR' | 'FOG' | 'RAIN' | 'SNOW' | 'STORM';
+export type WeatherRiskAdjustmentReason = 'VISIBILITY' | 'STORM';
 export type EnvAlertCode =
   | 'LOW_VISIBILITY'
   | 'HIGH_WIND'
@@ -168,6 +169,8 @@ export interface WeatherContext {
   surface_current: WeatherSurfaceCurrent;
   sea_state: number | null;
   source_zone_id?: string | null;
+  risk_adjustment_active?: boolean;
+  risk_adjustment_reasons?: WeatherRiskAdjustmentReason[];
   updated_at: string;
 }
 

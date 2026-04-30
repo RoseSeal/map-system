@@ -164,6 +164,7 @@ export function StatusPanel() {
   const windDirCN = hasWeather ? toCardinalDirection(weather.wind.direction_from_deg) : '--';
   const windSpeedStr = weather?.wind.speed_kn != null ? `${Math.round(weather.wind.speed_kn)} kn` : '--';
   const visibilityStr = weather?.visibility_nm != null ? `${weather.visibility_nm.toFixed(1)} nm` : '--';
+  const weatherRiskAdjustmentActive = weather?.risk_adjustment_active === true;
   const activeAlertCount = environment?.active_alerts.length ?? 0;
 
   return (
@@ -271,6 +272,11 @@ export function StatusPanel() {
           {activeAlertCount > 0 && (
             <div className="col-span-2 mt-0.5 text-[9px] font-medium" style={{ color: 'var(--risk-warning)' }}>
               环境告警 {activeAlertCount} 项
+            </div>
+          )}
+          {weatherRiskAdjustmentActive && (
+            <div className="col-span-2 text-[9px] font-medium" style={{ color: 'var(--risk-caution)' }}>
+              气象修正已启用
             </div>
           )}
         </div>
