@@ -286,9 +286,9 @@ interface EnvironmentContext {
 
 ## 6. Deferred
 
-- 引擎接入 weather 修正（visibility 缩放 / storm penalty）：Step 3
-- LLM `LlmRiskContext` 扩展与 advisory 消费：Step 4
-- agent tool 注册（`GetWeatherContextTool`、`EvaluateManeuverWithWeatherTool`）：Step 4
+- 引擎接入 weather 修正（visibility 缩放 / storm penalty）：已由 Step 3 完成
+- LLM `LlmRiskContext` 扩展与 advisory 消费：已由 Step 4 完成
+- agent tool 注册（`GetWeatherContextTool`、`EvaluateManeuverWithWeatherTool`）：已由 Step 4 完成
 - 降雨 / 风场 / 水流矢量等增强天气视觉效果：转 [`../visual/VISUAL_UPGRADE_PLAN.md`](../visual/VISUAL_UPGRADE_PLAN.md)
 
 ---

@@ -6,6 +6,7 @@ import com.whut.map.map_service.llm.agent.TextAgentMessage;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
+import com.whut.map.map_service.llm.dto.LlmRiskWeatherContext;
 import com.whut.map.map_service.llm.prompt.PromptScene;
 import com.whut.map.map_service.llm.prompt.PromptTemplateService;
 import com.whut.map.map_service.shared.domain.RiskLevel;
@@ -61,6 +62,55 @@ class AdvisoryPromptBuilderTest {
                 .contains("当前快照版本：42")
                 .contains("场景最高风险等级：ALARM")
                 .contains("非 SAFE 目标数量：1");
+    }
+
+    @Test
+    void userPromptAppendsWeatherSegmentForStorm() {
+        LlmRiskWeatherContext weather = LlmRiskWeatherContext.builder()
+                .weatherCode("STORM")
+                .seaState(8)
+                .activeAlerts(List.of())
+                .build();
+        AgentSnapshot snapshot = new AgentSnapshot(
+                10L,
+                LlmRiskContext.builder().weather(weather).build(),
+                Map.of()
+        );
+
+        String userContent = ((TextAgentMessage) builder.build(snapshot).get(1)).content();
+
+        assertThat(userContent).contains("当前气象");
+        assertThat(userContent).contains("STORM");
+    }
+
+    @Test
+    void userPromptOmitsWeatherSegmentForClear() {
+        LlmRiskWeatherContext weather = LlmRiskWeatherContext.builder()
+                .weatherCode("CLEAR")
+                .activeAlerts(List.of())
+                .build();
+        AgentSnapshot snapshot = new AgentSnapshot(
+                11L,
+                LlmRiskContext.builder().weather(weather).build(),
+                Map.of()
+        );
+
+        String userContent = ((TextAgentMessage) builder.build(snapshot).get(1)).content();
+
+        assertThat(userContent).doesNotContain("当前气象");
+    }
+
+    @Test
+    void userPromptOmitsWeatherSegmentWhenWeatherNull() {
+        AgentSnapshot snapshot = new AgentSnapshot(
+                12L,
+                LlmRiskContext.builder().build(),
+                Map.of()
+        );
+
+        String userContent = ((TextAgentMessage) builder.build(snapshot).get(1)).content();
+
+        assertThat(userContent).doesNotContain("当前气象");
     }
 }
 

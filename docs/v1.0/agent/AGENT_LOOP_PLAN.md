@@ -305,6 +305,13 @@ v1.0 纳入 COLREGS 规则图谱的基础落地，历史危险案例数据延后
 
 Advisory `evidence_items` 中可以包含 COLREGS 规则引用（如 "COLREGS Rule 15：交叉相遇局面，让路船应采取避让行动"），使建议具备规则依据。
 
+**天气工具（weather track Step 4 落地，非 GraphRAG）**：
+
+- `GetWeatherContextTool()`：返回 `AgentSnapshot.riskContext.weather` 中的生效天气快照（`weather_code`、`visibility_nm`、`wind_speed_kn`、`surface_current_speed_kn`、`sea_state`、`source_zone_id`、`active_alerts` 等）；`status=NO_WEATHER_DATA` 表示天气信号不可用或已过期。工具从 snapshot 读取，不访问 live `WeatherContextHolder`，保持 snapshot 视图一致性。
+- `EvaluateManeuverWithWeatherTool(course_change_deg?, speed_change_kn?, lookahead_min?)`：评估拟议机动在当前气象条件下的可行性，返回 `weather_flags`（`low_visibility` / `strong_current` / `storm_conditions`）与中文建议列表。不计算 CPA 几何（几何评估仍由 `EvaluateManeuverTool` 完成，两工具可联合使用）。阈值来自 `WeatherRiskProperties`（`lowVisNm`、`seaStateThreshold`）与 `WeatherAlertProperties`（`strongCurrentSetKn`），不硬编码。`lookahead_min` 保留供未来使用，v1.0 仅接受 0 或省略；传入非零值时返回 `INVALID_ARGUMENT`。
+
+两工具均通过 `@Component` 自动注册至 `AgentToolRegistry`，工具名常量在 `AgentToolNames` 中定义（`GET_WEATHER_CONTEXT` / `EVALUATE_MANEUVER_WITH_WEATHER`）。
+
 ---
 
 ## 4. 阶段拆分

@@ -2,7 +2,7 @@
 
 > 文档状态：active
 > 最后更新：2026-04-30
-> 执行状态：pending
+> 执行状态：completed
 > 所属 track：[`WEATHER_PLAN.md`](./WEATHER_PLAN.md)
 > 目标：让 advisory 在低能见度等场景下给出受气象约束的机动建议；LLM 在每次推理时能够感知当前生效天气并在 evidence_items 中显式引用气象事实。
 

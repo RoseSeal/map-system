@@ -3,6 +3,7 @@ package com.whut.map.map_service.llm.agent;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
+import com.whut.map.map_service.llm.dto.LlmRiskWeatherContext;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -15,6 +16,22 @@ public class LlmRiskContextDeepCopier {
         return LlmRiskContext.builder()
                 .ownShip(copyOwnShip(source.getOwnShip()))
                 .targets(copyTargets(source.getTargets()))
+                .weather(copyWeather(source.getWeather()))
+                .build();
+    }
+
+    private LlmRiskWeatherContext copyWeather(LlmRiskWeatherContext source) {
+        if (source == null) return null;
+        return LlmRiskWeatherContext.builder()
+                .weatherCode(source.getWeatherCode())
+                .visibilityNm(source.getVisibilityNm())
+                .windSpeedKn(source.getWindSpeedKn())
+                .windDirectionFromDeg(source.getWindDirectionFromDeg())
+                .surfaceCurrentSpeedKn(source.getSurfaceCurrentSpeedKn())
+                .surfaceCurrentSetDeg(source.getSurfaceCurrentSetDeg())
+                .seaState(source.getSeaState())
+                .sourceZoneId(source.getSourceZoneId())
+                .activeAlerts(source.getActiveAlerts() == null ? null : List.copyOf(source.getActiveAlerts()))
                 .build();
     }
 

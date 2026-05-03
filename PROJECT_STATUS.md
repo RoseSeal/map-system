@@ -27,7 +27,7 @@
 | Weather Step 1 | completed | completed |
 | Weather Step 2 | completed | completed |
 | Weather Step 3 | completed | pending |
-| Weather Step 4 | pending | pending |
+| Weather Step 4 | completed | completed |
 
 ## 3. Update Rule
 

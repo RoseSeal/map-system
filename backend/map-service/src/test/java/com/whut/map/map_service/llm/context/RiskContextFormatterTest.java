@@ -5,6 +5,7 @@ import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
+import com.whut.map.map_service.llm.dto.LlmRiskWeatherContext;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -273,6 +274,83 @@ class RiskContextFormatterTest {
         assertThat(result)
                 .contains("目标船 safe-1: 风险等级 SAFE")
                 .doesNotContain("AI 解释");
+    }
+
+    @Test
+    void formatSummaryAppendsWeatherSegmentForFog() {
+        LlmProperties properties = new LlmProperties();
+        RiskContextFormatter formatter = new RiskContextFormatter(properties);
+        LlmRiskWeatherContext weather = LlmRiskWeatherContext.builder()
+                .weatherCode("FOG")
+                .visibilityNm(0.8)
+                .activeAlerts(List.of("LOW_VISIBILITY"))
+                .build();
+        LlmRiskContext context = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own-1").sog(0).cog(0).build())
+                .targets(List.of())
+                .weather(weather)
+                .build();
+
+        String summary = formatter.formatSummary(context, Instant.now());
+
+        assertThat(summary).contains("能见度 0.8 nm");
+        assertThat(summary).contains("FOG");
+    }
+
+    @Test
+    void formatSummaryOmitsWeatherSegmentForClearWithNoAlerts() {
+        LlmProperties properties = new LlmProperties();
+        RiskContextFormatter formatter = new RiskContextFormatter(properties);
+        LlmRiskWeatherContext weather = LlmRiskWeatherContext.builder()
+                .weatherCode("CLEAR")
+                .visibilityNm(10.0)
+                .activeAlerts(List.of())
+                .build();
+        LlmRiskContext context = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own-1").sog(0).cog(0).build())
+                .targets(List.of())
+                .weather(weather)
+                .build();
+
+        String summary = formatter.formatSummary(context, Instant.now());
+
+        assertThat(summary).doesNotContain("当前气象");
+    }
+
+    @Test
+    void formatSummaryOmitsWeatherSegmentWhenWeatherIsNull() {
+        LlmProperties properties = new LlmProperties();
+        RiskContextFormatter formatter = new RiskContextFormatter(properties);
+        LlmRiskContext context = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own-1").sog(0).cog(0).build())
+                .targets(List.of())
+                .weather(null)
+                .build();
+
+        String summary = formatter.formatSummary(context, Instant.now());
+
+        assertThat(summary).doesNotContain("当前气象");
+    }
+
+    @Test
+    void formatSummaryAppendsStrongCurrentSuffix() {
+        LlmProperties properties = new LlmProperties();
+        RiskContextFormatter formatter = new RiskContextFormatter(properties);
+        LlmRiskWeatherContext weather = LlmRiskWeatherContext.builder()
+                .weatherCode("RAIN")
+                .surfaceCurrentSpeedKn(3.0)
+                .surfaceCurrentSetDeg(90)
+                .activeAlerts(List.of("STRONG_CURRENT_SET"))
+                .build();
+        LlmRiskContext context = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own-1").sog(0).cog(0).build())
+                .targets(List.of())
+                .weather(weather)
+                .build();
+
+        String summary = formatter.formatSummary(context, Instant.now());
+
+        assertThat(summary).contains("（流场偏移较强）");
     }
 
     private LlmRiskTargetContext target(

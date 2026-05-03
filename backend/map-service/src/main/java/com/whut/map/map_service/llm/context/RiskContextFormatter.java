@@ -7,6 +7,7 @@ import com.whut.map.map_service.shared.domain.RiskLevel;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
+import com.whut.map.map_service.llm.dto.LlmRiskWeatherContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -46,6 +47,7 @@ public class RiskContextFormatter {
                 .append(updatedAt == null ? "未知" : updatedAt)
                 .append('\n');
         appendOwnShip(builder, context.getOwnShip());
+        appendWeather(builder, context.getWeather());
         builder.append("-----").append('\n');
         if (totalTargets == 0) {
             builder.append("当前未追踪到目标船。").append('\n');
@@ -160,6 +162,7 @@ public class RiskContextFormatter {
                 .append(updatedAt == null ? "未知" : updatedAt)
                 .append('\n');
         appendOwnShip(builder, context.getOwnShip());
+        appendWeather(builder, context.getWeather());
         builder.append("-----").append('\n');
 
         if (allTargets.isEmpty()) {
@@ -294,6 +297,35 @@ public class RiskContextFormatter {
                         .append('\n');
             }
         }
+    }
+
+    private void appendWeather(StringBuilder builder, LlmRiskWeatherContext weather) {
+        if (weather == null) return;
+        String code = weather.getWeatherCode();
+        boolean isClear = "CLEAR".equals(code);
+        List<String> alerts = weather.getActiveAlerts();
+        boolean hasAlerts = alerts != null && !alerts.isEmpty();
+        if (isClear && !hasAlerts) return;
+
+        StringBuilder line = new StringBuilder("当前气象：");
+        if (code != null) line.append(code).append("，");
+        if (weather.getVisibilityNm() != null) line.append("能见度 ").append(String.format("%.1f", weather.getVisibilityNm())).append(" nm，");
+        if (weather.getWindSpeedKn() != null) {
+            line.append("风");
+            if (weather.getWindDirectionFromDeg() != null) line.append(" ").append(weather.getWindDirectionFromDeg()).append("°");
+            line.append(" ").append(String.format("%.0f", weather.getWindSpeedKn())).append(" 节，");
+        }
+        if (weather.getSurfaceCurrentSpeedKn() != null) {
+            line.append("水流");
+            if (weather.getSurfaceCurrentSetDeg() != null) line.append(" ").append(weather.getSurfaceCurrentSetDeg()).append("°");
+            line.append(" ").append(String.format("%.1f", weather.getSurfaceCurrentSpeedKn())).append(" 节，");
+            if (weather.getSurfaceCurrentSpeedKn() >= 2.5) line.append("（流场偏移较强），");
+        }
+        if (weather.getSeaState() != null) line.append("海况 ").append(weather.getSeaState()).append(" 级，");
+        if (hasAlerts) line.append(alerts);
+
+        String result = line.toString().replaceAll("，$", "");
+        builder.append(result).append('\n');
     }
 
     private void appendOwnShip(StringBuilder builder, LlmRiskOwnShipContext ownShip) {

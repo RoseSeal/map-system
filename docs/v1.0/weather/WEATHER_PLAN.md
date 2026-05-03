@@ -1,7 +1,7 @@
 # v1.0 Weather Track — 总览规划
 
 > 文档状态：active
-> 最后更新：2026-04-28
+> 最后更新：2026-05-01
 > 用途：v1.0 天气 track 的方向判断、范围收敛与 step 拆分的中间层规划文档。
 > 非目标：不是 step-plan 实施细则；不替代 [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)、[`../../EVENT_SCHEMA.md`](../../EVENT_SCHEMA.md) 等当前真值文档。
 
@@ -207,9 +207,7 @@ agent track 的 `EvaluateManeuverTool`（AGENT_LOOP_PLAN §3.8）当前只评估
 
 ## 4. Step 拆分
 
-### Step 1：MQTT topic + 后端承载 + 前端视觉基础
-
-状态：已完成（2026-04-18）
+### Step 1：MQTT topic + 后端承载 + 前端视觉基础（已完成）
 
 **目标**：建立端到端信号链路，交付首个可演示场景（低能见度 + 雾 overlay）。
 
@@ -228,7 +226,7 @@ agent track 的 `EvaluateManeuverTool`（AGENT_LOOP_PLAN §3.8）当前只评估
 - `active_alerts` 包含 `LOW_VISIBILITY`
 - 风险引擎未接入，分数与之前一致（本 step 不改 engine）
 
-### Step 2：区域化天气建模 + simulator 驱动 weather zones
+### Step 2：区域化天气建模 + simulator 驱动 weather zones（已完成）
 
 **目标**：在不破坏 Step 1 已落地链路的前提下，把天气从单帧全局快照升级为区域化天气，并继续由 simulator 驱动。
 
@@ -251,9 +249,7 @@ agent track 的 `EvaluateManeuverTool`（AGENT_LOOP_PLAN §3.8）当前只评估
 - 旧的 `--scene fog` 单快照场景在 Step 2 完成后仍可运行，不因未携带 `weather_zones` 而导致解析失败或前端空白
 - 区域天气图层启用后，目标点选、地图拖拽与告警符号可见性不因天气层回归
 
-### Step 3：风险引擎消费天气
-
-状态：pending review（2026-04-29）
+### Step 3：风险引擎消费天气（已完成）
 
 **目标**：让天气因素以受控方式修正风险分级与评分。
 
@@ -270,7 +266,7 @@ agent track 的 `EvaluateManeuverTool`（AGENT_LOOP_PLAN §3.8）当前只评估
 - 区域化天气启用但所有引擎开关关闭时，行为仅体现为 `effective weather` 与前端区域显示变化；风险分数与 Step 2 完成后保持一致
 - 所有开关关闭时与 Step 2 完成后行为保持一致
 
-### Step 4：LLM static context + agent tool + advisory 消费
+### Step 4：LLM static context + agent tool + advisory 消费（已完成）
 
 **目标**：让 advisory 在低能见度等场景下给出受气象约束的机动建议。
 

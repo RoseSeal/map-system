@@ -2,7 +2,7 @@
 
 > 文档状态：active
 > 最后更新：2026-04-29
-> 执行状态：pending review
+> 执行状态：completed
 > 所属 track：[`WEATHER_PLAN.md`](./WEATHER_PLAN.md)
 > 目标：让天气因素以受控方式修正风险分级与评分；默认全关，通过配置项逐路径开启。
 
@@ -301,10 +301,10 @@ Step 3 增加一个最小修正状态字段和 UI 状态提示，不把详细解
 
 ## 9. Deferred
 
-- `surface_current → 机动建议置信度修正`：Step 4，advisory 层消费
-- `LlmRiskContext.weather` 扩展与 advisory prompt 约束：Step 4
-- `GetWeatherContextTool`、`EvaluateManeuverWithWeatherTool` 注册：Step 4
-- 复杂天气修正解释、zone 明细展示与增强天气视觉：Step 4 或 visual track；Step 3 仅追加最小修正状态字段
+- `surface_current → 机动建议置信度修正`：已由 Step 4 完成（advisory `evidence_items` 流场建议）
+- `LlmRiskContext.weather` 扩展与 advisory prompt 约束：已由 Step 4 完成
+- `GetWeatherContextTool`、`EvaluateManeuverWithWeatherTool` 注册：已由 Step 4 完成
+- 复杂天气修正解释、zone 明细展示与增强天气视觉：deferred，转 [`../visual/VISUAL_UPGRADE_PLAN.md`](../visual/VISUAL_UPGRADE_PLAN.md)
 
 ---
 

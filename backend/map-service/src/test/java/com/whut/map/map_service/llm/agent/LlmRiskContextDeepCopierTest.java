@@ -3,9 +3,11 @@ package com.whut.map.map_service.llm.agent;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
+import com.whut.map.map_service.llm.dto.LlmRiskWeatherContext;
 import com.whut.map.map_service.shared.domain.RiskLevel;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,5 +73,42 @@ class LlmRiskContextDeepCopierTest {
     @Test
     void copyOfNullReturnsNull() {
         assertThat(copier.copy(null)).isNull();
+    }
+
+    @Test
+    void weatherFieldsAreCopiedIndependently() {
+        List<String> originalAlerts = new ArrayList<>(List.of("LOW_VISIBILITY"));
+        LlmRiskWeatherContext weather = LlmRiskWeatherContext.builder()
+                .weatherCode("FOG")
+                .visibilityNm(0.8)
+                .activeAlerts(originalAlerts)
+                .build();
+        LlmRiskContext source = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own").sog(0).cog(0).build())
+                .targets(List.of())
+                .weather(weather)
+                .build();
+
+        LlmRiskContext copy = copier.copy(source);
+
+        assertThat(copy.getWeather()).isNotNull();
+        assertThat(copy.getWeather()).isNotSameAs(source.getWeather());
+        assertThat(copy.getWeather().getWeatherCode()).isEqualTo("FOG");
+        assertThat(copy.getWeather().getVisibilityNm()).isEqualTo(0.8);
+        assertThat(copy.getWeather().getActiveAlerts()).isNotSameAs(source.getWeather().getActiveAlerts());
+        assertThat(copy.getWeather().getActiveAlerts()).containsExactly("LOW_VISIBILITY");
+    }
+
+    @Test
+    void nullWeatherIsCopiedAsNull() {
+        LlmRiskContext source = LlmRiskContext.builder()
+                .ownShip(LlmRiskOwnShipContext.builder().id("own").sog(0).cog(0).build())
+                .targets(List.of())
+                .weather(null)
+                .build();
+
+        LlmRiskContext copy = copier.copy(source);
+
+        assertThat(copy.getWeather()).isNull();
     }
 }

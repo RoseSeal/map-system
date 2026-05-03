@@ -11,4 +11,5 @@ import java.util.List;
 public class LlmRiskContext {
     private LlmRiskOwnShipContext ownShip;
     private List<LlmRiskTargetContext> targets;
+    private LlmRiskWeatherContext weather;
 }
