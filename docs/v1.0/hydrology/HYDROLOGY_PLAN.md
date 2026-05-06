@@ -1,7 +1,7 @@
 # v1.0 Hydrology Track — 总览规划
 
 > 文档状态：active
-> 最后更新：2026-04-28
+> 最后更新：2026-05-04
 > 用途：v1.0 水文 track 的方向判断、范围收敛与 step 拆分的中间层规划文档。
 > 非目标：不是 step-plan 实施细则；不替代 [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)、[`../../EVENT_SCHEMA.md`](../../EVENT_SCHEMA.md) 等当前真值文档。
 
@@ -172,6 +172,8 @@ v1.0 引入 `environment_context.hydrology` 子字段。**此契约与天气 tra
 **验收**：本船进入 `safety_contour_val` 以浅区时，SSE `ENVIRONMENT_UPDATE` 的 `environment_context.hydrology.own_ship_min_depth_m` 正确反映；`active_alerts` 包含 `SHOAL_PROXIMITY`
 
 ### Step 3：风险引擎消费 + agent tool
+
+**状态**：已完成（2026-05-04）
 
 **目标**：让水文真正影响 `riskScore` 与 agent advisory 的可验证依据。
 

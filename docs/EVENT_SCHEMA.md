@@ -343,7 +343,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `recommended_action.type` | `string` | 动作类型枚举 |
 | `recommended_action.description` | `string` | 动作描述 |
 | `recommended_action.urgency` | `string` | 紧急程度枚举 |
-| `evidence_items` | `string[]` | 支撑建议的数值/状态事实列表（来自工具结果） |
+| `evidence_items` | `string[]` | 支撑建议的数值/状态事实列表（来自工具结果）；水深、浅区或障碍物事实必须包含 `[source: hydrology]`，且来源为 `query_bathymetry` 或 `evaluate_maneuver_hydrology` tool result |
 
 新增错误码：
 

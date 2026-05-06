@@ -4,6 +4,7 @@ import com.whut.map.map_service.llm.agent.AgentLoopOrchestrator;
 import com.whut.map.map_service.llm.agent.AgentLoopResult;
 import com.whut.map.map_service.llm.agent.AgentMessage;
 import com.whut.map.map_service.llm.agent.AgentSnapshot;
+import com.whut.map.map_service.llm.agent.tool.AgentToolNames;
 import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.context.RiskContextHolder;
@@ -75,6 +76,20 @@ class AdvisoryServiceTest {
                 .urgency(AdvisoryUrgency.IMMEDIATE)
                 .build();
         return new AdvisoryOutputParser.ParsedAdvisory("摘要", List.of("t1"), action, List.of("DCPA 0.1 nm"));
+    }
+
+    private AdvisoryOutputParser.ParsedAdvisory hydrologyParsed() {
+        RecommendedAction action = RecommendedAction.builder()
+                .type(AdvisoryActionType.MONITOR)
+                .description("监控浅区")
+                .urgency(AdvisoryUrgency.LOW)
+                .build();
+        return new AdvisoryOutputParser.ParsedAdvisory(
+                "摘要",
+                List.of("t1"),
+                action,
+                List.of("[source: hydrology] 当前点最小水深 8.3 m")
+        );
     }
 
     // Inline executor runs tasks synchronously for deterministic tests
@@ -192,5 +207,37 @@ class AdvisoryServiceTest {
 
         verify(riskStreamPublisher).publishError(contains("LLM_TIMEOUT"), any(), any());
         assertThat(completed.get()).isTrue();
+    }
+
+    @Test
+    void hydrologyEvidenceWithoutHydrologyToolCallIsRejected() {
+        when(riskContextHolder.getVersion()).thenReturn(10L);
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed("text", 3, 2, null, "zhipu", List.of(AgentToolNames.GET_RISK_SNAPSHOT)));
+        when(outputParser.parse(eq("text"), any())).thenReturn(hydrologyParsed());
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+    }
+
+    @Test
+    void hydrologyEvidenceWithHydrologyToolCallCanPublish() {
+        when(riskContextHolder.getVersion()).thenReturn(10L);
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed(
+                        "text",
+                        3,
+                        2,
+                        null,
+                        "zhipu",
+                        List.of(AgentToolNames.GET_RISK_SNAPSHOT, AgentToolNames.QUERY_BATHYMETRY)
+                ));
+        when(outputParser.parse(eq("text"), any())).thenReturn(hydrologyParsed());
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishAdvisory(any());
     }
 }

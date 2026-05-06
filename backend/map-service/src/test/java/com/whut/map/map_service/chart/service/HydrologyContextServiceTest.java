@@ -1,6 +1,8 @@
 package com.whut.map.map_service.chart.service;
 
+import com.whut.map.map_service.chart.dto.GeoPoint;
 import com.whut.map.map_service.chart.dto.HydrologyContext;
+import com.whut.map.map_service.chart.dto.HydrologyRouteAssessment;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.BadSqlGrammarException;
@@ -75,6 +77,60 @@ class HydrologyContextServiceTest {
         HydrologyContext context = new HydrologyContextService(provider(null)).resolve(40.61, -73.83, 10.0);
 
         assertThat(context).isNull();
+    }
+
+    @Test
+    void routeAssessmentAggregatesSampleFacts() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        doReturn(List.of(9.0), List.of(0.0), List.of(8.0), List.of(0.2))
+                .when(jdbcTemplate).queryForList(anyString(), eq(Double.class), any(Object[].class));
+        doReturn(
+                List.of(Map.of("category", "WRECK", "distance_nm", 0.7, "bearing_deg", 37)),
+                List.of(Map.of("category", "ROCK", "distance_nm", 0.3, "bearing_deg", 84))
+        ).when(jdbcTemplate).queryForList(anyString(), any(Object[].class));
+
+        HydrologyRouteAssessment assessment = new HydrologyContextService(provider(jdbcTemplate)).evaluateRoute(
+                List.of(new GeoPoint(40.61, -73.83), new GeoPoint(40.62, -73.82)),
+                10.0,
+                1.0
+        );
+
+        assertThat(assessment.minDepthM()).isEqualTo(8.0);
+        assertThat(assessment.crossesShoal()).isTrue();
+        assertThat(assessment.nearestShoalNm()).isEqualTo(0.0);
+        assertThat(assessment.nearestObstruction().category()).isEqualTo("ROCK");
+        assertThat(assessment.sampleCount()).isEqualTo(2);
+        assertThat(assessment.resolvedSampleCount()).isEqualTo(2);
+        assertThat(assessment.dataComplete()).isTrue();
+    }
+
+    @Test
+    void routeAssessmentMarksNoDataWhenAllSamplesFail() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        doThrow(new BadSqlGrammarException("select", "select", new SQLException("missing table")))
+                .when(jdbcTemplate).queryForList(anyString(), eq(Double.class), any(Object[].class));
+
+        HydrologyRouteAssessment assessment = new HydrologyContextService(provider(jdbcTemplate)).evaluateRoute(
+                List.of(new GeoPoint(40.61, -73.83), new GeoPoint(40.62, -73.82)),
+                10.0,
+                1.0
+        );
+
+        assertThat(assessment.sampleCount()).isEqualTo(2);
+        assertThat(assessment.resolvedSampleCount()).isZero();
+        assertThat(assessment.dataComplete()).isFalse();
+        assertThat(assessment.crossesShoal()).isFalse();
+        assertThat(assessment.minDepthM()).isNull();
+        assertThat(assessment.nearestShoalNm()).isNull();
+        assertThat(assessment.nearestObstruction()).isNull();
+    }
+
+    @Test
+    void effectiveSearchRadiiRespectExistingQueryCaps() {
+        HydrologyContextService service = new HydrologyContextService(provider(null));
+
+        assertThat(service.effectiveShoalSearchRadiusNm(5.0)).isEqualTo(3.0);
+        assertThat(service.effectiveObstructionSearchRadiusNm(5.0)).isEqualTo(2.0);
     }
 
     private ObjectProvider<JdbcTemplate> provider(JdbcTemplate jdbcTemplate) {

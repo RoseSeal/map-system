@@ -1,6 +1,8 @@
 package com.whut.map.map_service.risk.engine.risk;
 
-import com.whut.map.map_service.shared.domain.ShipStatus;
+import com.whut.map.map_service.chart.dto.HydrologyContext;
+import com.whut.map.map_service.chart.service.HydrologyContextService;
+import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
 import com.whut.map.map_service.risk.config.RiskAssessmentProperties;
 import com.whut.map.map_service.risk.config.RiskScoringProperties;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
@@ -8,9 +10,12 @@ import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationRes
 import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.risk.hydrology.HydrologyRiskAdjustment;
+import com.whut.map.map_service.risk.hydrology.HydrologyRiskAdjustmentEvaluator;
 import com.whut.map.map_service.risk.weather.WeatherRiskAdjustment;
 import com.whut.map.map_service.risk.weather.WeatherRiskAdjustmentEvaluator;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
+import com.whut.map.map_service.shared.domain.ShipStatus;
 import com.whut.map.map_service.shared.util.GeoUtils;
 import com.whut.map.map_service.shared.util.MathUtils;
 import com.whut.map.map_service.source.weather.RegionalWeatherResolver;
@@ -18,6 +23,7 @@ import com.whut.map.map_service.source.weather.config.WeatherAlertProperties;
 import com.whut.map.map_service.source.weather.dto.WeatherContext;
 import com.whut.map.map_service.source.weather.dto.WeatherZoneContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -42,6 +48,35 @@ public class RiskAssessmentEngine {
     private final RegionalWeatherResolver regionalWeatherResolver;
     private final WeatherAlertProperties weatherAlertProperties;
     private final WeatherRiskAdjustmentEvaluator weatherRiskAdjustmentEvaluator;
+    private final HydrologyContextService hydrologyContextService;
+    private final SafetyContourStateHolder safetyContourStateHolder;
+    private final HydrologyRiskAdjustmentEvaluator hydrologyRiskAdjustmentEvaluator;
+
+    @Autowired
+    public RiskAssessmentEngine(
+            RiskAssessmentProperties riskProperties,
+            RiskScoringProperties scoringProperties,
+            DomainPenetrationCalculator domainPenetrationCalculator,
+            PredictedCpaCalculator predictedCpaCalculator,
+            WeatherContextHolder weatherContextHolder,
+            RegionalWeatherResolver regionalWeatherResolver,
+            WeatherAlertProperties weatherAlertProperties,
+            WeatherRiskAdjustmentEvaluator weatherRiskAdjustmentEvaluator,
+            HydrologyContextService hydrologyContextService,
+            SafetyContourStateHolder safetyContourStateHolder,
+            HydrologyRiskAdjustmentEvaluator hydrologyRiskAdjustmentEvaluator) {
+        this.riskProperties = riskProperties;
+        this.scoringProperties = scoringProperties;
+        this.domainPenetrationCalculator = domainPenetrationCalculator;
+        this.predictedCpaCalculator = predictedCpaCalculator;
+        this.weatherContextHolder = weatherContextHolder;
+        this.regionalWeatherResolver = regionalWeatherResolver;
+        this.weatherAlertProperties = weatherAlertProperties;
+        this.weatherRiskAdjustmentEvaluator = weatherRiskAdjustmentEvaluator;
+        this.hydrologyContextService = hydrologyContextService;
+        this.safetyContourStateHolder = safetyContourStateHolder;
+        this.hydrologyRiskAdjustmentEvaluator = hydrologyRiskAdjustmentEvaluator;
+    }
 
     public RiskAssessmentEngine(
             RiskAssessmentProperties riskProperties,
@@ -52,14 +87,19 @@ public class RiskAssessmentEngine {
             RegionalWeatherResolver regionalWeatherResolver,
             WeatherAlertProperties weatherAlertProperties,
             WeatherRiskAdjustmentEvaluator weatherRiskAdjustmentEvaluator) {
-        this.riskProperties = riskProperties;
-        this.scoringProperties = scoringProperties;
-        this.domainPenetrationCalculator = domainPenetrationCalculator;
-        this.predictedCpaCalculator = predictedCpaCalculator;
-        this.weatherContextHolder = weatherContextHolder;
-        this.regionalWeatherResolver = regionalWeatherResolver;
-        this.weatherAlertProperties = weatherAlertProperties;
-        this.weatherRiskAdjustmentEvaluator = weatherRiskAdjustmentEvaluator;
+        this(
+                riskProperties,
+                scoringProperties,
+                domainPenetrationCalculator,
+                predictedCpaCalculator,
+                weatherContextHolder,
+                regionalWeatherResolver,
+                weatherAlertProperties,
+                weatherRiskAdjustmentEvaluator,
+                null,
+                null,
+                null
+        );
     }
 
     public RiskAssessmentResult consume(
@@ -76,6 +116,12 @@ public class RiskAssessmentEngine {
         }
 
         log.debug("Aggregating risk assessment for ownShip={}, targets={}", ownShip.getId(), allShips.size());
+
+        double safetyContourMeters = currentSafetyContourMeters();
+        HydrologyContext hydrology = resolveHydrologyContext(ownShip, safetyContourMeters);
+        HydrologyRiskAdjustment hydrologyAdjustment = hydrologyRiskAdjustmentEvaluator == null
+                ? HydrologyRiskAdjustment.zero()
+                : hydrologyRiskAdjustmentEvaluator.evaluate(hydrology, safetyContourMeters);
 
         Map<String, TargetRiskAssessment> assessments = new LinkedHashMap<>();
         for (ShipStatus ship : allShips) {
@@ -95,7 +141,8 @@ public class RiskAssessmentEngine {
                     ship,
                     shipDomainResult,
                     predictionResult,
-                    encounterResult
+                    encounterResult,
+                    hydrologyAdjustment
             );
             assessments.put(ship.getId(), assessment);
         }
@@ -113,6 +160,28 @@ public class RiskAssessmentEngine {
             ShipDomainResult domainResult,
             CvPredictionResult predictionResult,
             EncounterClassificationResult encounterResult
+    ) {
+        return buildTargetAssessment(
+                targetId,
+                cpaResult,
+                ownShip,
+                targetShip,
+                domainResult,
+                predictionResult,
+                encounterResult,
+                HydrologyRiskAdjustment.zero()
+        );
+    }
+
+    private TargetRiskAssessment buildTargetAssessment(
+            String targetId,
+            CpaTcpaResult cpaResult,
+            ShipStatus ownShip,
+            ShipStatus targetShip,
+            ShipDomainResult domainResult,
+            CvPredictionResult predictionResult,
+            EncounterClassificationResult encounterResult,
+            HydrologyRiskAdjustment hydrologyAdjustment
     ) {
         // 无cpa/tcap直接返回，解释文本为等待cpa
         if (cpaResult == null) {
@@ -227,6 +296,8 @@ public class RiskAssessmentEngine {
         
         finalRiskScore = MathUtils.clamp(finalRiskScore, 0.0, 1.0);
         finalRiskScore = MathUtils.clamp(finalRiskScore + weatherAdjustment.stormPenalty(), 0.0, 1.0);
+        double hydrologyPenalty = hydrologyAdjustment != null ? hydrologyAdjustment.penaltyScore() : 0.0;
+        finalRiskScore = MathUtils.clamp(finalRiskScore + hydrologyPenalty, 0.0, 1.0);
 
         // 置信度取本船与目标船中的较低值，体现“短板效应”。
         double riskConfidence = Math.min(
@@ -247,6 +318,27 @@ public class RiskAssessmentEngine {
                 .encounterType(encounterType)
                 .domainPenetration(penetration)
                 .build();
+    }
+
+    private HydrologyContext resolveHydrologyContext(ShipStatus ownShip, double safetyContourMeters) {
+        if (hydrologyContextService == null || ownShip == null) {
+            return null;
+        }
+        if (!isFiniteCoordinate(ownShip.getLatitude(), -90.0, 90.0)
+                || !isFiniteCoordinate(ownShip.getLongitude(), -180.0, 180.0)) {
+            return null;
+        }
+        return hydrologyContextService.resolve(ownShip.getLatitude(), ownShip.getLongitude(), safetyContourMeters);
+    }
+
+    private double currentSafetyContourMeters() {
+        return safetyContourStateHolder == null
+                ? 0.0
+                : safetyContourStateHolder.getCurrentDepthMeters();
+    }
+
+    private boolean isFiniteCoordinate(Double value, double min, double max) {
+        return value != null && Double.isFinite(value) && value >= min && value <= max;
     }
 
     private Optional<WeatherContext> resolveEffectiveWeather(ShipStatus ownShip) {

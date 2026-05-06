@@ -83,6 +83,7 @@ class AgentLoopOrchestratorTest {
         AgentLoopResult.Completed completed = (AgentLoopResult.Completed) result;
         assertThat(completed.toolCallCount()).isEqualTo(1);
         assertThat(completed.iterations()).isEqualTo(2);
+        assertThat(completed.calledToolNames()).containsExactly("get_risk_snapshot");
     }
 
     @Test

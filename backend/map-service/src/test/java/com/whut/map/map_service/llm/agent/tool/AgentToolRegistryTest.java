@@ -88,4 +88,22 @@ class AgentToolRegistryTest {
 
         assertThat(result.payload().get("status").asText()).isEqualTo("OK");
     }
+
+    @Test
+    void hydrologyToolsCanBeListedByRegistry() {
+        AgentToolRegistry registry = new AgentToolRegistry(
+                List.of(
+                        stubTool(AgentToolNames.QUERY_BATHYMETRY),
+                        stubTool(AgentToolNames.EVALUATE_MANEUVER_HYDROLOGY)
+                ),
+                MAPPER
+        );
+
+        assertThat(registry.getToolDefinitions())
+                .extracting(ToolDefinition::name)
+                .containsExactly(
+                        AgentToolNames.EVALUATE_MANEUVER_HYDROLOGY,
+                        AgentToolNames.QUERY_BATHYMETRY
+                );
+    }
 }

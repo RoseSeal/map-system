@@ -5,6 +5,7 @@ import com.whut.map.map_service.llm.agent.AgentLoopResult;
 import com.whut.map.map_service.llm.agent.AgentSnapshot;
 import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.agent.trigger.AdvisoryTriggerPort;
+import com.whut.map.map_service.llm.agent.tool.AgentToolNames;
 import com.whut.map.map_service.llm.config.LlmExecutorConfig;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.context.RiskContextHolder;
@@ -110,6 +111,11 @@ public class AdvisoryService implements AdvisoryTriggerPort {
                         publishSchemaFailed();
                         return;
                     }
+                    if (!hydrologyEvidenceHasToolSource(parsed, completed)) {
+                        log.warn("Advisory schema failure: hydrology evidence appeared without hydrology tool call");
+                        publishSchemaFailed();
+                        return;
+                    }
                     publishAdvisory(snapshot, parsed, config, completed.provider());
                 }
                 case AgentLoopResult.MaxIterationsExceeded exceeded -> {
@@ -168,6 +174,22 @@ public class AdvisoryService implements AdvisoryTriggerPort {
 
     private void publishSchemaFailed() {
         riskStreamPublisher.publishError(ADVISORY_SCHEMA_FAILED, "Advisory generation failed: schema validation error", null);
+    }
+
+    private boolean hydrologyEvidenceHasToolSource(
+            AdvisoryOutputParser.ParsedAdvisory parsed,
+            AgentLoopResult.Completed completed
+    ) {
+        boolean hasHydrologyEvidence = parsed.evidenceItems() != null
+                && parsed.evidenceItems().stream()
+                .filter(Objects::nonNull)
+                .map(String::toLowerCase)
+                .anyMatch(item -> item.contains("[source: hydrology]"));
+        if (!hasHydrologyEvidence) {
+            return true;
+        }
+        return completed.calledToolNames().contains(AgentToolNames.QUERY_BATHYMETRY)
+                || completed.calledToolNames().contains(AgentToolNames.EVALUATE_MANEUVER_HYDROLOGY);
     }
 
     private RiskLevel highestRiskLevel(AgentSnapshot snapshot) {

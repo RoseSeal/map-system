@@ -26,7 +26,7 @@
 | Hydrology Step 3 | pending | pending |
 | Weather Step 1 | completed | completed |
 | Weather Step 2 | completed | completed |
-| Weather Step 3 | completed | pending |
+| Weather Step 3 | completed | completed |
 | Weather Step 4 | completed | completed |
 
 ## 3. Update Rule

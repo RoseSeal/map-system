@@ -1,5 +1,7 @@
 package com.whut.map.map_service.llm.agent;
 
+import java.util.List;
+
 public sealed interface AgentLoopResult
         permits AgentLoopResult.Completed,
                 AgentLoopResult.MaxIterationsExceeded,
@@ -11,7 +13,8 @@ public sealed interface AgentLoopResult
             int iterations,
             int toolCallCount,
             String finalizingStepId,
-            String provider
+            String provider,
+            List<String> calledToolNames
     ) implements AgentLoopResult {}
 
     record MaxIterationsExceeded(
@@ -33,11 +36,11 @@ public sealed interface AgentLoopResult
     ) implements AgentLoopResult {}
 
     static Completed completed(String finalText, int iterations, int toolCallCount) {
-        return new Completed(finalText, iterations, toolCallCount, null, null);
+        return new Completed(finalText, iterations, toolCallCount, null, null, List.of());
     }
 
     static Completed completed(String finalText, int iterations, int toolCallCount, String finalizingStepId) {
-        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, null);
+        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, null, List.of());
     }
 
     static Completed completed(
@@ -47,7 +50,18 @@ public sealed interface AgentLoopResult
             String finalizingStepId,
             String provider
     ) {
-        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, provider);
+        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, provider, List.of());
+    }
+
+    static Completed completed(
+            String finalText,
+            int iterations,
+            int toolCallCount,
+            String finalizingStepId,
+            String provider,
+            List<String> calledToolNames
+    ) {
+        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, provider, List.copyOf(calledToolNames));
     }
 
     static MaxIterationsExceeded maxIterationsExceeded(int iterations, int toolCallCount) {

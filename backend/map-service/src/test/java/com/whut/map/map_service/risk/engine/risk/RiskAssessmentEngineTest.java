@@ -1,6 +1,11 @@
 package com.whut.map.map_service.risk.engine.risk;
 
+import com.whut.map.map_service.chart.dto.HydrologyContext;
+import com.whut.map.map_service.chart.service.HydrologyContextService;
+import com.whut.map.map_service.chart.service.SafetyContourStateHolder;
+import com.whut.map.map_service.risk.config.HydrologyRiskProperties;
 import com.whut.map.map_service.risk.config.RiskAssessmentProperties;
+import com.whut.map.map_service.risk.config.RiskObjectMetaProperties;
 import com.whut.map.map_service.risk.config.RiskScoringProperties;
 import com.whut.map.map_service.risk.config.WeatherRiskProperties;
 import com.whut.map.map_service.risk.engine.collision.CpaTcpaResult;
@@ -9,6 +14,7 @@ import com.whut.map.map_service.risk.engine.encounter.EncounterClassificationRes
 import com.whut.map.map_service.risk.engine.encounter.EncounterType;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainResult;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.risk.hydrology.HydrologyRiskAdjustmentEvaluator;
 import com.whut.map.map_service.risk.weather.WeatherRiskAdjustmentEvaluator;
 import com.whut.map.map_service.shared.context.WeatherContextHolder;
 import com.whut.map.map_service.shared.domain.ShipStatus;
@@ -25,6 +31,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class RiskAssessmentEngineTest {
 
@@ -46,6 +55,20 @@ class RiskAssessmentEngineTest {
             WeatherRiskProperties weatherRiskProperties,
             WeatherAlertProperties weatherAlertProperties
     ) {
+        return createEngine(properties, domainPenetrationCalculator, weatherContextHolder, weatherRiskProperties,
+                weatherAlertProperties, null, new HydrologyRiskProperties());
+    }
+
+    private RiskAssessmentEngine createEngine(
+            RiskAssessmentProperties properties,
+            DomainPenetrationCalculator domainPenetrationCalculator,
+            WeatherContextHolder weatherContextHolder,
+            WeatherRiskProperties weatherRiskProperties,
+            WeatherAlertProperties weatherAlertProperties,
+            HydrologyContextService hydrologyContextService,
+            HydrologyRiskProperties hydrologyRiskProperties
+    ) {
+        RiskObjectMetaProperties riskObjectMetaProperties = new RiskObjectMetaProperties();
         return new RiskAssessmentEngine(
                 properties,
                 new RiskScoringProperties(),
@@ -54,7 +77,10 @@ class RiskAssessmentEngineTest {
                 weatherContextHolder,
                 new RegionalWeatherResolver(),
                 weatherAlertProperties,
-                new WeatherRiskAdjustmentEvaluator(weatherRiskProperties)
+                new WeatherRiskAdjustmentEvaluator(weatherRiskProperties),
+                hydrologyContextService,
+                new SafetyContourStateHolder(riskObjectMetaProperties),
+                new HydrologyRiskAdjustmentEvaluator(hydrologyRiskProperties)
         );
     }
 
@@ -106,7 +132,10 @@ class RiskAssessmentEngineTest {
                 new WeatherContextHolder(),
                 new RegionalWeatherResolver(),
                 new WeatherAlertProperties(),
-                new WeatherRiskAdjustmentEvaluator(new WeatherRiskProperties())
+                new WeatherRiskAdjustmentEvaluator(new WeatherRiskProperties()),
+                null,
+                new SafetyContourStateHolder(new RiskObjectMetaProperties()),
+                new HydrologyRiskAdjustmentEvaluator(new HydrologyRiskProperties())
         );
         ShipStatus own = ship("own");
         ShipStatus target = ship("target-1");
@@ -275,6 +304,93 @@ class RiskAssessmentEngineTest {
 
         assertThat(stormScore).isCloseTo(baselineScore + 0.15, within(1e-9));
         assertThat(stormScore).isLessThanOrEqualTo(1.0);
+    }
+
+    @Test
+    void hydrologyPenaltyDisabledKeepsBaselineRiskScoreAndLevel() {
+        HydrologyContextService hydrologyService = mock(HydrologyContextService.class);
+        when(hydrologyService.resolve(anyDouble(), anyDouble(), anyDouble()))
+                .thenReturn(new HydrologyContext(8.3, 0.0, null));
+        RiskAssessmentEngine engine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                new WeatherContextHolder(),
+                new WeatherRiskProperties(),
+                new WeatherAlertProperties(),
+                hydrologyService,
+                new HydrologyRiskProperties()
+        );
+        RiskAssessmentEngine baselineEngine = createEngine(new RiskAssessmentProperties());
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+        CpaTcpaResult cpaResult = cpaTcpa(0.2, 360.0);
+
+        TargetRiskAssessment baseline = baselineEngine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+        TargetRiskAssessment withDisabledHydrology = engine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+
+        assertThat(withDisabledHydrology.getRiskScore()).isEqualTo(baseline.getRiskScore());
+        assertThat(withDisabledHydrology.getRiskLevel()).isEqualTo(baseline.getRiskLevel());
+    }
+
+    @Test
+    void hydrologyPenaltyIncreasesRiskScoreWithoutRaisingRiskLevel() {
+        HydrologyContextService hydrologyService = mock(HydrologyContextService.class);
+        when(hydrologyService.resolve(anyDouble(), anyDouble(), anyDouble()))
+                .thenReturn(new HydrologyContext(8.3, 0.0, null));
+        HydrologyRiskProperties hydrologyRiskProperties = new HydrologyRiskProperties();
+        hydrologyRiskProperties.setEnabled(true);
+        RiskAssessmentEngine engine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                new WeatherContextHolder(),
+                new WeatherRiskProperties(),
+                new WeatherAlertProperties(),
+                hydrologyService,
+                hydrologyRiskProperties
+        );
+        RiskAssessmentEngine baselineEngine = createEngine(new RiskAssessmentProperties());
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+        CpaTcpaResult cpaResult = cpaTcpa(0.55, 300.0);
+
+        TargetRiskAssessment baseline = baselineEngine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+        TargetRiskAssessment withHydrology = engine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+
+        assertThat(withHydrology.getRiskScore()).isGreaterThan(baseline.getRiskScore());
+        assertThat(withHydrology.getRiskLevel()).isEqualTo(baseline.getRiskLevel());
+    }
+
+    @Test
+    void hydrologyUnavailableDoesNotAdjustRisk() {
+        HydrologyContextService hydrologyService = mock(HydrologyContextService.class);
+        when(hydrologyService.resolve(anyDouble(), anyDouble(), anyDouble())).thenReturn(null);
+        HydrologyRiskProperties hydrologyRiskProperties = new HydrologyRiskProperties();
+        hydrologyRiskProperties.setEnabled(true);
+        RiskAssessmentEngine engine = createEngine(
+                new RiskAssessmentProperties(),
+                new DomainPenetrationCalculator(),
+                new WeatherContextHolder(),
+                new WeatherRiskProperties(),
+                new WeatherAlertProperties(),
+                hydrologyService,
+                hydrologyRiskProperties
+        );
+        RiskAssessmentEngine baselineEngine = createEngine(new RiskAssessmentProperties());
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+        CpaTcpaResult cpaResult = cpaTcpa(0.2, 360.0);
+
+        TargetRiskAssessment baseline = baselineEngine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+        TargetRiskAssessment unavailable = engine.consume(own, List.of(own, target), Map.of(target.getId(), cpaResult), null, null, null)
+                .getTargetAssessment(target.getId());
+
+        assertThat(unavailable.getRiskScore()).isEqualTo(baseline.getRiskScore());
+        assertThat(unavailable.getRiskLevel()).isEqualTo(baseline.getRiskLevel());
     }
 
     @Test

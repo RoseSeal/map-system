@@ -11,4 +11,6 @@ public final class AgentToolNames {
     public static final String EVALUATE_MANEUVER = "evaluate_maneuver";
     public static final String GET_WEATHER_CONTEXT = "get_weather_context";
     public static final String EVALUATE_MANEUVER_WITH_WEATHER = "evaluate_maneuver_with_weather";
+    public static final String QUERY_BATHYMETRY = "query_bathymetry";
+    public static final String EVALUATE_MANEUVER_HYDROLOGY = "evaluate_maneuver_hydrology";
 }
