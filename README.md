@@ -17,12 +17,19 @@ MQTT -> `map-service` -> SSE (`/api/v2/risk`) + WebSocket (`/api/v2/chat`) -> Fr
 
 ## Documentation
 
-- Docs index: [docs/README.md](./docs/README.md)
-- Current architecture truth: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
-- Current protocol truth: [docs/EVENT_SCHEMA.md](./docs/EVENT_SCHEMA.md)
-- Frontend architecture and interaction model: [docs/frontend-design.md](./docs/frontend-design.md)
-- Current project status: [PROJECT_STATUS.md](./PROJECT_STATUS.md)
-- Current system overview: [CURRENT_SYSTEM_OVERVIEW.md](./CURRENT_SYSTEM_OVERVIEW.md)
+Read in this order. Each step narrows scope; do not skip ahead unless you already know the area.
+
+1. [PROJECT_STATUS.md](./PROJECT_STATUS.md) — milestone-level state and pointers to active track plans.
+2. [docs/README.md](./docs/README.md) — full document map (truth / decisions / planning / history).
+3. [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — current architectural truth.
+4. [docs/EVENT_SCHEMA.md](./docs/EVENT_SCHEMA.md) — current SSE / WebSocket protocol truth.
+5. [docs/frontend-design.md](./docs/frontend-design.md) — frontend architecture and interaction model.
+
+Secondary references:
+
+- [CURRENT_SYSTEM_OVERVIEW.md](./CURRENT_SYSTEM_OVERVIEW.md) — task-to-file navigation across modules. Use after the above when locating concrete source files.
+- [docs/history/v1.0/README.md](./docs/history/v1.0/README.md) — v1.0 closure summary (what the latest released milestone delivered).
+- [docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md](./docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md) — current demo script.
 
 ## Tech Stack
 

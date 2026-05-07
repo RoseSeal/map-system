@@ -1,7 +1,7 @@
 # Architecture Decisions and Review Findings
 
 > 用途：记录当前稳定架构决策，以及围绕这些决策沉淀出的实现级 review finding
-> 最后更新：2026-04-28（risk / environment SSE 事件切分决策）
+> 最后更新：2026-05-07（v1.0 收口：新增 ADR-010 AgentSnapshot 边界深拷贝、ADR-011 ADVISORY 独立事件、ADR-012 COLREGS Part B 进程内图）
 > 关系说明：架构概览以 `docs/ARCHITECTURE.md` 为准；协议真值以 `docs/EVENT_SCHEMA.md` 为准；本文档承接关键设计取舍与相关复盘结论
 
 ---
@@ -498,6 +498,106 @@ Safety contour PUT / reset
 - 不将安全等深线写入改为 WebSocket；HTTP command + SSE authoritative broadcast 更符合当前无会话全局状态模型。
 - 不长期保留 `RISK_UPDATE.environment_context` 与 `ENVIRONMENT_UPDATE.environment_context` 双下发。
 - 不把环境更新继续拆成 weather / hydrology / safety contour 多个字段级事件，除非后续出现高频大 payload、独立 replay 或 per-client 环境状态需求。
+
+### ADR-010
+
+Agent loop 内的快照一致性采用"边界深拷贝"模型，不全面改造上游 DTO 为不可变结构
+
+Trade-off：agent loop 启动后所读取的 risk / environment 上下文必须是冻结的，否则多轮工具调用之间可能读到不一致状态。
+
+#### 可选方案
+
+##### 方案一：全面把 `LlmRiskContext`、`TargetDerivedSnapshot`、`CpaTcpaResult`、`EncounterClassificationResult`、`TargetRiskAssessment`、`CvPredictionResult` 等改造为 record / 不可变结构
+
+- 优点：捕获引用即冻结，零运行时拷贝开销，语义最干净。
+- 缺点：上述类型由 risk pipeline 与 LLM context 双侧消费，全面改造会牵连 assembler、context formatter、explanation cache、existing tests；且 `RiskContextHolder` 的语义本意是"latest-only 可被整体替换"，并非"内容不可变"。改造范围远超 agent track。
+
+##### 方案二：仅在 agent loop 边界一次性深拷贝构造 `AgentSnapshot`
+
+- 优点：成本仅集中在 `AgentSnapshot` 构造点；对 risk pipeline 与既有 DTO 零侵入；后续若决定改造 DTO，可在不破坏 agent loop 的前提下渐进迁移。
+- 缺点：每次 agent loop 启动多一份对象拷贝；`AgentSnapshot` 自身要承担"哪些字段需要拷贝"的边界知识。
+
+#### 决策
+
+采用方案二：`AgentSnapshot` 在 loop 启动时一次性深拷贝构造，loop 内所有工具一律读 `AgentSnapshot` 而非 live state。`RiskContextHolder` 与 `DerivedTargetStateStore` 不改动其当前可变 DTO 形态。
+
+#### 理由
+
+- 在哪一层付一致性代价更合适：agent loop 是该一致性需求的唯一来源，把代价收口在边界比反向波及上游 pipeline 更小、更可逆。
+- agent loop 启动开销已经是当前单次 explanation 的 2–5 倍，深拷贝增量在该量级下可忽略。
+- 后续若 risk DTO 自然演进为 record（如 Lombok 移除、Java record 普及），可平滑替换 `AgentSnapshot` 内部实现而不改变其消费契约。
+
+#### 明确否决的方向
+
+- 不允许工具内"持有 holder 引用 + 自行复制"——一致性边界必须在 orchestrator 一处保证。
+- 不允许把 `AgentSnapshot` 暴露给 advisory 之外的服务复用（避免成为新的事实来源）。
+
+### ADR-011
+
+Advisory 走独立 SSE 事件类型 `ADVISORY`，不复用 `EXPLANATION`
+
+Trade-off：场景级 AI 航行建议是否复用现有解释事件，还是独立成新事件类型。
+
+#### 可选方案
+
+##### 方案一：复用 `EXPLANATION`，在 payload 中加 `kind=ADVISORY` 区分
+
+- 优点：前端 store / SSE handler 不必新增分支；schema 表面变更最小。
+- 缺点：`EXPLANATION` 当前语义是"按 target_id 的风险解释"，advisory 是"场景级建议（含规则引用与机动假设）"，二者在订阅、生命周期、`SUPERSEDED` 归档语义上都不同；统一事件后前端不得不按 `kind` 字段二次分流，store 形状被迫双形态化。
+
+##### 方案二：新增 `ADVISORY` 事件类型，独立 payload 与生命周期
+
+- 优点：事件类型即语义类型，前端 store 可保持单职责；advisory 的 `supersedes_id`、`valid_until`、`evidence_items` 等不污染 explanation；后续 advisory 协议演进（多目标聚合、流式中间步骤）不会回溯影响 explanation。
+- 缺点：schema 表面新增一类事件；前端需要新增 advisory store / 渲染路径。
+
+#### 决策
+
+采用方案二，引入 `ADVISORY` 事件类型与配套错误码 `ADVISORY_SCHEMA_FAILED`。
+
+#### 理由
+
+- "事件类型 = 语义类型"是 v2 协议的基础设计原则（参见 ADR-005）；按 `kind` 字段二次分流违背该原则。
+- advisory 的生命周期模型（旧条目被新 advisory 标记为 `SUPERSEDED` 并归档）与 explanation（按目标 latest-only 缓存）天然不一致。
+- 独立事件让 advisory 协议未来扩展（流式中间步骤、多 advisory 同时活跃）有空间，不需要回头改 explanation 兼容路径。
+
+#### 明确否决的方向
+
+- 不在 chat 通道下发 advisory：advisory 是系统驱动的场景级广播，不绑定单个会话；走 risk SSE 与现有 risk-side 事件保持一致。
+- chat agent 路径的工具调用过程通过 WebSocket `AGENT_STEP` 体现，与 advisory 解耦，不复用 `ADVISORY` 事件。
+
+### ADR-012
+
+COLREGS Part B 知识表示采用进程内规则图，外部图数据库与历史案例图推迟
+
+Trade-off：v1.0 引入 `query_regulatory_context` 工具时，规则知识的表示与存储形态选择。
+
+#### 可选方案
+
+##### 方案一：直接接入外部图数据库（Neo4j 等）
+
+- 优点：与最终目标形态一致；版本化、查询语言、可视化工具完整。
+- 缺点：v1.0 规则数据仅 Rules 4–19 数十条事实，引入外部组件需要部署、连接配置、迁移脚本与运维成本；且历史案例图、相似度检索、版本化引用尚未具备数据，单独为 Part B 引入外部存储不符合"按需引入"原则。
+
+##### 方案二：在 map-service 进程内用 in-memory 数据结构表示
+
+- 优点：零部署成本；与现有 advisory 主线一起部署；查询延迟最低；测试无外部依赖。
+- 缺点：规则更新需要重启服务；不能支撑多服务共享；不天然版本化。
+
+#### 决策
+
+采用方案二，但通过 `GraphQueryPort` 抽象隔离查询接口与存储实现；外部图存储与历史案例图谱推迟到 v1.1+。
+
+#### 理由
+
+- 当前规则数据规模与变更频率不需要外部存储；为面向"未来可能的扩展"提前付运维代价，违反按需引入原则（参见 ADR-007 中关于 GraphRAG 的整体路线判断）。
+- `GraphQueryPort` 抽象保证后续接入 Neo4j / 历史案例图时，advisory 主线代码与工具实现不变；切换路径在工程上是无损可逆的。
+- v1.0 advisory 的 `evidence_items` 已可承载规则引用，验证了在小规模 in-memory 图上完成"可审计法规依据"是可行的。
+
+#### 明确否决的方向
+
+- 不让 advisory 工具直接持有 `ColregsGraph` 实例：所有查询统一走 `GraphQueryPort`。
+- 不在 v1.0 引入 COLREGS Part A / Part C / Part D 等条款，避免规则集合范围漂移；`query_regulatory_context` 当前明确只覆盖 Part B（Rules 4–19）。
+- 不引入"先普通 RAG、再 GraphRAG"过渡路径（与 ADR-007 一致）。
 
 ---
 

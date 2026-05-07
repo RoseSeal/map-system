@@ -1,7 +1,7 @@
 # Map-System 待办与延后事项清单 (TODO)
 
 > 文档状态：active
-> 最后更新：2026-04-30
+> 最后更新：2026-05-07
 > 摘要：仅记录“未实现且未挂到当前有效实施链”的事项；凡已进入 `docs/v*` 总 plan、step 文档或已命名 milestone 的工作，均不得在此重复登记。
 
 ## 0. 使用规则
@@ -28,6 +28,7 @@
 - **基于安全领域的避碰责任判定**：在 owship-centric 域检测基础上，引入目标船尺寸/船型信息，支持基于避碰规则（COLREGS）的让路船/直航船责任判定。
 - **相遇场景计算逻辑优化**：在后端增加局面判定过滤逻辑。不应始终全量调用相遇场景（交叉、对遇、追越）计算，而应仅在目标存在潜在风险（如进入警戒圈或 CPA 触发阈值）时才计算并下发场景标签；后端完成后，需同步移除前端 `TargetsPanel` 中的临时过滤逻辑。
 - **AIS 重复报文处理策略优化**：细化针对同时间戳重复报文的过滤或字段修正规则，防止 Ghost Ship 长期滞留。
+- **OVERTAKING 追越场景相对速度收敛检查**：`EncounterClassifier` 当前仅依据几何关系（目标在本船船尾扇区且航向差小）判定追越，不验证目标是否真的在相对收近；目标实际速度低于本船时"追越"判定可能不成立，导致 Rule 13 责任表述过度确定。升级方向为在分类器层引入相对速度收敛条件校验，并同步更新 `QueryRegulatoryContextTool` 的 resolver 决策矩阵。触发条件：演示阶段或规则推理质量评审发现误判。（来源：agent/step5.md §6）
 
 ## 3. LLM 与 AI 智能体 (Agent)
 
@@ -40,6 +41,8 @@
 - **`evaluate_maneuver` 多目标批量与组合机动评估**：当前工具每次仅针对单目标评估单一机动动作，不支持对多个目标同时评估同一机动的综合安全效果，也不支持先减速后转向等组合机动场景；触发条件为单步评估无法覆盖典型复杂态势。
 - **`query_regulatory_context` 能见度受限（Rule 19）完整推理**：当前接口已预留 `visibility_condition` 字段，`MemoryGraphAdapter` 在开阔能见度查询中会过滤掉 Rule 19；待天气模块完整集成后，weather context 应向工具调用层透传当前能见度状态，使 Rule 19 在受限能见度条件下正确进入命中集合。
 - **GraphRAG 历史案例与外部图存储扩展**：`v1.0` agent 已完成 COLREGS Part B 基础内存图谱与 `evaluate_maneuver` 机动评估工具（Step 5）；历史碰撞/近失事件案例图谱与相似度检索、外部图数据库接入（Neo4j 等）、版本化规则引用与统一检索接口仍未挂入当前实现链。
+- **`EvaluateManeuverWithWeatherTool.lookahead_min` 预测时段语义实现**：当前工具仅接受 `lookahead_min = 0` 或缺省，非零值返回 `INVALID_ARGUMENT`；预测时段语义（评估拟议机动在未来 N 分钟内的气象可行性）已预留参数但未实现。升级方向为结合轨迹预测能力实现有限时域内的气象可行性评估。触发条件：天气 track 后续 milestone 或轨迹预测精度达到评估基线。（来源：weather/step4.md §10 Deferred）
+- **`evidence_items` 从 string[] 升级为结构化对象（来源字段协议化）**：当前 advisory `evidence_items` 是字符串数组，来源区分（数值事实 / 规则引用 / 水文工具等）依赖 prompt 约束与测试门控，缺乏机器可校验的 source 字段。升级方向为把 evidence item 从 `string` 升级为含 `text`、`source_tool`、`source_type` 的结构化对象，并同步更新后端序列化、前端展示与 `EVENT_SCHEMA.md`。触发条件：advisory 审计或可解释性要求提升时。（来源：hydrology/step3.md §6 Deferred）
 
 ## 4. 前端协同与展示 (Frontend)
 
@@ -48,6 +51,8 @@
 - **编辑任意历史消息**：在当前“仅支持编辑最后一条 user 消息”的基础上，支持指定历史轮次重答，并明确后续消息的保留、截断或重建规则。
 - **海图主渲染链路收敛到 composite tile**：当前水文 Step 1 明确保留单图层 vector source 方案；若后续需要统一主渲染链路，应单独规划并完成前后端收敛。
 - **海图专题补全（`FAIRWY` / `RESARE` / `DEPCNT` 深值标签）**：当前水文 track 仅完成 `OBSTRN` 与 `DEPARE` 视觉主线，这些附加专题仍未挂入现有 Step 1–3。
+- **`ownShipRole` 在前端 advisory / explanation UI 展示**：`QueryRegulatoryContextTool` 已在后端 tool 层输出 `ownShipRole`（`GIVE_WAY` / `STAND_ON` / `BOTH`），但前端 advisory card 与 explanation 卡片尚未消费该字段；展示方式（徽章、说明文字或图标）由后续 visual track 决定，当前无明确 step owner。（来源：agent/step5.md §4 Out of Scope）
+- **chat agent 工具调用参数与返回结果审计视图**：Step 4A 已实现工具名与运行状态的简短展示（`AGENT_STEP`）；完整工具参数和 payload 审计视图（供调试或高级用户查看每轮工具入参/出参）尚未实现，触发条件为有真实演示或调试需求。（来源：agent/step4A.md §4 Deferred）
 
 ## 5. 天气与环境专题
 

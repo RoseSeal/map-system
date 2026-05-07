@@ -1,7 +1,7 @@
 ﻿# 海图系统 (Map-System) — Architecture Overview v0.1
 
 > 用途：项目架构概览 / AI 上下文输入 / 对外介绍
-> 最后更新：2026-04-18
+> 最后更新：2026-05-07（v1.0 收口同步：advisory pipeline、agent loop、environment context、hydrology / weather 接入）
 > 维护原则：仅记录稳定的架构事实、链路与关键决策
 
 ---
@@ -22,10 +22,13 @@
 | --- | --- |
 | 消息接入 | MQTT |
 | 后端核心 | Spring Boot (`map-service`) |
-| 实时推送 | SSE（risk）+ WebSocket（chat） |
-| 风险计算 | 自研 CPA/TCPA 引擎 |
-| LLM 接入 | Gemini / 智谱，使用 `@ConditionalOnProperty` 切换，`CompletableFuture` 超时降级 |
-| 事件协议 | Event Schema v2（见 `docs/EVENT_SCHEMA.md`） |
+| 实时推送 | SSE（risk + environment + advisory）+ WebSocket（chat + agent_step + capability） |
+| 风险计算 | 自研 CPA/TCPA 引擎，含会遇分类、安全领域、CV 预测与多因子综合评分 |
+| 环境上下文 | `EnvironmentContextService` 单点装配 weather / hydrology / safety contour，独立 `ENVIRONMENT_UPDATE` 事件 |
+| LLM 接入 | Gemini / 智谱，运行时可经 `LLM_PROVIDER_SELECTION` 切换；`CompletableFuture` 超时降级 |
+| Agent loop | 有界工具增强推理：`AgentLoopOrchestrator` + `AgentSnapshot`（边界深拷贝） + `AgentToolRegistry` |
+| 知识图谱 | COLREGS Part B 进程内规则图（`GraphQueryPort` 抽象，外部图存储留作 v1.1+） |
+| 事件协议 | Event Schema v2，含 `ADVISORY` / `ENVIRONMENT_UPDATE` / `AGENT_STEP` / `CAPABILITY` 等 v1.0 引入事件（见 `docs/EVENT_SCHEMA.md`） |
 | 前端 | Vite + TypeScript + Tailwind，2.5D 海图，浏览器原生 `SpeechSynthesis` TTS |
 | 语音识别 | `whisper.cpp`（ASR，已完成，Backend-orchestrated） |
 | 模拟器 | Python，MQTT 推送，haversine 航迹推算，`--speed-scale` 加速 |
@@ -41,9 +44,9 @@
 | --- | --- |
 | MQTT Listener | 订阅外部输入消息，触发处理链入口 |
 | `WeatherMqttConfig` + `WeatherMessageHandler` | 订阅 `usv/Weather`，维护共享 `WeatherContextHolder` 快照供 SSE/风险元数据消费 |
-| `S57Controller` + `S57TileRepository` | 提供 `/api/s57/*` 海图 tile、layer metadata、style 与 safety contour HTTP 接口 |
-| `RiskSseController` | 提供 `/api/v2/risk` SSE 风险事件入口 |
-| `ChatWebSocketHandler` | 提供 `/api/v2/chat` 双向问答与语音交互入口 |
+| `S57Controller` + `S57TileRepository` | 提供 `/api/s57/*` 海图 tile、layer metadata、style 与 safety contour HTTP 接口（含 HTTP command 写入 safety contour） |
+| `RiskSseController` | 提供 `/api/v2/risk` SSE 入口；承载 `RISK_UPDATE` / `ENVIRONMENT_UPDATE` / `EXPLANATION` / `ADVISORY` / `ERROR` |
+| `ChatWebSocketHandler` | 提供 `/api/v2/chat` 双向问答与语音交互入口；连接建立时下发 `CAPABILITY` 握手，chat agent 路径下发 `AGENT_STEP` |
 
 #### 领域层（Domain）
 
@@ -66,6 +69,14 @@
 | `ConversationMemory`（`llm/memory/`） | 按 `conversationId` 维护多轮对话历史，含 TTL 过期、滑动窗口截断与最后一轮替换能力 |
 | `PromptTemplateService`（`llm/prompt/`） | 从 `classpath:prompts/` 加载 system prompt 模板 |
 | `LlmTriggerService`（`llm/service/`） | 判断是否触发风险解释，结果通过回调交付，不持有 transport 层引用 |
+| `EnvironmentContextService`（`risk/environment/`） | 环境状态单一装配点；合并 weather / hydrology / safety contour / `active_alerts`，输出 `ENVIRONMENT_UPDATE` 与 `environment_state_version` |
+| `HydrologyContextService` | 由 ENC 表派生 `environment_context.hydrology` 摘要与浅区/障碍物告警 |
+| `EncounterRoleResolver` | 在引擎结果上写 `ownShipRole`，作为 advisory 工具与 chat agent 工具共同读取的场景事实 |
+| `AgentLoopOrchestrator`（`llm/agent/`） | 有界工具增强推理循环；driving advisory（系统驱动主线）与 chat agent（用户驱动次线，feature-flagged） |
+| `AgentSnapshot` | agent loop 启动时一次性深拷贝构造的冻结快照；同一 loop 内所有读取均走该快照 |
+| `AgentToolRegistry` + tool 实现 | 注册并分派 query / regulatory / maneuver-evaluation 工具；当前包含 `query_bathymetry`、`get_weather_context`、`query_regulatory_context`、`evaluate_maneuver` 等 |
+| `AdvisoryPipeline` | 场景级 advisory 生成与 `ADVISORY` SSE 事件下发；前端旧 advisory 收到新条目后置 `SUPERSEDED` |
+| `ColregsGraph` + `GraphQueryPort` | COLREGS Part B 进程内规则图；`GraphQueryPort` 是后续接入外部图存储的稳定抽象 |
 
 ### 4.2 副服务
 
@@ -128,6 +139,47 @@ ChatWebSocketHandler
        ChatWebSocketHandler ──→ 2.5D Frontend
 ```
 
+### 5.3 链路 C：环境状态广播链路
+
+```text
+WeatherMessageHandler / S57Controller（safety contour HTTP command）/ HydrologyContextService
+  │  weather snapshot / safety contour value / hydrology summary
+  ▼
+EnvironmentContextService
+  │  合并为 `environment_context`（含 `active_alerts` 共享枚举）
+  │  分配 `environment_state_version`
+  ▼
+RiskStreamPublisher ──→ RiskSseController ──→ 2.5D Frontend（`ENVIRONMENT_UPDATE`）
+```
+
+### 5.4 链路 D：Advisory Agent 主线（系统驱动）
+
+```text
+风险态势变化（RiskAssessmentCompletedEvent，经触发策略门控）
+  ▼
+AdvisoryPipeline
+  │  捕获 AgentSnapshot（深拷贝 risk / environment 状态）
+  ▼
+AgentLoopOrchestrator
+  │  在 AgentToolRegistry 中按需调用 query / regulatory / maneuver-evaluation 工具
+  │  工具读取的是 AgentSnapshot，不读 live 数据
+  ▼
+AdvisoryPayload（含 `evidence_items` 与法规引用）
+  ▼
+RiskStreamPublisher ──→ RiskSseController ──→ 2.5D Frontend（`ADVISORY`）
+```
+
+### 5.5 链路 E：Chat Agent 次线（用户驱动）
+
+```text
+ChatWebSocketHandler 收到 `CHAT` 且 `agent_mode=true` 且 `selected_target_ids` 非空
+  ▼
+LlmChatService 路由至 AgentLoopOrchestrator（共用同一实现）
+  │  loop 期间通过 `AGENT_STEP` WebSocket 事件向前端推送工具调用过程
+  ▼
+最终 `CHAT_REPLY`（含工具结论）或 `ERROR`
+```
+
 ## 六、能力边界
 
 - 已具备多源消息接入、风险计算、SSE 风险推送、WebSocket 问答交互、TTS 播报与 ASR 语音输入能力。
@@ -138,7 +190,10 @@ ChatWebSocketHandler
 - Chat 会话由客户端 `conversation_id` 锚定，后端未绑定 WebSocket session 或用户身份；该实现适用于当前单操作者前端模型，不提供多客户端会话隔离保证。
 - `service.llm` 包依赖收口完成：仅依赖 `llm.*`、`domain.*` 和 `config.properties`，不持有 `dto.websocket`、`engine.risk` 或 `transport` 层引用；transport 层负责协议校验与错误码映射。
 - ASR 已通过 `whisper.cpp` 接入，当前采用后端统一编排的非流式方案。
-- 动画指令、规则引擎、多智能体 / GraphRAG 仍处于规划阶段。
+- 有界 agent loop 已上线：advisory 主线（系统驱动）与 chat agent 次线（用户驱动，需 `agent_mode`）共用 `AgentLoopOrchestrator`，通过 `AgentToolRegistry` 调用查询、法规与机动评估工具，结果以 `ADVISORY` SSE 事件或 `AGENT_STEP` WebSocket 事件下发。
+- COLREGS Part B 规则图（Rules 4–19）以进程内 `ColregsGraph` 形态接入，advisory `evidence_items` 中的法规依据由 `query_regulatory_context` 工具产出；外部图数据库与历史案例图保留在 v1.1+。
+- 环境上下文（weather / hydrology / safety contour / `active_alerts`）由 `EnvironmentContextService` 单点装配，独立 `ENVIRONMENT_UPDATE` 事件下发；hydrology 与 weather 已分别接入风险引擎与 agent 工具层。
+- 动画指令仍处于规划阶段。
 - `listener-service` 当前不在主运行链路中。
 
 ## 七、功能完成状态
@@ -180,8 +235,8 @@ ChatWebSocketHandler
 - [x] AIS 数据质量校验（Mapper 层来源校验 + qualityFlags + confidence 消费）
 - [x] Mock 清理与管线集成（消除 assembler 硬编码，端到端串联引擎输出）
 - [ ] JSON 指令驱动动画
-- [ ] 显式实现 agent loop
-- [ ] 法律法规与历史危险场景 GraphRAG
+- [x] 显式实现 agent loop（v1.0 advisory 主线 + chat agent 次线，详见 [`history/v1.0/README.md`](./history/v1.0/README.md)）
+- [x] 法律法规知识图谱（COLREGS Part B 进程内图，v1.0 完成；历史危险场景图与外部图存储仍待后续 milestone）
 
 ### P4
 - [ ] 带唤醒词的纯语音交互
@@ -219,8 +274,9 @@ ChatWebSocketHandler
   - AIS 数据质量校验：Mapper 层来源特定校验，产出 qualityFlags 与动态 confidence。
   - Mock 清理与管线集成：消除 assembler 全部硬编码，端到端串联引擎输出。
 - 引入 JSON 指令驱动动画，用于前端联动与解释增强。
-- 显式实现 agent loop，承接后续更复杂的任务编排。
-- 接入法律法规与历史危险场景 GraphRAG，为解释与建议提供规则依据、相似案例参考与可追溯推理链。
+- ~~显式实现 agent loop~~（v1.0 已完成）
+- ~~接入 COLREGS 规则图谱并暴露为 advisory 工具~~（v1.0 已完成 Part B 进程内图）
+- 历史危险场景图与外部图数据库（Neo4j 等）接入；advisory `evidence_items` 引用相似案例。
 
 ### P4 - 体验增强
 
