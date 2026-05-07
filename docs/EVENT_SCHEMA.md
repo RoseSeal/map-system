@@ -1,8 +1,9 @@
 # Event Schema
 > schema_version: v2
 > 文档状态：current / 已实施
-> 生效日期：2026-04-01
-> 变更摘要：risk 改为 SSE，chat 保持 WebSocket，解释流并入 SSE 风险通道；CHAT 上行支持最后一轮非破坏式重答
+> 生效日期：2026-04-01（v1.0 增量已合入：ADVISORY / ENVIRONMENT_UPDATE / AGENT_STEP / CAPABILITY / LLM_PROVIDER_SELECTION）
+> 最后更新：2026-05-07（v1.0 收口校对，无字段层变更）
+> 变更摘要：risk 改为 SSE，chat 保持 WebSocket，解释流并入 SSE 风险通道；CHAT 上行支持最后一轮非破坏式重答；v1.0 期间扩展 advisory pipeline、environment 事件拆分、agent step 可见性与 LLM provider 运行时切换。
 
 ## 变更记录
 | 版本 | 日期 | 摘要 |

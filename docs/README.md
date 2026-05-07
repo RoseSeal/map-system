@@ -1,8 +1,20 @@
 # Docs Index
 
 > 文档状态：current
-> 最后更新：2026-04-17
-> 用途：为 `docs/` 提供入口索引，并明确“当前真值 / 规划 / 历史归档”的边界。
+> 最后更新：2026-05-07
+> 用途：为 `docs/` 提供入口索引，并明确"当前真值 / 规划 / 历史归档"的边界。
+
+## 0. 阅读顺序
+
+文档体系存在多个入口；建议按以下顺序使用，避免在重叠入口间反复跳转：
+
+1. [`../README.md`](../README.md)：项目一句话与技术栈速览。
+2. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md)：milestone 级状态与 active track 指针。
+3. **本文件**：documentation map，定位"该看哪份真值/规划/归档"。
+4. [`ARCHITECTURE.md`](./ARCHITECTURE.md) 与 [`EVENT_SCHEMA.md`](./EVENT_SCHEMA.md)：当前真值。
+5. [`history/v1.0/README.md`](./history/v1.0/README.md)：v1.0 已完成并归档，此 closure summary 是了解 v1.0 增量与对应 ADR 的入口（**不是 current truth**）。
+
+[`../CURRENT_SYSTEM_OVERVIEW.md`](../CURRENT_SYSTEM_OVERVIEW.md) 是"任务 → 文件"导航工具，**不是 first stop**，已定位到模块后再用。
 
 ## 1. 当前真值
 
@@ -17,23 +29,26 @@
 ## 3. 规划与待办
 
 - [`TODO.md`](./TODO.md)：跨模块待办、延后事项与工程债。
-- [`v1.0/README.md`](./v1.0/README.md)：`v1.0` active milestone 总览；定义 `agent` / `hydrology` / `weather` 三条并行 track 与阻塞关系。
-- [`v1.0/SOURCEBOOK.md`](./v1.0/SOURCEBOOK.md)：`v1.0` 共用原始材料索引稿；汇总 agent / hydrology / weather 三条 track 的现有文档入口、代码入口与待补资料。
 
 说明：
 
-- `v1.0/` 是当前 active milestone 规划目录；其中 `agent` 为主线，`hydrology` / `weather` 为并行增强 track。
-- 其他尚未冻结的规划项仍优先收口到 `TODO.md`。
+- v1.0 milestone 已于 2026-05-07 收口；归档与 closure summary 见 [`history/v1.0/README.md`](./history/v1.0/README.md)。
+- 当前没有正在进行的命名 milestone。下一个 milestone 启动时在 `docs/<next-milestone>/` 建立目录，并在 [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) 切换 active 指针。
+- 未冻结的规划项继续收口到 `TODO.md`。
 
 ## 4. 历史归档
 
-- [`history/`](./history/)：阶段性实现计划、步骤拆解、旧版本协议与历史设计草案。
+- [`history/`](./history/)：阶段性实现计划、步骤拆解、旧版本协议与历史设计草案。详见 [`history/README.md`](./history/README.md)。
 
 约束：
 
 - `history/` 只保留历史过程，不再承担当前实现真值。
 - 规划文档只记录未落地或未收敛能力，不重复描述已实现事实。
-- 若当前事实与历史步骤冲突，以“当前真值”文档为准。
+- 若当前事实与历史步骤冲突，以"当前真值"文档为准。
+
+## 4.5 演示材料
+
+- [`demo/MAP_SYSTEM_DEMO_SCRIPT.md`](./demo/MAP_SYSTEM_DEMO_SCRIPT.md)：当前 v1.0 演示脚本，配合外部 AIS 模拟源使用。
 
 ## 5. 维护规则
 

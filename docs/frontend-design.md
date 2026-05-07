@@ -1,7 +1,7 @@
 # 前端设计参考文档
 
 > 文档状态：current
-> 最后更新：2026-04-16
+> 最后更新：2026-05-07（v1.0 收口同步：advisory / environment_update / agent_step / capability / llm_provider_selection 事件清单与消费边界）
 > 基线来源：`docs/ARCHITECTURE.md`、`docs/EVENT_SCHEMA.md`
 
 本文档描述当前前端运行模型、组件职责、协议消费边界与本地联调约束。
@@ -26,8 +26,8 @@
 
 传输协议：
 
-- 风险流：SSE `/api/v2/risk`，事件类型为 `RISK_UPDATE`、`EXPLANATION`、`ERROR`
-- 聊天流：WebSocket `/api/v2/chat`，上行为 `CHAT`、`SPEECH`、`CLEAR_HISTORY`，下行为 `CHAT_REPLY`、`SPEECH_TRANSCRIPT`、`ERROR`、`CLEAR_HISTORY_ACK`
+- 风险流：SSE `/api/v2/risk`，事件类型为 `RISK_UPDATE`、`ENVIRONMENT_UPDATE`、`EXPLANATION`、`ADVISORY`、`ERROR`
+- 聊天流：WebSocket `/api/v2/chat`，上行为 `CHAT`（可携带 `agent_mode` / `selected_target_ids` / `edit_last_user_message`）、`SPEECH`、`CLEAR_HISTORY`、`SET_LLM_PROVIDER_SELECTION`；下行为 `CAPABILITY`（连接握手）、`CHAT_REPLY`、`AGENT_STEP`、`SPEECH_TRANSCRIPT`、`LLM_PROVIDER_SELECTION`、`ERROR`、`CLEAR_HISTORY_ACK`
 
 完整字段定义以 `docs/EVENT_SCHEMA.md` 为准。
 
