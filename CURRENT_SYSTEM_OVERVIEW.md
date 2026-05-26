@@ -39,8 +39,8 @@ Source:
 
 ### 4.2 WebSocket — `/api/v2/chat`
 
-Uplink: `PING`, `CHAT` (with optional `agent_mode` / `selected_target_ids` / `edit_last_user_message`), `SPEECH`, `CLEAR_HISTORY`, `SET_LLM_PROVIDER_SELECTION`.
-Downlink: `PONG`, `CAPABILITY` (handshake), `CHAT_REPLY`, `AGENT_STEP`, `SPEECH_TRANSCRIPT`, `LLM_PROVIDER_SELECTION`, `CLEAR_HISTORY_ACK`, `ERROR`.
+Uplink: `PING`, `CHAT` (with optional `agent_mode` / `selected_target_ids` / `selected_explanation_refs` / `edit_last_user_message`), `SPEECH`, `CLEAR_HISTORY`, `CLEAR_EXPIRED_EXPLANATIONS`, `SET_LLM_PROVIDER_SELECTION`.
+Downlink: `PONG`, `CAPABILITY` (handshake), `CHAT_REPLY`, `AGENT_STEP`, `SPEECH_TRANSCRIPT`, `LLM_PROVIDER_SELECTION`, `CLEAR_HISTORY_ACK`, `EXPIRED_EXPLANATIONS_CLEARED`, `ERROR`.
 
 Source:
 - [backend/map-service/.../llm/transport/ws/ChatWebSocketHandler.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/transport/ws/ChatWebSocketHandler.java)
