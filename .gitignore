@@ -43,6 +43,7 @@ backend/map-service/src/main/resources/application-local.properties
 # python
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # AI
 .codex

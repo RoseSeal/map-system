@@ -46,6 +46,29 @@ services:
           请优先识别并正确转录上述航海相关专业词汇。
     restart: unless-stopped
 
+  graphrag:
+    build: ./graphrag-service
+    container_name: graphrag-service
+    ports:
+      - "8100:8100"
+    environment:
+      GRAPHRAG_LLM_BASE_URL: ${GRAPHRAG_LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      GRAPHRAG_LLM_API_KEY: ${GRAPHRAG_LLM_API_KEY:-}
+      GRAPHRAG_LLM_MODEL: ${GRAPHRAG_LLM_MODEL:-glm-4-flash}
+      GRAPHRAG_EMBED_MODEL: ${GRAPHRAG_EMBED_MODEL:-embedding-3}
+      GRAPHRAG_EMBED_DIM: ${GRAPHRAG_EMBED_DIM:-2048}
+      GRAPHRAG_DEFAULT_TOP_K: ${GRAPHRAG_DEFAULT_TOP_K:-5}
+      GRAPHRAG_DEFAULT_MODE: ${GRAPHRAG_DEFAULT_MODE:-local}
+      GRAPHRAG_WORKING_DIR: /app/index
+    volumes:
+      - ./graphrag-service/runtime/index:/app/index
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
 
 volumes:
   postgis_data:
