@@ -2,7 +2,7 @@
 
 > 版本：[v1.1-graphrag](./OVERVIEW.md) · status: active
 > 本步 status：pending review
-> 最后更新：2026-06-04
+> 最后更新：2026-06-10
 
 ---
 
@@ -193,6 +193,7 @@ public class CaseGraphConfig {
 |---|---|
 | `queryText` | `query` |
 | `ownShipRole`/`encounterType`/`waterArea`/`visibilityCondition`/`targetCount`/`riskLevel` | 装入嵌套 `situation.{own_ship_role,encounter_type,water_area,visibility,target_count,risk_level}` |
+| `ownShipType`/`targetShipType` | 装入嵌套 `situation.{own_ship_type,target_ship_type}`，供 sidecar 辅助 rerank |
 | `mode`（缺省 → `defaultMode`） | `mode`（小写） |
 | `topK`（缺省 → `defaultTopK`） | `top_k` |
 
@@ -277,7 +278,8 @@ llm.case-graph.default-top-k=5
 
 ## 11. 偏离记录
 
-无。本步在 overview step-2 的 objective / deliverables / DoD / scope ceiling 内完成。§3.3 的 `RestTemplate` 注入式构造是 step-2 自有的实现选择（可测性），不改变 overview 任何条目，非偏离。
+- **2026-06-10 / `doc-code-inconsistency`**：§4.2 已将 `ownShipType` / `targetShipType` 定义为辅助 rerank 字段，但原 §5 映射表遗漏对应 wire 字段。实现按既定字段职责透传为 `situation.own_ship_type` / `situation.target_ship_type`，并同步补全 §5。该修正不改变 step objective、模块边界、输出契约或后续步骤假设，因此不追加 overview `Active Deviations`。
+- 除上述映射表补正外，本步在 overview step-2 的 objective / deliverables / DoD / scope ceiling 内完成。§3.3 的 `RestTemplate` 注入式构造是 step-2 自有的实现选择（可测性），不改变 overview 任何条目，非偏离。
 
 ---
 
