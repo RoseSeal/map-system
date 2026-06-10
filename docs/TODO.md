@@ -40,7 +40,6 @@
 - **`evaluate_maneuver` 转向动力学（非瞬时机动评估）**：当前工具假设机动瞬时完成，不建模转向惯性与加速度上限；触发条件为演示阶段反映瞬时假设导致建议偏离实船能力；升级方向为引入最大转艏率与加速度约束，将操纵结果建模为时间函数而非瞬态跳变。
 - **`evaluate_maneuver` 多目标批量与组合机动评估**：当前工具每次仅针对单目标评估单一机动动作，不支持对多个目标同时评估同一机动的综合安全效果，也不支持先减速后转向等组合机动场景；触发条件为单步评估无法覆盖典型复杂态势。
 - **`query_regulatory_context` 能见度受限（Rule 19）完整推理**：当前接口已预留 `visibility_condition` 字段，`MemoryGraphAdapter` 在开阔能见度查询中会过滤掉 Rule 19；待天气模块完整集成后，weather context 应向工具调用层透传当前能见度状态，使 Rule 19 在受限能见度条件下正确进入命中集合。
-- **GraphRAG 历史案例与外部图存储扩展**：`v1.0` agent 已完成 COLREGS Part B 基础内存图谱与 `evaluate_maneuver` 机动评估工具（Step 5）；历史碰撞/近失事件案例图谱与相似度检索、外部图数据库接入（Neo4j 等）、版本化规则引用与统一检索接口仍未挂入当前实现链。
 - **`EvaluateManeuverWithWeatherTool.lookahead_min` 预测时段语义实现**：当前工具仅接受 `lookahead_min = 0` 或缺省，非零值返回 `INVALID_ARGUMENT`；预测时段语义（评估拟议机动在未来 N 分钟内的气象可行性）已预留参数但未实现。升级方向为结合轨迹预测能力实现有限时域内的气象可行性评估。触发条件：天气 track 后续 milestone 或轨迹预测精度达到评估基线。（来源：weather/step4.md §10 Deferred）
 - **`evidence_items` 从 string[] 升级为结构化对象（来源字段协议化）**：当前 advisory `evidence_items` 是字符串数组，来源区分（数值事实 / 规则引用 / 水文工具等）依赖 prompt 约束与测试门控，缺乏机器可校验的 source 字段。升级方向为把 evidence item 从 `string` 升级为含 `text`、`source_tool`、`source_type` 的结构化对象，并同步更新后端序列化、前端展示与 `EVENT_SCHEMA.md`。触发条件：advisory 审计或可解释性要求提升时。（来源：hydrology/step3.md §6 Deferred）
 
