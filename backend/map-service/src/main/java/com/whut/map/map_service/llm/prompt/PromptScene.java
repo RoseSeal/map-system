@@ -5,6 +5,7 @@ public enum PromptScene {
     RISK_EXPLANATION("system-risk-explanation.txt"),
     AGENT_CHAT("system-agent-chat.txt"),
     ADVISORY("system-advisory.txt"),
+    ADVISORY_CASE_RULE("system-advisory-casegraph.txt"),
     RISK_EXPLANATION_USER_CONTEXT("user-risk-explanation-context.txt"),
     ADVISORY_USER_CONTEXT("user-advisory-context.txt");
 

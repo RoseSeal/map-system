@@ -1,8 +1,13 @@
 package com.whut.map.map_service.llm.agent.advisory;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whut.map.map_service.llm.agent.AgentMessage;
 import com.whut.map.map_service.llm.agent.AgentSnapshot;
 import com.whut.map.map_service.llm.agent.TextAgentMessage;
+import com.whut.map.map_service.llm.agent.ToolDefinition;
+import com.whut.map.map_service.llm.agent.tool.AgentTool;
+import com.whut.map.map_service.llm.agent.tool.AgentToolNames;
+import com.whut.map.map_service.llm.agent.tool.AgentToolRegistry;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
@@ -20,7 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AdvisoryPromptBuilderTest {
 
     private final PromptTemplateService promptTemplateService = new PromptTemplateService();
-    private final AdvisoryPromptBuilder builder = new AdvisoryPromptBuilder(promptTemplateService);
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final AdvisoryPromptBuilder builder = builderWithTools(List.of());
 
     @Test
     void buildReturnsSystemAndUserMessages() {
@@ -43,6 +49,22 @@ class AdvisoryPromptBuilderTest {
 
         assertThat(((TextAgentMessage) messages.get(0)).content())
                 .isEqualTo(promptTemplateService.getSystemPrompt(PromptScene.ADVISORY));
+    }
+
+    @Test
+    void systemPromptAppendsCaseRuleWhenToolIsAvailable() {
+        AdvisoryPromptBuilder caseGraphBuilder = builderWithTools(List.of(stubCaseGraphTool()));
+
+        String systemPrompt = ((TextAgentMessage) caseGraphBuilder
+                .build(new AgentSnapshot(1L, null, Map.of()))
+                .get(0))
+                .content();
+
+        assertThat(systemPrompt).isEqualTo(
+                promptTemplateService.getSystemPrompt(PromptScene.ADVISORY)
+                        + "\n"
+                        + promptTemplateService.getSystemPrompt(PromptScene.ADVISORY_CASE_RULE)
+        );
     }
 
     @Test
@@ -112,5 +134,33 @@ class AdvisoryPromptBuilderTest {
 
         assertThat(userContent).doesNotContain("当前气象");
     }
-}
 
+    private AdvisoryPromptBuilder builderWithTools(List<AgentTool> tools) {
+        return new AdvisoryPromptBuilder(
+                promptTemplateService,
+                new AgentToolRegistry(tools, mapper)
+        );
+    }
+
+    private AgentTool stubCaseGraphTool() {
+        ToolDefinition definition = new ToolDefinition(
+                AgentToolNames.QUERY_HISTORICAL_CASE_GRAPH,
+                "historical case tool",
+                mapper.createObjectNode()
+        );
+        return new AgentTool() {
+            @Override
+            public ToolDefinition getDefinition() {
+                return definition;
+            }
+
+            @Override
+            public com.whut.map.map_service.llm.agent.ToolResult execute(
+                    com.whut.map.map_service.llm.agent.ToolCall call,
+                    AgentSnapshot snapshot
+            ) {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+}

@@ -1,7 +1,7 @@
 # step-2 — `HistoricalCaseQueryPort` 抽象与 LightRAG 适配器（Java 侧）
 
 > 版本：[v1.1-graphrag](./OVERVIEW.md) · status: active
-> 本步 status：pending review
+> 本步 status：completed
 > 最后更新：2026-06-10
 
 ---
@@ -51,7 +51,7 @@ adapter 用 `RestTemplate` + `SimpleClientHttpRequestFactory`（超时取自 `Ca
 
 ### 3.4 wire DTO 用 snake_case 映射，与领域类型分离
 
-sidecar 契约是 snake_case JSON（`own_ship_role`、`top_k`），而项目无全局命名策略。故 adapter 内部维护一组 **wire DTO**（`RetrieveRequest`/`Situation`/`RetrieveResponse`/`CaseDto`，作为 adapter 的 `static` 嵌套 record），以 `@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)` 映射；adapter 负责领域类型 ↔ wire DTO 的转换。`mode` 在 wire 层以**小写 `String`** 承载（请求侧由 `CaseQueryMode.name().toLowerCase()` 写入 `RetrieveRequest.mode`，响应侧 `RetrieveResponse.mode` 经 `valueOf(toUpperCase)` 还原），从而 `CaseQueryMode` 领域枚举保持无 Jackson 注解。领域类型（port API）保持 camelCase、不带 Jackson 注解。
+sidecar 契约是 snake_case JSON（`own_ship_role`、`top_k`），而项目无全局命名策略。故 adapter 内部维护一组 **wire DTO**（`RetrieveRequest`/`Situation`/`RetrieveResponse`/`CaseDto`，作为 adapter 的 `static` 嵌套 record），以 `@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)` 映射；请求侧 `RetrieveRequest` / `Situation` 额外使用 `@JsonInclude(NON_NULL)`，使未提供的 query / situation / 特征字段在 wire JSON 中缺席而非显式发送 `null`。adapter 负责领域类型 ↔ wire DTO 的转换。`mode` 在 wire 层以**小写 `String`** 承载（请求侧由 `CaseQueryMode.name().toLowerCase()` 写入 `RetrieveRequest.mode`，响应侧 `RetrieveResponse.mode` 经 `valueOf(toUpperCase)` 还原），从而 `CaseQueryMode` 领域枚举保持无 Jackson 注解。领域类型（port API）保持 camelCase、不带 Jackson 注解。
 
 **被否**：让领域记录直接背 Jackson snake_case 注解——把传输细节泄进 port API，污染 step-3 的消费类型。
 
@@ -179,11 +179,14 @@ public class CaseGraphConfig {
     @Bean
     @ConditionalOnProperty(prefix = "llm.case-graph", name = "enabled", havingValue = "true")
     public HistoricalCaseQueryPort historicalCaseQueryPort() {
+        Assert.hasText(properties.getUrl(), "llm.case-graph.url must not be blank");
         RestTemplate restTemplate = buildRestTemplate(properties.getTimeoutMs());
         return new LightRagCaseGraphAdapter(restTemplate, properties, objectMapper);
     }
 }
 ```
+
+启用开关时配置阶段对 `llm.case-graph.url` 做非空校验，避免把错误延迟到首次 advisory 查询。
 
 ---
 
@@ -226,8 +229,8 @@ llm.case-graph.default-top-k=5
 | 层级 | 测试 | 手段 | 门控 |
 |---|---|---|---|
 | 适配器契约 | `LightRagCaseGraphAdapterTest`：stub `POST /retrieve` 返回 step-1 §6.2 样例 JSON → 断言 `HistoricalCaseResult` 正确映射（cases 条数、`caseId`、`relevance`、`colregsRules`、`mode`）；stub `503` → 断言 `CaseGraphUnavailableException`；stub `cases:[]` → 断言空列表非异常；`queryText` 与结构化特征皆空 → 断言 `IllegalArgumentException` 且不发请求 | `MockRestServiceServer` 绑定注入的 `RestTemplate` | 是 |
-| 条件装配 | `CaseGraphConfigTest`：`enabled=true` → 上下文含 `HistoricalCaseQueryPort` bean；`enabled=false`/缺省 → 不含该 bean | `ApplicationContextRunner` **仅装 `CaseGraphConfig`**，提供 `CaseGraphProperties` 与 stub `ObjectMapper`，按 `llm.case-graph.enabled` 取值断言 bean 在/不在 | 是 |
-| 映射单元 | wire DTO 的 snake_case 序列化/反序列化往返（`own_ship_role`↔`ownShipRole`、`top_k`↔`topK`、`mode` 小写 `String`↔`CaseQueryMode`）| `ObjectMapper` 直测 | 是 |
+| 条件装配 | `CaseGraphConfigTest`：`enabled=true` → 上下文含 `HistoricalCaseQueryPort` bean；`enabled=false`/缺省 → 不含该 bean；启用但 URL 为空 → context 启动失败并指出配置键 | `ApplicationContextRunner` **仅装 `CaseGraphConfig`**，提供 `CaseGraphProperties` 与 stub `ObjectMapper`，按配置取值断言装配结果 | 是 |
+| 映射单元 | wire DTO 的 snake_case 序列化/反序列化往返（`own_ship_role`↔`ownShipRole`、`top_k`↔`topK`、`mode` 小写 `String`↔`CaseQueryMode`），并断言请求 DTO 不序列化 null 字段 | `ObjectMapper` 直测 | 是 |
 
 全部测试不依赖真实 sidecar / LLM，可在 CI 跑。端到端（真实 sidecar）属 step-3 的 advisory 验收，本步不承担。
 

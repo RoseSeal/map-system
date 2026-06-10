@@ -2,7 +2,7 @@
 
 > name: map-system v1.1-graphrag
 > description: 在 advisory `evidence_items` 链路上新增"历史相似海事案例图检索"分支——以 Graph-RAG（LightRAG sidecar）实现，包装为独立 port 与 agent 工具，向 advisory 注入带 `[source: historical_case]` 来源标记的案例证据。
-> last_updated: 2026-06-04
+> last_updated: 2026-06-10
 > status: active
 
 ---
@@ -125,3 +125,6 @@ v1.1 要解决的一句话问题：**advisory 的 `evidence_items` 虽已覆盖�
 |---|---|---|---|---|---|
 | Open Questions #1（存储后端选型） | step-1 | 2026-06-04 | better-approach | step-1 §3.1 选定 LightRAG 文件型存储（NetworkX + nano-vectordb）；复用 postgis 不可行（镜像缺 pgvector + AGE），Neo4j 过重，二者归生产化 deferred | consolidation 时从 Open Questions 移除该项，正文记为既定决策：本版本用 LightRAG 文件型本地存储 |
 | Version DoD #1 / step-1 DoD「`compose up` 可一键拉起服务并通过一次 smoke」 | step-1 | 2026-06-04 | better-approach | step-1 §3.2 采用离线 index 构建（服务启动只加载不重建，避免 boot-time LLM 抽取）；验收序列为「先 bootstrap index → `compose up` → smoke」 | consolidation 时把 DoD 改述为：index bootstrap 后，`compose up` 拉起服务并通过一次 smoke 查询 |
+| Version DoD #4 / step-3 deliverables ②③ 与 scope ceiling「与 hydrology 校验同构」「Rule 9（条件化触发）」「仅在 prompt 契约与后置校验上追加」 | step-3 | 2026-06-10 | better-approach | 外部 review 指出：只查调用名的同构校验无法拦截"失败/空召回后编造案例"（P1），静态条件化措辞无法满足 DoD #5 禁用时输出完全一致（P2）。step-3 §3.4/§3.5：校验强化为「成功调用（status OK 且 cases 非空）+ evidence 含返回 case_id」，为此 `AgentLoopResult.Completed` 增量新增 `toolResults` 字段；prompt 改为条件化组装（基底 `system-advisory.txt` 零改动，fragment 仅在工具在目录时追加） | consolidation 时把 DoD #4 改述为「通过成功调用 + case_id 溯源的 source-grounding 校验」，deliverables ② 改述为「条件化组装的 prompt fragment」并删去 Rule 编号表述，scope ceiling 注明允许对 `AgentLoopResult` 的增量扩展 |
+| Open Questions #2（生成与评测的模型分工） | step-4 | 2026-06-10 | better-approach | step-4 §3.3 选定：检索/生成沿用智谱 API（step-1 既定默认）；judge 默认 Gemini CLI 非交互调用，codex / copilot / claude CLI 备用——API 免费额度不足，judge 改走本机 CLI 订阅（经用户确认），判分与被评链路不同源，符合 OQ #2 本意 | consolidation 时从 Open Questions 移除该项，正文记为既定决策：检索/生成用智谱，judge 经非智谱 CLI（默认 Gemini） |
+| step-4 Sequencing「评测主体纯 Python 直连 sidecar」的只读边界 | step-4 | 2026-06-10 | correctness | 当前 `/retrieve` 在 LightRAG context 无法解析 case_id 时静默使用 catalog embedding fallback，响应无法区分来源，会把向量结果误归因为 GraphRAG 召回。step-4 允许在既有 `metrics` 下新增向后兼容的 `retrieval_source` 遥测字段；不增加请求参数、不改召回行为 | consolidation 时在 step-4 交付说明中注明：允许为可解释评测补充通用、向后兼容的 sidecar 遥测字段 |

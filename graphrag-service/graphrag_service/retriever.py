@@ -66,11 +66,14 @@ async def retrieve(
         context = await client.query(query_effective, mode=mode, only_need_context=True)
         case_ids = _extract_case_ids(context, catalog)
         candidates = [catalog[case_id] for case_id in case_ids]
+        retrieval_source = "lightrag_context"
         if not candidates:
             candidates = await _embedding_candidates(query_effective, catalog, top_k, config)
+            retrieval_source = "embedding_fallback"
         answer = await client.query(query_effective, mode=mode, only_need_context=False)
     except LightRagUnavailable:
         candidates = await _embedding_candidates(query_effective, catalog, top_k, config)
+        retrieval_source = "lightrag_unavailable"
         answer = "未配置可用的 LightRAG 运行时；已基于 catalog embedding 返回相似案例。"
 
     ranked = _rerank(candidates, req.situation or {})
@@ -87,6 +90,7 @@ async def retrieve(
             "latency_ms": int((time.perf_counter() - start) * 1000),
             "tokens": {"prompt": 0, "completion": 0},
             "cases_indexed": manifest.get("cases_indexed", 0),
+            "retrieval_source": retrieval_source,
         },
     }
 
