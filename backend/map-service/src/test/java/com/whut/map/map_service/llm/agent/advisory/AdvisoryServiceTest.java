@@ -1,9 +1,12 @@
 package com.whut.map.map_service.llm.agent.advisory;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.whut.map.map_service.llm.agent.AgentLoopOrchestrator;
 import com.whut.map.map_service.llm.agent.AgentLoopResult;
 import com.whut.map.map_service.llm.agent.AgentMessage;
 import com.whut.map.map_service.llm.agent.AgentSnapshot;
+import com.whut.map.map_service.llm.agent.ToolResult;
 import com.whut.map.map_service.llm.agent.tool.AgentToolNames;
 import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.config.LlmProperties;
@@ -43,6 +46,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AdvisoryServiceTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Mock
     private AgentLoopOrchestrator orchestrator;
@@ -89,6 +94,24 @@ class AdvisoryServiceTest {
                 List.of("t1"),
                 action,
                 List.of("[source: hydrology] 当前点最小水深 8.3 m")
+        );
+    }
+
+    private AdvisoryOutputParser.ParsedAdvisory historicalCaseParsed(String caseId) {
+        return historicalCaseParsed("[source: historical_case]", caseId);
+    }
+
+    private AdvisoryOutputParser.ParsedAdvisory historicalCaseParsed(String marker, String caseId) {
+        RecommendedAction action = RecommendedAction.builder()
+                .type(AdvisoryActionType.MONITOR)
+                .description("参考历史案例持续监控")
+                .urgency(AdvisoryUrgency.LOW)
+                .build();
+        return new AdvisoryOutputParser.ParsedAdvisory(
+                "摘要",
+                List.of("t1"),
+                action,
+                List.of(marker + " 案例 " + caseId + " 显示应及早采取行动")
         );
     }
 
@@ -239,5 +262,146 @@ class AdvisoryServiceTest {
         service.onAdvisoryTrigger(snapshotV(10L), () -> {});
 
         verify(riskStreamPublisher).publishAdvisory(any());
+    }
+
+    @Test
+    void historicalCaseEvidenceWithReturnedCaseIdCanPublish() {
+        stubCompletedWithHistoricalResult(successfulHistoricalResult("H-07"));
+        when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishAdvisory(any());
+    }
+
+    @Test
+    void historicalCaseEvidenceWithoutToolCallIsRejected() {
+        when(riskContextHolder.getVersion()).thenReturn(10L);
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed(
+                        "text", 3, 1, null, "zhipu",
+                        List.of(AgentToolNames.GET_RISK_SNAPSHOT),
+                        List.of()
+                ));
+        when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+    }
+
+    @Test
+    void historicalCaseEvidenceAfterErrorResultIsRejected() {
+        stubCompletedWithHistoricalResult(historicalErrorResult());
+        when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+    }
+
+    @Test
+    void historicalCaseEvidenceAfterEmptyCasesIsRejected() {
+        stubCompletedWithHistoricalResult(emptyHistoricalResult());
+        when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+    }
+
+    @Test
+    void historicalCaseEvidenceWithUnknownCaseIdIsRejected() {
+        stubCompletedWithHistoricalResult(successfulHistoricalResult("H-07"));
+        when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-99"));
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+    }
+
+    @Test
+    void historicalCaseMarkerWithoutSpaceIsStillValidated() {
+        stubCompletedWithHistoricalResult(historicalErrorResult());
+        when(outputParser.parse(eq("text"), any()))
+                .thenReturn(historicalCaseParsed("[source:historical_case]", "H-07"));
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+    }
+
+    @Test
+    void historicalCaseIdPrefixDoesNotCountAsGrounded() {
+        stubCompletedWithHistoricalResult(successfulHistoricalResult("H-0"));
+        when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+    }
+
+    @Test
+    void noHistoricalCaseMarkerIsUnaffectedByErrorResult() {
+        stubCompletedWithHistoricalResult(historicalErrorResult());
+        when(outputParser.parse(eq("text"), any())).thenReturn(validParsed());
+
+        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+
+        verify(riskStreamPublisher).publishAdvisory(any());
+    }
+
+    private void stubCompletedWithHistoricalResult(ToolResult historicalResult) {
+        when(riskContextHolder.getVersion()).thenReturn(10L);
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed(
+                        "text",
+                        3,
+                        2,
+                        null,
+                        "zhipu",
+                        List.of(
+                                AgentToolNames.GET_RISK_SNAPSHOT,
+                                AgentToolNames.QUERY_HISTORICAL_CASE_GRAPH
+                        ),
+                        List.of(historicalResult)
+                ));
+    }
+
+    private ToolResult successfulHistoricalResult(String caseId) {
+        ObjectNode payload = MAPPER.createObjectNode().put("status", "OK");
+        payload.putArray("cases").addObject().put("case_id", caseId);
+        return new ToolResult(
+                "case-call",
+                AgentToolNames.QUERY_HISTORICAL_CASE_GRAPH,
+                payload
+        );
+    }
+
+    private ToolResult emptyHistoricalResult() {
+        ObjectNode payload = MAPPER.createObjectNode().put("status", "OK");
+        payload.putArray("cases");
+        return new ToolResult(
+                "case-call",
+                AgentToolNames.QUERY_HISTORICAL_CASE_GRAPH,
+                payload
+        );
+    }
+
+    private ToolResult historicalErrorResult() {
+        ObjectNode payload = MAPPER.createObjectNode()
+                .put("status", "ERROR")
+                .put("error_code", "CASE_GRAPH_UNAVAILABLE");
+        return new ToolResult(
+                "case-call",
+                AgentToolNames.QUERY_HISTORICAL_CASE_GRAPH,
+                payload
+        );
     }
 }

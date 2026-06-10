@@ -3,6 +3,7 @@ package com.whut.map.map_service.llm.agent.advisory;
 import com.whut.map.map_service.llm.agent.AgentLoopOrchestrator;
 import com.whut.map.map_service.llm.agent.AgentLoopResult;
 import com.whut.map.map_service.llm.agent.AgentSnapshot;
+import com.whut.map.map_service.llm.agent.ToolResult;
 import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.agent.trigger.AdvisoryTriggerPort;
 import com.whut.map.map_service.llm.agent.tool.AgentToolNames;
@@ -24,17 +25,23 @@ import org.springframework.util.StringUtils;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
 public class AdvisoryService implements AdvisoryTriggerPort {
 
     private static final String ADVISORY_SCHEMA_FAILED = "ADVISORY_SCHEMA_FAILED";
+    private static final Pattern HISTORICAL_CASE_SOURCE =
+            Pattern.compile("\\[source:\\s*historical_case\\]", Pattern.CASE_INSENSITIVE);
 
     private final AgentLoopOrchestrator orchestrator;
     private final AdvisoryPromptBuilder promptBuilder;
@@ -116,6 +123,11 @@ public class AdvisoryService implements AdvisoryTriggerPort {
                         publishSchemaFailed();
                         return;
                     }
+                    if (!historicalCaseEvidenceGrounded(parsed, completed)) {
+                        log.warn("Advisory schema failure: historical case evidence was not grounded in retrieved cases");
+                        publishSchemaFailed();
+                        return;
+                    }
                     publishAdvisory(snapshot, parsed, config, completed.provider());
                 }
                 case AgentLoopResult.MaxIterationsExceeded exceeded -> {
@@ -190,6 +202,53 @@ public class AdvisoryService implements AdvisoryTriggerPort {
         }
         return completed.calledToolNames().contains(AgentToolNames.QUERY_BATHYMETRY)
                 || completed.calledToolNames().contains(AgentToolNames.EVALUATE_MANEUVER_HYDROLOGY);
+    }
+
+    private boolean historicalCaseEvidenceGrounded(
+            AdvisoryOutputParser.ParsedAdvisory parsed,
+            AgentLoopResult.Completed completed
+    ) {
+        if (parsed.evidenceItems() == null) {
+            return true;
+        }
+        var historicalEvidence = parsed.evidenceItems().stream()
+                .filter(Objects::nonNull)
+                .filter(item -> HISTORICAL_CASE_SOURCE.matcher(item).find())
+                .toList();
+        if (historicalEvidence.isEmpty()) {
+            return true;
+        }
+
+        Set<String> retrievedCaseIds = new HashSet<>();
+        for (ToolResult result : completed.toolResults()) {
+            if (!AgentToolNames.QUERY_HISTORICAL_CASE_GRAPH.equals(result.toolName())
+                    || !"OK".equalsIgnoreCase(result.payload().path("status").asText())) {
+                continue;
+            }
+            var cases = result.payload().path("cases");
+            if (!cases.isArray()) {
+                continue;
+            }
+            for (var caseNode : cases) {
+                String caseId = caseNode.path("case_id").asText(null);
+                if (caseId != null && !caseId.isBlank()) {
+                    retrievedCaseIds.add(caseId.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+        if (retrievedCaseIds.isEmpty()) {
+            return false;
+        }
+        return historicalEvidence.stream()
+                .allMatch(item -> retrievedCaseIds.stream().anyMatch(caseId -> containsCaseId(item, caseId)));
+    }
+
+    private boolean containsCaseId(String evidence, String caseId) {
+        Pattern caseIdPattern = Pattern.compile(
+                "(?<![A-Za-z0-9_-])" + Pattern.quote(caseId) + "(?![A-Za-z0-9_-])",
+                Pattern.CASE_INSENSITIVE
+        );
+        return caseIdPattern.matcher(evidence).find();
     }
 
     private RiskLevel highestRiskLevel(AgentSnapshot snapshot) {

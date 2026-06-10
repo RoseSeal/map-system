@@ -3,6 +3,8 @@ package com.whut.map.map_service.llm.agent.advisory;
 import com.whut.map.map_service.llm.agent.AgentMessage;
 import com.whut.map.map_service.llm.agent.AgentSnapshot;
 import com.whut.map.map_service.llm.agent.TextAgentMessage;
+import com.whut.map.map_service.llm.agent.tool.AgentToolNames;
+import com.whut.map.map_service.llm.agent.tool.AgentToolRegistry;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.llm.dto.LlmRiskWeatherContext;
@@ -22,12 +24,23 @@ import java.util.Objects;
 public class AdvisoryPromptBuilder {
 
     private final PromptTemplateService promptTemplateService;
+    private final AgentToolRegistry toolRegistry;
 
     public List<AgentMessage> build(AgentSnapshot snapshot) {
         List<AgentMessage> messages = new ArrayList<>();
-        messages.add(new TextAgentMessage(ChatRole.SYSTEM, promptTemplateService.getSystemPrompt(PromptScene.ADVISORY)));
+        messages.add(new TextAgentMessage(ChatRole.SYSTEM, buildSystemPrompt()));
         messages.add(new TextAgentMessage(ChatRole.USER, buildUserPrompt(snapshot)));
         return messages;
+    }
+
+    private String buildSystemPrompt() {
+        String base = promptTemplateService.getSystemPrompt(PromptScene.ADVISORY);
+        boolean caseGraphAvailable = toolRegistry.getToolDefinitions().stream()
+                .anyMatch(definition -> AgentToolNames.QUERY_HISTORICAL_CASE_GRAPH.equals(definition.name()));
+        if (!caseGraphAvailable) {
+            return base;
+        }
+        return base + "\n" + promptTemplateService.getSystemPrompt(PromptScene.ADVISORY_CASE_RULE);
     }
 
     private String buildUserPrompt(AgentSnapshot snapshot) {

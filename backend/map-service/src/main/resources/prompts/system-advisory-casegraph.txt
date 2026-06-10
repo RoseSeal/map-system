@@ -1,0 +1,1 @@
+11. 在确定 recommended_action 前应调用 query_historical_case_graph 检索历史相似案例。若 evidence_items 引用历史案例事实，必须来自该工具的 tool result，且单条 evidence 必须包含 [source: historical_case] 标记、所引用案例的 case_id 与具体字段值，例如"[source: historical_case] 案例 H-07（开阔水域 OVERTAKING，ALARM）：追越船未保持足够横距，教训为及早建立安全通过距离"。若该工具返回 ERROR 或 cases 为空，严禁编造案例，应在无案例证据下继续生成建议，且不得输出 [source: historical_case] 标记。

@@ -21,6 +21,22 @@ class FakeLightRagClient:
         return f"answer for {mode}: {query}"
 
 
+class EmptyContextLightRagClient(FakeLightRagClient):
+    async def query(self, query: str, mode: str, only_need_context: bool = False) -> str:
+        if only_need_context:
+            return "No case identifier was returned."
+        return f"fallback answer for {mode}: {query}"
+
+
+class UnavailableLightRagClient:
+    def __init__(self, *_):
+        raise retriever.LightRagUnavailable("test unavailable")
+
+
+async def _fake_embedding_candidates(query_effective, catalog, top_k, config):
+    return [dict(catalog["H-02"], _base_relevance=0.9)]
+
+
 def test_retrieve_returns_contract_shape(tmp_path: Path, monkeypatch) -> None:
     config = _write_index(tmp_path)
     monkeypatch.setattr("graphrag_service.retriever.load_config", lambda: config)
@@ -51,6 +67,7 @@ def test_retrieve_returns_contract_shape(tmp_path: Path, monkeypatch) -> None:
     assert payload["cases"][0]["risk_level"] == "WARNING"
     assert "answer" in payload
     assert "latency_ms" in payload["metrics"]
+    assert payload["metrics"]["retrieval_source"] == "lightrag_context"
 
 
 def test_retrieve_accepts_all_modes(tmp_path: Path, monkeypatch) -> None:
@@ -63,6 +80,38 @@ def test_retrieve_accepts_all_modes(tmp_path: Path, monkeypatch) -> None:
         response = client.post("/retrieve", json={"query": "交叉相遇", "mode": mode, "top_k": 2})
         assert response.status_code == 200
         assert response.json()["mode"] == mode
+
+
+def test_retrieve_reports_embedding_fallback(tmp_path: Path, monkeypatch) -> None:
+    config = _write_index(tmp_path)
+    monkeypatch.setattr("graphrag_service.retriever.load_config", lambda: config)
+    monkeypatch.setattr("graphrag_service.retriever.LightRagClient", EmptyContextLightRagClient)
+    monkeypatch.setattr(
+        "graphrag_service.retriever._embedding_candidates",
+        _fake_embedding_candidates,
+    )
+    client = TestClient(app)
+
+    response = client.post("/retrieve", json={"query": "未知态势", "mode": "global", "top_k": 1})
+
+    assert response.status_code == 200
+    assert response.json()["metrics"]["retrieval_source"] == "embedding_fallback"
+
+
+def test_retrieve_reports_lightrag_unavailable(tmp_path: Path, monkeypatch) -> None:
+    config = _write_index(tmp_path)
+    monkeypatch.setattr("graphrag_service.retriever.load_config", lambda: config)
+    monkeypatch.setattr("graphrag_service.retriever.LightRagClient", UnavailableLightRagClient)
+    monkeypatch.setattr(
+        "graphrag_service.retriever._embedding_candidates",
+        _fake_embedding_candidates,
+    )
+    client = TestClient(app)
+
+    response = client.post("/retrieve", json={"query": "未知态势", "mode": "hybrid", "top_k": 1})
+
+    assert response.status_code == 200
+    assert response.json()["metrics"]["retrieval_source"] == "lightrag_unavailable"
 
 
 def test_retrieve_rejects_empty_query(tmp_path: Path, monkeypatch) -> None:

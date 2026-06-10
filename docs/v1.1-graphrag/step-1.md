@@ -1,7 +1,7 @@
 # step-1 — 历史案例语料与 Graph-RAG 索引服务（sidecar）
 
 > 版本：[v1.1-graphrag](./OVERVIEW.md) · status: active
-> 本步 status：pending review
+> 本步 status：completed
 > 最后更新：2026-06-04
 
 ---

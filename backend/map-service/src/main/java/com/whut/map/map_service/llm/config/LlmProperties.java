@@ -60,7 +60,7 @@ public class LlmProperties {
         private boolean enabled = false;
         private int tcpaThresholdSeconds = 300;
         private int snapshotStalenessThreshold = 5;
-        private int maxIterations = 5;
+        private int maxIterations = 10;
         private int maxSnapshotVersionLag = 5;
         private int validSeconds = 120;
     }

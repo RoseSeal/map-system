@@ -84,6 +84,7 @@ class AgentLoopOrchestratorTest {
         assertThat(completed.toolCallCount()).isEqualTo(1);
         assertThat(completed.iterations()).isEqualTo(2);
         assertThat(completed.calledToolNames()).containsExactly("get_risk_snapshot");
+        assertThat(completed.toolResults()).containsExactly(toolResult);
     }
 
     @Test
@@ -142,6 +143,57 @@ class AgentLoopOrchestratorTest {
         AgentLoopResult.MaxIterationsExceeded exceeded = (AgentLoopResult.MaxIterationsExceeded) result;
         assertThat(exceeded.iterations()).isEqualTo(3);
         assertThat(exceeded.toolCallCount()).isEqualTo(3);
+    }
+
+    @Test
+    void worstCaseAdvisoryPathCompletesWithinTenIterations() {
+        List<String> toolNames = List.of(
+                "get_risk_snapshot",
+                "get_top_risk_targets",
+                "get_target_detail",
+                "query_regulatory_context",
+                "evaluate_maneuver",
+                "evaluate_maneuver_hydrology",
+                "query_historical_case_graph"
+        );
+        List<AgentStepResult> steps = new ArrayList<>();
+        for (int i = 0; i < toolNames.size(); i++) {
+            steps.add(new ToolCallRequest(
+                    "call-" + i,
+                    toolNames.get(i),
+                    MAPPER.createObjectNode()
+            ));
+        }
+        steps.add(new FinalText("advisory"));
+        when(llmClient.chatWithTools(anyList(), anyList()))
+                .thenReturn(
+                        steps.get(0),
+                        steps.get(1),
+                        steps.get(2),
+                        steps.get(3),
+                        steps.get(4),
+                        steps.get(5),
+                        steps.get(6),
+                        steps.get(7)
+                );
+        when(toolRegistry.execute(any(ToolCall.class), any(AgentSnapshot.class)))
+                .thenAnswer(invocation -> {
+                    ToolCall call = invocation.getArgument(0);
+                    return new ToolResult(
+                            call.callId(),
+                            call.toolName(),
+                            MAPPER.createObjectNode().put("status", "OK")
+                    );
+                });
+
+        AgentLoopResult result = orchestrator.run(emptySnapshot(), List.of(), 10, AgentStepSink.NOOP);
+
+        assertThat(result).isInstanceOf(AgentLoopResult.Completed.class);
+        AgentLoopResult.Completed completed = (AgentLoopResult.Completed) result;
+        assertThat(completed.iterations()).isEqualTo(8);
+        assertThat(completed.calledToolNames()).containsExactlyElementsOf(toolNames);
+        assertThat(completed.toolResults()).extracting(ToolResult::toolName)
+                .containsExactlyElementsOf(toolNames);
     }
 
     @Test

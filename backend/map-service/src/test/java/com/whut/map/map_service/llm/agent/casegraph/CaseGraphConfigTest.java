@@ -32,6 +32,25 @@ class CaseGraphConfigTest {
     }
 
     @Test
+    void enabledConfigFailsFastWhenUrlIsBlank() {
+        new ApplicationContextRunner()
+                .withBean(CaseGraphProperties.class, () -> {
+                    CaseGraphProperties properties = new CaseGraphProperties();
+                    properties.setUrl(" ");
+                    return properties;
+                })
+                .withBean(ObjectMapper.class, ObjectMapper::new)
+                .withUserConfiguration(CaseGraphConfig.class)
+                .withPropertyValues("llm.case-graph.enabled=true")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasRootCauseInstanceOf(IllegalArgumentException.class)
+                            .hasStackTraceContaining("llm.case-graph.url must not be blank");
+                });
+    }
+
+    @Test
     void doesNotLoadPortWhenDisabled() {
         contextRunner
                 .withPropertyValues("llm.case-graph.enabled=false")

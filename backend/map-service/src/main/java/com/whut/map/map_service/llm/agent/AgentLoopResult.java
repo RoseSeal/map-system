@@ -14,7 +14,8 @@ public sealed interface AgentLoopResult
             int toolCallCount,
             String finalizingStepId,
             String provider,
-            List<String> calledToolNames
+            List<String> calledToolNames,
+            List<ToolResult> toolResults
     ) implements AgentLoopResult {}
 
     record MaxIterationsExceeded(
@@ -36,11 +37,11 @@ public sealed interface AgentLoopResult
     ) implements AgentLoopResult {}
 
     static Completed completed(String finalText, int iterations, int toolCallCount) {
-        return new Completed(finalText, iterations, toolCallCount, null, null, List.of());
+        return new Completed(finalText, iterations, toolCallCount, null, null, List.of(), List.of());
     }
 
     static Completed completed(String finalText, int iterations, int toolCallCount, String finalizingStepId) {
-        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, null, List.of());
+        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, null, List.of(), List.of());
     }
 
     static Completed completed(
@@ -50,7 +51,7 @@ public sealed interface AgentLoopResult
             String finalizingStepId,
             String provider
     ) {
-        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, provider, List.of());
+        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, provider, List.of(), List.of());
     }
 
     static Completed completed(
@@ -61,7 +62,35 @@ public sealed interface AgentLoopResult
             String provider,
             List<String> calledToolNames
     ) {
-        return new Completed(finalText, iterations, toolCallCount, finalizingStepId, provider, List.copyOf(calledToolNames));
+        return new Completed(
+                finalText,
+                iterations,
+                toolCallCount,
+                finalizingStepId,
+                provider,
+                List.copyOf(calledToolNames),
+                List.of()
+        );
+    }
+
+    static Completed completed(
+            String finalText,
+            int iterations,
+            int toolCallCount,
+            String finalizingStepId,
+            String provider,
+            List<String> calledToolNames,
+            List<ToolResult> toolResults
+    ) {
+        return new Completed(
+                finalText,
+                iterations,
+                toolCallCount,
+                finalizingStepId,
+                provider,
+                List.copyOf(calledToolNames),
+                List.copyOf(toolResults)
+        );
     }
 
     static MaxIterationsExceeded maxIterationsExceeded(int iterations, int toolCallCount) {

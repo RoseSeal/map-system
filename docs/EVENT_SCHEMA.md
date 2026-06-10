@@ -345,7 +345,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `recommended_action.type` | `string` | 动作类型枚举 |
 | `recommended_action.description` | `string` | 动作描述 |
 | `recommended_action.urgency` | `string` | 紧急程度枚举 |
-| `evidence_items` | `string[]` | 支撑建议的数值/状态事实列表（来自工具结果）；水深、浅区或障碍物事实必须包含 `[source: hydrology]`，且来源为 `query_bathymetry` 或 `evaluate_maneuver_hydrology` tool result |
+| `evidence_items` | `string[]` | 支撑建议的数值/状态事实列表（来自工具结果）；水深、浅区或障碍物事实必须包含 `[source: hydrology]`，且来源为 `query_bathymetry` 或 `evaluate_maneuver_hydrology` tool result；历史相似案例事实必须包含 `[source: historical_case]` 与所引用案例的 `case_id`，且来源为 `query_historical_case_graph` 的成功 tool result |
 
 新增错误码：
 

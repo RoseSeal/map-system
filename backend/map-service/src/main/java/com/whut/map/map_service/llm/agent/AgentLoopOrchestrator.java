@@ -68,6 +68,7 @@ public class AgentLoopOrchestrator {
         List<AgentMessage> messages = new ArrayList<>(initialMessages);
         List<ToolDefinition> toolDefs = toolRegistry.getToolDefinitions();
         List<String> calledToolNames = new ArrayList<>();
+        List<ToolResult> toolResults = new ArrayList<>();
         int iteration = 0;
         int toolCallCount = 0;
 
@@ -104,6 +105,7 @@ public class AgentLoopOrchestrator {
                     messages.add(new ToolResultAgentMessage(toolResult.callId(), toolResult.toolName(), toolResult.payload()));
                     toolCallCount++;
                     calledToolNames.add(tcr.toolName());
+                    toolResults.add(toolResult);
                 }
                 case FinalText ft -> {
                     String finalizingStepId = UUID.randomUUID().toString();
@@ -115,7 +117,8 @@ public class AgentLoopOrchestrator {
                             toolCallCount,
                             finalizingStepId,
                             provider.getValue(),
-                            calledToolNames
+                            calledToolNames,
+                            toolResults
                     );
                 }
             }

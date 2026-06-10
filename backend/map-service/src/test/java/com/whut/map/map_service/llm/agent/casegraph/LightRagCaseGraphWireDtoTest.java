@@ -40,6 +40,42 @@ class LightRagCaseGraphWireDtoTest {
     }
 
     @Test
+    void omitsNullRequestAndSituationFields() throws Exception {
+        LightRagCaseGraphAdapter.RetrieveRequest structuredOnly =
+                new LightRagCaseGraphAdapter.RetrieveRequest(
+                        null,
+                        new LightRagCaseGraphAdapter.Situation(
+                                "GIVE_WAY",
+                                "CROSSING",
+                                null,
+                                "OPEN_VISIBILITY",
+                                null,
+                                null,
+                                null,
+                                1
+                        ),
+                        "local",
+                        5
+                );
+        LightRagCaseGraphAdapter.RetrieveRequest textOnly =
+                new LightRagCaseGraphAdapter.RetrieveRequest(
+                        "交叉相遇",
+                        null,
+                        "local",
+                        5
+                );
+
+        JsonNode structuredJson = objectMapper.readTree(objectMapper.writeValueAsString(structuredOnly));
+        JsonNode textJson = objectMapper.readTree(objectMapper.writeValueAsString(textOnly));
+
+        assertThat(structuredJson.has("query")).isFalse();
+        assertThat(structuredJson.path("situation").has("water_area")).isFalse();
+        assertThat(structuredJson.path("situation").has("risk_level")).isFalse();
+        assertThat(structuredJson.path("situation").has("own_ship_type")).isFalse();
+        assertThat(textJson.has("situation")).isFalse();
+    }
+
+    @Test
     void deserializesSnakeCaseResponse() throws Exception {
         LightRagCaseGraphAdapter.RetrieveResponse response = objectMapper.readValue("""
                 {

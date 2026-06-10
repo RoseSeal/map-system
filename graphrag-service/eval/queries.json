@@ -1,0 +1,242 @@
+[
+  {
+    "query_id": "A-01",
+    "category": "A",
+    "situation": {
+      "encounter_type": "HEAD_ON",
+      "water_area": "开阔水域",
+      "risk_level": "WARNING",
+      "own_ship_role": "MUTUAL_ACTION",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 1
+    },
+    "query": "开阔水域中与一艘货船正面接近，应参考哪些历史处置经验？",
+    "pilot": true,
+    "notes": "典型对遇直击；预期相关案例 H-01。"
+  },
+  {
+    "query_id": "A-02",
+    "category": "A",
+    "situation": {
+      "encounter_type": "CROSSING",
+      "water_area": "限制水域",
+      "risk_level": "WARNING",
+      "own_ship_role": "GIVE_WAY",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 1
+    },
+    "query": "限制水域中右舷来船形成交叉相遇，本船是让路船，应如何行动？",
+    "pilot": false,
+    "notes": "典型交叉让路直击；预期相关案例 H-02。"
+  },
+  {
+    "query_id": "A-03",
+    "category": "A",
+    "situation": {
+      "encounter_type": "OVERTAKING",
+      "water_area": "开阔水域",
+      "risk_level": "CAUTION",
+      "own_ship_role": "GIVE_WAY",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 1
+    },
+    "query": "开阔水域追越一艘低速作业船时，怎样建立安全横距？",
+    "pilot": false,
+    "notes": "典型追越直击；预期相关案例 H-09。"
+  },
+  {
+    "query_id": "A-04",
+    "category": "A",
+    "situation": {
+      "encounter_type": "CROSSING",
+      "water_area": "开阔水域",
+      "risk_level": "WARNING",
+      "own_ship_role": "STAND_ON",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 1
+    },
+    "query": "交叉相遇中让路船迟迟没有采取明显动作，直航船应如何处置？",
+    "pilot": false,
+    "notes": "典型直航船监视场景；预期相关案例 H-05。"
+  },
+  {
+    "query_id": "B-01",
+    "category": "B",
+    "situation": {
+      "encounter_type": "OVERTAKING",
+      "water_area": "狭水道",
+      "risk_level": "CAUTION",
+      "own_ship_role": "GIVE_WAY",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 1
+    },
+    "query": "狭水道内追越前方低速货船，但当前横向空间不足，应如何选择时机？",
+    "pilot": true,
+    "notes": "狭水道特殊条件；预期相关案例 H-04。"
+  },
+  {
+    "query_id": "B-02",
+    "category": "B",
+    "situation": {
+      "encounter_type": "HEAD_ON",
+      "water_area": "开阔水域",
+      "risk_level": "ALARM",
+      "own_ship_role": "MUTUAL_ACTION",
+      "visibility": "RESTRICTED_VISIBILITY",
+      "target_count": 1
+    },
+    "query": "受限能见度下正前方目标持续接近，CPA 很小，应优先采取什么措施？",
+    "pilot": false,
+    "notes": "受限能见度对遇；预期相关案例 H-07。"
+  },
+  {
+    "query_id": "B-03",
+    "category": "B",
+    "situation": {
+      "encounter_type": "UNDEFINED",
+      "water_area": "限制水域",
+      "risk_level": "CAUTION",
+      "own_ship_role": "GIVE_WAY",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 1
+    },
+    "query": "计划航线靠近锚泊目标，限制水域内应如何提前绕行？",
+    "pilot": false,
+    "notes": "锚泊目标特殊条件；预期相关案例 H-06。"
+  },
+  {
+    "query_id": "B-04",
+    "category": "B",
+    "situation": {
+      "encounter_type": "UNDEFINED",
+      "water_area": "限制水域",
+      "risk_level": "WARNING",
+      "own_ship_role": "GIVE_WAY",
+      "visibility": "RESTRICTED_VISIBILITY",
+      "target_count": 1
+    },
+    "query": "低能见度下航线左前方存在固定碍航物，应如何控制航速和通过方向？",
+    "pilot": false,
+    "notes": "受限能见度与碍航物叠加；预期相关案例 H-11。"
+  },
+  {
+    "query_id": "C-01",
+    "category": "C",
+    "situation": {
+      "encounter_type": "CROSSING",
+      "water_area": "限制水域",
+      "risk_level": "ALARM",
+      "own_ship_role": "GIVE_WAY",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 2
+    },
+    "query": "两个交叉目标的 TCPA 接近，直接避让一个目标会压缩另一个目标的 CPA，应如何安排机动顺序？",
+    "pilot": true,
+    "notes": "多目标复合约束；应综合 H-10 与普通交叉案例。"
+  },
+  {
+    "query_id": "C-02",
+    "category": "C",
+    "situation": {
+      "encounter_type": "CROSSING",
+      "water_area": "狭水道",
+      "risk_level": "WARNING",
+      "own_ship_role": "GIVE_WAY",
+      "visibility": "RESTRICTED_VISIBILITY",
+      "target_count": 2
+    },
+    "query": "受限能见度的狭水道交汇口同时有主航道客船和另一交叉目标，应如何兼顾航道秩序与避碰责任？",
+    "pilot": false,
+    "notes": "组合 H-03、H-08、H-10 的条件，无单一完美匹配。"
+  },
+  {
+    "query_id": "C-03",
+    "category": "C",
+    "situation": {
+      "encounter_type": "OVERTAKING",
+      "water_area": "开阔水域",
+      "risk_level": "WARNING",
+      "own_ship_role": "GIVE_WAY",
+      "visibility": "RESTRICTED_VISIBILITY",
+      "target_count": 1
+    },
+    "query": "受限能见度下准备追越行为可能不稳定的低速作业船，应综合考虑哪些速度和横距措施？",
+    "pilot": false,
+    "notes": "组合追越与受限能见度经验，语料无直接同条件案例。"
+  },
+  {
+    "query_id": "C-04",
+    "category": "C",
+    "situation": {
+      "encounter_type": "CROSSING",
+      "water_area": "限制水域",
+      "risk_level": "ALARM",
+      "own_ship_role": "STAND_ON",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 2
+    },
+    "query": "本船是直航船，但让路船动作迟缓且附近另有锚泊目标限制机动空间，应如何保守处置？",
+    "pilot": false,
+    "notes": "组合直航船、限制水域与锚泊障碍经验。"
+  },
+  {
+    "query_id": "D-01",
+    "category": "D",
+    "situation": {
+      "encounter_type": "UNDEFINED",
+      "water_area": "开阔水域",
+      "risk_level": "CAUTION",
+      "own_ship_role": "UNKNOWN",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 0
+    },
+    "query": "本船附近没有形成会遇局面的目标，但主机出现间歇性故障，历史案例能提供什么直接依据？",
+    "pilot": true,
+    "notes": "语料外机械故障场景；应明确案例相关性有限。"
+  },
+  {
+    "query_id": "D-02",
+    "category": "D",
+    "situation": {
+      "encounter_type": "UNDEFINED",
+      "water_area": "开阔水域",
+      "risk_level": "SAFE",
+      "own_ship_role": "NOT_APPLICABLE",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 0
+    },
+    "query": "远洋航行中发现冷藏货物温度异常，当前案例库是否有可直接采用的处置方案？",
+    "pilot": false,
+    "notes": "完全域外的货物管理场景；应拒绝伪造案例对应。"
+  },
+  {
+    "query_id": "D-03",
+    "category": "D",
+    "situation": {
+      "encounter_type": "UNDEFINED",
+      "water_area": "限制水域",
+      "risk_level": "WARNING",
+      "own_ship_role": "UNKNOWN",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 0
+    },
+    "query": "港池内发生小范围燃油泄漏且没有碰撞风险，历史会遇案例可提供哪些有限参考？",
+    "pilot": false,
+    "notes": "域外污染应急场景；可类比保守控制但不得称为直接案例。"
+  },
+  {
+    "query_id": "D-04",
+    "category": "D",
+    "situation": {
+      "encounter_type": "UNDEFINED",
+      "water_area": "开阔水域",
+      "risk_level": "CAUTION",
+      "own_ship_role": "UNKNOWN",
+      "visibility": "OPEN_VISIBILITY",
+      "target_count": 0
+    },
+    "query": "通信设备部分失效但周围无目标船时，案例库能否支持具体维修决策？",
+    "pilot": false,
+    "notes": "域外设备维修场景；应限定只能提供一般风险控制参考。"
+  }
+]
