@@ -102,6 +102,9 @@ class LightRagClient:
             result = self._rag.initialize_storages()
             if inspect.isawaitable(result):
                 await result
+        from lightrag.kg.shared_storage import initialize_pipeline_status
+
+        await initialize_pipeline_status()
         self._initialized = True
 
     def _create_query_param(self, mode: str, only_need_context: bool) -> Any:
