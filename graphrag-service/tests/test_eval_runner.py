@@ -95,6 +95,58 @@ def test_retrieval_http_failure_returns_retryable_progress_record(
     assert run_eval.load_completed(progress_path) == {}
 
 
+def test_retrieval_fingerprint_changes_when_graph_reranker_changes(tmp_path: Path) -> None:
+    disabled = _config(tmp_path / "index")
+    enabled = GraphRagConfig(
+        llm_base_url=disabled.llm_base_url,
+        llm_api_key=disabled.llm_api_key,
+        llm_model=disabled.llm_model,
+        embed_model=disabled.embed_model,
+        working_dir=disabled.working_dir,
+        default_top_k=disabled.default_top_k,
+        default_mode=disabled.default_mode,
+        embedding_dim=disabled.embedding_dim,
+        reranker_enabled=True,
+        reranker_model="BAAI/bge-reranker-v2-m3",
+    )
+
+    without_rerank = run_eval.retrieval_fingerprint(
+        query=_query(),
+        group="local",
+        config=disabled,
+        manifest=_manifest(),
+        sidecar_url="http://sidecar.invalid",
+        top_k=5,
+    )
+    with_rerank = run_eval.retrieval_fingerprint(
+        query=_query(),
+        group="local",
+        config=enabled,
+        manifest=_manifest(),
+        sidecar_url="http://sidecar.invalid",
+        top_k=5,
+    )
+    naive_without_rerank = run_eval.retrieval_fingerprint(
+        query=_query(),
+        group="naive",
+        config=disabled,
+        manifest=_manifest(),
+        sidecar_url="http://sidecar.invalid",
+        top_k=5,
+    )
+    naive_with_rerank = run_eval.retrieval_fingerprint(
+        query=_query(),
+        group="naive",
+        config=enabled,
+        manifest=_manifest(),
+        sidecar_url="http://sidecar.invalid",
+        top_k=5,
+    )
+
+    assert with_rerank != without_rerank
+    assert naive_with_rerank == naive_without_rerank
+
+
 class FakeResponse:
     def __init__(self, payload: dict):
         self.payload = payload

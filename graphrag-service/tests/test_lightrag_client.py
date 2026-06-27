@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 
 from lightrag.kg import shared_storage
 
@@ -30,3 +31,26 @@ def test_initialize_storages_before_pipeline_status(monkeypatch) -> None:
     asyncio.run(client._initialize())
 
     assert events == ["storages", "pipeline"]
+
+
+def test_query_param_disables_rerank_by_default() -> None:
+    class FakeQueryParam:
+        def __init__(
+            self,
+            mode: str,
+            only_need_context: bool = False,
+            enable_rerank: bool = True,
+        ):
+            self.mode = mode
+            self.only_need_context = only_need_context
+            self.enable_rerank = enable_rerank
+
+    client = LightRagClient.__new__(LightRagClient)
+    client.config = SimpleNamespace(reranker_enabled=False)
+    client._query_param_cls = FakeQueryParam
+
+    param = client._create_query_param("local", True)
+
+    assert param.mode == "local"
+    assert param.only_need_context is True
+    assert param.enable_rerank is False

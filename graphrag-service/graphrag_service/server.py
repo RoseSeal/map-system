@@ -47,6 +47,9 @@ async def health() -> JSONResponse:
             "cases_indexed": manifest.get("cases_indexed", 0),
             "built_at": manifest.get("built_at"),
             "corpus_hash": manifest.get("corpus_hash"),
+            "reranker_enabled": config.reranker_enabled,
+            "reranker_model": config.reranker_model if config.reranker_enabled else None,
+            "reranker_backend": config.reranker_backend if config.reranker_enabled else None,
         },
     )
 

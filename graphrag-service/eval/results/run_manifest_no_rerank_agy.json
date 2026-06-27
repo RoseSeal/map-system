@@ -1,0 +1,23 @@
+{
+  "evaluation_run_id": "3c3a05751757c2801524be8c23d2756cc5313ce3896908df7711133bc932b90a",
+  "run_config": {
+    "queries_hash": "3240af23872df3b9b92513e1db63bbd5f8b66269d2e3ba3dd5da22560eab7ad4",
+    "corpus_hash": "c4f80ad977fa712c2e61fd58a1758298752784ba0a4840ff2efbc298dcbaf98d",
+    "index_built_at": "2026-06-11T03:56:03.631009+00:00",
+    "lightrag_version": "1.4.9",
+    "top_k": 5,
+    "sidecar_url": "http://127.0.0.1:8100",
+    "llm_model": "glm-4-flash",
+    "embedding_model": "embedding-3",
+    "llm_base_url": "https://open.bigmodel.cn/api/paas/v4",
+    "naive_generation_prompt_hash": "58de69fcb597c19cbbc26b588d124d9a0e6d0bc731ca892258db8dcda5bf9909",
+    "rubric_hash": "55dcdd38f7f81095ef1a9b836a60608746ed4e3e60ac454237c65879b65cb66a",
+    "judge_backend": "agy",
+    "judge_model": "gemini-2.5-pro",
+    "judge_cli": "agy",
+    "judge_cli_version": "1.0.10",
+    "token_estimator": "unicode-char-v1",
+    "same_retrievals_as_evaluation_run_id": "935e5f3596d2c44f0918259dee603c318553cc931a8c0a375fed15c520a9c0e6",
+    "rerank_ablation": false
+  }
+}

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import GraphRagConfig
+from .reranker import RerankerUnavailable, create_rerank_model_func
 
 
 class LightRagUnavailable(RuntimeError):
@@ -66,6 +67,15 @@ class LightRagClient:
             kwargs["embedding_func"] = embedding_func
         if "tokenizer" in signature.parameters:
             kwargs["tokenizer"] = Tokenizer("unicode-char", _UnicodeCharTokenizer())
+        if self.config.reranker_enabled:
+            if "rerank_model_func" not in signature.parameters:
+                raise LightRagUnavailable("LightRAG package does not support rerank_model_func")
+            try:
+                kwargs["rerank_model_func"] = create_rerank_model_func(self.config)
+            except RerankerUnavailable as exc:
+                raise LightRagUnavailable(str(exc)) from exc
+            if "min_rerank_score" in signature.parameters:
+                kwargs["min_rerank_score"] = self.config.reranker_min_score
         return LightRAG(**kwargs)
 
     def _load_query_param(self) -> Any:
@@ -112,6 +122,8 @@ class LightRagClient:
         kwargs = {"mode": mode}
         if "only_need_context" in signature.parameters:
             kwargs["only_need_context"] = only_need_context
+        if "enable_rerank" in signature.parameters:
+            kwargs["enable_rerank"] = self.config.reranker_enabled
         return self._query_param_cls(**kwargs)
 
 

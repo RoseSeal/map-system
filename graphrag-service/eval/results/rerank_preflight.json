@@ -1,0 +1,56 @@
+{
+  "scores_rerank_path": "/Users/roseseal/workspace/flagship-projects/map-system/graphrag-service/eval/results/scores_rerank.csv",
+  "scores_rerank_exists": true,
+  "env": {
+    "GRAPHRAG_LLM_API_KEY": true
+  },
+  "judge_model": {
+    "env_set": false,
+    "original_manifest_model": "gemini-2.5-pro",
+    "resolved": "gemini-2.5-pro"
+  },
+  "sidecar": {
+    "ok": false,
+    "url": "http://127.0.0.1:8100/health",
+    "error": "<urlopen error [Errno 61] Connection refused>"
+  },
+  "judge_cli": {
+    "ok": true,
+    "command": "agy",
+    "path": "/Users/roseseal/.local/bin/agy",
+    "returncode": 0,
+    "version": "1.0.10",
+    "backend": "agy"
+  },
+  "judge_preflight": {
+    "checked": false
+  },
+  "reranker_package": {
+    "ok": true,
+    "module": "FlagEmbedding"
+  },
+  "runner_support": {
+    "ok": true,
+    "checked_paths": [
+      "/Users/roseseal/workspace/flagship-projects/map-system/graphrag-service/eval/run_eval.py",
+      "/Users/roseseal/workspace/flagship-projects/map-system/graphrag-service/graphrag_service/lightrag_client.py",
+      "/Users/roseseal/workspace/flagship-projects/map-system/graphrag-service/graphrag_service/config.py"
+    ],
+    "required_markers": [
+      "reranker_enabled",
+      "reranker_model",
+      "reranker_config_hash"
+    ],
+    "present_markers": [
+      "reranker_enabled",
+      "reranker_model",
+      "reranker_config_hash"
+    ],
+    "note": "The current eval runner records a reranker switch in manifest fingerprints."
+  },
+  "ready_to_run_rerank": false,
+  "missing_prerequisites": [
+    "sidecar:http://127.0.0.1:8100"
+  ],
+  "rerun_command": "GRAPHRAG_RERANKER_ENABLED=true GRAPHRAG_LLM_API_KEY=<zhipu-key> python -m eval.run_eval --rerank-ablation --force-retrieval --force-judge"
+}

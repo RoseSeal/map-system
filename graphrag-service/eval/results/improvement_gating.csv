@@ -1,0 +1,43 @@
+branch,scope,group,assumed_abstain_score,baseline_quality,gated_quality,delta,note
+B_category_proxy,D_only,local,3,5.4167,3.0,-2.4167,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,local,3,5.7917,5.1875,-0.6042,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,local,4,5.4167,4.0,-1.4167,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,local,4,5.7917,5.4375,-0.3542,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,local,5,5.4167,5.0,-0.4167,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,local,5,5.7917,5.6875,-0.1042,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,local,6,5.4167,6.0,0.5833,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,local,6,5.7917,5.9375,0.1458,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,local,7,5.4167,7.0,1.5833,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,local,7,5.7917,6.1875,0.3958,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,local,8,5.4167,8.0,2.5833,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,local,8,5.7917,6.4375,0.6458,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,global,3,4.8333,3.0,-1.8333,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,global,3,4.625,4.1667,-0.4583,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,global,4,4.8333,4.0,-0.8333,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,global,4,4.625,4.4167,-0.2083,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,global,5,4.8333,5.0,0.1667,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,global,5,4.625,4.6667,0.0417,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,global,6,4.8333,6.0,1.1667,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,global,6,4.625,4.9167,0.2917,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,global,7,4.8333,7.0,2.1667,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,global,7,4.625,5.1667,0.5417,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,global,8,4.8333,8.0,3.1667,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,global,8,4.625,5.4167,0.7917,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,hybrid,3,3.5833,3.0,-0.5833,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,hybrid,3,4.9167,4.7708,-0.1458,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,hybrid,4,3.5833,4.0,0.4167,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,hybrid,4,4.9167,5.0208,0.1042,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,hybrid,5,3.5833,5.0,1.4167,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,hybrid,5,4.9167,5.2708,0.3542,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,hybrid,6,3.5833,6.0,2.4167,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,hybrid,6,4.9167,5.5208,0.6042,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,hybrid,7,3.5833,7.0,3.4167,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,hybrid,7,4.9167,5.7708,0.8542,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_only,hybrid,8,3.5833,8.0,4.4167,All D-category graph answers are replaced by the assumed abstention score.
+B_category_proxy,all_queries,hybrid,8,4.9167,6.0208,1.1042,Only D-category graph answers are replaced; A-C scores remain unchanged.
+B_category_proxy,D_graph_mean,graph_modes,3,4.6111,3.0,-1.6111,Mean over local/global/hybrid D-category rows.
+B_category_proxy,D_graph_mean,graph_modes,4,4.6111,4.0,-0.6111,Mean over local/global/hybrid D-category rows.
+B_category_proxy,D_graph_mean,graph_modes,5,4.6111,5.0,0.3889,Mean over local/global/hybrid D-category rows.
+B_category_proxy,D_graph_mean,graph_modes,6,4.6111,6.0,1.3889,Mean over local/global/hybrid D-category rows.
+B_category_proxy,D_graph_mean,graph_modes,7,4.6111,7.0,2.3889,Mean over local/global/hybrid D-category rows.
+B_category_proxy,D_graph_mean,graph_modes,8,4.6111,8.0,3.3889,Mean over local/global/hybrid D-category rows.
