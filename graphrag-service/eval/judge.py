@@ -29,6 +29,17 @@ class JudgeBackend:
     version: str
 
     def command(self) -> list[str]:
+        if self.name == "agy":
+            command = [
+                self.executable,
+                "--prompt",
+                "{prompt}",
+                "--print-timeout",
+                os.getenv("EVAL_JUDGE_TIMEOUT", "5m"),
+            ]
+            if self.model != "cli-default":
+                command.extend(["--model", self.model])
+            return command
         if self.name == "gemini":
             command = [self.executable, "--prompt", "", "--output-format", "text"]
             if self.model != "cli-default":
@@ -78,7 +89,7 @@ class JudgeBackend:
 
 
 def resolve_backend(name: str, model: str | None = None) -> JudgeBackend:
-    if name not in {"gemini", "codex", "copilot", "claude"}:
+    if name not in {"agy", "gemini", "codex", "copilot", "claude"}:
         raise JudgeError(f"unsupported judge backend: {name}")
     selected_model = model or os.getenv("EVAL_JUDGE_MODEL")
     if not selected_model:

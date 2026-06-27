@@ -6,6 +6,7 @@ import csv
 import importlib.metadata
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -60,14 +61,37 @@ async def execute(
     force_judge: bool,
     judge_backend_name: str,
     judge_model: str | None,
-    sidecar_url: str,
-    top_k: int,
+    sidecar_url: str | None,
+    top_k: int | None,
+    rerank_ablation: bool = False,
+    original_run_id: str | None = None,
     skip_preflight: bool = False,
 ) -> str:
     queries = load_queries()
     selected_queries = [query for query in queries if query["pilot"]] if pilot else queries
     rubric = RUBRIC_PATH.read_text(encoding="utf-8")
     config = load_config()
+    original_run_config: dict[str, Any] | None = None
+    if rerank_ablation and not config.reranker_enabled:
+        raise RuntimeError(
+            "GRAPHRAG_RERANKER_ENABLED=true is required for --rerank-ablation"
+        )
+    if rerank_ablation:
+        original_run_id = original_run_id or load_published_run_id()
+        assert original_run_id is not None
+        original_run_config = load_run_config(original_run_id)
+        if (
+            judge_backend_name == "gemini"
+            and original_run_config.get("judge_backend") == "gemini"
+            and shutil.which("agy")
+        ):
+            judge_backend_name = "agy"
+        judge_model = judge_model or original_run_config["judge_model"]
+        sidecar_url = sidecar_url or original_run_config["sidecar_url"]
+        top_k = top_k or int(original_run_config["top_k"])
+    else:
+        sidecar_url = sidecar_url or "http://127.0.0.1:8100"
+        top_k = top_k or 5
     manifest = load_index_manifest(config.working_dir)
     backend = resolve_backend(judge_backend_name, judge_model)
     if not skip_preflight:
@@ -80,7 +104,17 @@ async def execute(
         backend=backend,
         sidecar_url=sidecar_url,
         top_k=top_k,
+        rerank_ablation=rerank_ablation,
+        original_run_id=original_run_id,
     )
+    original_completed: dict[str, dict[str, Any]] = {}
+    if rerank_ablation:
+        assert original_run_id is not None
+        validate_rerank_baseline(original_run_id, run_config)
+        original_completed = load_original_completed(
+            original_run_id,
+            [query["query_id"] for query in selected_queries],
+        )
     evaluation_run_id = stable_hash(run_config)
     run_dir = RUNTIME_DIR / "runs" / evaluation_run_id
     progress_path = run_dir / "progress.jsonl"
@@ -92,6 +126,8 @@ async def execute(
     )
 
     async with httpx.AsyncClient(timeout=180) as client:
+        if rerank_ablation:
+            await assert_sidecar_rerank(client, sidecar_url, config)
         for query in selected_queries:
             if (
                 query["query_id"] in completed
@@ -111,6 +147,11 @@ async def execute(
                 force_retrieval=force_retrieval,
                 force_judge=force_judge,
                 client=client,
+                reuse_retrievals=(
+                    {"naive": original_completed[query["query_id"]]["retrievals"]["naive"]}
+                    if rerank_ablation
+                    else None
+                ),
             )
             append_progress(progress_path, record)
             if record["status"] == "completed":
@@ -120,7 +161,15 @@ async def execute(
 
     write_scores(run_dir / "scores.csv", completed.values())
     if not pilot and len(completed) == len(queries):
-        publish_results(evaluation_run_id, run_config, completed)
+        publish_results(
+            evaluation_run_id,
+            run_config,
+            completed,
+            scores_name="scores_rerank.csv" if rerank_ablation else "scores.csv",
+            manifest_name=(
+                "run_manifest_rerank.json" if rerank_ablation else "run_manifest.json"
+            ),
+        )
     return evaluation_run_id
 
 
@@ -137,6 +186,7 @@ async def evaluate_query(
     force_retrieval: bool,
     force_judge: bool,
     client: httpx.AsyncClient,
+    reuse_retrievals: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     try:
         retrievals = await retrieve_groups(
@@ -147,6 +197,7 @@ async def evaluate_query(
             top_k=top_k,
             force=force_retrieval,
             client=client,
+            reuse_retrievals=reuse_retrievals,
         )
         judged = judge_answers(
             query=query,
@@ -179,8 +230,13 @@ async def retrieve_groups(
     top_k: int,
     force: bool,
     client: httpx.AsyncClient,
+    reuse_retrievals: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, Any]]:
+    reuse_retrievals = reuse_retrievals or {}
+
     async def fetch_group(group: str) -> tuple[str, dict[str, Any]]:
+        if group in reuse_retrievals:
+            return group, reuse_retrievals[group]
         fingerprint = retrieval_fingerprint(
             query=query,
             group=group,
@@ -243,7 +299,10 @@ def build_run_config(
     backend: JudgeBackend,
     sidecar_url: str,
     top_k: int,
+    rerank_ablation: bool = False,
+    original_run_id: str | None = None,
 ) -> dict[str, Any]:
+    reranker_payload = reranker_config_payload(config)
     return {
         "queries_hash": stable_hash(queries),
         "corpus_hash": manifest["corpus_hash"],
@@ -254,6 +313,15 @@ def build_run_config(
         "llm_model": config.llm_model,
         "embedding_model": config.embed_model,
         "llm_base_url": config.llm_base_url,
+        "reranker_enabled": config.reranker_enabled,
+        "reranker_model": config.reranker_model if config.reranker_enabled else None,
+        "reranker_backend": config.reranker_backend if config.reranker_enabled else None,
+        "reranker_min_score": (
+            config.reranker_min_score if config.reranker_enabled else None
+        ),
+        "reranker_config_hash": stable_hash(reranker_payload),
+        "rerank_ablation": rerank_ablation,
+        "baseline_evaluation_run_id": original_run_id if rerank_ablation else None,
         "naive_generation_prompt_hash": stable_hash(
             {
                 "system": NAIVE_SYSTEM_PROMPT,
@@ -278,6 +346,11 @@ def retrieval_fingerprint(
     sidecar_url: str,
     top_k: int,
 ) -> str:
+    reranker_payload = (
+        reranker_config_payload(config)
+        if group != "naive" and config.reranker_enabled
+        else {"enabled": False}
+    )
     return stable_hash(
         {
             "query": query,
@@ -290,6 +363,9 @@ def retrieval_fingerprint(
             "llm_model": config.llm_model,
             "embedding_model": config.embed_model,
             "llm_base_url": config.llm_base_url,
+            "reranker_enabled": reranker_payload["enabled"],
+            "reranker_model": reranker_payload.get("model"),
+            "reranker_config_hash": stable_hash(reranker_payload),
             "naive_generation_prompt": (
                 {
                     "system": NAIVE_SYSTEM_PROMPT,
@@ -352,6 +428,129 @@ def completed_record(
     }
 
 
+def reranker_config_payload(config: GraphRagConfig) -> dict[str, Any]:
+    if not config.reranker_enabled:
+        return {"enabled": False}
+    return {
+        "enabled": True,
+        "backend": config.reranker_backend,
+        "model": config.reranker_model,
+        "min_score": config.reranker_min_score,
+    }
+
+
+def load_published_run_id() -> str:
+    manifest_path = RESULTS_DIR / "run_manifest.json"
+    if not manifest_path.exists():
+        raise RuntimeError(
+            "--rerank-ablation requires --original-run-id or results/run_manifest.json"
+        )
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    run_id = payload.get("evaluation_run_id")
+    if not run_id:
+        raise RuntimeError(f"{manifest_path} does not contain evaluation_run_id")
+    return str(run_id)
+
+
+def load_run_config(run_id: str) -> dict[str, Any]:
+    manifest_path = RUNTIME_DIR / "runs" / run_id / "run_manifest.json"
+    if not manifest_path.exists():
+        raise RuntimeError(f"original run manifest not found: {manifest_path}")
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    run_config = payload.get("run_config")
+    if not isinstance(run_config, dict):
+        raise RuntimeError(f"{manifest_path} does not contain run_config")
+    return run_config
+
+
+def load_original_completed(
+    original_run_id: str,
+    query_ids: list[str],
+) -> dict[str, dict[str, Any]]:
+    progress_path = RUNTIME_DIR / "runs" / original_run_id / "progress.jsonl"
+    completed = load_completed(progress_path)
+    missing = [
+        query_id
+        for query_id in query_ids
+        if query_id not in completed
+        or "naive" not in completed[query_id].get("retrievals", {})
+    ]
+    if missing:
+        raise RuntimeError(
+            f"original run {original_run_id} is missing naive retrievals for {missing}"
+        )
+    return completed
+
+
+def validate_rerank_baseline(
+    original_run_id: str,
+    rerank_run_config: dict[str, Any],
+) -> None:
+    original = load_run_config(original_run_id)
+    allow_agy_migration = (
+        original.get("judge_backend") == "gemini"
+        and rerank_run_config.get("judge_backend") == "agy"
+        and original.get("judge_model") == rerank_run_config.get("judge_model")
+    )
+    controlled_keys = (
+        "queries_hash",
+        "corpus_hash",
+        "index_built_at",
+        "lightrag_version",
+        "top_k",
+        "sidecar_url",
+        "llm_model",
+        "embedding_model",
+        "llm_base_url",
+        "naive_generation_prompt_hash",
+        "rubric_hash",
+        "judge_model",
+        "token_estimator",
+    )
+    mismatches = [
+        key
+        for key in controlled_keys
+        if original.get(key) != rerank_run_config.get(key)
+    ]
+    if not allow_agy_migration:
+        for key in ("judge_backend", "judge_cli", "judge_cli_version"):
+            if original.get(key) != rerank_run_config.get(key):
+                mismatches.append(key)
+    if mismatches:
+        details = {
+            key: {
+                "original": original.get(key),
+                "rerank": rerank_run_config.get(key),
+            }
+            for key in mismatches
+        }
+        raise RuntimeError(
+            "rerank ablation must keep the original run config unchanged: "
+            + json.dumps(details, ensure_ascii=False, sort_keys=True)
+        )
+
+
+async def assert_sidecar_rerank(
+    client: httpx.AsyncClient,
+    sidecar_url: str,
+    config: GraphRagConfig,
+) -> None:
+    health_url = sidecar_url.rstrip("/") + "/health"
+    try:
+        response = await client.get(health_url)
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise RuntimeError(f"sidecar health check failed: {health_url}") from exc
+    payload = response.json()
+    if payload.get("reranker_enabled") is not True:
+        raise RuntimeError("sidecar is not running with GRAPHRAG_RERANKER_ENABLED=true")
+    if payload.get("reranker_model") != config.reranker_model:
+        raise RuntimeError(
+            "sidecar reranker model does not match eval config: "
+            f"{payload.get('reranker_model')} != {config.reranker_model}"
+        )
+
+
 def load_queries() -> list[dict[str, Any]]:
     payload = json.loads(QUERIES_PATH.read_text(encoding="utf-8"))
     if not isinstance(payload, list):
@@ -400,11 +599,14 @@ def publish_results(
     evaluation_run_id: str,
     run_config: dict[str, Any],
     completed: dict[str, dict[str, Any]],
+    *,
+    scores_name: str = "scores.csv",
+    manifest_name: str = "run_manifest.json",
 ) -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    write_scores(RESULTS_DIR / "scores.csv", completed.values())
+    write_scores(RESULTS_DIR / scores_name, completed.values())
     _write_json_atomic(
-        RESULTS_DIR / "run_manifest.json",
+        RESULTS_DIR / manifest_name,
         {"evaluation_run_id": evaluation_run_id, "run_config": run_config},
     )
 
@@ -450,17 +652,27 @@ def main() -> None:
     parser.add_argument("--force-judge", action="store_true")
     parser.add_argument(
         "--judge-backend",
-        choices=("gemini", "codex", "copilot", "claude"),
+        choices=("agy", "gemini", "codex", "copilot", "claude"),
         default=os.getenv("EVAL_JUDGE_BACKEND", "gemini"),
     )
     parser.add_argument("--judge-model", default=os.getenv("EVAL_JUDGE_MODEL"))
     parser.add_argument(
         "--sidecar-url",
-        default=os.getenv("EVAL_SIDECAR_URL", "http://127.0.0.1:8100"),
+        default=os.getenv("EVAL_SIDECAR_URL"),
     )
-    parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--top-k", type=int)
+    parser.add_argument(
+        "--rerank-ablation",
+        action="store_true",
+        help="Run the controlled reranker ablation and publish scores_rerank.csv.",
+    )
+    parser.add_argument(
+        "--original-run-id",
+        default=os.getenv("EVAL_ORIGINAL_RUN_ID"),
+        help="Original no-rerank run id whose naive retrievals are reused.",
+    )
     args = parser.parse_args()
-    if not 1 <= args.top_k <= 10:
+    if args.top_k is not None and not 1 <= args.top_k <= 10:
         parser.error("--top-k must be between 1 and 10")
     run_id = asyncio.run(
         execute(
@@ -471,6 +683,8 @@ def main() -> None:
             judge_model=args.judge_model,
             sidecar_url=args.sidecar_url,
             top_k=args.top_k,
+            rerank_ablation=args.rerank_ablation,
+            original_run_id=args.original_run_id,
         )
     )
     print(f"Evaluation run: {run_id}")

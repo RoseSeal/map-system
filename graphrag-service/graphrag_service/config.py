@@ -15,6 +15,10 @@ class GraphRagConfig:
     default_top_k: int
     default_mode: str
     embedding_dim: int
+    reranker_enabled: bool = False
+    reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    reranker_backend: str = "flagembedding"
+    reranker_min_score: float = 0.0
 
 
 def _int_env(name: str, default: int) -> int:
@@ -22,6 +26,20 @@ def _int_env(name: str, default: int) -> int:
     if raw is None or raw == "":
         return default
     return int(raw)
+
+
+def _float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    return float(raw)
+
+
+def _bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def require_api_key(config: GraphRagConfig) -> None:
@@ -42,4 +60,8 @@ def load_config() -> GraphRagConfig:
         default_top_k=_int_env("GRAPHRAG_DEFAULT_TOP_K", 5),
         default_mode=os.getenv("GRAPHRAG_DEFAULT_MODE", "local"),
         embedding_dim=_int_env("GRAPHRAG_EMBED_DIM", 2048),
+        reranker_enabled=_bool_env("GRAPHRAG_RERANKER_ENABLED", False),
+        reranker_model=os.getenv("GRAPHRAG_RERANKER_MODEL", "BAAI/bge-reranker-v2-m3"),
+        reranker_backend=os.getenv("GRAPHRAG_RERANKER_BACKEND", "flagembedding"),
+        reranker_min_score=_float_env("GRAPHRAG_RERANKER_MIN_SCORE", 0.0),
     )
