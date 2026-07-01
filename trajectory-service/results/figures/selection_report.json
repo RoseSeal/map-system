@@ -1,0 +1,82 @@
+{
+  "inputs": {
+    "dataset": "runtime/dataset/segments.parquet",
+    "windows_test": "runtime/windows/test.npz",
+    "model": "runtime/gru_tuned/gru.pt"
+  },
+  "feature_alignment_check": {
+    "status": "passed",
+    "sampled": 512,
+    "max_abs_diff": 4.842877388000488e-07,
+    "source": "scripts/train_gru.py::load_split"
+  },
+  "cv": {
+    "source": "inland_traj.geometry.cv_predict",
+    "window": 3
+  },
+  "gru": {
+    "architecture": "train_gru.GRUPredictor(in_dim=6, hidden=128, layers=2)",
+    "restore": "pred_km * 1000 + last absolute xy"
+  },
+  "bend_window": {
+    "window_index": 43188,
+    "turn_rate_deg_s": 0.322363942861557,
+    "heading_change_deg": 88.55027770996094,
+    "step_ratio_min": 1.132333755493164,
+    "step_ratio_max": 1.2818291187286377,
+    "future_path_m": 1257.052490234375,
+    "future_chord_m": 1002.1119384765625,
+    "curvature_ratio": 1.2544032335281372,
+    "cv_fde_m": 521.9401245117188,
+    "gru_fde_m": 110.77481079101562,
+    "score": 165.85885620117188,
+    "filters": {
+      "heading_change_deg_min": 25.0,
+      "step_ratio_range": [
+        0.6,
+        1.4
+      ],
+      "cv_fde_m_range": [
+        400.0,
+        800.0
+      ],
+      "requires_gru_fde_lt_cv": true
+    }
+  },
+  "encounter": {
+    "row": 23835,
+    "a_idx": 22008,
+    "b_idx": 47164,
+    "heading_angle_deg": 174.5748716738922,
+    "plot_span_m": 8001.951171875,
+    "true_risk": "WARNING",
+    "cv_risk": "SAFE",
+    "gru_risk": "WARNING",
+    "true_dcpa_m": 58.36815515747876,
+    "true_tcpa_s": 455.659273879362,
+    "cv_dcpa_m": 1861.2959071116873,
+    "cv_tcpa_s": 152.0,
+    "gru_dcpa_m": 402.4110330008384,
+    "gru_tcpa_s": 427.06822733822474,
+    "exact_cv_safe_gru_danger_case": true,
+    "score": 1043227.472952389,
+    "filters": {
+      "requires_true_danger": [
+        "ALARM",
+        "WARNING"
+      ],
+      "requires_cv_risk": "SAFE",
+      "requires_gru_danger": [
+        "ALARM",
+        "WARNING"
+      ],
+      "preferred_heading_angle_deg_min": 35.0
+    }
+  },
+  "outputs": {
+    "bend_png": "runtime/figures/fig_bend_example.png",
+    "bend_gif": "runtime/figures/fig_bend_example.gif",
+    "encounter_png": "runtime/figures/fig_encounter_miss.png",
+    "metrics_png": "runtime/figures/fig_metrics.png"
+  }
+}

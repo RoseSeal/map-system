@@ -1,7 +1,7 @@
 # Architecture Decisions and Review Findings
 
 > 用途：记录当前稳定架构决策，以及围绕这些决策沉淀出的实现级 review finding
-> 最后更新：2026-07-01（v1.1 收口：新增 ADR-013 历史案例 GraphRAG sidecar 与独立 port）
+> 最后更新：2026-07-01（v1.2 启动：新增 ADR-014 学习型航迹预测 offline-first + 独立预测 port + sidecar 集成）
 > 关系说明：架构概览以 `docs/ARCHITECTURE.md` 为准；协议真值以 `docs/EVENT_SCHEMA.md` 为准；本文档承接关键设计取舍与相关复盘结论
 
 ---
@@ -639,6 +639,32 @@ Trade-off：v1.1 落地历史相似案例检索时，需要在复用既有法规
 - 不为 v1.1 引入 Neo4j、Postgres 图扩展、鉴权或高可用部署。
 - 不把 `evidence_items` 从 `string[]` 升级为结构化对象；历史案例 evidence 通过 `[source: historical_case]` 与返回 `case_id` 溯源。
 - 不将 LLM-as-judge 分数作为 release gate；评测仅作为课程汇报与方法验证材料。
+
+### ADR-014
+
+目标船航迹预测从 CV 升级为学习型模型，采用 offline-first 验证 + 独立预测 port + 推理 sidecar 集成，下游 CPA/TCPA 主链路不变
+
+Trade-off：v1.2 要把弯道场景表现更好的学习型预测器引入风险引擎，需要在"直接改写 `CvPredictionEngine`"、"离线先验证再以可替换部件集成"、"以裸预测精度还是下游风险改善为验收口径"上取舍。
+
+#### 决策
+
+- **offline-first**：先在真实内河 AIS（NBSDC 武汉长江段）上离线验证学习型预测能否改善下游风险，再谈集成；验证结论为正（FDE −28.3%，真危险漏报 12.2%→8.6%，弯道桶 16.5%→11.4%）后，才立集成 step。离线工作与产物落在顶层 `trajectory-service/`。
+- **独立预测 port + sidecar**：集成复用 v1.1（ADR-013）范式——抽 `TrajectoryPredictionPort`，`CvPredictionEngine` 与学习型 adapter 并存、受独立 feature flag 控制；学习型预测经 Python 推理 sidecar 以 HTTP 提供，Java adapter 映射为与 `CvPredictionResult` 等价的预测轨迹点序列。
+- **下游不改**：预测轨迹喂既有 `PredictedCpaTcpaCalculator`，`CpaTcpaEngine` 与多因子评分语义不变；预测器是可替换部件。
+- **验收口径**：以下游 CPA/TCPA 风险预警（尤其真危险漏报率）的改善为贡献落点与验收信号，不以裸 ADE/FDE 为准。
+
+#### 理由
+
+- CV 直线外推在内河弯道有结构性偏差，其误差沿更长时域与更弯航段累积——这正是风险漏报的来源；学习型预测的价值需以"下游风险决策改善"度量，而非预测精度本身。
+- 独立 port + sidecar 使 Python/torch 依赖与 Java 主服务解耦，可开关、可降级（sidecar 不可用回退 CV），禁用时链路与现状逐字节一致，保证回归安全。
+- CV 基线取末 3 点最小二乘速度，与几何核心 `cv_predict` 同口径——早期弱基线（末 2 点速度）会把增益从 ~20–28% 夸大到 ~40%；诚实基线是结论可信的前提。
+
+#### 明确否决的方向
+
+- 不直接改写 / 替换 `CvPredictionEngine`——CV 保留为默认与降级实现。
+- 不改 `CpaTcpaEngine` / `PredictedCpaTcpaCalculator` / 多因子评分语义。
+- 不以裸 ADE/FDE 作为版本验收门槛。
+- 本版本不做在线增量学习 / 自动再训练 / Transformer 等重模型（见 v1.2 OVERVIEW Non-Goals）。
 
 ---
 

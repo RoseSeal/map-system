@@ -1,0 +1,30 @@
+{
+  "params": {
+    "windows": "runtime/windows",
+    "out": "runtime/gru_tuned",
+    "hidden": 128,
+    "layers": 2,
+    "epochs": 15,
+    "batch": 1024,
+    "max_train": 1300000,
+    "seed": 0
+  },
+  "test_windows": 168554,
+  "cv_ade_per_horizon_m": [
+    109.1,
+    202.7,
+    313.8
+  ],
+  "gru_ade_per_horizon_m": [
+    98.1,
+    161.4,
+    224.9
+  ],
+  "cv_fde_m": 313.8,
+  "gru_fde_m": 224.9,
+  "improvement_pct_per_horizon": [
+    10.1,
+    20.4,
+    28.3
+  ]
+}

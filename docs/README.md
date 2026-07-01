@@ -29,13 +29,14 @@
 
 ## 3. 规划与待办
 
+- [`v1.2-trajectory-prediction/OVERVIEW.md`](./v1.2-trajectory-prediction/OVERVIEW.md)：**当前活跃 milestone**。把目标船航迹预测从 CV 升级为学习型模型；离线验证轨已完成（见 `step-1-offline-pipeline.md`，代码与产物在顶层 `trajectory-service/`），实时集成轨规划中（见 `step-2-integration.md`）。
 - [`TODO.md`](./TODO.md)：跨模块待办、延后事项与工程债。
 
 说明：
 
+- v1.2-trajectory-prediction milestone 于 2026-07-01 启动，当前 active；离线轨完成、集成轨规划中。
 - v1.1-graphrag milestone 已于 2026-07-01 收口；归档与 closure summary 见 [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)。
 - v1.0 milestone 已于 2026-05-07 收口；归档与 closure summary 见 [`history/v1.0/README.md`](./history/v1.0/README.md)。
-- 当前没有正在进行的命名 milestone，`v1.2` 尚未开启。下一个 milestone 启动时在 `docs/<next-milestone>/` 建立目录，并在 [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) 切换 active 指针。
 - 未冻结的规划项继续收口到 `TODO.md`。
 
 ## 4. 历史归档

@@ -1,0 +1,50 @@
+{
+  "params": {
+    "wuhan_bbox": {
+      "lon_min": 113.5,
+      "lon_max": 115.1,
+      "lat_min": 29.8,
+      "lat_max": 31.0
+    },
+    "ref": [
+      114.3,
+      30.5
+    ],
+    "move_thresh_kn": 0.5,
+    "stat_run_s": 300,
+    "gap_max_s": 600,
+    "min_points": 20,
+    "min_span_m": 300,
+    "bend_turn_deg_s": 0.1,
+    "min_dt_s": 15,
+    "min_dist_m": 15,
+    "max_turn_deg_s": 3.0,
+    "thin_spacing_s": 30
+  },
+  "stage1": {
+    "total_rows": 13732797,
+    "filtered_rows": 13654751
+  },
+  "stage2": {
+    "moving_points": 1800274,
+    "segments": 12265,
+    "vessels": 4382,
+    "bend_point_fraction": 0.1007,
+    "seg_points": {
+      "min": 20,
+      "median": 80.0,
+      "p90": 322.0,
+      "max": 817
+    },
+    "split_segments": {
+      "train": 9722,
+      "val": 1336,
+      "test": 1207
+    },
+    "turn_rate_deg_s_quantiles": {
+      "p50": 0.0274,
+      "p90": 0.1416,
+      "p99": 1.0488
+    }
+  }
+}

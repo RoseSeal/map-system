@@ -1,0 +1,54 @@
+{
+  "k": 10,
+  "stride": 1,
+  "horizons_steps": [
+    1,
+    2,
+    3
+  ],
+  "train": {
+    "windows": 1293143,
+    "cv_ade_per_horizon_m": [
+      102.5,
+      191.8,
+      297.8
+    ],
+    "cv_ade_m": 197.4,
+    "cv_fde_m": 297.8,
+    "tgt_dt_median_s": [
+      153.0,
+      306.0,
+      459.0
+    ]
+  },
+  "val": {
+    "windows": 191397,
+    "cv_ade_per_horizon_m": [
+      98.7,
+      184.7,
+      287.4
+    ],
+    "cv_ade_m": 190.3,
+    "cv_fde_m": 287.4,
+    "tgt_dt_median_s": [
+      153.0,
+      306.0,
+      459.0
+    ]
+  },
+  "test": {
+    "windows": 168554,
+    "cv_ade_per_horizon_m": [
+      109.1,
+      202.7,
+      313.8
+    ],
+    "cv_ade_m": 208.5,
+    "cv_fde_m": 313.8,
+    "tgt_dt_median_s": [
+      153.0,
+      306.0,
+      459.0
+    ]
+  }
+}

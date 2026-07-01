@@ -1,0 +1,320 @@
+{
+  "inputs": {
+    "dataset": "runtime/dataset/segments.parquet",
+    "model": "runtime/gru_tuned/gru.pt",
+    "windows_test": "runtime/windows/test.npz"
+  },
+  "parameters": {
+    "history_points": 10,
+    "future_points": 3,
+    "time_window_s": 90.0,
+    "radius_m": 3704.0,
+    "radius_nm": 2.0,
+    "grid_step_s": 30.0,
+    "cv_window_points": 3,
+    "gru_hidden": 128,
+    "gru_layers": 2,
+    "max_encounters": null
+  },
+  "counts": {
+    "test_anchor_count": 168554,
+    "test_segments_with_anchors": 1207,
+    "mined_encounter_count": 105179,
+    "evaluated_encounter_count": 105095,
+    "skipped_no_common_grid": 84
+  },
+  "feature_alignment_check": {
+    "status": "passed",
+    "sampled": 256,
+    "max_abs_diff": 4.842877388000488e-07,
+    "source": "scripts/train_gru.py::load_split"
+  },
+  "metrics": {
+    "turn_p75_deg_s": 0.078685,
+    "global": {
+      "encounters": 105095,
+      "true_risk_counts": {
+        "ALARM": 10214,
+        "WARNING": 22637,
+        "CAUTION": 25543,
+        "SAFE": 46701
+      },
+      "true_danger_rate": 0.312584,
+      "true_dcpa_m": {
+        "mean": 1782.66,
+        "median": 1620.709,
+        "p75": 2714.939,
+        "p90": 3428.174,
+        "max": 20576.813
+      },
+      "true_tcpa_s": {
+        "mean": 259.166,
+        "median": 168.0,
+        "p75": 337.0,
+        "p90": 460.0,
+        "max": 930.533
+      },
+      "cv": {
+        "dcpa_err_m": {
+          "mean": 178.945,
+          "median": 86.538,
+          "p75": 186.717,
+          "p90": 368.354,
+          "max": 20077.632
+        },
+        "tcpa_err_s": {
+          "mean": 51.175,
+          "median": 0.0,
+          "p75": 38.867,
+          "p90": 180.0,
+          "max": 728.0
+        },
+        "risk_match_rate": 0.859927,
+        "risk_pred_counts": {
+          "ALARM": 9843,
+          "WARNING": 21055,
+          "CAUTION": 26227,
+          "SAFE": 47970
+        },
+        "false_alarm_count": 2040,
+        "false_alarm_rate": 0.019411,
+        "false_alarm_rate_among_true_safe": 0.028238,
+        "miss_count": 3993,
+        "miss_rate": 0.037994,
+        "miss_rate_among_true_danger": 0.121549
+      },
+      "gru": {
+        "dcpa_err_m": {
+          "mean": 155.094,
+          "median": 81.943,
+          "p75": 182.172,
+          "p90": 343.857,
+          "max": 20141.788
+        },
+        "tcpa_err_s": {
+          "mean": 45.714,
+          "median": 0.0,
+          "p75": 30.0,
+          "p90": 158.0,
+          "max": 728.0
+        },
+        "risk_match_rate": 0.868595,
+        "risk_pred_counts": {
+          "ALARM": 10326,
+          "WARNING": 22026,
+          "CAUTION": 25949,
+          "SAFE": 46794
+        },
+        "false_alarm_count": 2333,
+        "false_alarm_rate": 0.022199,
+        "false_alarm_rate_among_true_safe": 0.032293,
+        "miss_count": 2832,
+        "miss_rate": 0.026947,
+        "miss_rate_among_true_danger": 0.086207
+      },
+      "cv_vs_gru": {
+        "dcpa_mean_err_reduction_m": 23.851,
+        "dcpa_mean_err_reduction_pct": 13.329,
+        "tcpa_mean_err_reduction_s": 5.461,
+        "tcpa_mean_err_reduction_pct": 10.671,
+        "risk_match_rate_delta_gru_minus_cv": 0.008668,
+        "false_alarm_rate_reduction": -0.002788,
+        "miss_rate_reduction": 0.011047
+      }
+    },
+    "buckets": {
+      "bend": {
+        "encounters": 43417,
+        "true_risk_counts": {
+          "ALARM": 4299,
+          "WARNING": 8263,
+          "CAUTION": 10863,
+          "SAFE": 19992
+        },
+        "true_danger_rate": 0.289334,
+        "true_dcpa_m": {
+          "mean": 1831.606,
+          "median": 1696.636,
+          "p75": 2750.855,
+          "p90": 3430.242,
+          "max": 20576.813
+        },
+        "true_tcpa_s": {
+          "mean": 244.3,
+          "median": 164.0,
+          "p75": 309.0,
+          "p90": 458.0,
+          "max": 926.0
+        },
+        "cv": {
+          "dcpa_err_m": {
+            "mean": 237.32,
+            "median": 100.531,
+            "p75": 232.091,
+            "p90": 508.514,
+            "max": 20077.632
+          },
+          "tcpa_err_s": {
+            "mean": 53.93,
+            "median": 0.0,
+            "p75": 83.625,
+            "p90": 173.0,
+            "max": 710.0
+          },
+          "risk_match_rate": 0.829168,
+          "risk_pred_counts": {
+            "ALARM": 4059,
+            "WARNING": 7530,
+            "CAUTION": 11125,
+            "SAFE": 20703
+          },
+          "false_alarm_count": 1096,
+          "false_alarm_rate": 0.025244,
+          "false_alarm_rate_among_true_safe": 0.035521,
+          "miss_count": 2069,
+          "miss_rate": 0.047654,
+          "miss_rate_among_true_danger": 0.164703
+        },
+        "gru": {
+          "dcpa_err_m": {
+            "mean": 210.954,
+            "median": 116.375,
+            "p75": 242.217,
+            "p90": 430.197,
+            "max": 20141.788
+          },
+          "tcpa_err_s": {
+            "mean": 48.582,
+            "median": 0.0,
+            "p75": 55.12,
+            "p90": 157.0,
+            "max": 710.0
+          },
+          "risk_match_rate": 0.836585,
+          "risk_pred_counts": {
+            "ALARM": 4501,
+            "WARNING": 7905,
+            "CAUTION": 10972,
+            "SAFE": 20039
+          },
+          "false_alarm_count": 1272,
+          "false_alarm_rate": 0.029297,
+          "false_alarm_rate_among_true_safe": 0.041225,
+          "miss_count": 1428,
+          "miss_rate": 0.03289,
+          "miss_rate_among_true_danger": 0.113676
+        },
+        "cv_vs_gru": {
+          "dcpa_mean_err_reduction_m": 26.366,
+          "dcpa_mean_err_reduction_pct": 11.11,
+          "tcpa_mean_err_reduction_s": 5.348,
+          "tcpa_mean_err_reduction_pct": 9.917,
+          "risk_match_rate_delta_gru_minus_cv": 0.007417,
+          "false_alarm_rate_reduction": -0.004053,
+          "miss_rate_reduction": 0.014764
+        }
+      },
+      "non_bend": {
+        "encounters": 61678,
+        "true_risk_counts": {
+          "ALARM": 5915,
+          "WARNING": 14374,
+          "CAUTION": 14680,
+          "SAFE": 26709
+        },
+        "true_danger_rate": 0.32895,
+        "true_dcpa_m": {
+          "mean": 1748.206,
+          "median": 1570.73,
+          "p75": 2686.766,
+          "p90": 3426.983,
+          "max": 8069.831
+        },
+        "true_tcpa_s": {
+          "mean": 269.63,
+          "median": 172.0,
+          "p75": 453.0,
+          "p90": 462.0,
+          "max": 930.533
+        },
+        "cv": {
+          "dcpa_err_m": {
+            "mean": 137.853,
+            "median": 78.529,
+            "p75": 162.844,
+            "p90": 293.763,
+            "max": 8597.222
+          },
+          "tcpa_err_s": {
+            "mean": 49.235,
+            "median": 0.0,
+            "p75": 24.564,
+            "p90": 210.0,
+            "max": 728.0
+          },
+          "risk_match_rate": 0.881579,
+          "risk_pred_counts": {
+            "ALARM": 5784,
+            "WARNING": 13525,
+            "CAUTION": 15102,
+            "SAFE": 27267
+          },
+          "false_alarm_count": 944,
+          "false_alarm_rate": 0.015305,
+          "false_alarm_rate_among_true_safe": 0.022808,
+          "miss_count": 1924,
+          "miss_rate": 0.031194,
+          "miss_rate_among_true_danger": 0.09483
+        },
+        "gru": {
+          "dcpa_err_m": {
+            "mean": 115.773,
+            "median": 66.432,
+            "p75": 140.396,
+            "p90": 265.713,
+            "max": 6504.297
+          },
+          "tcpa_err_s": {
+            "mean": 43.695,
+            "median": 0.0,
+            "p75": 18.065,
+            "p90": 158.0,
+            "max": 728.0
+          },
+          "risk_match_rate": 0.891128,
+          "risk_pred_counts": {
+            "ALARM": 5825,
+            "WARNING": 14121,
+            "CAUTION": 14977,
+            "SAFE": 26755
+          },
+          "false_alarm_count": 1061,
+          "false_alarm_rate": 0.017202,
+          "false_alarm_rate_among_true_safe": 0.025635,
+          "miss_count": 1404,
+          "miss_rate": 0.022763,
+          "miss_rate_among_true_danger": 0.0692
+        },
+        "cv_vs_gru": {
+          "dcpa_mean_err_reduction_m": 22.08,
+          "dcpa_mean_err_reduction_pct": 16.017,
+          "tcpa_mean_err_reduction_s": 5.54,
+          "tcpa_mean_err_reduction_pct": 11.252,
+          "risk_match_rate_delta_gru_minus_cv": 0.009549,
+          "false_alarm_rate_reduction": -0.001897,
+          "miss_rate_reduction": 0.008431
+        }
+      }
+    }
+  },
+  "plots": [
+    "runtime/encounters/plots/encounter_01.png",
+    "runtime/encounters/plots/encounter_02.png",
+    "runtime/encounters/plots/encounter_03.png",
+    "runtime/encounters/plots/encounter_04.png",
+    "runtime/encounters/plots/encounter_05.png",
+    "runtime/encounters/plots/encounter_06.png",
+    "runtime/encounters/plots/encounter_07.png",
+    "runtime/encounters/plots/encounter_08.png"
+  ]
+}

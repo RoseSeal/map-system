@@ -6,8 +6,7 @@
 ## 1. Current Baseline
 
 - Latest completed milestone: `v1.1-graphrag` — closed 2026-07-01.
-- Current phase: **post-v1.1 closure**. No named milestone is currently active.
-- `v1.2` planning has not yet been opened. Add the new active pointer here when it starts.
+- Active milestone: `v1.2-trajectory-prediction` — opened 2026-07-01. Offline validation track is **completed** (a learned GRU predictor beats CV extrapolation on real inland AIS and lowers downstream risk misses); the real-time integration track is **planned**. See [`docs/v1.2-trajectory-prediction/OVERVIEW.md`](./docs/v1.2-trajectory-prediction/OVERVIEW.md).
 
 ## 2. Closure References
 
