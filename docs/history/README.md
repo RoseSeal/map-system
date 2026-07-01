@@ -5,7 +5,7 @@
 
 ## 1. 这里有什么
 
-本目录归档已完成版本（`v0.5` 至 `v0.9`）的阶段性 plan、step 拆解与早期协议草案：
+本目录归档已完成版本（`v0.5` 至 `v1.1`）的阶段性 plan、step 拆解与早期协议草案：
 
 - [`v0.5/`](./v0.5)、[`v0.5-mvp/`](./v0.5-mvp)：早期消息契约、语音聊天链路设计与首版 schema 草案。
 - [`v0.6-llm-explanation/`](./v0.6-llm-explanation)：LLM 解释模块早期设计稿。
@@ -13,6 +13,7 @@
 - [`v0.8-engine-enhancement/`](./v0.8-engine-enhancement)：风险引擎增强阶段的 step 拆解。
 - [`v0.9-frontend-enhancement/`](./v0.9-frontend-enhancement)：AI 工作区前端壳层与编辑/选择目标交互的实现记录。
 - [`v1.0/`](./v1.0)：v1.0 milestone 收口归档；agent / hydrology / weather / visual / bugfix 全部 track 的 plan 与 step 文档。详见 [`v1.0/README.md`](./v1.0/README.md)（v1.0 closure summary）。
+- [`v1.1-graphrag/`](./v1.1-graphrag)：v1.1-graphrag milestone 收口归档；历史案例 GraphRAG sidecar、Java adapter、advisory evidence 注入与非门槛评测 track。详见 [`v1.1-graphrag/README.md`](./v1.1-graphrag/README.md)（v1.1 closure summary）。
 
 ## 2. 阅读约束
 

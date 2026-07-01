@@ -1,7 +1,7 @@
 # Architecture Decisions and Review Findings
 
 > 用途：记录当前稳定架构决策，以及围绕这些决策沉淀出的实现级 review finding
-> 最后更新：2026-05-07（v1.0 收口：新增 ADR-010 AgentSnapshot 边界深拷贝、ADR-011 ADVISORY 独立事件、ADR-012 COLREGS Part B 进程内图）
+> 最后更新：2026-07-01（v1.1 收口：新增 ADR-013 历史案例 GraphRAG sidecar 与独立 port）
 > 关系说明：架构概览以 `docs/ARCHITECTURE.md` 为准；协议真值以 `docs/EVENT_SCHEMA.md` 为准；本文档承接关键设计取舍与相关复盘结论
 
 ---
@@ -598,6 +598,47 @@ Trade-off：v1.0 引入 `query_regulatory_context` 工具时，规则知识的�
 - 不让 advisory 工具直接持有 `ColregsGraph` 实例：所有查询统一走 `GraphQueryPort`。
 - 不在 v1.0 引入 COLREGS Part A / Part C / Part D 等条款，避免规则集合范围漂移；`query_regulatory_context` 当前明确只覆盖 Part B（Rules 4–19）。
 - 不引入"先普通 RAG、再 GraphRAG"过渡路径（与 ADR-007 一致）。
+
+### ADR-013
+
+历史案例 GraphRAG 采用独立 port + HTTP sidecar + LightRAG 文件型本地存储，评测作为非门槛验证 track
+
+Trade-off：v1.1 落地历史相似案例检索时，需要在复用既有法规图抽象、引入外部图数据库、或增加独立案例检索分支之间选择。
+
+#### 可选方案
+
+##### 方案一：复用 `GraphQueryPort` 与 `MemoryGraphAdapter`
+
+- 优点：接口数量少，沿用 v1.0 COLREGS 规则图的进程内实现。
+- 缺点：法规图是确定性小规模规则检索，历史案例图是带相似度、LLM 抽取与外部索引的经验性检索；二者失败模式、延迟预算、开关粒度和返回结构不同。合并接口会让法规工具承担案例检索的不确定性。
+
+##### 方案二：新增 `HistoricalCaseQueryPort`，Java 侧通过 HTTP adapter 调用 Python sidecar
+
+- 优点：案例检索与法规检索边界清晰；`llm.case-graph.enabled` 可单独控制该分支；Java 主服务只负责 DTO 映射、超时和 source-grounding，不内嵌 LightRAG 细节。HTTP sidecar 形态与既有 `whisper` 副服务一致，可避免每次工具调用 subprocess 冷启动。
+- 缺点：新增一个顶层 Python 服务和索引 bootstrap 步骤；端到端联调依赖 sidecar 健康状态与 LLM/embedding 凭证。
+
+##### 方案三：直接引入生产级 Neo4j 或复用现有 `postgis`
+
+- 优点：Neo4j 与图数据库路线更接近长期生产形态；复用 `postgis` 表面上可减少服务数量。
+- 缺点：当前 `postgis/postgis:17-3.4` 镜像不包含 LightRAG PostgreSQL 后端所需的 pgvector 与 Apache AGE 扩展，低成本复用路径不成立；Neo4j 对课堂 demo 与 12 条合成案例语料过重，会提前引入部署、鉴权和高可用问题。
+
+#### 决策
+
+采用方案二：新增 `HistoricalCaseQueryPort` 与 `LightRagCaseGraphAdapter`，由 Java 侧通过 HTTP 调用顶层 `graphrag-service/` LightRAG sidecar。sidecar 使用 LightRAG 默认文件型本地存储（NetworkX + nano-vectordb + 本地 JSON），索引产物落在 `graphrag-service/runtime/index/`，可由合成案例语料离线重建。
+
+#### 理由
+
+- `GraphQueryPort` 继续只表达 COLREGS Part B 规则图，保持确定性法规依据链路稳定；历史案例检索通过独立 port 表达其外部检索、相似度召回和失败降级语义。
+- HTTP sidecar 保持与 `whisper` 副服务同类的部署模型，既隔离 Python/LightRAG 依赖，又避免工具调用期间频繁启动 Python 进程。
+- LightRAG 文件型本地存储足以支撑 v1.1 的合成案例 demo 与课程评测；复用 `postgis` 会变成基础镜像改造，Neo4j 则把生产化运维成本提前到 demo 阶段。
+- LLM-as-judge 评测可验证检索质量与代价，但评分不作为产品发布门槛；检索/生成沿用智谱配置，judge 走非智谱本机 CLI（默认 Gemini CLI），降低同源偏差。
+
+#### 明确否决的方向
+
+- 不把历史案例检索合并进 `GraphQueryPort` 或 `MemoryGraphAdapter`。
+- 不为 v1.1 引入 Neo4j、Postgres 图扩展、鉴权或高可用部署。
+- 不把 `evidence_items` 从 `string[]` 升级为结构化对象；历史案例 evidence 通过 `[source: historical_case]` 与返回 `case_id` 溯源。
+- 不将 LLM-as-judge 分数作为 release gate；评测仅作为课程汇报与方法验证材料。
 
 ---
 

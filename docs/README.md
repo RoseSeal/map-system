@@ -1,7 +1,7 @@
 # Docs Index
 
 > 文档状态：current
-> 最后更新：2026-05-07
+> 最后更新：2026-07-01
 > 用途：为 `docs/` 提供入口索引，并明确"当前真值 / 规划 / 历史归档"的边界。
 
 ## 0. 阅读顺序
@@ -12,7 +12,8 @@
 2. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md)：milestone 级状态与 active track 指针。
 3. **本文件**：documentation map，定位"该看哪份真值/规划/归档"。
 4. [`ARCHITECTURE.md`](./ARCHITECTURE.md) 与 [`EVENT_SCHEMA.md`](./EVENT_SCHEMA.md)：当前真值。
-5. [`history/v1.0/README.md`](./history/v1.0/README.md)：v1.0 已完成并归档，此 closure summary 是了解 v1.0 增量与对应 ADR 的入口（**不是 current truth**）。
+5. [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)：v1.1-graphrag 已完成并归档，此 closure summary 是了解历史案例 GraphRAG 增量与对应 ADR 的入口（**不是 current truth**）。
+6. [`history/v1.0/README.md`](./history/v1.0/README.md)：v1.0 已完成并归档，此 closure summary 是了解 v1.0 增量与对应 ADR 的入口（**不是 current truth**）。
 
 [`../CURRENT_SYSTEM_OVERVIEW.md`](../CURRENT_SYSTEM_OVERVIEW.md) 是"任务 → 文件"导航工具，**不是 first stop**，已定位到模块后再用。
 
@@ -32,13 +33,16 @@
 
 说明：
 
+- v1.1-graphrag milestone 已于 2026-07-01 收口；归档与 closure summary 见 [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)。
 - v1.0 milestone 已于 2026-05-07 收口；归档与 closure summary 见 [`history/v1.0/README.md`](./history/v1.0/README.md)。
-- 当前没有正在进行的命名 milestone。下一个 milestone 启动时在 `docs/<next-milestone>/` 建立目录，并在 [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) 切换 active 指针。
+- 当前没有正在进行的命名 milestone，`v1.2` 尚未开启。下一个 milestone 启动时在 `docs/<next-milestone>/` 建立目录，并在 [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) 切换 active 指针。
 - 未冻结的规划项继续收口到 `TODO.md`。
 
 ## 4. 历史归档
 
 - [`history/`](./history/)：阶段性实现计划、步骤拆解、旧版本协议与历史设计草案。详见 [`history/README.md`](./history/README.md)。
+- [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)：v1.1-graphrag closure summary，归档历史案例 GraphRAG sidecar、Java adapter、advisory evidence 注入与非门槛评测 track。
+- [`history/v1.0/README.md`](./history/v1.0/README.md)：v1.0 closure summary，归档 agent / hydrology / weather / visual / bugfix track。
 
 约束：
 

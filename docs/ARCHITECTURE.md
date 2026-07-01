@@ -1,7 +1,7 @@
 ﻿# 海图系统 (Map-System) — Architecture Overview v0.1
 
 > 用途：项目架构概览 / AI 上下文输入 / 对外介绍
-> 最后更新：2026-05-07（v1.0 收口同步：advisory pipeline、agent loop、environment context、hydrology / weather 接入）
+> 最后更新：2026-07-01（v1.1 收口同步：历史案例 GraphRAG 分支、LightRAG sidecar、case evidence 来源校验）
 > 维护原则：仅记录稳定的架构事实、链路与关键决策
 
 ---
@@ -27,7 +27,7 @@
 | 环境上下文 | `EnvironmentContextService` 单点装配 weather / hydrology / safety contour，独立 `ENVIRONMENT_UPDATE` 事件 |
 | LLM 接入 | Gemini / 智谱，运行时可经 `LLM_PROVIDER_SELECTION` 切换；`CompletableFuture` 超时降级 |
 | Agent loop | 有界工具增强推理：`AgentLoopOrchestrator` + `AgentSnapshot`（边界深拷贝） + `AgentToolRegistry` |
-| 知识图谱 | COLREGS Part B 进程内规则图（`GraphQueryPort` 抽象，外部图存储留作 v1.1+） |
+| 知识图谱 / GraphRAG | COLREGS Part B 进程内规则图（`GraphQueryPort` + `MemoryGraphAdapter`）与历史案例 GraphRAG 分支（`HistoricalCaseQueryPort` + LightRAG HTTP sidecar）并存；历史案例分支使用 `llm.case-graph.enabled` 独立开关 |
 | 事件协议 | Event Schema v2，含 `ADVISORY` / `ENVIRONMENT_UPDATE` / `AGENT_STEP` / `CAPABILITY` 等 v1.0 引入事件（见 `docs/EVENT_SCHEMA.md`） |
 | 前端 | Vite + TypeScript + Tailwind，2.5D 海图，浏览器原生 `SpeechSynthesis` TTS |
 | 语音识别 | `whisper.cpp`（ASR，已完成，Backend-orchestrated） |
@@ -74,15 +74,17 @@
 | `EncounterRoleResolver` | 在引擎结果上写 `ownShipRole`，作为 advisory 工具与 chat agent 工具共同读取的场景事实 |
 | `AgentLoopOrchestrator`（`llm/agent/`） | 有界工具增强推理循环；driving advisory（系统驱动主线）与 chat agent（用户驱动次线，feature-flagged） |
 | `AgentSnapshot` | agent loop 启动时一次性深拷贝构造的冻结快照；同一 loop 内所有读取均走该快照 |
-| `AgentToolRegistry` + tool 实现 | 注册并分派 query / regulatory / maneuver-evaluation 工具；当前包含 `query_bathymetry`、`get_weather_context`、`query_regulatory_context`、`evaluate_maneuver` 等 |
+| `AgentToolRegistry` + tool 实现 | 注册并分派 query / regulatory / maneuver-evaluation 工具；当前包含 `query_bathymetry`、`get_weather_context`、`query_regulatory_context`、`evaluate_maneuver`、`query_historical_case_graph` 等 |
 | `AdvisoryPipeline` | 场景级 advisory 生成与 `ADVISORY` SSE 事件下发；前端旧 advisory 收到新条目后置 `SUPERSEDED` |
-| `ColregsGraph` + `GraphQueryPort` | COLREGS Part B 进程内规则图；`GraphQueryPort` 是后续接入外部图存储的稳定抽象 |
+| `ColregsGraph` + `GraphQueryPort` | COLREGS Part B 进程内规则图；`GraphQueryPort` 与历史案例查询 port 分离，继续服务确定性法规依据检索 |
+| `HistoricalCaseQueryPort` + `LightRagCaseGraphAdapter` | 历史相似案例检索 port 与 HTTP adapter；启用 `llm.case-graph.enabled=true` 时调用 `graphrag-service` 的 `/retrieve`，禁用时不加载该分支，不影响 `GraphQueryPort` / `MemoryGraphAdapter` |
 
 ### 4.2 副服务
 
 | 模块 | 职责 |
 | --- | --- |
 | `listener-service` | 外部输入消息入库，服务离线分析与大数据处理，当前暂挂起 |
+| `graphrag-service` | 顶层 Python LightRAG sidecar；基于 `data/cases/*.md` 合成案例语料离线构建 `runtime/index/`，通过 `/health` 与 `/retrieve` 提供历史相似案例检索，并承载非门槛 eval track |
 
 ## 五、核心消息链路
 
@@ -180,6 +182,28 @@ LlmChatService 路由至 AgentLoopOrchestrator（共用同一实现）
 最终 `CHAT_REPLY`（含工具结论）或 `ERROR`
 ```
 
+### 5.6 链路 F：历史案例 GraphRAG 分支
+
+```text
+AgentLoopOrchestrator（advisory 主线或 chat agent 次线）
+  │  工具目录含 query_historical_case_graph（需 llm.case-graph.enabled=true）
+  ▼
+QueryHistoricalCaseGraphTool
+  │  从 AgentSnapshot 读取会遇类型、让路角色、能见度、风险等级等态势特征
+  ▼
+HistoricalCaseQueryPort
+  ▼
+LightRagCaseGraphAdapter
+  │  HTTP POST /retrieve
+  ▼
+graphrag-service（LightRAG sidecar，runtime/index 文件型本地索引）
+  │  返回 cases[]、case_id、action_digest、lesson、metrics
+  ▼
+Advisory evidence_items / chat agent 工具结论
+```
+
+当 advisory `evidence_items` 使用 `[source: historical_case]` 时，后置校验要求 evidence 引用本轮 `query_historical_case_graph` 成功 tool result 中返回的 `case_id`。该校验不改变 `ADVISORY` payload 结构，`evidence_items` 仍为 `string[]`。
+
 ## 六、能力边界
 
 - 已具备多源消息接入、风险计算、SSE 风险推送、WebSocket 问答交互、TTS 播报与 ASR 语音输入能力。
@@ -191,8 +215,10 @@ LlmChatService 路由至 AgentLoopOrchestrator（共用同一实现）
 - `service.llm` 包依赖收口完成：仅依赖 `llm.*`、`domain.*` 和 `config.properties`，不持有 `dto.websocket`、`engine.risk` 或 `transport` 层引用；transport 层负责协议校验与错误码映射。
 - ASR 已通过 `whisper.cpp` 接入，当前采用后端统一编排的非流式方案。
 - 有界 agent loop 已上线：advisory 主线（系统驱动）与 chat agent 次线（用户驱动，需 `agent_mode`）共用 `AgentLoopOrchestrator`，通过 `AgentToolRegistry` 调用查询、法规与机动评估工具，结果以 `ADVISORY` SSE 事件或 `AGENT_STEP` WebSocket 事件下发。
-- COLREGS Part B 规则图（Rules 4–19）以进程内 `ColregsGraph` 形态接入，advisory `evidence_items` 中的法规依据由 `query_regulatory_context` 工具产出；外部图数据库与历史案例图保留在 v1.1+。
+- COLREGS Part B 规则图（Rules 4–19）以进程内 `ColregsGraph` 形态接入，advisory `evidence_items` 中的法规依据由 `query_regulatory_context` 工具产出；历史相似案例 GraphRAG 已通过 `HistoricalCaseQueryPort`、`query_historical_case_graph` 与 LightRAG sidecar 接入，案例 evidence 使用 `[source: historical_case]` 与返回 `case_id` 溯源。
 - 环境上下文（weather / hydrology / safety contour / `active_alerts`）由 `EnvironmentContextService` 单点装配，独立 `ENVIRONMENT_UPDATE` 事件下发；hydrology 与 weather 已分别接入风险引擎与 agent 工具层。
+- 历史案例 GraphRAG 分支默认关闭，需通过 `llm.case-graph.enabled=true` 启用；禁用时 `HistoricalCaseQueryPort` 与工具 bean 不加载，既有 `GraphQueryPort` / `MemoryGraphAdapter` 法规图链路不受影响。
+- `graphrag-service` 使用 LightRAG 文件型本地存储（NetworkX + nano-vectordb + 本地 JSON），索引产物位于 `graphrag-service/runtime/index/` 并可由合成案例语料重建；生产级 Neo4j、Postgres 图扩展、鉴权与高可用部署不在当前实现边界内。
 - 动画指令仍处于规划阶段。
 - `listener-service` 当前不在主运行链路中。
 
@@ -236,7 +262,8 @@ LlmChatService 路由至 AgentLoopOrchestrator（共用同一实现）
 - [x] Mock 清理与管线集成（消除 assembler 硬编码，端到端串联引擎输出）
 - [ ] JSON 指令驱动动画
 - [x] 显式实现 agent loop（v1.0 advisory 主线 + chat agent 次线，详见 [`history/v1.0/README.md`](./history/v1.0/README.md)）
-- [x] 法律法规知识图谱（COLREGS Part B 进程内图，v1.0 完成；历史危险场景图与外部图存储仍待后续 milestone）
+- [x] 法律法规知识图谱（COLREGS Part B 进程内图，v1.0 完成）
+- [x] 历史相似案例 GraphRAG evidence 分支（LightRAG sidecar + `HistoricalCaseQueryPort` + `query_historical_case_graph`，v1.1 完成）
 
 ### P4
 - [ ] 带唤醒词的纯语音交互
@@ -276,7 +303,8 @@ LlmChatService 路由至 AgentLoopOrchestrator（共用同一实现）
 - 引入 JSON 指令驱动动画，用于前端联动与解释增强。
 - ~~显式实现 agent loop~~（v1.0 已完成）
 - ~~接入 COLREGS 规则图谱并暴露为 advisory 工具~~（v1.0 已完成 Part B 进程内图）
-- 历史危险场景图与外部图数据库（Neo4j 等）接入；advisory `evidence_items` 引用相似案例。
+- ~~历史相似案例 GraphRAG 分支接入；advisory `evidence_items` 引用相似案例~~（v1.1 已完成，采用 LightRAG 文件型本地存储与独立 HTTP sidecar）。
+- 生产级外部图数据库（Neo4j 等）、鉴权与高可用部署不在当前主线内，需另行立项。
 
 ### P4 - 体验增强
 

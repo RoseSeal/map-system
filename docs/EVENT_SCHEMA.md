@@ -2,8 +2,8 @@
 > schema_version: v2
 > 文档状态：current / 已实施
 > 生效日期：2026-04-01（v1.0 增量已合入：ADVISORY / ENVIRONMENT_UPDATE / AGENT_STEP / CAPABILITY / LLM_PROVIDER_SELECTION）
-> 最后更新：2026-05-07（v1.0 收口校对，无字段层变更）
-> 变更摘要：risk 改为 SSE，chat 保持 WebSocket，解释流并入 SSE 风险通道；CHAT 上行支持最后一轮非破坏式重答；v1.0 期间扩展 advisory pipeline、environment 事件拆分、agent step 可见性与 LLM provider 运行时切换。
+> 最后更新：2026-07-01（v1.1 收口校对，补充 historical_case evidence 来源约束变更记录）
+> 变更摘要：risk 改为 SSE，chat 保持 WebSocket，解释流并入 SSE 风险通道；CHAT 上行支持最后一轮非破坏式重答；v1.0 期间扩展 advisory pipeline、environment 事件拆分、agent step 可见性与 LLM provider 运行时切换；v1.1 增补 historical_case evidence 来源约束。
 
 ## 变更记录
 | 版本 | 日期 | 摘要 |
@@ -20,6 +20,7 @@
 | v2 | 2026-04-27 | `CAPABILITY` 扩展 LLM provider 能力声明；新增 `SET_LLM_PROVIDER_SELECTION` / `LLM_PROVIDER_SELECTION` 运行时 provider 选择协议 |
 | v2 | 2026-04-28 | risk SSE 新增 `ENVIRONMENT_UPDATE`；`RISK_UPDATE` 移除 `environment_context` 并新增 `environment_state_version` |
 | v2 | 2026-05-26 | 增补 WebSocket `CLEAR_EXPIRED_EXPLANATIONS` / `EXPIRED_EXPLANATIONS_CLEARED` 与 `selected_explanation_refs` 字段 |
+| v2 | 2026-07-01 | `ADVISORY.evidence_items` 增补 `[source: historical_case]` 来源约束：历史相似案例事实必须引用 `query_historical_case_graph` 成功 tool result 中返回的 `case_id` |
 
 ## 1. 文档定位
 
