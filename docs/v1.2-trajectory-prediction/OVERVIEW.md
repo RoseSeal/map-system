@@ -2,7 +2,7 @@
 
 > name: map-system v1.2-trajectory-prediction
 > description: 把风险引擎的目标船航迹预测从 CV（恒速直线）外推升级为在真实内河 AIS 上训练的学习型序列模型（GRU seq2seq），以降低内河弯道场景下 CPA/TCPA 风险预警的漏报。分两轨：离线验证轨（已完成，见 step-1）与实时系统集成轨（规划中，见 step-2）。
-> last_updated: 2026-07-01
+> last_updated: 2026-07-07
 > status: active
 
 ---
@@ -21,7 +21,7 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 
 本版本要回答并落地的一句话问题：**用真实内河 AIS 训练的学习型预测器替换 CV，能否可度量地降低弯道场景下的风险预警偏差（尤其漏报），并以工程可维护的方式接入现有实时链路。**
 
-该问题的前半段（能否改善）已在离线轨（step-1）用真实数据验证——结论为正，且改善随预测时域增大、在弯道桶最显著（见下「离线验证结论」）。后半段（如何接入）是本版本的集成轨（step-2），尚未实现。
+该问题的前半段（能否改善）已在离线轨（step-1）用真实数据验证——结论为正，且改善随预测时域增大、在弯道桶最显著（见下「离线验证结论」）。后半段（如何接入）是本版本的集成轨（step-2），尚未实现；Open Questions 已于 2026-07-07 在 step-2 设计中拍板为具体实施决策。
 
 定位（不变）：贡献落点是"预测升级带来的下游风险决策改善"，不是裸预测精度；预测器是可替换部件，CPA/TCPA 与风险评分主链路不因换预测器而改写。
 
@@ -52,8 +52,8 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 ### 集成轨（must，未实现，step-2 承接）
 
 6. 抽出 `TrajectoryPredictionPort`（或等价抽象），使 `CvPredictionEngine` 与学习型预测 adapter 并存、受独立 feature flag 控制；禁用时链路与现状完全一致（回归安全）。
-7. 学习型预测经 Python 推理 sidecar（对标 v1.1 graphrag / whisper sidecar）以 HTTP 提供服务，Java 侧 adapter 调用并映射为 `CvPredictionResult` 等价的预测轨迹点序列，喂给既有 `PredictedCpaTcpaCalculator`，主链路拓扑与协议不变。
-8. 特征管线与离线训练严格对齐（输入构造、单位、坐标参考一致），并有对齐校验。
+7. 学习型预测经 ONNX + onnxruntime/FastAPI Python 推理 sidecar（对标 v1.1 graphrag / whisper sidecar）以 HTTP 批量端点提供服务，Java 侧 adapter 只搬运原始点窗口并映射为 `CvPredictionResult` 等价的预测轨迹点序列，喂给既有 `PredictedCpaTcpaCalculator`，主链路拓扑与协议不变。
+8. 特征构造在 sidecar 侧复用离线训练同代码路径，端到端 parity 用例通过；HTTP 契约以 [`trajectory-prediction-http-contract.md`](trajectory-prediction-http-contract.md) 成文并覆盖原始点窗口请求、骨架预测点响应、错误码与 healthcheck。
 9. 在离线保留的真实会遇子集上，端到端复现"学习型预测降低弯道漏报"的方向性结论作为集成验收信号（非分数门槛）。
 
 ---
@@ -78,23 +78,24 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 ## Step Breakdown
 
 - **step-1 离线管线与验证**（status: completed）：真实内河 AIS → 清洗切段 → 会遇挖掘 → CV 基线 vs GRU → ADE/FDE 分桶 + 下游 CPA/TCPA 误报/漏报。代码与产物落在顶层 [`../../trajectory-service/`](../../trajectory-service/)。详见 [`step-1-offline-pipeline.md`](step-1-offline-pipeline.md)。
-- **step-2 实时系统集成**（status: planning）：`TrajectoryPredictionPort` 抽象 + 学习型预测 sidecar + Java adapter + feature flag，接入现有预测 CPA/TCPA 链路。详见 [`step-2-integration.md`](step-2-integration.md)。
+- **step-2 实时系统集成**（status: planning，Open Questions 已于 2026-07-07 拍板）：`TrajectoryPredictionPort` 抽象 + ONNX/FastAPI 学习型预测 sidecar + Java 原始窗口 adapter + feature flag，接入现有预测 CPA/TCPA 链路。详见 [`step-2-integration.md`](step-2-integration.md)。
 
 ---
 
 ## Sequencing Constraints
 
 - step-1 离线轨已收口，其保留的会遇子集与训练权重是 step-2 集成验收（DoD #9）的输入。
-- step-2 内部串行依赖：port 抽象 → sidecar 推理契约 → Java adapter → 接入 `PredictedCpaTcpaCalculator` → 集成验收；feature flag 从第一步就位以保证禁用回退。
+- step-2 内部串行依赖：port 抽象 → sidecar 推理契约（[`trajectory-prediction-http-contract.md`](trajectory-prediction-http-contract.md)）→ Java adapter → 接入 `PredictedCpaTcpaCalculator` → 集成验收；feature flag 从第一步就位以保证禁用回退。
 
 ---
 
-## Open Questions
+## Step-2 决策（2026-07-07）
 
-- **模型导出与推理形态**：TorchScript vs ONNX；sidecar 用 FastAPI（对标 graphrag-service）还是复用既有推理容器——step-2 定。
-- **实时特征来源**：live 链路的历史轨迹窗口从何取（`ShipStatus` 历史缓存 vs 预测引擎自带的历史轨迹存储），窗口长度与采样节奏如何与离线 ~153s 节奏对齐——step-2 定。
-- **延迟预算**：sidecar HTTP 往返对风险帧率的影响、批量预测与缓存策略——step-2 定。
-- **降级策略**：sidecar 不可用 / 超时时回退 CV 的粒度与触发条件——step-2 定。
+- **模型导出与推理形态**：GRU 导出 ONNX，serving 使用 onnxruntime + FastAPI，代码落在 `trajectory-service/server/` 并接入 `compose.yaml`。
+- **实时特征来源**：Java adapter 维护独立降采样历史窗口并只向 sidecar 搬运原始点；特征构造在 sidecar 侧复用离线 `train_gru.py::load_split` 同代码路径，`ShipTrajectoryStore` 保持不动。
+- **延迟预算**：采用批量端点、结果有效期缓存与 250ms 初始 HTTP 超时；输入窗口未变化时不重复请求。
+- **降级策略**：单目标窗口不足 / 超时 / 异常时回 CV，连续 5 次 sidecar 失败后熔断 30s；内部观测 `predictionSource=GRU|CV`，不改 SSE 协议。
+- **输出 horizon**：flag-on 时保留 GRU 原生 offset（约 +153/306/459s）并扩展预测 horizon，flag-off 时现有 120s horizon 与行为不变。
 
 ---
 
