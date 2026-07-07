@@ -4,3 +4,7 @@ matplotlib>=3.7
 pyarrow>=14.0
 pytest>=8.0
 torch>=2.2
+fastapi>=0.115
+uvicorn[standard]>=0.30
+onnx>=1.16
+onnxruntime>=1.18

@@ -3,12 +3,12 @@
 Offline pipeline and learned target-ship trajectory predictor for map-system v1.2. It
 validates, on real inland AIS, whether a learned predictor (GRU seq2seq) reduces
 CPA/TCPA risk-warning error versus the current constant-velocity (CV) extrapolation,
-especially on inland bends. The real-time integration into the risk engine is planned
-work — see `docs/v1.2-trajectory-prediction/step-2-integration.md`.
+especially on inland bends. The same trained model can be exported to ONNX and served
+through the real-time sidecar used by the Java risk engine.
 
-This directory currently holds the **offline track** (data pipeline, baseline, model,
-evaluation). The Java risk engine still uses `CvPredictionEngine`; the learned predictor
-is not yet wired into the live link.
+This directory holds the offline track (data pipeline, baseline, model, evaluation)
+and the serving track (`server/`) for the feature-flagged live integration. Runtime
+datasets, windows, checkpoints and exported ONNX files remain under ignored `runtime/`.
 
 ## Layout
 
@@ -16,7 +16,9 @@ is not yet wired into the live link.
   closed-form CPA/TCPA (`cpa_tcpa_numerical`), ADE/FDE, risk-level mapping, downstream risk error.
 - `scripts/` — pipeline: `probe` (data gate), `clean_segment` (clean + segment), `build_windows`
   (windowing), `train_gru` (training/eval), `mine_encounters` (encounter mining + downstream risk),
-  `make_figures` / `make_data_figs` (plots).
+  `make_figures` / `make_data_figs` (plots), `export_gru_onnx` (serving export).
+- `server/` — FastAPI + onnxruntime sidecar. It accepts raw AIS point windows and constructs
+  features with the same training-time formula before running the ONNX model.
 - `tests/test_geometry.py` — geometry-core unit tests.
 - `results/` — tracked small artifacts: `metrics/*.json` (prediction, downstream risk, manifests,
   probe report) and `figures/*`. These are the evidence referenced by the v1.2 docs.
@@ -38,10 +40,23 @@ python scripts/build_windows.py                     # windowing             -> r
 # max-train 1.3M -> runtime/gru_tuned/gru.pt). The bare defaults train a smaller model at
 # runtime/gru/, which mine_encounters.py / make_figures.py will not load.
 python scripts/train_gru.py --out runtime/gru_tuned --hidden 128 --layers 2 --max-train 1300000
+python scripts/export_gru_onnx.py --checkpoint runtime/gru_tuned/gru.pt --out runtime/gru_tuned/gru.onnx
 python scripts/mine_encounters.py                   # encounters + downstream risk -> runtime/encounters
 python scripts/make_figures.py                      # figures               -> runtime/figures
 pytest tests/
 ```
+
+## Serve
+
+```bash
+python scripts/export_gru_onnx.py --checkpoint runtime/gru_tuned/gru.pt --out runtime/gru_tuned/gru.onnx
+uvicorn server.trajectory_server.server:app --host 0.0.0.0 --port 8200
+```
+
+The compose service `trajectory-predictor` mounts `trajectory-service/runtime/gru_tuned`
+at `/app/model` and expects `/app/model/gru.onnx`. The Java feature flag is
+`engine.trajectory-prediction.learned-enabled=true`; it falls back to CV when the sidecar
+is unavailable or a target window is not warm.
 
 ## Headline results
 

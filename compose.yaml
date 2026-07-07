@@ -73,6 +73,23 @@ services:
       retries: 3
     restart: unless-stopped
 
+  trajectory-predictor:
+    build: ./trajectory-service
+    container_name: trajectory-predictor
+    ports:
+      - "8200:8200"
+    environment:
+      TRAJECTORY_PREDICTION_MODEL_PATH: /app/model/gru.onnx
+      TRAJECTORY_PREDICTION_OFFSETS_SECONDS: "153,306,459"
+    volumes:
+      - ./trajectory-service/runtime/gru_tuned:/app/model:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
 
 volumes:
   postgis_data:

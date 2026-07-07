@@ -49,18 +49,8 @@ def _safe_nanmean_rows(a: np.ndarray) -> np.ndarray:
 
 
 def _feature_matrix(in_xy: np.ndarray, in_dt: np.ndarray, in_sog: np.ndarray, in_cog: np.ndarray) -> np.ndarray:
-    """Feature construction kept identical to scripts/train_gru.py::load_split."""
-    cog = np.deg2rad(in_cog)
-    return np.concatenate(
-        [
-            in_xy / 1000.0,
-            (in_dt / 100.0)[..., None],
-            (in_sog / 10.0)[..., None],
-            np.sin(cog)[..., None],
-            np.cos(cog)[..., None],
-        ],
-        axis=-1,
-    ).astype(np.float32)
+    """Feature construction kept identical to scripts/train_gru.py::build_features."""
+    return train_gru.build_features(in_xy, in_dt, in_sog, in_cog)
 
 
 def build_anchors(dataset: Path) -> dict[str, np.ndarray | int]:
@@ -152,7 +142,7 @@ def check_feature_alignment(
         "status": "passed" if diff < 1e-6 else "failed",
         "sampled": int(n),
         "max_abs_diff": float(diff),
-        "source": "scripts/train_gru.py::load_split",
+        "source": "scripts/train_gru.py::build_features",
     }
 
 

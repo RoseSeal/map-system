@@ -21,15 +21,19 @@ import torch.nn as nn
 H = 3
 
 
+def build_features(in_xy: np.ndarray, in_dt: np.ndarray, in_sog: np.ndarray, in_cog: np.ndarray) -> np.ndarray:
+    cog = np.deg2rad(in_cog)
+    return np.concatenate([
+        in_xy / 1000.0,                  # (N,k,2) km
+        (in_dt / 100.0)[..., None],
+        (in_sog / 10.0)[..., None],
+        np.sin(cog)[..., None], np.cos(cog)[..., None],
+    ], axis=-1).astype(np.float32)       # (N,k,6)
+
+
 def load_split(path: Path):
     d = np.load(path)
-    cog = np.deg2rad(d["in_cog"])
-    X = np.concatenate([
-        d["in_xy"] / 1000.0,                  # (N,k,2) km
-        (d["in_dt"] / 100.0)[..., None],
-        (d["in_sog"] / 10.0)[..., None],
-        np.sin(cog)[..., None], np.cos(cog)[..., None],
-    ], axis=-1).astype(np.float32)            # (N,k,6)
+    X = build_features(d["in_xy"], d["in_dt"], d["in_sog"], d["in_cog"])
     Y = (d["tgt_xy"] / 1000.0).astype(np.float32)   # (N,H,2) km
     cv_err = np.linalg.norm(
         d["in_vel"][:, None, :] * d["tgt_dt"][:, :, None] - d["tgt_xy"], axis=2)  # (N,H) m

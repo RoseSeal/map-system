@@ -22,8 +22,8 @@ import com.whut.map.map_service.risk.engine.risk.RiskAssessmentResult;
 import com.whut.map.map_service.risk.engine.ShipKinematicQualityChecker;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainEngine;
 import com.whut.map.map_service.risk.engine.safety.ShipDomainResult;
-import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionEngine;
 import com.whut.map.map_service.risk.engine.trajectoryprediction.CvPredictionResult;
+import com.whut.map.map_service.risk.engine.trajectoryprediction.TrajectoryPredictionPort;
 import com.whut.map.map_service.tracking.store.ShipStateStore;
 import com.whut.map.map_service.tracking.store.ShipTrajectoryStore;
 import com.whut.map.map_service.tracking.store.DerivedTargetStateStore;
@@ -47,7 +47,7 @@ import java.util.Set;
 public class ShipDispatcher {
 
     private final ShipDomainEngine shipDomainEngine;
-    private final CvPredictionEngine cvPredictionEngine;
+    private final TrajectoryPredictionPort trajectoryPredictionPort;
     private final CpaTcpaBatchCalculator cpaTcpaBatchCalculator;
     private final PredictedCpaTcpaBatchCalculator predictedCpaTcpaBatchCalculator;
     private final EncounterClassifier encounterClassifier;
@@ -66,7 +66,7 @@ public class ShipDispatcher {
 
     public ShipDispatcher(
             ShipDomainEngine shipDomainEngine,
-            CvPredictionEngine cvPredictionEngine,
+            TrajectoryPredictionPort trajectoryPredictionPort,
             CpaTcpaBatchCalculator cpaTcpaBatchCalculator,
             PredictedCpaTcpaBatchCalculator predictedCpaTcpaBatchCalculator,
             EncounterClassifier encounterClassifier,
@@ -81,7 +81,7 @@ public class ShipDispatcher {
             EnvironmentContextService environmentContextService,
             OwnShipPositionHolder ownShipPositionHolder
     ) {
-        this(shipDomainEngine, cvPredictionEngine, cpaTcpaBatchCalculator,
+        this(shipDomainEngine, trajectoryPredictionPort, cpaTcpaBatchCalculator,
                 predictedCpaTcpaBatchCalculator, encounterClassifier, new EncounterRoleResolver(),
                 riskAssessmentEngine, riskObjectAssembler, shipStateStore, shipTrajectoryStore,
                 riskStreamPublisher, applicationEventPublisher, kinematicChecker,
@@ -91,7 +91,7 @@ public class ShipDispatcher {
     @Autowired
     public ShipDispatcher(
             ShipDomainEngine shipDomainEngine,
-            CvPredictionEngine cvPredictionEngine,
+            TrajectoryPredictionPort trajectoryPredictionPort,
             CpaTcpaBatchCalculator cpaTcpaBatchCalculator,
             PredictedCpaTcpaBatchCalculator predictedCpaTcpaBatchCalculator,
             EncounterClassifier encounterClassifier,
@@ -108,7 +108,7 @@ public class ShipDispatcher {
             OwnShipPositionHolder ownShipPositionHolder
     ) {
         this.shipDomainEngine = shipDomainEngine;
-        this.cvPredictionEngine = cvPredictionEngine;
+        this.trajectoryPredictionPort = trajectoryPredictionPort;
         this.cpaTcpaBatchCalculator = cpaTcpaBatchCalculator;
         this.predictedCpaTcpaBatchCalculator = Objects.requireNonNull(
                 predictedCpaTcpaBatchCalculator,
@@ -218,7 +218,7 @@ public class ShipDispatcher {
     private ShipDerivedOutputs dispatchIncrementalForTarget(ShipDispatchContext context, ShipStatus targetShip) {
         String tId = targetShip.getId();
         
-        CvPredictionResult pred = cvPredictionEngine.consume(targetShip, shipTrajectoryStore.getHistory(tId));
+        CvPredictionResult pred = trajectoryPredictionPort.consume(targetShip, shipTrajectoryStore.getHistory(tId));
         CpaTcpaResult cpa = cpaTcpaBatchCalculator.calculateOne(context.ownShip(), targetShip);
         PredictedCpaTcpaResult predictedCpa = predictedCpaTcpaBatchCalculator.calculateOne(context.ownShip(), pred);
         EncounterClassificationResult enc = encounterClassifier.classify(context.ownShip(), targetShip);
@@ -277,14 +277,7 @@ public class ShipDispatcher {
     }
 
     private Map<String, CvPredictionResult> batchPredict(String ownShipId, Collection<ShipStatus> allShips) {
-        Map<String, CvPredictionResult> results = new HashMap<>();
-        for (ShipStatus ship : allShips) {
-            if (ship == null || ship.getId() == null || ship.getId().equals(ownShipId)) {
-                continue;
-            }
-            results.put(ship.getId(), cvPredictionEngine.consume(ship, shipTrajectoryStore.getHistory(ship.getId())));
-        }
-        return results;
+        return trajectoryPredictionPort.consumeAll(ownShipId, allShips, shipTrajectoryStore::getHistory);
     }
 
     private Map<String, EncounterClassificationResult> batchClassify(

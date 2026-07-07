@@ -103,4 +103,9 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 
 > 追加式附录：实施期发现更优方案或与正文不一致，在此追加，不回写正文；版本翻 completed 时统一并合。
 
-（空）
+- affected body item: `Step-2 决策（2026-07-07）` / 实时特征来源
+  - triggered by: step-2
+  - date: 2026-07-07
+  - reason: `better-approach`
+  - temporary handling: 实施期从 `trajectory-service/scripts/train_gru.py::load_split` 抽出 `build_features`，离线 `load_split`、downstream 校验脚本与在线 sidecar 均调用该函数；sidecar 不直接调用只读取 `.npz` 的 `load_split`。
+  - canonical resolution: 版本 closure 时将正文中的“复用离线 `train_gru.py::load_split` 同代码路径”统一改为“复用离线 `train_gru.py::build_features` 同代码路径”。

@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class CvPredictionEngine {
+public class CvPredictionEngine implements TrajectoryPredictionPort {
 
     private static final double EPS = 1e-9;
     private final TrajectoryPredictionProperties props;
@@ -41,6 +41,7 @@ public class CvPredictionEngine {
                     .trajectory(Collections.emptyList())
                     .predictionTime(predictionTime)
                     .horizonSeconds(props.getHorizonSeconds())
+                    .predictionSource("CV")
                     .build();
         }
 
@@ -89,9 +90,11 @@ public class CvPredictionEngine {
                 .trajectory(points)
                 .predictionTime(predictionTime)
                 .horizonSeconds(horizon)
+                .predictionSource("CV")
                 .build();
     }
 
+    @Override
     public CvPredictionResult consume(ShipStatus message, List<ShipStatus> history) {
         log.debug("CV prediction for target MMSI: {}", message.getId());
         return predict(message, history);

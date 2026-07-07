@@ -12,6 +12,7 @@ public class CvPredictionResult {
     private List<PredictedPoint> trajectory;
     private Instant predictionTime;
     private int horizonSeconds;
+    private String predictionSource;
 
     @Data @Builder
     public static class PredictedPoint {
