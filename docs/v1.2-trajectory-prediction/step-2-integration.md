@@ -3,8 +3,8 @@
 > 版本：v1.2-trajectory-prediction
 > 上游：[`OVERVIEW.md`](OVERVIEW.md)、[`step-1-offline-pipeline.md`](step-1-offline-pipeline.md)
 > 下游：代码（risk engine 预测层 + Python 推理 sidecar）
-> status: pending review
-> last_updated: 2026-07-10
+> status: completed
+> last_updated: 2026-07-11
 
 ---
 
@@ -12,7 +12,7 @@
 
 把 step-1 离线验证的学习型预测器接入 map-system 实时风险链路，替换 / 并联现有 `CvPredictionEngine`，使弯道场景的预测 CPA/TCPA 与风险预警受益于学习型预测；接入方式须工程可维护、可开关、可降级，且默认禁用时链路与现状完全一致。
 
-> 本 step 已完成实现与运行时验收，待外部 review。Open Questions 已于 2026-07-07 拍板为 §七 决策；实施结果与验证状态见附录。
+> 本 step 已完成实现、运行时验收与 review。Open Questions 已于 2026-07-07 拍板为 §七 决策；实施结果与验证状态见附录。
 
 ## 二、集成点分析（现状）
 
@@ -93,3 +93,4 @@
 - 2026-07-09：执行运行时产物链与 sidecar smoke 复验。`trajectory-service/runtime/` 由相邻 `competition/runtime/` 的派生产物恢复，`windows_manifest.json` 与本仓 `trajectory-service/results/metrics/windows_manifest.json` 一致，`gru_tuned/metrics.json` 与 `trajectory-service/results/metrics/prediction.json` 一致；运行产物仍被 `.gitignore` 排除。使用 Python 3.12 venv 重新导出 `runtime/gru_tuned/gru.onnx`，torch-vs-onnxruntime 校验通过，`max_abs_diff=1.7881393e-07`、阈值 `1e-05`；`PYTHONPATH=. runtime/.venv/bin/python -m pytest tests` 通过，15 passed。sidecar 本地与 compose 均通过 `/health` 与真实 `segments.parquet` 测试窗口 `/predict` smoke，响应含 1 个目标、3 个骨架点、offset 为 153/306/459s。同步收口次要项：`build_features` 移入 `trajectory-service/inland_traj/features.py`，训练与 serving 共用无 torch 模块；serving Dockerfile 改用 `requirements-server.txt`，镜像不再安装训练依赖。DoD 2 的 sidecar smoke 已闭合；DoD 4 仍未闭合，因本地 PostGIS/MQTT 全链路回放拉取基础镜像未完成，尚未取得保留会遇子集端到端方向性复现证据，故 status 保持 `pending review`。
 - 2026-07-10：对 07-09 运行时工作的验收：**声称结果全部独立复现**——pytest 15 passed、ONNX 导出校验 `max_abs_diff=1.7881393e-07`、本地 sidecar `/health` 与真实 test 窗口 `/predict` smoke（153/306/459s 骨架点、坐标落在数据集水域）均亲测通过；恢复产物与 tracked evidence 一致性核对通过（`gru_tuned/metrics.json` ≡ `results/metrics/prediction.json`，windows manifest 逐字段一致）；serving 去 torch（`inland_traj/features.py` + `requirements-server.txt`）确认收口前轮次要项。**投影原点差异由推断转为实测**：500 个真实 test 窗口上，离线固定原点 vs 在线窗口末点原点的输入相对坐标偏差 max 30.8m / p50 3.8m，经 GRU 后端到端预测点偏差 max 15.3m / p50 0.7m——相对 FDE 224.9m 与 CV-GRU 差距 88.9m 低 1–2 个数量级，在线/离线口径一致性成立，DoD 3 的 parity 疑点闭合。建议把该量化固化为 skipif（依赖 runtime 数据）守护的 pytest。当前唯一未闭合项为 DoD 4 回放，status 维持 `pending review`。
 - 2026-07-10：完成 DoD 4 实时链路验收。使用 `mine_encounters.py` 从真实 `segments.parquet` 的 105095 个会遇中筛选“弯道 + CV 漏报 + 目标船 GRU 可纠正”子集；验收样本以 `t0=1653576775` 定位，own 为 `mmsi=413817319/seg_id=4509/anchor_offset=129`，target 为 `mmsi=413832089/seg_id=7135/anchor_offset=99`，离线真值/CV/target-only learned 分别为 `WARNING/SAFE/ALARM`，DCPA 分别为 287.684m/7999.160m/430.960m。own 映射为系统本船 MMSI `123456789`，经 MQTT 按原始 `msgTime` 回放 2 船各 13 个点；learned-on 期间 sidecar 收到 2 次 `/predict` 并返回 HTTP 200，SSE 中出现 4 帧 `predictionSource=GRU`、459s horizon、48 个密化点，CV 对照始终为 120s horizon、12 个点。首次对照发现预测 CPA 仅调整连续 `riskScore`，离散 `riskLevel` 仍只由当前 CPA/TCPA 决定，因而结构上无法降低 SSE 漏报；验收期按 `integration-gap` 做最小修正：仅当 `predictionSource=GRU` 时，以既有阈值对预测 CPA/TCPA 分类并与当前等级取较高者，CV 与 flag-off 语义保持不变。相同回放修正后，CV 末帧仍为 `SAFE`，learned 末帧由 `SAFE` 提升为与真值一致的 `WARNING`；全序列 learned 为 `SAFE=22/CAUTION=1/WARNING=2`，CV 为 `SAFE=24/CAUTION=0/WARNING=1`，弯道漏报下降方向性成立。新增 learned 可提升等级与 CV 不提升等级两项单测；backend 全量 459 测试 0 失败，Python 15 测试通过，compose 中 MQTT/PostGIS/trajectory-predictor 均为 Up 且 sidecar health 正常。DoD 1–4 的实现与运行时证据均已闭合；按流程仍保持 `pending review`，待外部模型 review 后再翻 `completed`。
+- 2026-07-11：review 通过，status 翻 **`completed`**（review 职责按用户指示由主控模型承担）。最终确认：GRU 等级单向提升实现正确且有 CV 负向测试守护，flag-off / CV 路径零变化；backend 459、Python 15 测试全部通过；`predictionSource` 确认未进 SSE DTO——07-10 记录中"SSE 中出现 predictionSource=GRU"系经 459s horizon / 48 密化点特征辨识的帧，协议未动、`EVENT_SCHEMA.md` 无欠账。遗留项全部移交版本 closure：§七"每 ~150s 调用频率"口径修订、OVERVIEW 两条 integration-gap 正文统一、SSE `prediction_type="cv"` 标注重议、adapter cache / raw buffer 对移除目标无淘汰、投影 parity 量化固化为 skipif pytest、ADR 收编三条决策（特征构造归属 sidecar、原生长 horizon 映射、GRU 等级单向提升）。

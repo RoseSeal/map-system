@@ -1,12 +1,12 @@
 # Project Status
 
-> Last updated: 2026-07-01
+> Last updated: 2026-07-11
 > Role: Pointer-style status entry. Detailed step-level progress is owned by each milestone's plan and step documents, not duplicated here.
 
 ## 1. Current Baseline
 
 - Latest completed milestone: `v1.1-graphrag` — closed 2026-07-01.
-- Active milestone: `v1.2-trajectory-prediction` — opened 2026-07-01. Offline validation track is **completed** (a learned GRU predictor beats CV extrapolation on real inland AIS and lowers downstream risk misses); the real-time integration track is **planned**. See [`docs/v1.2-trajectory-prediction/OVERVIEW.md`](./docs/v1.2-trajectory-prediction/OVERVIEW.md).
+- Active milestone: `v1.2-trajectory-prediction` — opened 2026-07-01. Both tracks are **completed** (2026-07-11): offline validation (a learned GRU predictor beats CV extrapolation on real inland AIS) and real-time integration (the GRU serves the live risk chain behind a feature flag via an ONNX sidecar; replay on real bend encounters reproduced the miss-rate reduction). Milestone closure (archive + truth-doc absorption) is the remaining work. See [`docs/v1.2-trajectory-prediction/OVERVIEW.md`](./docs/v1.2-trajectory-prediction/OVERVIEW.md).
 
 ## 2. Closure References
 
