@@ -185,6 +185,71 @@ class RiskAssessmentEngineTest {
                 .isGreaterThan(baseScore);
     }
 
+    @Test
+    void learnedPredictionCanRaiseRiskLevel() {
+        RiskAssessmentEngine engine = createEngine(new RiskAssessmentProperties());
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+
+        TargetRiskAssessment assessment = engine.consume(
+                        own,
+                        List.of(target),
+                        Map.of(target.getId(), cpaTcpa(1.5, 600.0)),
+                        null,
+                        Map.of(target.getId(), predictionNearOwnShip(own, "GRU")),
+                        null
+                )
+                .getTargetAssessment(target.getId());
+
+        assertThat(assessment.getRiskLevel()).isEqualTo(RiskConstants.WARNING);
+    }
+
+    @Test
+    void cvPredictionDoesNotRaiseRiskLevel() {
+        RiskAssessmentEngine engine = createEngine(new RiskAssessmentProperties());
+        ShipStatus own = ship("own");
+        ShipStatus target = ship("target-1");
+
+        TargetRiskAssessment assessment = engine.consume(
+                        own,
+                        List.of(target),
+                        Map.of(target.getId(), cpaTcpa(1.5, 600.0)),
+                        null,
+                        Map.of(target.getId(), predictionNearOwnShip(own, "CV")),
+                        null
+                )
+                .getTargetAssessment(target.getId());
+
+        assertThat(assessment.getRiskLevel()).isEqualTo(RiskConstants.SAFE);
+    }
+
+    private CvPredictionResult predictionNearOwnShip(ShipStatus own, String source) {
+        int offsetSeconds = 100;
+        double[] velocity = GeoUtils.toVelocity(own.getSog(), own.getCog());
+        double[] ownFuture = GeoUtils.displace(
+                own.getLatitude(),
+                own.getLongitude(),
+                velocity[0] * offsetSeconds,
+                velocity[1] * offsetSeconds
+        );
+        double[] targetFuture = GeoUtils.displace(
+                ownFuture[0],
+                ownFuture[1],
+                0.0,
+                GeoUtils.nmToMeters(0.1)
+        );
+        return CvPredictionResult.builder()
+                .predictionSource(source)
+                .trajectory(List.of(
+                        CvPredictionResult.PredictedPoint.builder()
+                                .latitude(targetFuture[0])
+                                .longitude(targetFuture[1])
+                                .offsetSeconds(offsetSeconds)
+                                .build()
+                ))
+                .build();
+    }
+
     private ShipStatus ship(String id) {
         return ShipStatus.builder()
                 .id(id)

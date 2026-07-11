@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 from pathlib import Path
 
 import numpy as np
@@ -32,15 +33,15 @@ def main() -> None:
     model.eval()
 
     dummy = torch.zeros(1, args.window_size, 6, dtype=torch.float32)
-    torch.onnx.export(
-        model,
-        dummy,
-        out,
-        input_names=["features"],
-        output_names=["pred_xy_km"],
-        dynamic_axes={"features": {0: "batch"}, "pred_xy_km": {0: "batch"}},
-        opset_version=17,
-    )
+    export_kwargs = {
+        "input_names": ["features"],
+        "output_names": ["pred_xy_km"],
+        "dynamic_axes": {"features": {0: "batch"}, "pred_xy_km": {0: "batch"}},
+        "opset_version": 17,
+    }
+    if "dynamo" in inspect.signature(torch.onnx.export).parameters:
+        export_kwargs["dynamo"] = False
+    torch.onnx.export(model, dummy, out, **export_kwargs)
     check_export(model, out, args.check_batch, args.window_size, args.check_tolerance)
     print(f"[onnx] exported {checkpoint} -> {out}")
 

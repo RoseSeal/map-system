@@ -15,8 +15,8 @@ from pydantic import BaseModel, Field
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from inland_traj.features import build_features
 from inland_traj.geometry import EARTH_R, to_local_xy
-from scripts import train_gru
 
 
 DEFAULT_OFFSETS = (153, 306, 459)
@@ -125,7 +125,7 @@ def feature_matrix(points: list[RawPoint]) -> np.ndarray:
     in_dt = np.diff(timestamps, prepend=timestamps[:1])
     in_sog = np.nan_to_num(np.array([point.sog for point in ordered], dtype=float), nan=0.0)
     in_cog = np.nan_to_num(np.array([point.cog for point in ordered], dtype=float), nan=0.0)
-    return train_gru.build_features(
+    return build_features(
         in_xy[None, :, :],
         in_dt[None, :],
         in_sog[None, :],

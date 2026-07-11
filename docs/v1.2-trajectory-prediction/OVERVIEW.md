@@ -1,8 +1,8 @@
 # v1.2-trajectory-prediction — 学习型目标船航迹预测版本总览
 
 > name: map-system v1.2-trajectory-prediction
-> description: 把风险引擎的目标船航迹预测从 CV（恒速直线）外推升级为在真实内河 AIS 上训练的学习型序列模型（GRU seq2seq），以降低内河弯道场景下 CPA/TCPA 风险预警的漏报。分两轨：离线验证轨（已完成，见 step-1）与实时系统集成轨（规划中，见 step-2）。
-> last_updated: 2026-07-07
+> description: 把风险引擎的目标船航迹预测从 CV（恒速直线）外推升级为在真实内河 AIS 上训练的学习型序列模型（GRU seq2seq），以降低内河弯道场景下 CPA/TCPA 风险预警的漏报。分两轨：离线验证轨（已完成，见 step-1）与实时系统集成轨（已完成实现及运行时验收，待外部 review，见 step-2）。
+> last_updated: 2026-07-10
 > status: active
 
 ---
@@ -21,7 +21,7 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 
 本版本要回答并落地的一句话问题：**用真实内河 AIS 训练的学习型预测器替换 CV，能否可度量地降低弯道场景下的风险预警偏差（尤其漏报），并以工程可维护的方式接入现有实时链路。**
 
-该问题的前半段（能否改善）已在离线轨（step-1）用真实数据验证——结论为正，且改善随预测时域增大、在弯道桶最显著（见下「离线验证结论」）。后半段（如何接入）是本版本的集成轨（step-2），尚未实现；Open Questions 已于 2026-07-07 在 step-2 设计中拍板为具体实施决策。
+该问题的前半段（能否改善）已在离线轨（step-1）用真实数据验证——结论为正，且改善随预测时域增大、在弯道桶最显著（见下「离线验证结论」）。后半段（如何接入）已在集成轨（step-2）完成实现及运行时验收，当前待外部 review；Open Questions 已于 2026-07-07 在 step-2 设计中拍板为具体实施决策。
 
 定位（不变）：贡献落点是"预测升级带来的下游风险决策改善"，不是裸预测精度；预测器是可替换部件，CPA/TCPA 与风险评分主链路不因换预测器而改写。
 
@@ -49,7 +49,7 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 4. CV 基线 + 闭式 CPA/TCPA + ADE/FDE + 下游误报/漏报刻画。
 5. 至少一个学习型模型（GRU seq2seq）跑出测试集 ADE/FDE 与下游风险对比，含直线/弯道分桶。
 
-### 集成轨（must，未实现，step-2 承接）
+### 集成轨（must，已实现并完成运行时验收，待外部 review）
 
 6. 抽出 `TrajectoryPredictionPort`（或等价抽象），使 `CvPredictionEngine` 与学习型预测 adapter 并存、受独立 feature flag 控制；禁用时链路与现状完全一致（回归安全）。
 7. 学习型预测经 ONNX + onnxruntime/FastAPI Python 推理 sidecar（对标 v1.1 graphrag / whisper sidecar）以 HTTP 批量端点提供服务，Java 侧 adapter 只搬运原始点窗口并映射为 `CvPredictionResult` 等价的预测轨迹点序列，喂给既有 `PredictedCpaTcpaCalculator`，主链路拓扑与协议不变。
@@ -78,7 +78,7 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 ## Step Breakdown
 
 - **step-1 离线管线与验证**（status: completed）：真实内河 AIS → 清洗切段 → 会遇挖掘 → CV 基线 vs GRU → ADE/FDE 分桶 + 下游 CPA/TCPA 误报/漏报。代码与产物落在顶层 [`../../trajectory-service/`](../../trajectory-service/)。详见 [`step-1-offline-pipeline.md`](step-1-offline-pipeline.md)。
-- **step-2 实时系统集成**（status: planning，Open Questions 已于 2026-07-07 拍板）：`TrajectoryPredictionPort` 抽象 + ONNX/FastAPI 学习型预测 sidecar + Java 原始窗口 adapter + feature flag，接入现有预测 CPA/TCPA 链路。详见 [`step-2-integration.md`](step-2-integration.md)。
+- **step-2 实时系统集成**（status: pending review，实现与运行时验收已完成）：`TrajectoryPredictionPort` 抽象 + ONNX/FastAPI 学习型预测 sidecar + Java 原始窗口 adapter + feature flag，接入现有预测 CPA/TCPA 链路；真实弯道会遇 MQTT 回放已复现 learned 路径降低漏报的方向性结论。详见 [`step-2-integration.md`](step-2-integration.md)。
 
 ---
 
@@ -109,3 +109,9 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
   - reason: `better-approach`
   - temporary handling: 实施期从 `trajectory-service/scripts/train_gru.py::load_split` 抽出 `build_features`，离线 `load_split`、downstream 校验脚本与在线 sidecar 均调用该函数；sidecar 不直接调用只读取 `.npz` 的 `load_split`。
   - canonical resolution: 版本 closure 时将正文中的“复用离线 `train_gru.py::load_split` 同代码路径”统一改为“复用离线 `train_gru.py::build_features` 同代码路径”。
+- affected body item: `Positioning` / “CPA/TCPA 与风险评分主链路不因换预测器而改写”与 step-2 DoD #9
+  - triggered by: step-2 运行时验收
+  - date: 2026-07-10
+  - reason: `integration-gap`
+  - temporary handling: 验收发现预测 CPA 仅调整连续 `riskScore`、不参与离散 `riskLevel`，导致 learned 轨迹即使纠正 CV 漏报也无法改变 SSE 告警等级。仅对 `predictionSource=GRU` 使用既有 CPA/TCPA 阈值计算候选等级，并与当前等级取较高者；CV、flag-off、CPA/TCPA 算法、阈值和 SSE 协议均保持不变。
+  - canonical resolution: 版本 closure 时把正文统一为“预测器不改写 CPA/TCPA 算法与基础评分；启用 learned 路径时，预测 CPA/TCPA 可按既有阈值单向提升风险等级”，并把该语义纳入架构文档与 ADR 取舍说明。

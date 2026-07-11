@@ -12,23 +12,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn as nn
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from inland_traj.features import build_features
+
 H = 3
-
-
-def build_features(in_xy: np.ndarray, in_dt: np.ndarray, in_sog: np.ndarray, in_cog: np.ndarray) -> np.ndarray:
-    cog = np.deg2rad(in_cog)
-    return np.concatenate([
-        in_xy / 1000.0,                  # (N,k,2) km
-        (in_dt / 100.0)[..., None],
-        (in_sog / 10.0)[..., None],
-        np.sin(cog)[..., None], np.cos(cog)[..., None],
-    ], axis=-1).astype(np.float32)       # (N,k,6)
 
 
 def load_split(path: Path):

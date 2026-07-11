@@ -243,6 +243,19 @@ public class RiskAssessmentEngine {
             double[] predictedCpa = predictedCpaCalculator.calculate(ownShip, predictionResult);
             if (predictedCpa != null) {
                 double predictedCpaNm = predictedCpa[0];
+                if ("GRU".equalsIgnoreCase(predictionResult.getPredictionSource())) {
+                    String predictedRiskLevel = classifyRisk(
+                            predictedCpaNm,
+                            predictedCpa[1],
+                            effectiveAlarmDcpaNm,
+                            riskProperties.getAlarmTcpaSec(),
+                            effectiveWarningDcpaNm,
+                            riskProperties.getWarningTcpaSec(),
+                            effectiveCautionDcpaNm,
+                            riskProperties.getCautionTcpaSec()
+                    );
+                    riskLevel = maxRiskLevel(riskLevel, predictedRiskLevel);
+                }
                 double denominator = Math.max(dcpaNm, 0.001);
                 if (dcpaNm > 0) {
                     if (predictedCpaNm < dcpaNm) {
