@@ -1,7 +1,7 @@
 ﻿# 海图系统 (Map-System) — Architecture Overview v0.1
 
 > 用途：项目架构概览 / AI 上下文输入 / 对外介绍
-> 最后更新：2026-07-01（v1.1 收口同步：历史案例 GraphRAG 分支、LightRAG sidecar、case evidence 来源校验）
+> 最后更新：2026-07-11（v1.2 收口同步：学习型轨迹预测层、`TrajectoryPredictionPort`、GRU 推理 sidecar、预测风险等级单向提升）
 > 维护原则：仅记录稳定的架构事实、链路与关键决策
 
 ---
@@ -23,7 +23,8 @@
 | 消息接入 | MQTT |
 | 后端核心 | Spring Boot (`map-service`) |
 | 实时推送 | SSE（risk + environment + advisory）+ WebSocket（chat + agent_step + capability） |
-| 风险计算 | 自研 CPA/TCPA 引擎，含会遇分类、安全领域、CV 预测与多因子综合评分 |
+| 风险计算 | 自研 CPA/TCPA 引擎，含会遇分类、安全领域、可替换轨迹预测层（CV 默认 / GRU 学习型，`TrajectoryPredictionPort`）与多因子综合评分 |
+| 轨迹预测 | `trajectory-service`：离线管线（真实内河 AIS 训练 GRU seq2seq）+ onnxruntime/FastAPI 推理 sidecar；Java 经 HTTP 批量端点接入，feature flag 控制、失败回退 CV |
 | 环境上下文 | `EnvironmentContextService` 单点装配 weather / hydrology / safety contour，独立 `ENVIRONMENT_UPDATE` 事件 |
 | LLM 接入 | Gemini / 智谱，运行时可经 `LLM_PROVIDER_SELECTION` 切换；`CompletableFuture` 超时降级 |
 | Agent loop | 有界工具增强推理：`AgentLoopOrchestrator` + `AgentSnapshot`（边界深拷贝） + `AgentToolRegistry` |
@@ -78,6 +79,8 @@
 | `AdvisoryPipeline` | 场景级 advisory 生成与 `ADVISORY` SSE 事件下发；前端旧 advisory 收到新条目后置 `SUPERSEDED` |
 | `ColregsGraph` + `GraphQueryPort` | COLREGS Part B 进程内规则图；`GraphQueryPort` 与历史案例查询 port 分离，继续服务确定性法规依据检索 |
 | `HistoricalCaseQueryPort` + `LightRagCaseGraphAdapter` | 历史相似案例检索 port 与 HTTP adapter；启用 `llm.case-graph.enabled=true` 时调用 `graphrag-service` 的 `/retrieve`，禁用时不加载该分支，不影响 `GraphQueryPort` / `MemoryGraphAdapter` |
+| `TrajectoryPredictionPort`（`risk/engine/trajectoryprediction/`） | 目标船轨迹预测抽象；`CvPredictionEngine` 为默认与降级实现，`LearningTrajectoryPredictionAdapter` 为学习型实现，二者并存、受 `engine.trajectory-prediction.learned-enabled` 独立开关控制 |
+| `LearningTrajectoryPredictionAdapter` | GRU 推理 sidecar 的 HTTP adapter；维护挂 flag 的降采样原始点窗口 buffer（~150s 节奏、K=10、基于 `msgTime`），批量请求 sidecar 后把骨架预测点（~+153/306/459s）以 t=0 当前位置为起点分段线性密化到 `stepSeconds` 粒度；单目标失败回退 CV，连续失败熔断 30s；产出带 `predictionSource=GRU|CV` 的 `CvPredictionResult` |
 
 ### 4.2 副服务
 
@@ -85,6 +88,7 @@
 | --- | --- |
 | `listener-service` | 外部输入消息入库，服务离线分析与大数据处理，当前暂挂起 |
 | `graphrag-service` | 顶层 Python LightRAG sidecar；基于 `data/cases/*.md` 合成案例语料离线构建 `runtime/index/`，通过 `/health` 与 `/retrieve` 提供历史相似案例检索，并承载非门槛 eval track |
+| `trajectory-service` | 顶层 Python 服务：离线轨迹预测管线（NBSDC 真实内河 AIS → 清洗切段 → 窗口化 → GRU 训练与下游风险评测，产物见 `results/`）+ `server/` onnxruntime/FastAPI 推理 sidecar（`/health` 与 `/predict` 批量端点，加载 ONNX 导出权重）；训练与 serving 共用 `inland_traj/features.py` 特征构造 |
 
 ## 五、核心消息链路
 
@@ -119,6 +123,8 @@ Python Simulator / 外部输入源（`usv/AisMessage` + `usv/Weather`）
          ▼
        WeatherContextHolder
 ```
+
+链路 A 的预测环节说明：`ShipDispatcher` 经 `TrajectoryPredictionPort` 生成目标船预测轨迹，喂 `PredictedCpaTcpaCalculator` 计算预测 CPA/TCPA 并参与多因子评分。默认走 `CvPredictionEngine`；`engine.trajectory-prediction.learned-enabled=true` 时走 `LearningTrajectoryPredictionAdapter`（HTTP → `trajectory-service` GRU sidecar，暖机不足/超时/熔断时单目标回退 CV）。GRU 生成的轨迹在 SSE `predicted_trajectory.prediction_type` 标注为 `"gru"`，且其预测 CPA/TCPA 可按既有阈值单向提升该目标风险等级；flag 关闭时链路与 CV 现状完全一致。
 
 ### 5.2 链路 B：用户与 LLM 对话链路
 
@@ -255,7 +261,7 @@ Advisory evidence_items / chat agent 工具结论
 ### P3
 
 - [x] 本船安全领域（动态四参数椭圆模型）
-- [x] 目标船航迹预测（CV 模型 + 历史轨迹存储）
+- [x] 目标船航迹预测（CV 模型 + 历史轨迹存储；v1.2 升级为可替换预测层：GRU 学习型预测经 ONNX sidecar 接入，feature flag 控制，预测 CPA/TCPA 可按既有阈值单向提升风险等级）
 - [x] 会遇态势识别（对遇/追越/交叉分类）
 - [x] 多因子风险评估增强（域侵入 + 预测 CPA + 会遇修正 → 加权综合评分）
 - [x] AIS 数据质量校验（Mapper 层来源校验 + qualityFlags + confidence 消费）
@@ -304,6 +310,7 @@ Advisory evidence_items / chat agent 工具结论
 - ~~显式实现 agent loop~~（v1.0 已完成）
 - ~~接入 COLREGS 规则图谱并暴露为 advisory 工具~~（v1.0 已完成 Part B 进程内图）
 - ~~历史相似案例 GraphRAG 分支接入；advisory `evidence_items` 引用相似案例~~（v1.1 已完成，采用 LightRAG 文件型本地存储与独立 HTTP sidecar）。
+- ~~目标船航迹预测升级为学习型模型~~（v1.2 已完成：真实内河 AIS 离线验证 GRU 优于 CV（FDE −28.3%，真危险漏报 12.2%→8.6%），经 `TrajectoryPredictionPort` + ONNX/onnxruntime sidecar 接入 live 链路，feature flag 控制、失败回退 CV；预测 CPA/TCPA 按既有阈值单向提升风险等级。详见 [`history/v1.2-trajectory-prediction/README.md`](./history/v1.2-trajectory-prediction/README.md)）。
 - 生产级外部图数据库（Neo4j 等）、鉴权与高可用部署不在当前主线内，需另行立项。
 
 ### P4 - 体验增强

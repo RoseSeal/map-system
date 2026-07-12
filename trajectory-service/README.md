@@ -66,4 +66,4 @@ is unavailable or a target window is not warm.
   bend bucket 16.5% -> 11.4%. False-alarm rate rises slightly (2.8% -> 3.2%) — an honest trade-off.
 
 Data source: NBSDC inland AIS dataset (Wuhan Yangtze, 2022-05), fully shared. Full data contract,
-methods and results: `docs/v1.2-trajectory-prediction/step-1-offline-pipeline.md`.
+methods and results: `docs/history/v1.2-trajectory-prediction/step-1-offline-pipeline.md`.

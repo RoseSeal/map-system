@@ -666,6 +666,31 @@ Trade-off：v1.2 要把弯道场景表现更好的学习型预测器引入风险
 - 不以裸 ADE/FDE 作为版本验收门槛。
 - 本版本不做在线增量学习 / 自动再训练 / Transformer 等重模型（见 v1.2 OVERVIEW Non-Goals）。
 
+### ADR-015
+
+学习型预测集成的三项实施决策：特征构造归属 sidecar、原生长 horizon 骨架密化、GRU 预测等级单向提升
+
+Trade-off：ADR-014 定下"独立 port + 推理 sidecar"框架后，step-2 实施仍需在三处做取舍：在线特征构造放 Java 还是 Python；GRU 原生 ~153s 节奏输出如何适配 live 10s 粒度的下游契约；learned 预测改善如何在离散告警等级上兑现而不破坏回归安全。
+
+#### 决策
+
+- **特征构造归属 sidecar**：Java adapter 只维护降采样原始点窗口（~150s 节奏、K=10、基于 `msgTime`）并搬运原始点（msgTime/lat/lon/sog/cog）；6 维特征在 sidecar 侧构造，训练与 serving 共用 `inland_traj/features.py::build_features` 同一代码路径。备选（Java 复刻特征 + 跨语言容差校验）被否决。
+- **原生长 horizon + 骨架密化**：不把 GRU 压进现有 120s horizon；flag-on 时保留原生 offset（~+153/306/459s）骨架点、horizon 扩至 ~460s，adapter 以 t=0 当前位置为起点将骨架分段线性密化到 `stepSeconds`（10s）粒度后喂 `PredictedCpaTcpaCalculator`。备选（压 120s 内插值）被否决。
+- **GRU 预测等级单向提升**：运行时验收发现预测 CPA 原本只调节连续 `riskScore`、不参与离散 `riskLevel`，learned 纠正的漏报无法在 SSE 告警兑现（integration-gap）。修正为仅当 `predictionSource=GRU` 时，用既有 alarm/warning/caution 阈值对预测 CPA/TCPA 分类并与当前等级取较高者；CV 与 flag-off 路径不可达该分支。
+
+#### 理由
+
+- 跨语言复刻特征（相对坐标、单位缩放、sin/cos 编码）是在线/离线对齐风险最大的环节；同代码路径把风险在源头消灭，对齐验证从"容差校验"降级为常规单测——投影原点差异（离线固定原点 vs 在线窗口末点原点）经 500 真实窗口实测，端到端预测点偏差 p50 0.7m / max 15.3m，比部署效应量（FDE 224.9m、CV-GRU 差距 88.9m）低 1–2 个数量级，固化为 skipif parity 测试。
+- GRU 的收益随时域递增（FDE 提升 10.1%/20.4%/28.3%），压进 120s 会把最大收益截掉且前 153s 仅一个骨架点、插值近似直线；密化到 10s 粒度则保证 live 预测 CPA 的离散采样口径与 CV 一致、与离线分段线性评测口径可比。
+- 等级提升取 max 且仅 GRU 门控：保证"禁用时逐字节一致"红线，方向上与离线权衡一致（漏报显著下降、误报微升 2.8%→3.2%）；不改写 CPA/TCPA 算法与基础评分，是阈值之上的门控增强。回放验证：同一真实弯道会遇，CV 末帧 `SAFE`（漏报），learned 末帧 `WARNING` 与离线真值一致。
+
+#### 明确否决的方向
+
+- 不在 Java 侧构造模型特征；adapter 不内嵌特征/预测/排序逻辑。
+- 不改 `ShipTrajectoryStore`（容量同时喂 CV 的 ROT 回归，动它破坏 flag-off 回归安全）。
+- 不允许 learned 预测降低风险等级（单向提升）；不为 CV 路径引入等级提升。
+- SSE 协议仅增补 `predicted_trajectory.prediction_type="gru"` 枚举值标识生成器，不新增字段、不改结构。
+
 ---
 
 ## 二、Review Findings

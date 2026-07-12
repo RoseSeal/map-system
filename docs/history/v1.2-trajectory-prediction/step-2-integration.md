@@ -3,8 +3,8 @@
 > 版本：v1.2-trajectory-prediction
 > 上游：[`OVERVIEW.md`](OVERVIEW.md)、[`step-1-offline-pipeline.md`](step-1-offline-pipeline.md)
 > 下游：代码（risk engine 预测层 + Python 推理 sidecar）
-> status: completed
-> last_updated: 2026-07-11
+> status: completed（已归档）
+> last_updated: 2026-07-12
 
 ---
 
@@ -66,7 +66,7 @@
 
 - **导出形态 → ONNX + onnxruntime + FastAPI**：serving 镜像不带 torch、CPU 推理毫秒级、训练/推理运行时解耦；导出后以离线 torch 输出为基准做数值一致性校验。服务代码放 `trajectory-service/server/`，范式对标 `graphrag-service`（FastAPI、healthcheck、compose service）。备选 TorchScript/torch 直载因镜像体积与解耦劣势不取。
 - **实时特征来源 → Java 送原始窗口，sidecar 构造特征**：Java adapter 维护挂 flag 的降采样历史 buffer（~150s 节奏、容量 K=10、基于 `msgTime`），只搬运原始点（msgTime/lat/lon/sog/cog）；6 维特征（相对末点坐标 km、dt/100、sog/10、sin/cos(cog)）在 sidecar 侧复用离线 `train_gru.py::build_features` 同一代码路径构造。理由：跨语言复刻特征是对齐风险最大的环节，同代码路径把风险在源头消灭；原设想的 4.8e-7 容差校验由端到端 parity 用例替代。`ShipTrajectoryStore` 不动（容量 20 同时影响 CV 的 ROT 回归，改动违反"禁用时零行为变化"）。窗口不足 K=10 点（暖机期）不调用 sidecar，回 CV。
-- **延迟预算 → 批量端点 + 结果有效期缓存 + 250ms 超时**：全量路径一次 HTTP 往返带全部目标；输入窗口未变化不重复调用（调用频率 ≈ 每目标每 ~150s）；超时 250ms（本机推理 p99 之上，远低于 case-graph 的 10s——那是 LLM 检索量级）。
+- **延迟预算 → 批量端点 + 结果有效期缓存 + 250ms 超时**：全量路径一次 HTTP 往返带全部目标；输入窗口未变化不重复调用；超时 250ms（本机推理 p99 之上，远低于 case-graph 的 10s——那是 LLM 检索量级）。（closure 口径修订：窗口签名含末点、随目标每条新消息更新，故暖机后的实际调用频率为**每目标每消息**，而非最初设想的每 ~150s；缓存的实际作用是全量路径下避免未更新目标的重复调用。本机 GRU 推理毫秒级，该频率无延迟风险，且每消息刷新使预测锚点更新鲜，故保留实现语义、修订文档口径。）
 - **降级触发 → 单目标回退 + 熔断**：单目标窗口不足/超时/异常 → 该目标回 CV，不影响其他目标；连续 5 次 sidecar 失败 → 熔断 30s 全走 CV，半开探测恢复。内部结果附 `predictionSource=GRU|CV` 供验收观测，**不进 SSE 协议**（不动 `EVENT_SCHEMA.md`）。
 - **输出映射（派生决策）→ 原生长 horizon**：不把 GRU 压进现有 120s horizon（前 153s 仅一个骨架点，插值近似直线会抹掉弯道优势）；flag-on 时按原生 offset（~+153/306/459s）下发骨架点并扩展预测 horizon（~460s），与离线 `mine_encounters` 下游评测口径一致，2-4 的方向性复现才有对照意义。flag-off 时 horizon 配置与行为不变。
 
@@ -94,3 +94,4 @@
 - 2026-07-10：对 07-09 运行时工作的验收：**声称结果全部独立复现**——pytest 15 passed、ONNX 导出校验 `max_abs_diff=1.7881393e-07`、本地 sidecar `/health` 与真实 test 窗口 `/predict` smoke（153/306/459s 骨架点、坐标落在数据集水域）均亲测通过；恢复产物与 tracked evidence 一致性核对通过（`gru_tuned/metrics.json` ≡ `results/metrics/prediction.json`，windows manifest 逐字段一致）；serving 去 torch（`inland_traj/features.py` + `requirements-server.txt`）确认收口前轮次要项。**投影原点差异由推断转为实测**：500 个真实 test 窗口上，离线固定原点 vs 在线窗口末点原点的输入相对坐标偏差 max 30.8m / p50 3.8m，经 GRU 后端到端预测点偏差 max 15.3m / p50 0.7m——相对 FDE 224.9m 与 CV-GRU 差距 88.9m 低 1–2 个数量级，在线/离线口径一致性成立，DoD 3 的 parity 疑点闭合。建议把该量化固化为 skipif（依赖 runtime 数据）守护的 pytest。当前唯一未闭合项为 DoD 4 回放，status 维持 `pending review`。
 - 2026-07-10：完成 DoD 4 实时链路验收。使用 `mine_encounters.py` 从真实 `segments.parquet` 的 105095 个会遇中筛选“弯道 + CV 漏报 + 目标船 GRU 可纠正”子集；验收样本以 `t0=1653576775` 定位，own 为 `mmsi=413817319/seg_id=4509/anchor_offset=129`，target 为 `mmsi=413832089/seg_id=7135/anchor_offset=99`，离线真值/CV/target-only learned 分别为 `WARNING/SAFE/ALARM`，DCPA 分别为 287.684m/7999.160m/430.960m。own 映射为系统本船 MMSI `123456789`，经 MQTT 按原始 `msgTime` 回放 2 船各 13 个点；learned-on 期间 sidecar 收到 2 次 `/predict` 并返回 HTTP 200，SSE 中出现 4 帧 `predictionSource=GRU`、459s horizon、48 个密化点，CV 对照始终为 120s horizon、12 个点。首次对照发现预测 CPA 仅调整连续 `riskScore`，离散 `riskLevel` 仍只由当前 CPA/TCPA 决定，因而结构上无法降低 SSE 漏报；验收期按 `integration-gap` 做最小修正：仅当 `predictionSource=GRU` 时，以既有阈值对预测 CPA/TCPA 分类并与当前等级取较高者，CV 与 flag-off 语义保持不变。相同回放修正后，CV 末帧仍为 `SAFE`，learned 末帧由 `SAFE` 提升为与真值一致的 `WARNING`；全序列 learned 为 `SAFE=22/CAUTION=1/WARNING=2`，CV 为 `SAFE=24/CAUTION=0/WARNING=1`，弯道漏报下降方向性成立。新增 learned 可提升等级与 CV 不提升等级两项单测；backend 全量 459 测试 0 失败，Python 15 测试通过，compose 中 MQTT/PostGIS/trajectory-predictor 均为 Up 且 sidecar health 正常。DoD 1–4 的实现与运行时证据均已闭合；按流程仍保持 `pending review`，待外部模型 review 后再翻 `completed`。
 - 2026-07-11：review 通过，status 翻 **`completed`**（review 职责按用户指示由主控模型承担）。最终确认：GRU 等级单向提升实现正确且有 CV 负向测试守护，flag-off / CV 路径零变化；backend 459、Python 15 测试全部通过；`predictionSource` 确认未进 SSE DTO——07-10 记录中"SSE 中出现 predictionSource=GRU"系经 459s horizon / 48 密化点特征辨识的帧，协议未动、`EVENT_SCHEMA.md` 无欠账。遗留项全部移交版本 closure：§七"每 ~150s 调用频率"口径修订、OVERVIEW 两条 integration-gap 正文统一、SSE `prediction_type="cv"` 标注重议、adapter cache / raw buffer 对移除目标无淘汰、投影 parity 量化固化为 skipif pytest、ADR 收编三条决策（特征构造归属 sidecar、原生长 horizon 映射、GRU 等级单向提升）。
+- 2026-07-12：v1.2 closure 执行。遗留项处置：(1) SSE `prediction_type` 增补 `"gru"` 枚举（`EVENT_SCHEMA.md` 先行 + `TargetAssembler` 按 `predictionSource` 标注 + 前端类型收紧为 `'cv' | 'gru'`，CV/flag-off 仍为 `"cv"`，有正负向单测）；(2) 投影原点 parity 量化固化为 `tests/test_feature_parity.py`（skipif 守护，依赖 gitignored runtime 产物，阈值取实测值 2 倍余量）；(3) §七 调用频率口径修订（见该节 closure 注）；(4) adapter cache / raw buffer 对移除目标的淘汰**冻结进 TODO**（demo 规模下无实际影响，多目标长跑场景才需要）。ADR-015 收编三条实施决策；OVERVIEW 两条 Active Deviations 并合正文；`ARCHITECTURE.md` / `CURRENT_SYSTEM_OVERVIEW.md` / `PROJECT_STATUS.md` / `docs/README.md` 同步。本目录整体归档至 `docs/history/v1.2-trajectory-prediction/`，closure summary 见该目录 `README.md`。

@@ -1,6 +1,6 @@
 # CURRENT_SYSTEM_OVERVIEW
 
-> Last updated: 2026-05-07 (post-v1.0 handoff card)
+> Last updated: 2026-07-12 (v1.2 closure: learned trajectory prediction lookup added)
 > Purpose: Task-to-file navigation across modules. Use when you already know the area and need to locate concrete source files.
 > Position in reading order: **not the first stop**. Read [`README.md`](./README.md) → [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) → [`docs/README.md`](./docs/README.md) → [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) first.
 
@@ -89,6 +89,13 @@ CPA/TCPA, encounter, safety domain, prediction:
 - [backend/map-service/.../risk/engine/encounter/EncounterClassifier.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/encounter/EncounterClassifier.java)
 - [backend/map-service/.../risk/engine/safety/ShipDomainEngine.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/safety/ShipDomainEngine.java)
 - [backend/map-service/.../risk/engine/trajectoryprediction/CvPredictionEngine.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/trajectoryprediction/CvPredictionEngine.java)
+
+Learned trajectory prediction (v1.2, feature-flagged):
+- [backend/map-service/.../risk/engine/trajectoryprediction/TrajectoryPredictionPort.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/trajectoryprediction/TrajectoryPredictionPort.java)
+- [backend/map-service/.../risk/engine/trajectoryprediction/LearningTrajectoryPredictionAdapter.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/trajectoryprediction/LearningTrajectoryPredictionAdapter.java)
+- [trajectory-service/server/trajectory_server/server.py](trajectory-service/server/trajectory_server/server.py) — onnxruntime/FastAPI sidecar (`/predict`)
+- [trajectory-service/inland_traj/features.py](trajectory-service/inland_traj/features.py) — feature construction shared by training and serving
+- [docs/history/v1.2-trajectory-prediction/trajectory-prediction-http-contract.md](docs/history/v1.2-trajectory-prediction/trajectory-prediction-http-contract.md) — sidecar HTTP contract
 
 Environment context (weather + hydrology + safety contour + active_alerts):
 - [backend/map-service/.../risk/environment/EnvironmentContextService.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/environment/EnvironmentContextService.java)

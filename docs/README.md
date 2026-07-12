@@ -1,7 +1,7 @@
 # Docs Index
 
 > 文档状态：current
-> 最后更新：2026-07-01
+> 最后更新：2026-07-12
 > 用途：为 `docs/` 提供入口索引，并明确"当前真值 / 规划 / 历史归档"的边界。
 
 ## 0. 阅读顺序
@@ -12,8 +12,9 @@
 2. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md)：milestone 级状态与 active track 指针。
 3. **本文件**：documentation map，定位"该看哪份真值/规划/归档"。
 4. [`ARCHITECTURE.md`](./ARCHITECTURE.md) 与 [`EVENT_SCHEMA.md`](./EVENT_SCHEMA.md)：当前真值。
-5. [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)：v1.1-graphrag 已完成并归档，此 closure summary 是了解历史案例 GraphRAG 增量与对应 ADR 的入口（**不是 current truth**）。
-6. [`history/v1.0/README.md`](./history/v1.0/README.md)：v1.0 已完成并归档，此 closure summary 是了解 v1.0 增量与对应 ADR 的入口（**不是 current truth**）。
+5. [`history/v1.2-trajectory-prediction/README.md`](./history/v1.2-trajectory-prediction/README.md)：v1.2 已完成并归档，此 closure summary 是了解学习型轨迹预测增量与对应 ADR 的入口（**不是 current truth**）。
+6. [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)：v1.1-graphrag 已完成并归档，此 closure summary 是了解历史案例 GraphRAG 增量与对应 ADR 的入口（**不是 current truth**）。
+7. [`history/v1.0/README.md`](./history/v1.0/README.md)：v1.0 已完成并归档，此 closure summary 是了解 v1.0 增量与对应 ADR 的入口（**不是 current truth**）。
 
 [`../CURRENT_SYSTEM_OVERVIEW.md`](../CURRENT_SYSTEM_OVERVIEW.md) 是"任务 → 文件"导航工具，**不是 first stop**，已定位到模块后再用。
 
@@ -29,12 +30,11 @@
 
 ## 3. 规划与待办
 
-- [`v1.2-trajectory-prediction/OVERVIEW.md`](./v1.2-trajectory-prediction/OVERVIEW.md)：**当前活跃 milestone**。把目标船航迹预测从 CV 升级为学习型模型；离线验证轨已完成（见 `step-1-offline-pipeline.md`，代码与产物在顶层 `trajectory-service/`），实时集成轨规划中（见 `step-2-integration.md`）。
 - [`TODO.md`](./TODO.md)：跨模块待办、延后事项与工程债。
 
 说明：
 
-- v1.2-trajectory-prediction milestone 于 2026-07-01 启动，当前 active；离线轨完成、集成轨规划中。
+- 当前无活跃 milestone；v1.2-trajectory-prediction 已于 2026-07-12 收口，归档与 closure summary 见 [`history/v1.2-trajectory-prediction/README.md`](./history/v1.2-trajectory-prediction/README.md)。
 - v1.1-graphrag milestone 已于 2026-07-01 收口；归档与 closure summary 见 [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)。
 - v1.0 milestone 已于 2026-05-07 收口；归档与 closure summary 见 [`history/v1.0/README.md`](./history/v1.0/README.md)。
 - 未冻结的规划项继续收口到 `TODO.md`。
@@ -42,6 +42,7 @@
 ## 4. 历史归档
 
 - [`history/`](./history/)：阶段性实现计划、步骤拆解、旧版本协议与历史设计草案。详见 [`history/README.md`](./history/README.md)。
+- [`history/v1.2-trajectory-prediction/README.md`](./history/v1.2-trajectory-prediction/README.md)：v1.2 closure summary，归档学习型轨迹预测的离线管线、GRU/ONNX 推理 sidecar、`TrajectoryPredictionPort` 集成与回放验收。
 - [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)：v1.1-graphrag closure summary，归档历史案例 GraphRAG sidecar、Java adapter、advisory evidence 注入与非门槛评测 track。
 - [`history/v1.0/README.md`](./history/v1.0/README.md)：v1.0 closure summary，归档 agent / hydrology / weather / visual / bugfix track。
 

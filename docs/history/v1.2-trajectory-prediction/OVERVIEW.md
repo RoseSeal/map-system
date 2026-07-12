@@ -2,8 +2,8 @@
 
 > name: map-system v1.2-trajectory-prediction
 > description: 把风险引擎的目标船航迹预测从 CV（恒速直线）外推升级为在真实内河 AIS 上训练的学习型序列模型（GRU seq2seq），以降低内河弯道场景下 CPA/TCPA 风险预警的漏报。分两轨：离线验证轨（已完成，见 step-1）与实时系统集成轨（已完成，见 step-2）。
-> last_updated: 2026-07-11
-> status: active
+> last_updated: 2026-07-12
+> status: completed
 
 ---
 
@@ -23,7 +23,7 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 
 该问题的前半段（能否改善）已在离线轨（step-1）用真实数据验证——结论为正，且改善随预测时域增大、在弯道桶最显著（见下「离线验证结论」）。后半段（如何接入）已在集成轨（step-2）完成实现、运行时验收与 review；Open Questions 已于 2026-07-07 在 step-2 设计中拍板为具体实施决策。
 
-定位（不变）：贡献落点是"预测升级带来的下游风险决策改善"，不是裸预测精度；预测器是可替换部件，CPA/TCPA 与风险评分主链路不因换预测器而改写。
+定位：贡献落点是"预测升级带来的下游风险决策改善"，不是裸预测精度；预测器是可替换部件，不改写 CPA/TCPA 算法与基础评分。启用 learned 路径时，预测 CPA/TCPA 可按既有阈值**单向提升**目标风险等级（step-2 运行时验收发现的 integration-gap 修正：预测 CPA 原本只调节连续 riskScore、不影响离散告警等级，learned 纠正的漏报无法在 SSE 兑现）；CV 与 flag-off 路径语义不变。
 
 ---
 
@@ -70,7 +70,7 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 
 ### 本版本不做（never，跨版本边界）
 
-- 改写 CPA/TCPA 与风险评分主链路：预测器是可替换部件，只换预测环节，不动 `CpaTcpaEngine` / `PredictedCpaTcpaCalculator` 语义与多因子评分。
+- 改写 CPA/TCPA 与风险评分主链路：预测器是可替换部件，只换预测环节，不动 `CpaTcpaEngine` / `PredictedCpaTcpaCalculator` 语义与多因子评分。（closure 注：learned 路径的"预测等级单向提升"是在既有阈值与评分之上的门控增强，不改写算法本身，见 Positioning。）
 - 合并 / 重写第二套 COLREGS 或碰撞评估引擎。
 
 ---
@@ -92,7 +92,7 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 ## Step-2 决策（2026-07-07）
 
 - **模型导出与推理形态**：GRU 导出 ONNX，serving 使用 onnxruntime + FastAPI，代码落在 `trajectory-service/server/` 并接入 `compose.yaml`。
-- **实时特征来源**：Java adapter 维护独立降采样历史窗口并只向 sidecar 搬运原始点；特征构造在 sidecar 侧复用离线 `train_gru.py::load_split` 同代码路径，`ShipTrajectoryStore` 保持不动。
+- **实时特征来源**：Java adapter 维护独立降采样历史窗口并只向 sidecar 搬运原始点；特征构造在 sidecar 侧复用离线同代码路径（实施后统一抽至 `inland_traj/features.py::build_features`，训练与 serving 共用），`ShipTrajectoryStore` 保持不动。
 - **延迟预算**：采用批量端点、结果有效期缓存与 250ms 初始 HTTP 超时；输入窗口未变化时不重复请求。
 - **降级策略**：单目标窗口不足 / 超时 / 异常时回 CV，连续 5 次 sidecar 失败后熔断 30s；内部观测 `predictionSource=GRU|CV`，不改 SSE 协议。
 - **输出 horizon**：flag-on 时保留 GRU 原生 offset（约 +153/306/459s）并扩展预测 horizon，flag-off 时现有 120s horizon 与行为不变。
@@ -103,15 +103,4 @@ map-system 的风险引擎当前用 `CvPredictionEngine`（恒速直线外推）
 
 > 追加式附录：实施期发现更优方案或与正文不一致，在此追加，不回写正文；版本翻 completed 时统一并合。
 
-- affected body item: `Step-2 决策（2026-07-07）` / 实时特征来源
-  - triggered by: step-2
-  - date: 2026-07-07
-  - reason: `better-approach`
-  - temporary handling: 实施期从 `trajectory-service/scripts/train_gru.py::load_split` 抽出 `build_features`，离线 `load_split`、downstream 校验脚本与在线 sidecar 均调用该函数；sidecar 不直接调用只读取 `.npz` 的 `load_split`。
-  - canonical resolution: 版本 closure 时将正文中的“复用离线 `train_gru.py::load_split` 同代码路径”统一改为“复用离线 `train_gru.py::build_features` 同代码路径”。
-- affected body item: `Positioning` / “CPA/TCPA 与风险评分主链路不因换预测器而改写”与 step-2 DoD #9
-  - triggered by: step-2 运行时验收
-  - date: 2026-07-10
-  - reason: `integration-gap`
-  - temporary handling: 验收发现预测 CPA 仅调整连续 `riskScore`、不参与离散 `riskLevel`，导致 learned 轨迹即使纠正 CV 漏报也无法改变 SSE 告警等级。仅对 `predictionSource=GRU` 使用既有 CPA/TCPA 阈值计算候选等级，并与当前等级取较高者；CV、flag-off、CPA/TCPA 算法、阈值和 SSE 协议均保持不变。
-  - canonical resolution: 版本 closure 时把正文统一为“预测器不改写 CPA/TCPA 算法与基础评分；启用 learned 路径时，预测 CPA/TCPA 可按既有阈值单向提升风险等级”，并把该语义纳入架构文档与 ADR 取舍说明。
+（已回收：两条 deviation——`build_features` 特征构造抽取、learned 预测等级单向提升——均已于 2026-07-12 closure 时按各自 canonical resolution 并合进本文 Positioning / Non-Goals / Step-2 决策正文，并同步 `ARCHITECTURE.md` 与 ADR-015。原始记录见 git 历史。）
