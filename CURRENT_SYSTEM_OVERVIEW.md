@@ -90,6 +90,10 @@ CPA/TCPA, encounter, safety domain, prediction:
 - [backend/map-service/.../risk/engine/safety/ShipDomainEngine.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/safety/ShipDomainEngine.java)
 - [backend/map-service/.../risk/engine/trajectoryprediction/CvPredictionEngine.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/trajectoryprediction/CvPredictionEngine.java)
 
+Historical case GraphRAG (v1.1, feature-flagged):
+- [backend/map-service/.../llm/agent/casegraph/LightRagCaseGraphAdapter.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/agent/casegraph/LightRagCaseGraphAdapter.java)
+- [graphrag-service/graphrag_service/server.py](graphrag-service/graphrag_service/server.py) — LightRAG sidecar (`/retrieve`)
+
 Learned trajectory prediction (v1.2, feature-flagged):
 - [backend/map-service/.../risk/engine/trajectoryprediction/TrajectoryPredictionPort.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/trajectoryprediction/TrajectoryPredictionPort.java)
 - [backend/map-service/.../risk/engine/trajectoryprediction/LearningTrajectoryPredictionAdapter.java](backend/map-service/src/main/java/com/whut/map/map_service/risk/engine/trajectoryprediction/LearningTrajectoryPredictionAdapter.java)

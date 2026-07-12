@@ -1,7 +1,8 @@
 # Map-System 待办与延后事项清单 (TODO)
 
-> 文档状态：active
-> 最后更新：2026-07-11
+> 文档状态：active（roadmap 性质）
+> 最后更新：2026-07-12
+> 定位声明：项目自 2026-07-12（v1.2 收口）起进入 showcase 态，无 active milestone；本清单整体转为 **roadmap**——记录已识别的升级方向与工程债，**无排期、无 owner、无交付承诺**。重启活跃开发时按 §0 规则把条目挂入新 milestone。
 > 摘要：仅记录“未实现且未挂到当前有效实施链”的事项；凡已进入 `docs/v*` 总 plan、step 文档或已命名 milestone 的工作，均不得在此重复登记。
 > 移出记录：原 §2「CT (Constant Turn) 航迹预测模型」已于 2026-07-01 被 v1.2-trajectory-prediction 承接（以学习型模型实现并于 2026-07-12 收口，见 `docs/history/v1.2-trajectory-prediction/`），按 §0 移出规则移除。
 
