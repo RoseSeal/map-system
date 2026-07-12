@@ -7,6 +7,7 @@ public final class AssemblerProtocolConstants {
 
     // prediction_type values
     public static final String PREDICTION_TYPE_CV = "cv";
+    public static final String PREDICTION_TYPE_GRU = "gru";
     public static final String PREDICTION_TYPE_LINEAR = "linear";
 
     // tracking_status values

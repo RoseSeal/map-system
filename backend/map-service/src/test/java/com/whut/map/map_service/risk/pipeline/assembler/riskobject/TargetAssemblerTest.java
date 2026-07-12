@@ -48,6 +48,31 @@ class TargetAssemblerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void assembleTargetLabelsGruPredictionType() {
+        RiskVisualizationAssembler riskVisualizationAssembler = new RiskVisualizationAssembler();
+        TargetAssembler assembler = new TargetAssembler(riskVisualizationAssembler);
+
+        ShipStatus ownShip = ShipStatus.builder().id("own").build();
+        ShipStatus targetShip = ShipStatus.builder().id("target-1").sog(10.0).cog(45.0).longitude(120.0).latitude(30.0).build();
+
+        CvPredictionResult gruResult = CvPredictionResult.builder()
+                .targetId("target-1")
+                .horizonSeconds(459)
+                .predictionSource("GRU")
+                .trajectory(List.of(
+                        CvPredictionResult.PredictedPoint.builder().latitude(30.01).longitude(120.01).offsetSeconds(153).build()
+                ))
+                .build();
+
+        Map<String, Object> targetMap = assembler.assembleTarget(ownShip, targetShip, null, null, gruResult, null, null);
+
+        Map<String, Object> predictedTrajectory = (Map<String, Object>) targetMap.get("predicted_trajectory");
+        assertThat(predictedTrajectory).containsEntry("prediction_type", "gru");
+        assertThat(predictedTrajectory).containsEntry("horizon_seconds", 459);
+    }
+
+    @Test
     void assembleTargetWithoutCvPrediction() {
         RiskVisualizationAssembler riskVisualizationAssembler = new RiskVisualizationAssembler();
         TargetAssembler assembler = new TargetAssembler(riskVisualizationAssembler);

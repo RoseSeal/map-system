@@ -133,7 +133,9 @@ public class TargetAssembler {
             points.add(point);
         }
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("prediction_type", AssemblerProtocolConstants.PREDICTION_TYPE_CV);
+        result.put("prediction_type", "GRU".equalsIgnoreCase(cvResult.getPredictionSource())
+                ? AssemblerProtocolConstants.PREDICTION_TYPE_GRU
+                : AssemblerProtocolConstants.PREDICTION_TYPE_CV);
         result.put("horizon_seconds", cvResult.getHorizonSeconds());
         result.put("points", points);
         return result;

@@ -126,7 +126,7 @@ export interface PredictedTrajectoryPoint {
 }
 
 export interface PredictedTrajectory {
-  prediction_type: string;
+  prediction_type: 'cv' | 'gru';
   horizon_seconds: number;
   points: PredictedTrajectoryPoint[];
 }

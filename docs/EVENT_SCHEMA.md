@@ -2,8 +2,8 @@
 > schema_version: v2
 > 文档状态：current / 已实施
 > 生效日期：2026-04-01（v1.0 增量已合入：ADVISORY / ENVIRONMENT_UPDATE / AGENT_STEP / CAPABILITY / LLM_PROVIDER_SELECTION）
-> 最后更新：2026-07-01（v1.1 收口校对，补充 historical_case evidence 来源约束变更记录）
-> 变更摘要：risk 改为 SSE，chat 保持 WebSocket，解释流并入 SSE 风险通道；CHAT 上行支持最后一轮非破坏式重答；v1.0 期间扩展 advisory pipeline、environment 事件拆分、agent step 可见性与 LLM provider 运行时切换；v1.1 增补 historical_case evidence 来源约束。
+> 最后更新：2026-07-11（v1.2 收口，`predicted_trajectory.prediction_type` 增补 `"gru"` 枚举值）
+> 变更摘要：risk 改为 SSE，chat 保持 WebSocket，解释流并入 SSE 风险通道；CHAT 上行支持最后一轮非破坏式重答；v1.0 期间扩展 advisory pipeline、environment 事件拆分、agent step 可见性与 LLM provider 运行时切换；v1.1 增补 historical_case evidence 来源约束；v1.2 增补 learned 轨迹预测的 `prediction_type="gru"` 标识。
 
 ## 变更记录
 | 版本 | 日期 | 摘要 |
@@ -21,6 +21,7 @@
 | v2 | 2026-04-28 | risk SSE 新增 `ENVIRONMENT_UPDATE`；`RISK_UPDATE` 移除 `environment_context` 并新增 `environment_state_version` |
 | v2 | 2026-05-26 | 增补 WebSocket `CLEAR_EXPIRED_EXPLANATIONS` / `EXPIRED_EXPLANATIONS_CLEARED` 与 `selected_explanation_refs` 字段 |
 | v2 | 2026-07-01 | `ADVISORY.evidence_items` 增补 `[source: historical_case]` 来源约束：历史相似案例事实必须引用 `query_historical_case_graph` 成功 tool result 中返回的 `case_id` |
+| v2 | 2026-07-11 | `target.predicted_trajectory.prediction_type` 增补枚举值 `"gru"`：learned 轨迹预测启用且本帧由 GRU sidecar 生成时标识生成器；默认、禁用与降级路径仍为 `"cv"`，字段结构不变 |
 
 ## 1. 文档定位
 
@@ -194,7 +195,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 - `all_targets` 不再出现在 risk payload 中
 - `simulation_layer` 不再出现在 risk payload 中
 - `target.predicted_trajectory` 为可选字段；存在时结构固定为 `{ prediction_type, horizon_seconds, points[] }`
-- CTR 升级后 `target.predicted_trajectory.prediction_type` 仍保持 `"cv"`
+- `target.predicted_trajectory.prediction_type` 标识轨迹生成器：`"cv"`（默认 CV/CTR 外推，含 learned 禁用与降级回退）或 `"gru"`（learned 预测启用且本帧由 GRU sidecar 生成，此时 `horizon_seconds` 扩展至约 460s）；CTR 属 CV 引擎内部升级，不改变 `"cv"` 取值
 - `target.risk_assessment.encounter_type` 为可选字段；取值为 `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED`
 - `environment_state_version` 指向该风险快照引用的最新环境状态版本；前端不得用该字段重建环境内容
 - `governance.trust_factor` 表示本船状态置信度；本船置信度缺失或不可解析时取 `0.0`
