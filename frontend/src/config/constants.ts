@@ -92,12 +92,12 @@ export function getRiskColor(level: string): RGBColor {
 
 /** Default map view state */
 export const DEFAULT_VIEW_STATE = {
-  longitude: -73.835,  // Jamaica Bay center (updated)
-  latitude: 40.615,    // Jamaica Bay center (updated)
+  longitude: 114.3048, // Wuhan Yangtze demo reach
+  latitude: 30.5860,  // Wuhan Yangtze demo reach
 
   /**
-  longitude: 114.216525, // wuhan
-  latitude: 30.578373,  // wuhan
+  longitude: -73.835,  // Jamaica Bay center (updated)
+  latitude: 40.615,    // Jamaica Bay center (updated)
   */
 
   zoom: 12,

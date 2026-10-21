@@ -177,12 +177,26 @@ export function MapContainer() {
       container: mapContainer.current,
       style: {
         version: 8,
-        sources: {},
+        sources: {
+          'esri-world-imagery': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
+            attribution: 'Tiles &copy; Esri',
+          },
+        },
         layers: [
           {
             id: 'background',
             type: 'background',
             paint: { 'background-color': '#111827' },
+          },
+          {
+            id: 'esri-world-imagery',
+            type: 'raster',
+            source: 'esri-world-imagery',
           },
         ],
       },

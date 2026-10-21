@@ -1125,13 +1125,9 @@ export function RiskExplanationPanel() {
               </div>
             )}
 
-            {activeAdvisory && (
-              <div className="px-4 pt-3 pb-1">
-                <AdvisoryCard isDarkMode={isDarkMode} />
-              </div>
-            )}
-
             <div className="scrollbar-apple flex-1 min-h-0 space-y-2.5 overflow-y-auto p-4">
+              {activeAdvisory && <AdvisoryCard isDarkMode={isDarkMode} />}
+
               {displayedCards.length === 0 && resolvedExplanations.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                   <div
