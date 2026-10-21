@@ -1,7 +1,7 @@
 # Architecture Decisions and Review Findings
 
 > 用途：记录当前稳定架构决策，以及围绕这些决策沉淀出的实现级 review finding
-> 最后更新：2026-07-01（v1.2 启动：新增 ADR-014 学习型航迹预测 offline-first + 独立预测 port + sidecar 集成）
+> 最后更新：2026-10-21（新增 ADR-016 advisory 会遇级触发去重与失败退避）
 > 关系说明：架构概览以 `docs/ARCHITECTURE.md` 为准；协议真值以 `docs/EVENT_SCHEMA.md` 为准；本文档承接关键设计取舍与相关复盘结论
 
 ---
@@ -690,6 +690,34 @@ Trade-off：ADR-014 定下"独立 port + 推理 sidecar"框架后，step-2 实�
 - 不改 `ShipTrajectoryStore`（容量同时喂 CV 的 ROT 回归，动它破坏 flag-off 回归安全）。
 - 不允许 learned 预测降低风险等级（单向提升）；不为 CV 路径引入等级提升。
 - SSE 协议仅增补 `predicted_trajectory.prediction_type="gru"` 枚举值标识生成器，不新增字段、不改结构。
+
+### ADR-016
+
+Advisory 触发从“场景级当前值判断”改为“按目标的会遇级去重 + 失败有界退避”
+
+Trade-off：旧 `SceneRiskStateTracker` 以“场景最高等级上升，或任一接近中目标 TCPA < 阈值”判断是否触发，`generatingFlag` CAS 只阻止并发生成。TCPA 持续低于阈值时，每轮生成结束都会立即再次触发；模型调用快速失败时触发频率更高。需要在“固定冷却时间”“场景级状态机”“按目标记录会遇状态”之间取舍，并保证风险升级不被去重吞掉。
+
+#### 决策
+
+- **危险判定**：目标风险等级 ≥ `WARNING`，或 `approaching` 且 `tcpaSec < llm.advisory.tcpa-threshold-seconds`。旧逻辑中“场景等级升到 `CAUTION`”的触发不再保留。
+- **会遇边界**：按 `targetId` 维护会遇状态；危险持续或安全不足 `encounter-clear-seconds`（默认 30 s）视为同一会遇，目标从上下文消失随船舶过期生命周期移除。
+- **何时触发**：同一会遇只在首次进入危险、或风险等级高于上次尝试等级时触发；同一等级已被成功覆盖后不再重复。
+- **覆盖语义**：`AdvisoryTriggerPort` 完成回调由 `Runnable` 改为 `Consumer<Set<String>>`，回传实际发布的 `affected_targets`；只有被覆盖的目标记为已处理，未覆盖或失败的目标进入退避。
+- **失败退避**：`retry-initial-seconds` 起指数翻倍，封顶 `retry-max-seconds`（默认 30 → 60 → 120 s）；风险升级可越过退避；快照构建异常同样退避。
+- **兼容开关**：`llm.advisory.encounter-dedup-enabled=false` 恢复旧触发逻辑。
+
+#### 理由
+
+- 根因是触发依据为“当前值是否越界”而非“状态是否变化”，固定冷却时间只能降低频率，且会延迟风险升级；按目标记录会遇状态能同时压掉重复刷新并保留升级。
+- 以发布的 `affected_targets` 记账，避免一条只覆盖部分目标的建议把其余危险目标长期压住。
+- 晚到的完成回调按 `Encounter` 对象身份比对，不会改写同一 `targetId` 下新建的会遇。
+- 本地对照实验（模拟模型即时返回，同一对遇场景完整一轮）：模型正常时触发次数 265 → 2（首次 `WARNING` 与升级 `ALARM` 各 1 次），模型失败时 265 → 5。模拟响应几乎瞬时，旧逻辑次数高于真实模型；该数字用于验证规则，不代表真实调用量。
+
+#### 明确否决的方向
+
+- 不采用全局固定冷却时间（会延迟升级，且不区分目标）。
+- 不在本次处理“生成后复核”“依据变化时撤回”；建议有效期仍为固定 `valid-seconds`，见后续路线。
+- 不改 `ADVISORY` SSE payload 结构。
 
 ---
 

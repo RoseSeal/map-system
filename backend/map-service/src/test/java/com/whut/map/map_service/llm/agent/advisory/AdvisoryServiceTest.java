@@ -29,10 +29,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -149,15 +151,15 @@ class AdvisoryServiceTest {
                 .thenReturn(AgentLoopResult.completed("text", 3, 2, null, "zhipu"));
         when(outputParser.parse(eq("text"), any())).thenReturn(validParsed());
 
-        AtomicBoolean completed = new AtomicBoolean(false);
-        service.onAdvisoryTrigger(snapshotV(10L), () -> completed.set(true));
+        AtomicReference<Set<String>> completed = new AtomicReference<>();
+        service.onAdvisoryTrigger(snapshotV(10L), covered -> completed.set(covered));
 
         ArgumentCaptor<AdvisoryPayload> captor = ArgumentCaptor.forClass(AdvisoryPayload.class);
         verify(riskStreamPublisher).publishAdvisory(captor.capture());
         assertThat(captor.getValue().getSummary()).isEqualTo("摘要");
         assertThat(captor.getValue().getRiskLevel()).isEqualTo(RiskLevel.ALARM);
         assertThat(captor.getValue().getProvider()).isEqualTo("zhipu");
-        assertThat(completed.get()).isTrue();
+        assertThat(completed.get()).containsExactlyInAnyOrderElementsOf(validParsed().affectedTargets());
     }
 
     @Test
@@ -167,12 +169,12 @@ class AdvisoryServiceTest {
                 .thenReturn(AgentLoopResult.completed("bad", 3, 2));
         when(outputParser.parse(any(), any())).thenReturn(null);
 
-        AtomicBoolean completed = new AtomicBoolean(false);
-        service.onAdvisoryTrigger(snapshotV(10L), () -> completed.set(true));
+        AtomicReference<Set<String>> completed = new AtomicReference<>();
+        service.onAdvisoryTrigger(snapshotV(10L), covered -> completed.set(covered));
 
         verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
         verify(riskStreamPublisher, never()).publishAdvisory(any());
-        assertThat(completed.get()).isTrue();
+        assertThat(completed.get()).isEmpty();
     }
 
     @Test
@@ -182,7 +184,7 @@ class AdvisoryServiceTest {
                 .thenReturn(AgentLoopResult.completed("guessed", 1, 0));
 
         AtomicBoolean completed = new AtomicBoolean(false);
-        service.onAdvisoryTrigger(snapshotV(10L), () -> completed.set(true));
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> completed.set(true));
 
         verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
         verify(riskStreamPublisher, never()).publishAdvisory(any());
@@ -194,7 +196,7 @@ class AdvisoryServiceTest {
         when(riskContextHolder.getVersion()).thenReturn(20L); // lag = 20 - 10 = 10 > 5
 
         AtomicBoolean completed = new AtomicBoolean(false);
-        service.onAdvisoryTrigger(snapshotV(10L), () -> completed.set(true));
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> completed.set(true));
 
         verify(riskStreamPublisher, never()).publishAdvisory(any());
         verify(riskStreamPublisher, never()).publishError(any(), any(), any());
@@ -210,8 +212,8 @@ class AdvisoryServiceTest {
 
         ArgumentCaptor<AdvisoryPayload> captor = ArgumentCaptor.forClass(AdvisoryPayload.class);
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher, org.mockito.Mockito.times(2)).publishAdvisory(captor.capture());
         List<AdvisoryPayload> payloads = captor.getAllValues();
@@ -225,11 +227,11 @@ class AdvisoryServiceTest {
         when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
                 .thenReturn(AgentLoopResult.providerFailed("LLM_TIMEOUT", "timeout", null));
 
-        AtomicBoolean completed = new AtomicBoolean(false);
-        service.onAdvisoryTrigger(snapshotV(10L), () -> completed.set(true));
+        AtomicReference<Set<String>> completed = new AtomicReference<>();
+        service.onAdvisoryTrigger(snapshotV(10L), covered -> completed.set(covered));
 
         verify(riskStreamPublisher).publishError(contains("LLM_TIMEOUT"), any(), any());
-        assertThat(completed.get()).isTrue();
+        assertThat(completed.get()).isEmpty();
     }
 
     @Test
@@ -239,7 +241,7 @@ class AdvisoryServiceTest {
                 .thenReturn(AgentLoopResult.completed("text", 3, 2, null, "zhipu", List.of(AgentToolNames.GET_RISK_SNAPSHOT)));
         when(outputParser.parse(eq("text"), any())).thenReturn(hydrologyParsed());
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
         verify(riskStreamPublisher, never()).publishAdvisory(any());
@@ -259,7 +261,7 @@ class AdvisoryServiceTest {
                 ));
         when(outputParser.parse(eq("text"), any())).thenReturn(hydrologyParsed());
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishAdvisory(any());
     }
@@ -269,7 +271,7 @@ class AdvisoryServiceTest {
         stubCompletedWithHistoricalResult(successfulHistoricalResult("H-07"));
         when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishAdvisory(any());
     }
@@ -285,7 +287,7 @@ class AdvisoryServiceTest {
                 ));
         when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
         verify(riskStreamPublisher, never()).publishAdvisory(any());
@@ -296,7 +298,7 @@ class AdvisoryServiceTest {
         stubCompletedWithHistoricalResult(historicalErrorResult());
         when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
         verify(riskStreamPublisher, never()).publishAdvisory(any());
@@ -307,7 +309,7 @@ class AdvisoryServiceTest {
         stubCompletedWithHistoricalResult(emptyHistoricalResult());
         when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
         verify(riskStreamPublisher, never()).publishAdvisory(any());
@@ -318,7 +320,7 @@ class AdvisoryServiceTest {
         stubCompletedWithHistoricalResult(successfulHistoricalResult("H-07"));
         when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-99"));
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
         verify(riskStreamPublisher, never()).publishAdvisory(any());
@@ -330,7 +332,7 @@ class AdvisoryServiceTest {
         when(outputParser.parse(eq("text"), any()))
                 .thenReturn(historicalCaseParsed("[source:historical_case]", "H-07"));
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
         verify(riskStreamPublisher, never()).publishAdvisory(any());
@@ -341,7 +343,7 @@ class AdvisoryServiceTest {
         stubCompletedWithHistoricalResult(successfulHistoricalResult("H-0"));
         when(outputParser.parse(eq("text"), any())).thenReturn(historicalCaseParsed("H-07"));
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
         verify(riskStreamPublisher, never()).publishAdvisory(any());
@@ -352,7 +354,7 @@ class AdvisoryServiceTest {
         stubCompletedWithHistoricalResult(historicalErrorResult());
         when(outputParser.parse(eq("text"), any())).thenReturn(validParsed());
 
-        service.onAdvisoryTrigger(snapshotV(10L), () -> {});
+        service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishAdvisory(any());
     }

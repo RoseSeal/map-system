@@ -13,8 +13,10 @@ import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,7 +50,7 @@ class SceneRiskStateTrackerTest {
     void flagBlocksConcurrentAdvisoryUntilOnCompleteIsCalled() {
         LlmProperties props = propsWithAdvisory(true, 300);
         AtomicInteger portCalls = new AtomicInteger();
-        AtomicReference<Runnable> capturedCompletion = new AtomicReference<>();
+        AtomicReference<Consumer<Set<String>>> capturedCompletion = new AtomicReference<>();
 
         // Async-style port: captures onComplete but does not call it immediately
         SceneRiskStateTracker tracker = new SceneRiskStateTracker(props, stubFactory(),
@@ -66,7 +68,7 @@ class SceneRiskStateTrackerTest {
         assertThat(portCalls.get()).isEqualTo(1);
 
         // Advisory finishes: onComplete clears the flag
-        capturedCompletion.get().run();
+        capturedCompletion.get().accept(Set.of("t1"));
 
         // Now TCPA crosses threshold (200 < 300) → triggers again
         tracker.onSceneUpdate(context(RiskLevel.ALARM, 200.0, true));
@@ -155,6 +157,7 @@ class SceneRiskStateTrackerTest {
     private static LlmProperties propsWithAdvisory(boolean enabled, int tcpaThreshold) {
         LlmProperties p = new LlmProperties();
         p.getAdvisory().setEnabled(enabled);
+        p.getAdvisory().setEncounterDedupEnabled(false);
         p.getAdvisory().setTcpaThresholdSeconds(tcpaThreshold);
         return p;
     }
@@ -184,7 +187,7 @@ class SceneRiskStateTrackerTest {
     private static AdvisoryTriggerPort immediatePort(AtomicInteger counter) {
         return (snapshot, onComplete) -> {
             counter.incrementAndGet();
-            onComplete.run();
+            onComplete.accept(Set.of("t1"));
         };
     }
 

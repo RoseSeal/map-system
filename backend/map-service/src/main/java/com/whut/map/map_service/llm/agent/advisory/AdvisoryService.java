@@ -30,6 +30,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -75,16 +76,17 @@ public class AdvisoryService implements AdvisoryTriggerPort {
     }
 
     @Override
-    public void onAdvisoryTrigger(AgentSnapshot snapshot, Runnable onComplete) {
+    public void onAdvisoryTrigger(AgentSnapshot snapshot, Consumer<Set<String>> onComplete) {
         try {
             llmExecutor.execute(() -> generate(snapshot, onComplete));
         } catch (RejectedExecutionException e) {
             log.warn("Advisory executor rejected task; releasing generating flag");
-            onComplete.run();
+            onComplete.accept(Set.of());
         }
     }
 
-    private void generate(AgentSnapshot snapshot, Runnable onComplete) {
+    private void generate(AgentSnapshot snapshot, Consumer<Set<String>> onComplete) {
+        Set<String> coveredTargets = Set.of();
         try {
             LlmProperties.Advisory config = llmProperties.getAdvisory();
 
@@ -129,6 +131,7 @@ public class AdvisoryService implements AdvisoryTriggerPort {
                         return;
                     }
                     publishAdvisory(snapshot, parsed, config, completed.provider());
+                    coveredTargets = Set.copyOf(parsed.affectedTargets());
                 }
                 case AgentLoopResult.MaxIterationsExceeded exceeded -> {
                     log.warn("Advisory loop exceeded max iterations ({}), discarding", exceeded.iterations());
@@ -146,7 +149,7 @@ public class AdvisoryService implements AdvisoryTriggerPort {
         } catch (Exception e) {
             log.error("Unexpected error during advisory generation", e);
         } finally {
-            onComplete.run();
+            onComplete.accept(coveredTargets);
         }
     }
 

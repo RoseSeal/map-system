@@ -63,6 +63,10 @@ public class LlmProperties {
         private int maxIterations = 10;
         private int maxSnapshotVersionLag = 5;
         private int validSeconds = 120;
+        private boolean encounterDedupEnabled = true;
+        private int encounterClearSeconds = 30;
+        private int retryInitialSeconds = 30;
+        private int retryMaxSeconds = 120;
     }
 
     @Data

@@ -163,7 +163,10 @@ RiskStreamPublisher ──→ RiskSseController ──→ 2.5D Frontend（`ENVIR
 ### 5.4 链路 D：Advisory Agent 主线（系统驱动）
 
 ```text
-风险态势变化（RiskAssessmentCompletedEvent，经触发策略门控）
+风险态势变化（RiskAssessmentCompletedEvent）
+  ▼
+SceneRiskStateTracker
+  │  按目标的会遇级去重：首次进入危险或风险升级才触发；失败指数退避（ADR-016）
   ▼
 AdvisoryPipeline
   │  捕获 AgentSnapshot（深拷贝 risk / environment 状态）
