@@ -881,9 +881,6 @@ export const selectPendingChatEventIds = (state: AiCenterState) => state.pending
 export const selectChatErrorByEventId = (state: AiCenterState) => state.chatErrorByEventId;
 export const selectLatestChatError = (state: AiCenterState) => state.latestChatError;
 export const selectIsChatSending = (state: AiCenterState) => hasPendingConversationRequest(state);
-export const selectSpokenMessages = (state: AiCenterState) => state.spokenMessages;
-export const selectLastSpokenAt = (state: AiCenterState) => state.lastSpokenAt;
-export const selectIsChatFocused = (state: AiCenterState) => state.isChatFocused;
 export const selectVoiceCaptureSupported = (state: AiCenterState) => state.voiceCaptureSupported;
 export const selectVoiceCaptureState = (state: AiCenterState) => state.voiceCaptureState;
 export const selectVoiceCaptureError = (state: AiCenterState) => state.voiceCaptureError;

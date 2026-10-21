@@ -49,6 +49,4 @@ export interface AiAssistantMessageEvent {
   timestamp?: string;
 }
 
-export type AiSpeechEvent = LlmExplanationEvent | AiAssistantMessageEvent;
-
 

@@ -3,7 +3,7 @@
  * Design tokens and system-wide configuration values
  */
 
-import type { RGBColor, RGBAColor } from '../types/schema';
+import type { RGBColor } from '../types/schema';
 
 function readEnvValue(key: 'VITE_API_ORIGIN' | 'VITE_WS_ORIGIN'): string | null {
   const value = import.meta.env[key];
@@ -63,16 +63,6 @@ export const COLORS_RGB: Record<string, RGBColor> = {
   GHOST: [156, 163, 175],
   NUC_STATUS: [124, 58, 237],
   TRAJECTORY: [16, 185, 129],
-} as const;
-
-/** RGBA arrays with alpha for Deck.gl layers */
-export const COLORS_RGBA: Record<string, RGBAColor> = {
-  SAFE: [16, 185, 129, 200],
-  CAUTION: [245, 158, 11, 200],
-  WARNING: [249, 115, 22, 200],
-  ALARM: [239, 68, 68, 200],
-  SAFETY_DOMAIN: [50, 130, 190, 45],
-  OZT_SECTOR: [239, 68, 68, 120],
 } as const;
 
 /** Get risk color by level */

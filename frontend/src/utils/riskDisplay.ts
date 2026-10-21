@@ -12,22 +12,3 @@ export function translateEncounterType(type: EncounterType | string | undefined)
     default: return type;
   }
 }
-
-/**
- * Gets the border width for target card based on risk score.
- */
-export function getRiskScoreBorderWidth(score: number | undefined): number {
-  if (score === undefined) return 3;
-  if (score >= 0.7) return 6;
-  if (score >= 0.4) return 4;
-  return 3;
-}
-
-/**
- * Gets the opacity for target card based on risk confidence.
- */
-export function getRiskConfidenceOpacity(confidence: number | undefined): number | undefined {
-  if (confidence === undefined || confidence >= 0.5) return undefined;
-  if (confidence < 0.3) return 0.45;
-  return 0.6;
-}

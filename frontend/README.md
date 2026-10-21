@@ -1,13 +1,13 @@
-# Unmanned Fleet UI
+# Map System Frontend
 
-WebGL-based situational awareness frontend for an unmanned fleet risk warning system.
+WebGL-based situational awareness frontend for the map-system collision risk assessment service.
 
 ## Project Overview
 
 Core goals:
-- Render a 2.5D maritime chart (S-57 ENC) in real time.
+- Render a 2.5D maritime map in real time: Esri satellite imagery as the base map, with S-57 ENC layers where chart data exists.
 - Visualize dynamic vessel risk information (CPA, OZT, Safety Domain, predicted trajectory).
-- Support both mock-data mode and backend-connected mode.
+- Consume live vessel, risk, explanation and advisory data from the backend (`/api/v2/risk` SSE and `/api/v2/chat` WebSocket).
 
 README scope:
 - This file is quick start only.
@@ -55,7 +55,7 @@ Project path:
 2. Install dependencies.
 3. Start the Vite development server.
 4. Open the local URL shown by Vite.
-5. Validate that the app loads with mock-driven dynamic updates.
+5. Start the backend and a simulator (see `../docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md`) to see live vessels and risk data.
 
 Install dependencies:
 
@@ -70,9 +70,8 @@ npm run dev
 ```
 
 Expected local behavior after startup:
-- The app launches in frontend mock-data mode.
-- Dynamic vessel/risk visuals should update without backend services.
-- If backend-specific layers are unavailable, the app remains usable for frontend work.
+- There is no built-in mock-data mode; vessels and risk visuals appear only when the backend is publishing data.
+- The base map needs internet access for Esri imagery tiles.
 
 ## Documentation Split
 

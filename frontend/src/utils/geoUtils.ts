@@ -6,7 +6,7 @@
  * This is an improvement over the flat-earth approximation in the original spec.
  */
 
-import type { Position, SafetyDomainDimensions, LonLat } from '../types/schema';
+import type { SafetyDomainDimensions, LonLat } from '../types/schema';
 
 // ============================================================
 // Constants
@@ -44,11 +44,6 @@ export function metersToNm(meters: number): number {
 /** Convert knots to m/s */
 export function knotsToMs(knots: number): number {
   return knots * KNOTS_TO_MS;
-}
-
-/** Convert m/s to knots */
-export function msToKnots(ms: number): number {
-  return ms / KNOTS_TO_MS;
 }
 
 /** Convert degrees to radians */
@@ -109,96 +104,9 @@ export function deadReckon(
   return [normalizedLon, radToDeg(lat2)];
 }
 
-/**
- * Dead reckon from a Position object
- */
-export function deadReckonFromPosition(
-  position: Position,
-  speedKnots: number,
-  courseDeg: number,
-  timeDiffSec: number
-): Position {
-  const [lon, lat] = deadReckon(
-    [position.lon, position.lat],
-    speedKnots,
-    courseDeg,
-    timeDiffSec
-  );
-  return { lon, lat };
-}
-
 // ============================================================
 // Trajectory Calculations
 // ============================================================
-
-/**
- * Generate curved headline (CHL) points using circular arc approximation
- * 
- * @param start Starting position [lon, lat]
- * @param headingDeg Current heading in degrees
- * @param turnRadiusNm Turn radius in nautical miles
- * @param rotDegPerMin Rate of turn in degrees per minute
- * @param projectionTimeMin Projection time in minutes
- * @param numPoints Number of points to generate
- * @returns Array of [lon, lat] points forming the curved path
- */
-export function generateCurvedHeadline(
-  start: LonLat,
-  headingDeg: number,
-  turnRadiusNm: number,
-  rotDegPerMin: number,
-  projectionTimeMin: number,
-  numPoints: number = 20
-): LonLat[] {
-  const points: LonLat[] = [start];
-  
-  if (Math.abs(rotDegPerMin) < 0.1) {
-    // Effectively straight line
-    return generateLinearTrajectory(start, headingDeg, 12, projectionTimeMin, numPoints);
-  }
-  
-  const timeStepMin = projectionTimeMin / numPoints;
-  let currentPos = start;
-  let currentHeading = headingDeg;
-  
-  // Convert turn radius to angular change per time step
-  const turnRatePerStep = rotDegPerMin * timeStepMin;
-  
-  for (let i = 1; i <= numPoints; i++) {
-    // Update heading
-    currentHeading = (currentHeading + turnRatePerStep + 360) % 360;
-    
-    // Calculate arc distance for this time step
-    // Using circular motion: arc = radius * angle
-    const arcAngleRad = degToRad(Math.abs(turnRatePerStep));
-    const arcDistanceNm = turnRadiusNm * arcAngleRad;
-    const arcDistanceM = nmToMeters(arcDistanceNm);
-    
-    // Average heading for this segment
-    const avgHeading = currentHeading - turnRatePerStep / 2;
-    
-    // Project to next point
-    const bearing = degToRad(avgHeading);
-    const lat1 = degToRad(currentPos[1]);
-    const lon1 = degToRad(currentPos[0]);
-    const angularDist = arcDistanceM / EARTH_RADIUS_M;
-    
-    const lat2 = Math.asin(
-      Math.sin(lat1) * Math.cos(angularDist) +
-      Math.cos(lat1) * Math.sin(angularDist) * Math.cos(bearing)
-    );
-    
-    const lon2 = lon1 + Math.atan2(
-      Math.sin(bearing) * Math.sin(angularDist) * Math.cos(lat1),
-      Math.cos(angularDist) - Math.sin(lat1) * Math.sin(lat2)
-    );
-    
-    currentPos = [radToDeg(lon2), radToDeg(lat2)];
-    points.push(currentPos);
-  }
-  
-  return points;
-}
 
 /**
  * Generate linear trajectory points
@@ -287,86 +195,4 @@ export function offsetToLatLon(
     center[0] + radToDeg(lonOffset),
     center[1] + radToDeg(latOffset),
   ];
-}
-
-// ============================================================
-// OZT Sector Geometry
-// ============================================================
-
-/**
- * Generate OZT (Object Obstacle Zone) sector polygon
- * 
- * @param center Center position [lon, lat]
- * @param startAngleDeg Start angle in degrees
- * @param endAngleDeg End angle in degrees
- * @param radiusNm Sector radius in nautical miles
- * @param numPoints Points per arc segment
- * @returns Array of [lon, lat] vertices forming the sector
- */
-export function generateOZTSector(
-  center: LonLat,
-  startAngleDeg: number,
-  endAngleDeg: number,
-  radiusNm: number = 1.0,
-  numPoints: number = 16
-): LonLat[] {
-  const vertices: LonLat[] = [center]; // Start at center
-  
-  const radiusM = nmToMeters(radiusNm);
-  
-  // Normalize angles
-  let start = startAngleDeg % 360;
-  let end = endAngleDeg % 360;
-  if (end < start) end += 360;
-  
-  const angleStep = (end - start) / numPoints;
-  
-  for (let i = 0; i <= numPoints; i++) {
-    const angle = start + angleStep * i;
-    const angleRad = degToRad(angle);
-    
-    const x = radiusM * Math.sin(angleRad);
-    const y = radiusM * Math.cos(angleRad);
-    
-    vertices.push(offsetToLatLon(center, x, y));
-  }
-  
-  vertices.push(center); // Close the sector
-  
-  return vertices;
-}
-
-// ============================================================
-// Distance & Bearing Calculations
-// ============================================================
-
-/**
- * Calculate distance between two points in nautical miles (Haversine)
- */
-export function distanceNm(point1: LonLat, point2: LonLat): number {
-  const lat1 = degToRad(point1[1]);
-  const lat2 = degToRad(point2[1]);
-  const dLat = lat2 - lat1;
-  const dLon = degToRad(point2[0] - point1[0]);
-  
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  
-  return metersToNm(EARTH_RADIUS_M * c);
-}
-
-/**
- * Calculate initial bearing from point1 to point2 in degrees
- */
-export function bearingDeg(point1: LonLat, point2: LonLat): number {
-  const lat1 = degToRad(point1[1]);
-  const lat2 = degToRad(point2[1]);
-  const dLon = degToRad(point2[0] - point1[0]);
-  
-  const y = Math.sin(dLon) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) -
-    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-  
-  return (radToDeg(Math.atan2(y, x)) + 360) % 360;
 }
