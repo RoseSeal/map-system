@@ -4,9 +4,10 @@ This directory stores downloaded reference materials for the v1.1 Graph-RAG plan
 
 ## Files
 
-- `imo-colreg-2016-supplement.pdf`
+- IMO COLREG 2016 supplement (not vendored)
   - Source: <https://wwwcdn.imo.org/localresources/en/publications/Documents/Supplements/English/QB904E_012016.pdf>
   - Scope: IMO public supplement for COLREG amendments. This is not the full consolidated COLREG text.
+  - The PDF copy was removed on 2026-10-21 because IMO redistribution rights were not confirmed; use the source link.
 - `govinfo-cfr-2025-title33-chapI-subchapE.md`
   - Source PDF: <https://www.govinfo.gov/content/pkg/CFR-2025-title33-vol1/pdf/CFR-2025-title33-vol1-chapI-subchapE.pdf>
   - Retrieved via public reader proxy because direct TLS access to `www.govinfo.gov` failed locally.
