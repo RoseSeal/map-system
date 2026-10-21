@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 
 @Configuration
 @RequiredArgsConstructor
@@ -17,10 +18,13 @@ public class ZhipuConfig {
     @ConditionalOnExpression("T(org.springframework.util.StringUtils).hasText('${llm.zhipu.api-key:}')")
     public ZhipuAiClient zhipuClient() {
         // 创建并配置Zhipu客户端
-        return new ZhipuAiClient.Builder()
-                .ofZHIPU()
+        var builder = new ZhipuAiClient.Builder().ofZHIPU();
+        String baseUrl = llmProperties.getZhipu().getBaseUrl();
+        if (StringUtils.hasText(baseUrl)) {
+            builder.baseUrl(baseUrl);
+        }
+        return builder
                 .apiKey(llmProperties.getZhipu().getApiKey())
                 .build();
     }
 }
-

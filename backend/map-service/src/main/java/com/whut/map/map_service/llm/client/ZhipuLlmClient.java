@@ -7,6 +7,7 @@ import ai.z.openapi.service.model.ChatFunction;
 import ai.z.openapi.service.model.ChatFunctionCall;
 import ai.z.openapi.service.model.ChatMessage;
 import ai.z.openapi.service.model.ChatMessageRole;
+import ai.z.openapi.service.model.ChatThinking;
 import ai.z.openapi.service.model.ChatTool;
 import ai.z.openapi.service.model.ChatToolType;
 import ai.z.openapi.service.model.ToolCalls;
@@ -25,6 +26,7 @@ import com.whut.map.map_service.llm.agent.ToolResultAgentMessage;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.dto.ChatRole;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Component
+@Slf4j
 @Qualifier("zhipu")
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "llm.enabled", havingValue = "true")
@@ -70,6 +73,7 @@ public class ZhipuLlmClient implements LlmClient {
     ChatCompletionCreateParams buildRequest(List<AgentMessage> messages, List<ToolDefinition> tools) {
         var builder = ChatCompletionCreateParams.builder()
                 .model(llmProperties.getZhipu().getModel())
+                .thinking(ChatThinking.builder().type("disabled").build())
                 .messages(toZhipuMessages(messages));
 
         if (tools != null && !tools.isEmpty()) {
@@ -109,15 +113,25 @@ public class ZhipuLlmClient implements LlmClient {
 
         Object content = message.getContent();
         if (content == null) {
+            logEmptyResponse(response, message);
             throw new IllegalStateException("Zhipu response contains no text");
         }
 
         String text = String.valueOf(content);
         if (text.isBlank() || "null".equalsIgnoreCase(text)) {
+            logEmptyResponse(response, message);
             throw new IllegalStateException("Zhipu response contains no text");
         }
 
         return new FinalText(text);
+    }
+
+    private void logEmptyResponse(ChatCompletionResponse response, ChatMessage message) {
+        log.warn("Zhipu empty response diagnostic: requestId={} responseId={} model={} finishReason={} contentNull={} reasoningLength={} toolCallCount={} usage={}",
+                response.getData().getRequestId(), response.getData().getId(), response.getData().getModel(),
+                response.getData().getChoices().get(0).getFinishReason(), message.getContent() == null,
+                message.getReasoningContent() == null ? 0 : message.getReasoningContent().length(),
+                message.getToolCalls() == null ? 0 : message.getToolCalls().size(), response.getData().getUsage());
     }
 
     private ChatMessage toZhipuChatMessage(AgentMessage message) {

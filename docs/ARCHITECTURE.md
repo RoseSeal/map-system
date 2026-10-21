@@ -26,7 +26,7 @@
 | 风险计算 | 自研 CPA/TCPA 引擎，含会遇分类、安全领域、可替换轨迹预测层（CV 默认 / GRU 学习型，`TrajectoryPredictionPort`）与多因子综合评分 |
 | 轨迹预测 | `trajectory-service`：离线管线（真实内河 AIS 训练 GRU seq2seq）+ onnxruntime/FastAPI 推理 sidecar；Java 经 HTTP 批量端点接入，feature flag 控制、失败回退 CV |
 | 环境上下文 | `EnvironmentContextService` 单点装配 weather / hydrology / safety contour，独立 `ENVIRONMENT_UPDATE` 事件 |
-| LLM 接入 | Gemini / 智谱，运行时可经 `LLM_PROVIDER_SELECTION` 切换；`CompletableFuture` 超时降级 |
+| LLM 接入 | Gemini / 智谱，运行时可经 `LLM_PROVIDER_SELECTION` 切换；默认 explanation / chat / agent 均走智谱 `glm-4.5-air`（关闭 thinking）；`CompletableFuture` 超时降级 |
 | Agent loop | 有界工具增强推理：`AgentLoopOrchestrator` + `AgentSnapshot`（边界深拷贝） + `AgentToolRegistry` |
 | 知识图谱 / GraphRAG | COLREGS Part B 进程内规则图（`GraphQueryPort` + `MemoryGraphAdapter`）与历史案例 GraphRAG 分支（`HistoricalCaseQueryPort` + LightRAG HTTP sidecar）并存；历史案例分支使用 `llm.case-graph.enabled` 独立开关 |
 | 事件协议 | Event Schema v2，含 `ADVISORY` / `ENVIRONMENT_UPDATE` / `AGENT_STEP` / `CAPABILITY` 等 v1.0 引入事件（见 `docs/EVENT_SCHEMA.md`） |

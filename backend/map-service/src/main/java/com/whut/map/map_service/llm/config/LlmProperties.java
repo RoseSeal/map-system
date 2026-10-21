@@ -37,6 +37,8 @@ public class LlmProperties {
     public static class ProviderProperties {
         private String apiKey;
         private String model;
+        // Optional endpoint override; currently honored by the Zhipu client only.
+        private String baseUrl;
         private ProxyProperties proxy = new ProxyProperties();
         private RetryProperties retry = new RetryProperties();
     }

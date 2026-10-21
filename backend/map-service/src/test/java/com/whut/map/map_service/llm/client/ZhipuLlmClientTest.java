@@ -116,6 +116,8 @@ class ZhipuLlmClientTest {
                 tools
         );
 
+        assertThat(params.getThinking()).isNotNull();
+        assertThat(params.getThinking().getType()).isEqualTo("disabled");
         assertThat(params.getTools()).hasSize(1);
         assertThat(params.getTools().get(0).getFunction().getName()).isEqualTo("myTool");
         assertThat(params.getTools().get(0).getType()).isEqualTo(ChatToolType.FUNCTION.value());

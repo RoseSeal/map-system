@@ -84,6 +84,7 @@ public class AgentLoopOrchestrator {
 
             switch (stepResult) {
                 case ToolCallRequest tcr -> {
+                    log.debug("Agent tool iteration={} tool={} callId={}", iteration, tcr.toolName(), tcr.callId());
                     String stepId = resolveStepId(tcr.callId());
                     stepSink.accept(new AgentStepEvent(
                             stepId, tcr.toolName(), AgentStepStatus.RUNNING, "正在调用工具"));
