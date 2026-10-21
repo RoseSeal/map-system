@@ -135,10 +135,6 @@ public class SceneRiskStateTracker {
         }
     }
 
-    public void clearGeneratingFlag() {
-        generatingFlag.set(false);
-    }
-
     private void updateEncounters(LlmRiskContext context, long now) {
         Set<String> presentTargetIds = new HashSet<>();
         for (var target : context.getTargets()) {

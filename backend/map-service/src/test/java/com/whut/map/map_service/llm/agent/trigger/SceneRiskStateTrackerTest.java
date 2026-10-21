@@ -76,26 +76,6 @@ class SceneRiskStateTrackerTest {
     }
 
     @Test
-    void clearGeneratingFlagManuallyAlsoResetsFlag() {
-        LlmProperties props = propsWithAdvisory(true, 300);
-        AtomicInteger portCalls = new AtomicInteger();
-
-        // Async-style port: flag stays true until manually cleared
-        SceneRiskStateTracker tracker = new SceneRiskStateTracker(props, stubFactory(),
-                providerOf((snapshot, onComplete) -> portCalls.incrementAndGet()));
-
-        tracker.onSceneUpdate(context(RiskLevel.ALARM, 400.0, true));
-        assertThat(portCalls.get()).isEqualTo(1);
-
-        // Flag still true (onComplete never called); manual reset simulates Step 3 error path
-        tracker.clearGeneratingFlag();
-
-        // TCPA crosses threshold → triggers
-        tracker.onSceneUpdate(context(RiskLevel.ALARM, 200.0, true));
-        assertThat(portCalls.get()).isEqualTo(2);
-    }
-
-    @Test
     void tcpaCrossedTriggers() {
         LlmProperties props = propsWithAdvisory(true, 300);
         AtomicInteger portCalls = new AtomicInteger();
