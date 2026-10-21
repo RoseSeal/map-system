@@ -1,8 +1,67 @@
 # map-system 演示脚本
 
-> 最后更新：2026-04-17  
-> 范围：基于当前已实现的 `map-system` 功能，以及 `Project_ship-ais` 作为上游消息源可提供的模拟内容。  
-> 目标：使用外部 AIS 模拟消息来展示 `map-system`。
+> 最后更新：2026-10-21（新增 §0 武汉长江主演示；§1 起为 2026-04-17 的 v1.0 视频脚本，未改动）  
+> 范围：§0 使用仓库内模拟器；§1 起基于 `Project_ship-ais` 作为上游消息源可提供的模拟内容。  
+> 目标：展示 `map-system` 的实时风险评估、AI 解释与系统 advisory。
+
+## 0. 当前主演示：武汉长江段
+
+§1 起的 v1.0 视频脚本依赖外部 `Project_ship-ais` 模拟源。海图（S-57）相关能力只能在 Jamaica Bay 场景展示，因为 S-57 数据只覆盖该区域；武汉段没有电子海图。
+
+### 0.1 场景
+
+- 模拟器：[`simulator/wuhan_yangtze_ais_simulator.py`](../../simulator/wuhan_yangtze_ais_simulator.py)，1 Hz 发布到 `usv/AisMessage`，单次跑完，全部船舶到达终点 35 s 后自动退出。
+- 航线参考 `trajectory-service` 清洗航段 `seg_id=8302`，已对照卫星影像确认位于江面。航线是合成的，不是真实 AIS 回放，也不构成航行指导。
+- 三船：本船 `123456789` 顺流下行；`900001222` 上行，与本船对遇；`900002222` 与本船同向、航速较低，被本船追越。
+- 对遇两船先以 3 kn 航行 30 s，再在 90 s 内加速到巡航速度，使风险等级逐级升高。
+- 底图为 Esri World Imagery 在线卫星影像，需要联网；离线时只剩深色背景。
+
+### 0.2 前置条件
+
+1. 启动核心依赖：
+
+   ```bash
+   docker compose up -d mqtt postgis whisper
+   ```
+
+2. 后端以 `myuser` 连接 `mqtt_msg_db`（见 `application.properties`），compose 只初始化默认 `postgres` 账户。首次运行需要手动创建：
+
+   ```bash
+   docker exec my_postgis psql -U postgres -c "CREATE ROLE myuser LOGIN PASSWORD 'mypassword';" -c "CREATE DATABASE mqtt_msg_db OWNER myuser;"
+   ```
+
+3. 由 `application-local.properties.example` 复制出 `application-local.properties`，确认 `mqtt.active=local`，填入 `llm.zhipu.api-key`，并设置 `llm.advisory.enabled=true`（系统 advisory 默认关闭）。
+4. 可选：`llm.zhipu.base-url` 可指向兼容接口，用于不产生模型费用的复现。
+5. 模拟器需要 Python 与 `paho-mqtt`。
+
+### 0.3 运行
+
+在三个终端中分别执行：
+
+```bash
+cd backend/map-service && mvn spring-boot:run
+```
+
+```bash
+cd frontend && npm run dev
+```
+
+```bash
+python3 simulator/wuhan_yangtze_ais_simulator.py
+```
+
+### 0.4 观察点
+
+1. 地图打开在武汉长江段，三船出现在江面上。
+2. 对遇目标 `900001222` 的风险等级随接近依次升高到 `ALARM`，会遇结束后回到 `SAFE`；风险卡片和单目标解释随之出现。
+3. 目标进入危险后，右侧出现系统 advisory 卡片，带有效期。
+4. 后端日志中每条 `Advisory triggered: dedup=true targets=[...]` 都对应“目标首次进入危险”或“风险等级升级”，危险持续期间不再重复触发；生成失败时出现 `Advisory retry deferred`（ADR-016）。
+5. 风险等级在阈值附近来回波动时，同一会遇不会重复触发。
+
+### 0.5 限制
+
+- 航线和速度都是合成的。真实 AIS 典型采样间隔约 153 s，本场景 1 Hz 发布，只用于展示实时链路。
+- 规则工具基于 COLREGs Part B；武汉内河实际适用《内河避碰规则》，演示中的规则引用只作示意，不作为让路责任结论。
 
 ## 1. 演示定位
 

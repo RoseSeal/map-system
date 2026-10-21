@@ -9,11 +9,21 @@ Map System ingests vessel data from MQTT, normalizes multi-source inputs into a 
 - 2.5D map visualization
 - SSE risk streaming
 - WebSocket chat and voice interaction
-- LLM-based risk explanation
+- LLM-based risk explanation and proactive advisories (bounded tool-calling agent loop, per-encounter trigger deduplication)
+- Optional learned (GRU) trajectory prediction and historical-case GraphRAG sidecars
 
 ## Architecture
 
 MQTT -> `map-service` -> SSE (`/api/v2/risk`) + WebSocket (`/api/v2/chat`) -> Frontend
+
+Optional sidecars: `trajectory-service` (GRU trajectory prediction, ONNX) and `graphrag-service` (historical case retrieval).
+
+## Demo Scenarios
+
+- Wuhan Yangtze reach (main demo): `simulator/wuhan_yangtze_ais_simulator.py` — head-on and overtaking encounters over satellite imagery, exercising risk escalation and advisories.
+- Jamaica Bay (chart demo): `simulator/jamaica_bay_ais_mqtt_publisher.py` — the area covered by the S-57 chart data (loaded into PostGIS, not shipped in this repository).
+
+See [docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md](./docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md) for setup and run steps.
 
 ## Documentation
 
@@ -28,13 +38,15 @@ Read in this order. Each step narrows scope; do not skip ahead unless you alread
 Secondary references:
 
 - [CURRENT_SYSTEM_OVERVIEW.md](./CURRENT_SYSTEM_OVERVIEW.md) — task-to-file navigation across modules. Use after the above when locating concrete source files.
-- [docs/history/v1.0/README.md](./docs/history/v1.0/README.md) — v1.0 closure summary (what the latest released milestone delivered).
-- [docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md](./docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md) — current demo script.
+- [docs/history/v1.2-trajectory-prediction/README.md](./docs/history/v1.2-trajectory-prediction/README.md) — v1.2 closure summary (latest milestone: learned trajectory prediction).
+- [docs/ADR_AND_REVIEW_FINDINGS.md](./docs/ADR_AND_REVIEW_FINDINGS.md) — architecture decisions and review findings.
+- [docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md](./docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md) — demo setup and script.
 
 ## Tech Stack
 
 - Backend: Java, Spring Boot, MQTT
 - Streaming: SSE, WebSocket
 - Frontend: Vite, TypeScript, MapLibre, Deck.gl, Tailwind
-- LLM / ASR: Gemini, 智谱, `whisper.cpp`
+- LLM / ASR: Zhipu GLM (default), Gemini, `whisper.cpp`
+- Sidecars: Python, FastAPI, ONNX Runtime (GRU), LightRAG
 - Data: PostgreSQL, PostGIS

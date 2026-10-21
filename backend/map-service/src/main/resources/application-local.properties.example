@@ -1,5 +1,7 @@
 mqtt.active=local
 llm.provider=zhipu
+# System advisory is off by default; enable it for the demo
+llm.advisory.enabled=true
 llm.zhipu.api-key=YOUR_ZHIPU_API_KEY
 llm.gemini.api-key=YOUR_GEMINI_API_KEY
 llm.gemini.proxy.enabled=true

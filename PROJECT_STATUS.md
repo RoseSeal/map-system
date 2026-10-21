@@ -1,12 +1,13 @@
 # Project Status
 
-> Last updated: 2026-07-11
+> Last updated: 2026-10-21
 > Role: Pointer-style status entry. Detailed step-level progress is owned by each milestone's plan and step documents, not duplicated here.
 
 ## 1. Current Baseline
 
 - Latest completed milestone: `v1.2-trajectory-prediction` — closed 2026-07-12. A learned GRU predictor, validated on real inland AIS (FDE −28.3%, true-danger miss rate 12.2%→8.6%), now serves the live risk chain behind a feature flag via an ONNX sidecar; replay on real bend encounters reproduced the miss-rate reduction end to end.
 - No active milestone. The project is in showcase/closure mode: remaining work is repository-level closure and interview polish, tracked outside milestone planning.
+- Post-closure increments (2026-10, outside milestone planning): per-encounter advisory trigger deduplication with bounded retry ([ADR-016](./docs/ADR_AND_REVIEW_FINDINGS.md)), Zhipu `glm-4.5-air` as the default provider for all LLM tasks, and a Wuhan Yangtze demo scenario that replaces Jamaica Bay as the main demo (Jamaica Bay remains the S-57 chart demo).
 
 ## 2. Closure References
 

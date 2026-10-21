@@ -12,14 +12,15 @@
 - 明确后端当前实际接收的字段命名与类型
 - 为新增 simulator 场景提供直接可复用的格式基线
 
-本文档描述的是**当前实现契约**，不是未来方案设计。风险 SSE / WebSocket 对外协议见 [`EVENT_SCHEMA.md`](./EVENT_SCHEMA.md)。
+本文档描述的是**当前实现契约**，不是未来方案设计。风险 SSE / WebSocket 对外协议见 [`EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md)。
 
 ## 2. 脚本与 Topic 对照
 
 | 脚本 | 默认 Topic | 消息类别 | 说明 |
 |---|---|---|---|
-| [`../simulator/ais_simulator.py`](../simulator/ais_simulator.py) | `usv/AisMessage` | AIS | 武汉演示区域连续航迹 |
-| [`../simulator/jamaica_bay_ais_mqtt_publisher.py`](../simulator/jamaica_bay_ais_mqtt_publisher.py) | `usv/AisMessage` | AIS | Jamaica Bay 演示航迹 |
+| [`../simulator/wuhan_yangtze_ais_simulator.py`](../simulator/wuhan_yangtze_ais_simulator.py) | `usv/AisMessage` | AIS | 主演示场景：武汉长江段对遇 + 追越，单次跑完自动退出 |
+| [`../simulator/ais_simulator.py`](../simulator/ais_simulator.py) | `usv/AisMessage` | AIS | 武汉演示区域连续航迹；其几何工具函数被武汉长江模拟器复用 |
+| [`../simulator/jamaica_bay_ais_mqtt_publisher.py`](../simulator/jamaica_bay_ais_mqtt_publisher.py) | `usv/AisMessage` | AIS | Jamaica Bay 演示航迹（S-57 海图数据覆盖区域） |
 | [`../simulator/step3_frontend_ais_mqtt_publisher.py`](../simulator/step3_frontend_ais_mqtt_publisher.py) | `usv/AisMessage` | AIS | 前端 Step 3 测试场景，含低置信度脉冲与异常航向值 |
 | [`../simulator/llm_smoke_test_publisher.py`](../simulator/llm_smoke_test_publisher.py) | `usv/AisMessage` | AIS | LLM smoke test 最小场景 |
 | [`../simulator/cpaTcapTest.py`](../simulator/cpaTcapTest.py) | `usv/AisMessage` | AIS | CSV 回放 |
@@ -282,4 +283,4 @@
 - [`../simulator/llm_smoke_test_publisher.py`](../simulator/llm_smoke_test_publisher.py)
 - [`../simulator/cpaTcapTest.py`](../simulator/cpaTcapTest.py)
 - [`../simulator/weather_mqtt_publisher.py`](../simulator/weather_mqtt_publisher.py)
-- [`./EVENT_SCHEMA.md`](./EVENT_SCHEMA.md)
+- [`./EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md)

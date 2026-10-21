@@ -1,7 +1,7 @@
 # Docs Index
 
 > 文档状态：current
-> 最后更新：2026-07-12
+> 最后更新：2026-10-21
 > 用途：为 `docs/` 提供入口索引，并明确"当前真值 / 规划 / 历史归档"的边界。
 
 ## 0. 阅读顺序
@@ -34,7 +34,7 @@
 
 说明：
 
-- 当前无活跃 milestone；v1.2-trajectory-prediction 已于 2026-07-12 收口，归档与 closure summary 见 [`history/v1.2-trajectory-prediction/README.md`](./history/v1.2-trajectory-prediction/README.md)。
+- 当前无活跃 milestone；2026-10 的 milestone 外增量（advisory 会遇级去重 ADR-016、智谱默认路由、武汉演示场景）直接收口到当前真值文档。v1.2-trajectory-prediction 已于 2026-07-12 收口，归档与 closure summary 见 [`history/v1.2-trajectory-prediction/README.md`](./history/v1.2-trajectory-prediction/README.md)。
 - v1.1-graphrag milestone 已于 2026-07-01 收口；归档与 closure summary 见 [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)。
 - v1.0 milestone 已于 2026-05-07 收口；归档与 closure summary 见 [`history/v1.0/README.md`](./history/v1.0/README.md)。
 - 未冻结的规划项继续收口到 `TODO.md`。
@@ -54,7 +54,7 @@
 
 ## 4.5 演示材料
 
-- [`demo/MAP_SYSTEM_DEMO_SCRIPT.md`](./demo/MAP_SYSTEM_DEMO_SCRIPT.md)：当前 v1.0 演示脚本，配合外部 AIS 模拟源使用。
+- [`demo/MAP_SYSTEM_DEMO_SCRIPT.md`](./demo/MAP_SYSTEM_DEMO_SCRIPT.md)：演示脚本。§0 为当前主演示（武汉长江段，仓库内模拟器）；§1 起为 v1.0 视频脚本（外部 AIS 模拟源，海图能力以 Jamaica Bay 为准）。
 
 ## 5. 维护规则
 

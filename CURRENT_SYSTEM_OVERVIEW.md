@@ -1,6 +1,6 @@
 # CURRENT_SYSTEM_OVERVIEW
 
-> Last updated: 2026-07-12 (v1.2 closure: learned trajectory prediction lookup added)
+> Last updated: 2026-10-21 (advisory trigger tracker, Wuhan demo simulator, compose services)
 > Purpose: Task-to-file navigation across modules. Use when you already know the area and need to locate concrete source files.
 > Position in reading order: **not the first stop**. Read [`README.md`](./README.md) → [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) → [`docs/README.md`](./docs/README.md) → [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) first.
 
@@ -20,7 +20,7 @@ This file is intentionally compact. Module-level rationale and architectural dec
 - [simulator](simulator) — Python AIS / weather publishers
 - [docs](docs) — current truth, decisions, history
 - [scripts](scripts) — repo-side utilities
-- [compose.yaml](compose.yaml) — local services (MQTT, PostGIS, Whisper)
+- [compose.yaml](compose.yaml) — local services (MQTT, PostGIS, Whisper; optional `trajectory-predictor` and `graphrag` sidecars)
 
 ## 3. Backend Services
 
@@ -131,6 +131,7 @@ Agent loop and tools (v1.0):
 - [backend/map-service/.../llm/agent/AgentLoopOrchestrator.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/agent/AgentLoopOrchestrator.java)
 - [backend/map-service/.../llm/agent/AgentSnapshotFactory.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/agent/AgentSnapshotFactory.java)
 - [backend/map-service/.../llm/agent/tool/AgentToolRegistry.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/agent/tool/AgentToolRegistry.java)
+- [backend/map-service/.../llm/agent/trigger/SceneRiskStateTracker.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/agent/trigger/SceneRiskStateTracker.java) — per-encounter advisory trigger dedup and retry backoff (ADR-016)
 - [backend/map-service/.../llm/agent/advisory/AdvisoryService.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/agent/advisory/AdvisoryService.java)
 - [backend/map-service/.../llm/agent/graph/GraphQueryPort.java](backend/map-service/src/main/java/com/whut/map/map_service/llm/agent/graph/GraphQueryPort.java)
 
@@ -155,7 +156,8 @@ Frontend map rendering:
 - [frontend/src/config/layerStyles.ts](frontend/src/config/layerStyles.ts)
 
 Simulator entry points:
-- [simulator/jamaica_bay_ais_mqtt_publisher.py](simulator/jamaica_bay_ais_mqtt_publisher.py)
+- [simulator/wuhan_yangtze_ais_simulator.py](simulator/wuhan_yangtze_ais_simulator.py) — main demo scenario (Wuhan Yangtze reach)
+- [simulator/jamaica_bay_ais_mqtt_publisher.py](simulator/jamaica_bay_ais_mqtt_publisher.py) — chart demo scenario (S-57 coverage area)
 - [simulator/llm_smoke_test_publisher.py](simulator/llm_smoke_test_publisher.py)
 
 Docs consistency tooling:
