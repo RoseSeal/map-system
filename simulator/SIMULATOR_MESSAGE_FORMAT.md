@@ -21,9 +21,8 @@
 | [`../simulator/wuhan_yangtze_ais_simulator.py`](../simulator/wuhan_yangtze_ais_simulator.py) | `usv/AisMessage` | AIS | 主演示场景：武汉长江段对遇 + 追越，单次跑完自动退出 |
 | [`../simulator/ais_simulator.py`](../simulator/ais_simulator.py) | `usv/AisMessage` | AIS | 武汉演示区域连续航迹；其几何工具函数被武汉长江模拟器复用 |
 | [`../simulator/jamaica_bay_ais_mqtt_publisher.py`](../simulator/jamaica_bay_ais_mqtt_publisher.py) | `usv/AisMessage` | AIS | Jamaica Bay 演示航迹（S-57 海图数据覆盖区域） |
-| [`../simulator/step3_frontend_ais_mqtt_publisher.py`](../simulator/step3_frontend_ais_mqtt_publisher.py) | `usv/AisMessage` | AIS | 前端 Step 3 测试场景，含低置信度脉冲与异常航向值 |
 | [`../simulator/llm_smoke_test_publisher.py`](../simulator/llm_smoke_test_publisher.py) | `usv/AisMessage` | AIS | LLM smoke test 最小场景 |
-| [`../simulator/cpaTcapTest.py`](../simulator/cpaTcapTest.py) | `usv/AisMessage` | AIS | CSV 回放 |
+| [`../simulator/csv_ais_replay_publisher.py`](../simulator/csv_ais_replay_publisher.py) | `usv/AisMessage` | AIS | 真实 AIS CSV 逐行回放（固定间隔，不还原原始时间间隔） |
 | [`../simulator/weather_mqtt_publisher.py`](../simulator/weather_mqtt_publisher.py) | `usv/Weather` | Weather | 天气快照与区域天气 |
 | [`../simulator/mqtt_publisher_base.py`](../simulator/mqtt_publisher_base.py) | 由调用方指定 | 基础设施 | MQTT 连接、循环与发布基类 |
 
@@ -45,7 +44,7 @@
 ### 3.3 类型约束
 
 - 新增脚本应优先输出 JSON number，而不是把数值字段编码为 JSON string。
-- 现有 [`../simulator/cpaTcapTest.py`](../simulator/cpaTcapTest.py) 为 CSV 兼容路径，会把 CSV 原始值直接写入 JSON；后端当前依赖 Jackson 类型转换进行兼容解析。
+- 现有 [`../simulator/csv_ais_replay_publisher.py`](../simulator/csv_ais_replay_publisher.py) 为 CSV 兼容路径，会把 CSV 原始值直接写入 JSON；后端当前依赖 Jackson 类型转换进行兼容解析。
 - 新增脚本不应在 payload 中增加自定义包裹层，例如 `{ "topic": "...", "data": { ... } }`；当前后端 DTO 不按此结构接收。
 
 ## 4. AIS 消息格式
@@ -72,7 +71,7 @@
 - `MSGTIME` 当前为**无时区**本地时间字符串；AIS 模拟器脚本使用 `datetime.now()` 生成，后端按 `LocalDateTime` 解析。
 - `LAT` 与 `LON` 在当前脚本中均按十进制度表示。
 - `COG` 与 `HEADING` 在正常场景下使用 `[0, 360)` 范围内值。
-- [`../simulator/step3_frontend_ais_mqtt_publisher.py`](../simulator/step3_frontend_ais_mqtt_publisher.py) 存在两个显式兼容特例：
+- 后端兼容两个 AIS 哨兵值：
   - `COG = 360.0`：用于表示无效 course，驱动 encounter type 退化为 `UNDEFINED`
   - `HEADING = 511.0`：用于表示未知 heading，沿用 AIS 协议常见哨兵值
 
@@ -106,7 +105,7 @@
 
 ### 4.6 CSV 回放映射
 
-[`../simulator/cpaTcapTest.py`](../simulator/cpaTcapTest.py) 从 CSV 读取后按如下字段映射输出：
+[`../simulator/csv_ais_replay_publisher.py`](../simulator/csv_ais_replay_publisher.py) 从 CSV 读取后按如下字段映射输出：
 
 | MQTT 字段 | CSV 列名 |
 |---|---|
@@ -279,8 +278,7 @@
 - [`../simulator/mqtt_publisher_base.py`](../simulator/mqtt_publisher_base.py)
 - [`../simulator/ais_simulator.py`](../simulator/ais_simulator.py)
 - [`../simulator/jamaica_bay_ais_mqtt_publisher.py`](../simulator/jamaica_bay_ais_mqtt_publisher.py)
-- [`../simulator/step3_frontend_ais_mqtt_publisher.py`](../simulator/step3_frontend_ais_mqtt_publisher.py)
 - [`../simulator/llm_smoke_test_publisher.py`](../simulator/llm_smoke_test_publisher.py)
-- [`../simulator/cpaTcapTest.py`](../simulator/cpaTcapTest.py)
+- [`../simulator/csv_ais_replay_publisher.py`](../simulator/csv_ais_replay_publisher.py)
 - [`../simulator/weather_mqtt_publisher.py`](../simulator/weather_mqtt_publisher.py)
-- [`./EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md)
+- [`../docs/EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md)

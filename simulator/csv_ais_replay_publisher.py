@@ -6,7 +6,6 @@ from typing import Iterator
 from mqtt_publisher_base import BaseMqttPublisher, MqttConfig
 
 TOPIC = "usv/AisMessage"
-DEFAULT_CSV_PATH = "/mnt/d/archive_old_projects/Project_backup/data/AIS_data/NBSDC data/ais_data.csv"
 
 
 class CsvAisReplayPublisher(BaseMqttPublisher):
@@ -56,7 +55,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=1883, help="MQTT broker port")
     parser.add_argument("--topic", default=TOPIC, help="MQTT topic")
     parser.add_argument("--interval", type=float, default=0.5, help="Publish interval in seconds")
-    parser.add_argument("--csv", default=DEFAULT_CSV_PATH, help="AIS CSV file path")
+    parser.add_argument("--csv", required=True, help="AIS CSV file path")
     parser.add_argument("--username", default=None, help="MQTT username")
     parser.add_argument("--password", default=None, help="MQTT password")
     args = parser.parse_args()
