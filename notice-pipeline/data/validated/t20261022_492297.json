@@ -1,0 +1,295 @@
+{
+  "notice_id": "t20261022_492297",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261022_492297.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕229号",
+  "published_at": "2026-10-22T17:44:00+08:00",
+  "source_item_count": 6,
+  "llm_item_count": 6,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、10月22日09:59设置湖广水道叶家洲#1白浮，自观音山测点测点起，方位35.2度，距离2.38千米，灯质绿色单闪光，2000国家大地坐标系地理坐标30°34′41″.7N、114°39′40″.3E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "10月22日09:59",
+          "evidence": "10月22日09:59设置"
+        },
+        "waterway": {
+          "value": "湖广水道",
+          "evidence": "湖广水道叶家洲#1白浮"
+        },
+        "aton_name": {
+          "value": "叶家洲#1白浮",
+          "evidence": "叶家洲#1白浮"
+        },
+        "position_raw": {
+          "value": "30°34′41″.7N、114°39′40″.3E",
+          "evidence": "2000国家大地坐标系地理坐标30°34′41″.7N、114°39′40″.3E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.6611944,
+        "lat": 30.57825
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.6611944,
+          "lat": 30.57825
+        }
+      ],
+      "effective_at": "2026-10-22T09:59:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "2、10月22日10:04设置牧鹅洲水道叶家洲#2白浮，自观音山测点测点起，方位315.0度，距离1.19千米，灯质绿色单闪光，2000国家大地坐标系地理坐标30°34′5″.1N、114°38′24″.6E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "10月22日10:04",
+          "evidence": "10月22日10:04设置"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道叶家洲#2白浮"
+        },
+        "aton_name": {
+          "value": "叶家洲#2白浮",
+          "evidence": "叶家洲#2白浮"
+        },
+        "position_raw": {
+          "value": "30°34′5″.1N、114°38′24″.6E",
+          "evidence": "2000国家大地坐标系地理坐标30°34′5″.1N、114°38′24″.6E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.6401667,
+        "lat": 30.5680833
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.6401667,
+          "lat": 30.5680833
+        }
+      ],
+      "effective_at": "2026-10-22T10:04:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 3,
+      "source_index": 2,
+      "source_text": "3、10月22日10:08设置牧鹅洲水道叶家洲#3白浮，自观音山测点测点起，方位297.4度，距离1.15千米，灯质绿色单闪光，2000国家大地坐标系地理坐标30°33′55″.1N、114°38′16″.7E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "10月22日10:08",
+          "evidence": "10月22日10:08设置"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道叶家洲#3白浮"
+        },
+        "aton_name": {
+          "value": "叶家洲#3白浮",
+          "evidence": "叶家洲#3白浮"
+        },
+        "position_raw": {
+          "value": "30°33′55″.1N、114°38′16″.7E",
+          "evidence": "2000国家大地坐标系地理坐标30°33′55″.1N、114°38′16″.7E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.6379722,
+        "lat": 30.5653056
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.6379722,
+          "lat": 30.5653056
+        }
+      ],
+      "effective_at": "2026-10-22T10:08:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 4,
+      "source_index": 3,
+      "source_text": "1、10月22日09:57撤除湖广水道叶家洲白浮。",
+      "fields": {
+        "action": {
+          "value": "REMOVE",
+          "evidence": "撤除"
+        },
+        "effective_time": {
+          "value": "10月22日09:57",
+          "evidence": "10月22日09:57撤除"
+        },
+        "waterway": {
+          "value": "湖广水道",
+          "evidence": "湖广水道叶家洲白浮"
+        },
+        "aton_name": {
+          "value": "叶家洲白浮",
+          "evidence": "叶家洲白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-22T09:57:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 5,
+      "source_index": 4,
+      "source_text": "2、10月22日10:03撤除牧鹅洲水道阳逻二水厂施#1白浮。",
+      "fields": {
+        "action": {
+          "value": "REMOVE",
+          "evidence": "撤除"
+        },
+        "effective_time": {
+          "value": "10月22日10:03",
+          "evidence": "10月22日10:03撤除"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道阳逻二水厂施#1白浮"
+        },
+        "aton_name": {
+          "value": "阳逻二水厂施#1白浮",
+          "evidence": "阳逻二水厂施#1白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-22T10:03:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 6,
+      "source_index": 5,
+      "source_text": "3、10月22日10:07撤除牧鹅洲水道阳逻二水厂施#2白浮。",
+      "fields": {
+        "action": {
+          "value": "REMOVE",
+          "evidence": "撤除"
+        },
+        "effective_time": {
+          "value": "10月22日10:07",
+          "evidence": "10月22日10:07撤除"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道阳逻二水厂施#2白浮"
+        },
+        "aton_name": {
+          "value": "阳逻二水厂施#2白浮",
+          "evidence": "阳逻二水厂施#2白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-22T10:07:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

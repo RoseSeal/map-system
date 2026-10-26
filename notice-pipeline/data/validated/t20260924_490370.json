@@ -1,0 +1,727 @@
+{
+  "notice_id": "t20260924_490370",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260924_490370.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕210号",
+  "published_at": "2026-09-24T17:32:00+08:00",
+  "source_item_count": 14,
+  "llm_item_count": 14,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、09月24日15:30设置青山夹水道天兴洲桥#1白浮（虚拟）电子航道图虚拟航标，位置：30°39′38″.8N，114°24′14″.3E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道天兴洲桥#1白浮"
+        },
+        "aton_name": {
+          "value": "天兴洲桥#1白浮",
+          "evidence": "天兴洲桥#1白浮"
+        },
+        "position_raw": {
+          "value": "30°39′38″.8N，114°24′14″.3E",
+          "evidence": "位置：30°39′38″.8N，114°24′14″.3E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.4039722,
+        "lat": 30.6607778
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.4039722,
+          "lat": 30.6607778
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "2、09月24日15:30设置青山夹水道天兴洲桥#1红浮（虚拟）电子航道图虚拟航标，位置：30°39′26″.6N，114°24′15″.5E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道天兴洲桥#1红浮"
+        },
+        "aton_name": {
+          "value": "天兴洲桥#1红浮",
+          "evidence": "天兴洲桥#1红浮"
+        },
+        "position_raw": {
+          "value": "30°39′26″.6N，114°24′15″.5E",
+          "evidence": "位置：30°39′26″.6N，114°24′15″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.4043056,
+        "lat": 30.6573889
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.4043056,
+          "lat": 30.6573889
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 3,
+      "source_index": 2,
+      "source_text": "3、09月24日15:30设置武桥水道鹦鹉洲桥#2白浮（虚拟）电子航道图虚拟航标，位置：30°32′8″.9N，114°16′9″.3E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "武桥水道",
+          "evidence": "武桥水道鹦鹉洲桥#2白浮"
+        },
+        "aton_name": {
+          "value": "鹦鹉洲桥#2白浮",
+          "evidence": "鹦鹉洲桥#2白浮"
+        },
+        "position_raw": {
+          "value": "30°32′8″.9N，114°16′9″.3E",
+          "evidence": "位置：30°32′8″.9N，114°16′9″.3E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.26925,
+        "lat": 30.5358056
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.26925,
+          "lat": 30.5358056
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 4,
+      "source_index": 3,
+      "source_text": "4、09月24日15:30设置武桥水道鹦鹉洲桥#2红危浮（虚拟）电子航道图虚拟航标，位置：30°31′58″.0N，114°16′22″.6E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "武桥水道",
+          "evidence": "武桥水道鹦鹉洲桥#2红危浮"
+        },
+        "aton_name": {
+          "value": "鹦鹉洲桥#2红危浮",
+          "evidence": "鹦鹉洲桥#2红危浮"
+        },
+        "position_raw": {
+          "value": "30°31′58″.0N，114°16′22″.6E",
+          "evidence": "位置：30°31′58″.0N，114°16′22″.6E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.2729444,
+        "lat": 30.5327778
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.2729444,
+          "lat": 30.5327778
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 5,
+      "source_index": 4,
+      "source_text": "5、09月24日15:30设置汉口水道武汉二桥#1红浮（虚拟）电子航道图虚拟航标，位置：30°36′21″.3N，114°19′22″.2E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道武汉二桥#1红浮"
+        },
+        "aton_name": {
+          "value": "武汉二桥#1红浮",
+          "evidence": "武汉二桥#1红浮"
+        },
+        "position_raw": {
+          "value": "30°36′21″.3N，114°19′22″.2E",
+          "evidence": "位置：30°36′21″.3N，114°19′22″.2E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.3228333,
+        "lat": 30.6059167
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3228333,
+          "lat": 30.6059167
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 6,
+      "source_index": 5,
+      "source_text": "6、09月24日15:30设置汉口水道武汉二桥#2红浮（虚拟）电子航道图虚拟航标，位置：30°36′8″.6N，114°19′12″.0E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道武汉二桥#2红浮"
+        },
+        "aton_name": {
+          "value": "武汉二桥#2红浮",
+          "evidence": "武汉二桥#2红浮"
+        },
+        "position_raw": {
+          "value": "30°36′8″.6N，114°19′12″.0E",
+          "evidence": "位置：30°36′8″.6N，114°19′12″.0E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.32,
+        "lat": 30.6023889
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.32,
+          "lat": 30.6023889
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 7,
+      "source_index": 6,
+      "source_text": "7、09月24日15:30设置汉口水道二七桥#1红浮（虚拟）电子航道图虚拟航标，位置：30°37′47″.8N，114°21′10″.4E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道二七桥#1红浮"
+        },
+        "aton_name": {
+          "value": "二七桥#1红浮",
+          "evidence": "二七桥#1红浮"
+        },
+        "position_raw": {
+          "value": "30°37′47″.8N，114°21′10″.4E",
+          "evidence": "位置：30°37′47″.8N，114°21′10″.4E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.3528889,
+        "lat": 30.6299444
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3528889,
+          "lat": 30.6299444
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 8,
+      "source_index": 7,
+      "source_text": "8、09月24日15:30设置汉口水道二七桥#2红浮（虚拟）电子航道图虚拟航标，位置：30°37′36″.7N，114°20′53″.5E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道二七桥#2红浮"
+        },
+        "aton_name": {
+          "value": "二七桥#2红浮",
+          "evidence": "二七桥#2红浮"
+        },
+        "position_raw": {
+          "value": "30°37′36″.7N，114°20′53″.5E",
+          "evidence": "位置：30°37′36″.7N，114°20′53″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.3481944,
+        "lat": 30.6268611
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3481944,
+          "lat": 30.6268611
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 9,
+      "source_index": 8,
+      "source_text": "9、09月24日15:30设置青山夹水道青山桥#1红浮（虚拟）电子航道图虚拟航标，位置：30°40′46″.9N，114°28′23″.9E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道青山桥#1红浮"
+        },
+        "aton_name": {
+          "value": "青山桥#1红浮",
+          "evidence": "青山桥#1红浮"
+        },
+        "position_raw": {
+          "value": "30°40′46″.9N，114°28′23″.9E",
+          "evidence": "位置：30°40′46″.9N，114°28′23″.9E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.4733056,
+        "lat": 30.6796944
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.4733056,
+          "lat": 30.6796944
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 10,
+      "source_index": 9,
+      "source_text": "10、09月24日15:30设置青山夹水道青山桥#1白浮（虚拟）电子航道图虚拟航标，位置：30°41′3″.3N，114°28′16″.4E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月24日15:30",
+          "evidence": "09月24日15:30设置"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道青山桥#1白浮"
+        },
+        "aton_name": {
+          "value": "青山桥#1白浮",
+          "evidence": "青山桥#1白浮"
+        },
+        "position_raw": {
+          "value": "30°41′3″.3N，114°28′16″.4E",
+          "evidence": "位置：30°41′3″.3N，114°28′16″.4E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.4712222,
+        "lat": 30.68425
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.4712222,
+          "lat": 30.68425
+        }
+      ],
+      "effective_at": "2026-09-24T15:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 11,
+      "source_index": 10,
+      "source_text": "1、09月24日09:51巴河水道燕矶#1白浮，位置调整为自龙王矶测点起，方位67.4度，距离1.9千米；2000国家大地坐标系地理坐标30°24′24″.8N、115°0′6″.1E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月24日09:51",
+          "evidence": "09月24日09:51巴河水道燕矶#1白浮，位置调整为"
+        },
+        "waterway": {
+          "value": "巴河水道",
+          "evidence": "巴河水道燕矶#1白浮"
+        },
+        "aton_name": {
+          "value": "燕矶#1白浮",
+          "evidence": "燕矶#1白浮"
+        },
+        "position_raw": {
+          "value": "30°24′24″.8N、115°0′6″.1E",
+          "evidence": "2000国家大地坐标系地理坐标30°24′24″.8N、115°0′6″.1E"
+        },
+        "position_text": {
+          "value": "自龙王矶测点起，方位67.4度，距离1.9千米",
+          "evidence": "位置调整为自龙王矶测点起，方位67.4度，距离1.9千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.0016944,
+        "lat": 30.4068889
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.0016944,
+          "lat": 30.4068889
+        }
+      ],
+      "effective_at": "2026-09-24T09:51:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 12,
+      "source_index": 11,
+      "source_text": "2、09月24日11:20金口水道铁板洲#6白浮（虚拟）电子航道图虚拟航标，位置调整为30°18′39″.2N，114°5′33″.1E",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月24日11:20",
+          "evidence": "09月24日11:20金口水道铁板洲#6白浮（虚拟）电子航道图虚拟航标，位置调整为"
+        },
+        "waterway": {
+          "value": "金口水道",
+          "evidence": "金口水道铁板洲#6白浮"
+        },
+        "aton_name": {
+          "value": "铁板洲#6白浮",
+          "evidence": "铁板洲#6白浮"
+        },
+        "position_raw": {
+          "value": "30°18′39″.2N，114°5′33″.1E",
+          "evidence": "位置调整为30°18′39″.2N，114°5′33″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.0925278,
+        "lat": 30.3108889
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.0925278,
+          "lat": 30.3108889
+        }
+      ],
+      "effective_at": "2026-09-24T11:20:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 13,
+      "source_index": 12,
+      "source_text": "3、09月24日16:26沌口水道沌口桥#2白浮（虚拟）电子航道图虚拟航标，位置调整为30°26′0″.1N，114°10′53″.82E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月24日16:26",
+          "evidence": "09月24日16:26沌口水道沌口桥#2白浮（虚拟）电子航道图虚拟航标，位置调整为"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道沌口桥#2白浮"
+        },
+        "aton_name": {
+          "value": "沌口桥#2白浮",
+          "evidence": "沌口桥#2白浮"
+        },
+        "position_raw": {
+          "value": "30°26′0″.1N，114°10′53″.82E",
+          "evidence": "位置调整为30°26′0″.1N，114°10′53″.82E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.1816167,
+        "lat": 30.4333611
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.1816167,
+          "lat": 30.4333611
+        }
+      ],
+      "effective_at": "2026-09-24T16:26:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 14,
+      "source_index": 13,
+      "source_text": "4、09月24日16:28沌口水道沌口桥#1白浮（虚拟）电子航道图虚拟航标，位置调整为30°26′27″.3N，114°11′7″.1E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月24日16:28",
+          "evidence": "09月24日16:28沌口水道沌口桥#1白浮（虚拟）电子航道图虚拟航标，位置调整为"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道沌口桥#1白浮"
+        },
+        "aton_name": {
+          "value": "沌口桥#1白浮",
+          "evidence": "沌口桥#1白浮"
+        },
+        "position_raw": {
+          "value": "30°26′27″.3N，114°11′7″.1E",
+          "evidence": "位置调整为30°26′27″.3N，114°11′7″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.1853056,
+        "lat": 30.4409167
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.1853056,
+          "lat": 30.4409167
+        }
+      ],
+      "effective_at": "2026-09-24T16:28:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

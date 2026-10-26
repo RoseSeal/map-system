@@ -1,0 +1,384 @@
+{
+  "notice_id": "t20260916_489827",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日07:55\",\"evidence\":\"09月16日07:55\"},\"waterway\":{\"value\":\"龙口水道\",\"evidence\":\"龙口水道\"},\"aton_name\":{\"value\":\"龙口#1白浮\",\"evidence\":\"龙口#1白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程140.4千米，左岸\",\"evidence\":\"长江中游航道里程140.4千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日09:29\",\"evidence\":\"09月16日09:29\"},\"waterway\":{\"value\":\"青山夹水道\",\"evidence\":\"青山夹水道\"},\"aton_name\":{\"value\":\"天兴洲整治#1禁止抛锚浮\",\"evidence\":\"天兴洲整治#1禁止抛锚浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°39′25″.1N、114°23′17″.4E\",\"evidence\":\"30°39′25″.1N、114°23′17″.4E\"},\"position_text\":{\"value\":\"自青山测点起，方位272.9度，距离2.7千米\",\"evidence\":\"自青山测点起，方位272.9度，距离2.7千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日09:41\",\"evidence\":\"09月16日09:41\"},\"waterway\":{\"value\":\"青山夹水道\",\"evidence\":\"青山夹水道\"},\"aton_name\":{\"value\":\"天兴洲桥进口白浮\",\"evidence\":\"天兴洲桥进口白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°38′59″.4N、114°22′35″.4E\",\"evidence\":\"30°38′59″.4N、114°22′35″.4E\"},\"position_text\":{\"value\":\"自青山测点起，方位261.8度，距离3.86千米\",\"evidence\":\"自青山测点起，方位261.8度，距离3.86千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日10:00\",\"evidence\":\"09月16日10:00\"},\"waterway\":{\"value\":\"青山夹水道\",\"evidence\":\"青山夹水道\"},\"aton_name\":{\"value\":\"青山夹上口白浮\",\"evidence\":\"青山夹上口白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°38′29″.9N、114°21′44″.9E\",\"evidence\":\"30°38′29″.9N、114°21′44″.9E\"},\"position_text\":{\"value\":\"自余家头测点起，方位40.2度，距离3.48千米\",\"evidence\":\"自余家头测点起，方位40.2度，距离3.48千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日10:16\",\"evidence\":\"09月16日10:16\"},\"waterway\":{\"value\":\"汉口水道\",\"evidence\":\"汉口水道\"},\"aton_name\":{\"value\":\"二七桥#1白浮\",\"evidence\":\"二七桥#1白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°37′58″.3N、114°21′0″.4E\",\"evidence\":\"30°37′58″.3N、114°21′0″.4E\"},\"position_text\":{\"value\":\"自余家头测点起，方位28.6度，距离2.03千米\",\"evidence\":\"自余家头测点起，方位28.6度，距离2.03千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日10:29\",\"evidence\":\"09月16日10:29\"},\"waterway\":{\"value\":\"汉口水道\",\"evidence\":\"汉口水道\"},\"aton_name\":{\"value\":\"二七桥#2白浮\",\"evidence\":\"二七桥#2白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°37′44″.7N、114°20′41″.3E\",\"evidence\":\"30°37′44″.7N、114°20′41″.3E\"},\"position_text\":{\"value\":\"自余家头测点起，方位16.3度，距离1.46千米\",\"evidence\":\"自余家头测点起，方位16.3度，距离1.46千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日10:44\",\"evidence\":\"09月16日10:44\"},\"waterway\":{\"value\":\"汉口水道\",\"evidence\":\"汉口水道\"},\"aton_name\":{\"value\":\"二七桥#3白浮\",\"evidence\":\"二七桥#3白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°37′25″.4N、114°20′16″.2E\",\"evidence\":\"30°37′25″.4N、114°20′16″.2E\"},\"position_text\":{\"value\":\"自余家头测点起，方位336.1度，距离0.88千米\",\"evidence\":\"自余家头测点起，方位336.1度，距离0.88千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日10:55\",\"evidence\":\"09月16日10:55\"},\"waterway\":{\"value\":\"汉口水道\",\"evidence\":\"汉口水道\"},\"aton_name\":{\"value\":\"二七桥#4白浮\",\"evidence\":\"二七桥#4白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°37′7″.5N、114°19′49″.7E\",\"evidence\":\"30°37′7″.5N、114°19′49″.7E\"},\"position_text\":{\"value\":\"自余家头测点起，方位282.8度，距离1.05千米\",\"evidence\":\"自余家头测点起，方位282.8度，距离1.05千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日14:47\",\"evidence\":\"09月16日14:47\"},\"waterway\":{\"value\":\"牧鹅洲水道\",\"evidence\":\"牧鹅洲水道\"},\"aton_name\":{\"value\":\"牧鹅洲下口白浮\",\"evidence\":\"牧鹅洲下口白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°33′30″.9N、114°37′50″.8E\",\"evidence\":\"30°33′30″.9N、114°37′50″.8E\"},\"position_text\":{\"value\":\"自观音山测点起，方位265.4度，距离1.68千米\",\"evidence\":\"自观音山测点起，方位265.4度，距离1.68千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日15:16\",\"evidence\":\"09月16日15:16\"},\"waterway\":{\"value\":\"牧鹅洲水道\",\"evidence\":\"牧鹅洲水道\"},\"aton_name\":{\"value\":\"牧鹅洲#1白浮\",\"evidence\":\"牧鹅洲#1白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°33′24″.7N、114°37′15″.2E\",\"evidence\":\"30°33′24″.7N、114°37′15″.2E\"},\"position_text\":{\"value\":\"自白浒山测点起，方位84.9度，距离2.48千米\",\"evidence\":\"自白浒山测点起，方位84.9度，距离2.48千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日16:50\",\"evidence\":\"09月16日16:50\"},\"waterway\":{\"value\":\"阳逻水道\",\"evidence\":\"阳逻水道\"},\"aton_name\":{\"value\":\"阳逻红浮\",\"evidence\":\"阳逻红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°40′15″.3N、114°32′8″.7E\",\"evidence\":\"30°40′15″.3N、114°32′8″.7E\"},\"position_text\":{\"value\":\"自阳逻测点起，方位300.3度，距离1.97千米\",\"evidence\":\"自阳逻测点起，方位300.3度，距离1.97千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日07:55",
+          "evidence": "09月16日07:55"
+        },
+        "waterway": {
+          "value": "龙口水道",
+          "evidence": "龙口水道"
+        },
+        "aton_name": {
+          "value": "龙口#1白浮",
+          "evidence": "龙口#1白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程140.4千米，左岸",
+          "evidence": "长江中游航道里程140.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日09:29",
+          "evidence": "09月16日09:29"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道"
+        },
+        "aton_name": {
+          "value": "天兴洲整治#1禁止抛锚浮",
+          "evidence": "天兴洲整治#1禁止抛锚浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°39′25″.1N、114°23′17″.4E",
+          "evidence": "30°39′25″.1N、114°23′17″.4E"
+        },
+        "position_text": {
+          "value": "自青山测点起，方位272.9度，距离2.7千米",
+          "evidence": "自青山测点起，方位272.9度，距离2.7千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日09:41",
+          "evidence": "09月16日09:41"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道"
+        },
+        "aton_name": {
+          "value": "天兴洲桥进口白浮",
+          "evidence": "天兴洲桥进口白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°38′59″.4N、114°22′35″.4E",
+          "evidence": "30°38′59″.4N、114°22′35″.4E"
+        },
+        "position_text": {
+          "value": "自青山测点起，方位261.8度，距离3.86千米",
+          "evidence": "自青山测点起，方位261.8度，距离3.86千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:00",
+          "evidence": "09月16日10:00"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道"
+        },
+        "aton_name": {
+          "value": "青山夹上口白浮",
+          "evidence": "青山夹上口白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°38′29″.9N、114°21′44″.9E",
+          "evidence": "30°38′29″.9N、114°21′44″.9E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位40.2度，距离3.48千米",
+          "evidence": "自余家头测点起，方位40.2度，距离3.48千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:16",
+          "evidence": "09月16日10:16"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道"
+        },
+        "aton_name": {
+          "value": "二七桥#1白浮",
+          "evidence": "二七桥#1白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°37′58″.3N、114°21′0″.4E",
+          "evidence": "30°37′58″.3N、114°21′0″.4E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位28.6度，距离2.03千米",
+          "evidence": "自余家头测点起，方位28.6度，距离2.03千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:29",
+          "evidence": "09月16日10:29"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道"
+        },
+        "aton_name": {
+          "value": "二七桥#2白浮",
+          "evidence": "二七桥#2白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°37′44″.7N、114°20′41″.3E",
+          "evidence": "30°37′44″.7N、114°20′41″.3E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位16.3度，距离1.46千米",
+          "evidence": "自余家头测点起，方位16.3度，距离1.46千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:44",
+          "evidence": "09月16日10:44"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道"
+        },
+        "aton_name": {
+          "value": "二七桥#3白浮",
+          "evidence": "二七桥#3白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°37′25″.4N、114°20′16″.2E",
+          "evidence": "30°37′25″.4N、114°20′16″.2E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位336.1度，距离0.88千米",
+          "evidence": "自余家头测点起，方位336.1度，距离0.88千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:55",
+          "evidence": "09月16日10:55"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道"
+        },
+        "aton_name": {
+          "value": "二七桥#4白浮",
+          "evidence": "二七桥#4白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°37′7″.5N、114°19′49″.7E",
+          "evidence": "30°37′7″.5N、114°19′49″.7E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位282.8度，距离1.05千米",
+          "evidence": "自余家头测点起，方位282.8度，距离1.05千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日14:47",
+          "evidence": "09月16日14:47"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道"
+        },
+        "aton_name": {
+          "value": "牧鹅洲下口白浮",
+          "evidence": "牧鹅洲下口白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°33′30″.9N、114°37′50″.8E",
+          "evidence": "30°33′30″.9N、114°37′50″.8E"
+        },
+        "position_text": {
+          "value": "自观音山测点起，方位265.4度，距离1.68千米",
+          "evidence": "自观音山测点起，方位265.4度，距离1.68千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日15:16",
+          "evidence": "09月16日15:16"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道"
+        },
+        "aton_name": {
+          "value": "牧鹅洲#1白浮",
+          "evidence": "牧鹅洲#1白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°33′24″.7N、114°37′15″.2E",
+          "evidence": "30°33′24″.7N、114°37′15″.2E"
+        },
+        "position_text": {
+          "value": "自白浒山测点起，方位84.9度，距离2.48千米",
+          "evidence": "自白浒山测点起，方位84.9度，距离2.48千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日16:50",
+          "evidence": "09月16日16:50"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道"
+        },
+        "aton_name": {
+          "value": "阳逻红浮",
+          "evidence": "阳逻红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°40′15″.3N、114°32′8″.7E",
+          "evidence": "30°40′15″.3N、114°32′8″.7E"
+        },
+        "position_text": {
+          "value": "自阳逻测点起，方位300.3度，距离1.97千米",
+          "evidence": "自阳逻测点起，方位300.3度，距离1.97千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

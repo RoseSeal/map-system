@@ -1,0 +1,282 @@
+{
+  "notice_id": "t20261003_490888",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月03日08:37\",\"evidence\":\"10月03日08:37\"},\"waterway\":{\"value\":\"黄石水道\",\"evidence\":\"黄石水道\"},\"aton_name\":{\"value\":\"黄石#4白浮\",\"evidence\":\"黄石#4白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°13′39″.7N、115°5′6″.5E\",\"evidence\":\"30°13′39″.7N、115°5′6″.5E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月03日08:47\",\"evidence\":\"10月03日08:47\"},\"waterway\":{\"value\":\"黄石水道\",\"evidence\":\"黄石水道\"},\"aton_name\":{\"value\":\"黄石#5白浮\",\"evidence\":\"黄石#5白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°14′9″.3N、115°4′37″.5E\",\"evidence\":\"30°14′9″.3N、115°4′37″.5E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月03日09:49\",\"evidence\":\"10月03日09:49\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"戴直#2白危浮\",\"evidence\":\"戴直#2白危浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°18′53″.3N、115°5′19″.7E\",\"evidence\":\"30°18′53″.3N、115°5′19″.7E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月03日10:56\",\"evidence\":\"10月03日10:56\"},\"waterway\":{\"value\":\"鲤鱼山水道\",\"evidence\":\"鲤鱼山水道\"},\"aton_name\":{\"value\":\"富池红浮\",\"evidence\":\"富池红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"29°53′3″.4N、115°26′11″.5E\",\"evidence\":\"29°53′3″.4N、115°26′11″.5E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月03日12:42\",\"evidence\":\"10月03日12:42\"},\"waterway\":{\"value\":\"水洪口水道\",\"evidence\":\"水洪口水道\"},\"aton_name\":{\"value\":\"水洪口红浮\",\"evidence\":\"水洪口红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程70.7千米，右岸\",\"evidence\":\"长江中游航道里程70.7千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月03日13:13\",\"evidence\":\"10月03日13:13\"},\"waterway\":{\"value\":\"水洪口水道\",\"evidence\":\"水洪口水道\"},\"aton_name\":{\"value\":\"汉南港码头白浮\",\"evidence\":\"汉南港码头白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程62.0千米，左岸\",\"evidence\":\"长江中游航道里程62.0千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月03日13:33\",\"evidence\":\"10月03日13:33\"},\"waterway\":{\"value\":\"水洪口水道\",\"evidence\":\"水洪口水道\"},\"aton_name\":{\"value\":\"水洪口#2白浮\",\"evidence\":\"水洪口#2白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程65.4千米，左岸\",\"evidence\":\"长江中游航道里程65.4千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月03日14:00\",\"evidence\":\"10月03日14:00\"},\"waterway\":{\"value\":\"水洪口水道\",\"evidence\":\"水洪口水道\"},\"aton_name\":{\"value\":\"水洪口#3白浮\",\"evidence\":\"水洪口#3白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程66.4千米，左岸\",\"evidence\":\"长江中游航道里程66.4千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日08:37",
+          "evidence": "10月03日08:37"
+        },
+        "waterway": {
+          "value": "黄石水道",
+          "evidence": "黄石水道"
+        },
+        "aton_name": {
+          "value": "黄石#4白浮",
+          "evidence": "黄石#4白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°13′39″.7N、115°5′6″.5E",
+          "evidence": "30°13′39″.7N、115°5′6″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日08:47",
+          "evidence": "10月03日08:47"
+        },
+        "waterway": {
+          "value": "黄石水道",
+          "evidence": "黄石水道"
+        },
+        "aton_name": {
+          "value": "黄石#5白浮",
+          "evidence": "黄石#5白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°14′9″.3N、115°4′37″.5E",
+          "evidence": "30°14′9″.3N、115°4′37″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日09:49",
+          "evidence": "10月03日09:49"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "戴直#2白危浮",
+          "evidence": "戴直#2白危浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°18′53″.3N、115°5′19″.7E",
+          "evidence": "30°18′53″.3N、115°5′19″.7E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日10:56",
+          "evidence": "10月03日10:56"
+        },
+        "waterway": {
+          "value": "鲤鱼山水道",
+          "evidence": "鲤鱼山水道"
+        },
+        "aton_name": {
+          "value": "富池红浮",
+          "evidence": "富池红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "29°53′3″.4N、115°26′11″.5E",
+          "evidence": "29°53′3″.4N、115°26′11″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日12:42",
+          "evidence": "10月03日12:42"
+        },
+        "waterway": {
+          "value": "水洪口水道",
+          "evidence": "水洪口水道"
+        },
+        "aton_name": {
+          "value": "水洪口红浮",
+          "evidence": "水洪口红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程70.7千米，右岸",
+          "evidence": "长江中游航道里程70.7千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日13:13",
+          "evidence": "10月03日13:13"
+        },
+        "waterway": {
+          "value": "水洪口水道",
+          "evidence": "水洪口水道"
+        },
+        "aton_name": {
+          "value": "汉南港码头白浮",
+          "evidence": "汉南港码头白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程62.0千米，左岸",
+          "evidence": "长江中游航道里程62.0千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日13:33",
+          "evidence": "10月03日13:33"
+        },
+        "waterway": {
+          "value": "水洪口水道",
+          "evidence": "水洪口水道"
+        },
+        "aton_name": {
+          "value": "水洪口#2白浮",
+          "evidence": "水洪口#2白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程65.4千米，左岸",
+          "evidence": "长江中游航道里程65.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日14:00",
+          "evidence": "10月03日14:00"
+        },
+        "waterway": {
+          "value": "水洪口水道",
+          "evidence": "水洪口水道"
+        },
+        "aton_name": {
+          "value": "水洪口#3白浮",
+          "evidence": "水洪口#3白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程66.4千米，左岸",
+          "evidence": "长江中游航道里程66.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

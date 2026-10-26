@@ -1,0 +1,180 @@
+{
+  "notice_id": "t20260928_490570",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月27日17:33\",\"evidence\":\"09月27日17:33\"},\"waterway\":{\"value\":\"罗湖洲水道\",\"evidence\":\"罗湖洲水道\"},\"aton_name\":{\"value\":\"碛矶港#6红危浮\",\"evidence\":\"碛矶港#6红危浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°36′33″.1N、114°48′20″.1E\",\"evidence\":\"30°36′33″.1N、114°48′20″.1E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月28日08:01\",\"evidence\":\"09月28日08:01\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道\"},\"aton_name\":{\"value\":\"复兴洲#6红浮\",\"evidence\":\"复兴洲#6红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程131.0千米，右岸\",\"evidence\":\"长江中游航道里程131.0千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月28日08:21\",\"evidence\":\"09月28日08:21\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道\"},\"aton_name\":{\"value\":\"复兴洲#9红浮\",\"evidence\":\"复兴洲#9红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程133.1千米，右岸\",\"evidence\":\"长江中游航道里程133.1千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月28日08:35\",\"evidence\":\"09月28日08:35\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道\"},\"aton_name\":{\"value\":\"嘉鱼#1红浮\",\"evidence\":\"嘉鱼#1红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程134.1千米，右岸\",\"evidence\":\"长江中游航道里程134.1千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月28日09:05\",\"evidence\":\"09月28日09:05\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道\"},\"aton_name\":{\"value\":\"复兴洲#5红浮\",\"evidence\":\"复兴洲#5红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程129.5千米，右岸\",\"evidence\":\"长江中游航道里程129.5千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月27日17:33",
+          "evidence": "09月27日17:33"
+        },
+        "waterway": {
+          "value": "罗湖洲水道",
+          "evidence": "罗湖洲水道"
+        },
+        "aton_name": {
+          "value": "碛矶港#6红危浮",
+          "evidence": "碛矶港#6红危浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°36′33″.1N、114°48′20″.1E",
+          "evidence": "30°36′33″.1N、114°48′20″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月28日08:01",
+          "evidence": "09月28日08:01"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道"
+        },
+        "aton_name": {
+          "value": "复兴洲#6红浮",
+          "evidence": "复兴洲#6红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程131.0千米，右岸",
+          "evidence": "长江中游航道里程131.0千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月28日08:21",
+          "evidence": "09月28日08:21"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道"
+        },
+        "aton_name": {
+          "value": "复兴洲#9红浮",
+          "evidence": "复兴洲#9红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程133.1千米，右岸",
+          "evidence": "长江中游航道里程133.1千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月28日08:35",
+          "evidence": "09月28日08:35"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道"
+        },
+        "aton_name": {
+          "value": "嘉鱼#1红浮",
+          "evidence": "嘉鱼#1红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程134.1千米，右岸",
+          "evidence": "长江中游航道里程134.1千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月28日09:05",
+          "evidence": "09月28日09:05"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道"
+        },
+        "aton_name": {
+          "value": "复兴洲#5红浮",
+          "evidence": "复兴洲#5红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程129.5千米，右岸",
+          "evidence": "长江中游航道里程129.5千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

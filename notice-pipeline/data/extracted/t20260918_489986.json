@@ -1,0 +1,248 @@
+{
+  "notice_id": "t20260918_489986",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"SET\",\"evidence\":\"设置\"},\"effective_time\":{\"value\":\"09月18日10:16\",\"evidence\":\"09月18日10:16设置\"},\"waterway\":{\"value\":\"阳逻水道\",\"evidence\":\"阳逻水道阳逻桥#1白浮\"},\"aton_name\":{\"value\":\"阳逻桥#1白浮\",\"evidence\":\"阳逻桥#1白浮\"},\"is_virtual\":{\"value\":true,\"evidence\":\"（虚拟）\"},\"position_raw\":{\"value\":\"30°28′2″.3N，114°33′39″.4E\",\"evidence\":\"位置：30°28′2″.3N，114°33′39″.4E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"SET\",\"evidence\":\"设置\"},\"effective_time\":{\"value\":\"09月18日10:16\",\"evidence\":\"09月18日10:16设置\"},\"waterway\":{\"value\":\"阳逻水道\",\"evidence\":\"阳逻水道阳逻桥#2白浮\"},\"aton_name\":{\"value\":\"阳逻桥#2白浮\",\"evidence\":\"阳逻桥#2白浮\"},\"is_virtual\":{\"value\":true,\"evidence\":\"（虚拟）\"},\"position_raw\":{\"value\":\"30°38′42″.5N，114°33′21″.3E\",\"evidence\":\"位置：30°38′42″.5N，114°33′21″.3E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月18日08:59\",\"evidence\":\"09月18日08:59\"},\"waterway\":{\"value\":\"沌口水道\",\"evidence\":\"沌口水道其春石白浮\"},\"aton_name\":{\"value\":\"其春石白浮\",\"evidence\":\"其春石白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程15.4千米，左岸\",\"evidence\":\"位置调整为长江中游航道里程15.4千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月18日09:16\",\"evidence\":\"09月18日09:16\"},\"waterway\":{\"value\":\"沌口水道\",\"evidence\":\"沌口水道沌南洲白浮\"},\"aton_name\":{\"value\":\"沌南洲白浮\",\"evidence\":\"沌南洲白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程17.1千米，左岸\",\"evidence\":\"位置调整为长江中游航道里程17.1千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月18日09:29\",\"evidence\":\"09月18日09:29\"},\"waterway\":{\"value\":\"沌口水道\",\"evidence\":\"沌口水道沌口桥#1白浮\"},\"aton_name\":{\"value\":\"沌口桥#1白浮\",\"evidence\":\"沌口桥#1白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程18.3千米，左岸\",\"evidence\":\"位置调整为长江中游航道里程18.3千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月18日09:53\",\"evidence\":\"09月18日09:53\"},\"waterway\":{\"value\":\"沌口水道\",\"evidence\":\"沌口水道沌口桥#2白浮\"},\"aton_name\":{\"value\":\"沌口桥#2白浮\",\"evidence\":\"沌口桥#2白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程19.3千米，左岸\",\"evidence\":\"位置调整为长江中游航道里程19.3千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月18日10:15\",\"evidence\":\"09月18日10:15\"},\"waterway\":{\"value\":\"沌口水道\",\"evidence\":\"沌口水道钟家湾#1白浮\"},\"aton_name\":{\"value\":\"钟家湾#1白浮\",\"evidence\":\"钟家湾#1白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程21.2千米，左岸\",\"evidence\":\"位置调整为长江中游航道里程21.2千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月18日10:16",
+          "evidence": "09月18日10:16设置"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道阳逻桥#1白浮"
+        },
+        "aton_name": {
+          "value": "阳逻桥#1白浮",
+          "evidence": "阳逻桥#1白浮"
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        },
+        "position_raw": {
+          "value": "30°28′2″.3N，114°33′39″.4E",
+          "evidence": "位置：30°28′2″.3N，114°33′39″.4E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月18日10:16",
+          "evidence": "09月18日10:16设置"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道阳逻桥#2白浮"
+        },
+        "aton_name": {
+          "value": "阳逻桥#2白浮",
+          "evidence": "阳逻桥#2白浮"
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        },
+        "position_raw": {
+          "value": "30°38′42″.5N，114°33′21″.3E",
+          "evidence": "位置：30°38′42″.5N，114°33′21″.3E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日08:59",
+          "evidence": "09月18日08:59"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道其春石白浮"
+        },
+        "aton_name": {
+          "value": "其春石白浮",
+          "evidence": "其春石白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程15.4千米，左岸",
+          "evidence": "位置调整为长江中游航道里程15.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日09:16",
+          "evidence": "09月18日09:16"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道沌南洲白浮"
+        },
+        "aton_name": {
+          "value": "沌南洲白浮",
+          "evidence": "沌南洲白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程17.1千米，左岸",
+          "evidence": "位置调整为长江中游航道里程17.1千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日09:29",
+          "evidence": "09月18日09:29"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道沌口桥#1白浮"
+        },
+        "aton_name": {
+          "value": "沌口桥#1白浮",
+          "evidence": "沌口桥#1白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程18.3千米，左岸",
+          "evidence": "位置调整为长江中游航道里程18.3千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日09:53",
+          "evidence": "09月18日09:53"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道沌口桥#2白浮"
+        },
+        "aton_name": {
+          "value": "沌口桥#2白浮",
+          "evidence": "沌口桥#2白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程19.3千米，左岸",
+          "evidence": "位置调整为长江中游航道里程19.3千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日10:15",
+          "evidence": "09月18日10:15"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道钟家湾#1白浮"
+        },
+        "aton_name": {
+          "value": "钟家湾#1白浮",
+          "evidence": "钟家湾#1白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程21.2千米，左岸",
+          "evidence": "位置调整为长江中游航道里程21.2千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

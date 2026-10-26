@@ -1,0 +1,148 @@
+{
+  "publisher": "长江武汉航道局",
+  "list_base": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/",
+  "published_from": "2026-09-15",
+  "fetched_at": "2026-10-26T23:09:52+08:00",
+  "notices": [
+    {
+      "notice_id": "t20260916_489827",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260916_489827.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-09-16",
+      "sha256": "45efaf09a3b343a08908f903dcf9239608b7e0d41996eff7058a888c55ac088b"
+    },
+    {
+      "notice_id": "t20260917_489903",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260917_489903.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-09-17",
+      "sha256": "8e265a77928a445a579d20839c78502cedf34f1e01a40d9e5a3c7a1f468b7c73"
+    },
+    {
+      "notice_id": "t20260918_489986",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260918_489986.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-09-18",
+      "sha256": "3fc51c0e3ed647ec87a1426ccdc56727da7e21e0e817faa6e08065f847883b40"
+    },
+    {
+      "notice_id": "t20260920_490076",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260920_490076.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-09-20",
+      "sha256": "71326278867da380354e5ff39e7dfe68c7ab5e671412b33b65314de5bb650d05"
+    },
+    {
+      "notice_id": "t20260922_490209",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260922_490209.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-09-22",
+      "sha256": "75f3749fb2ad8186d2acd18ab94fee3295fef49228f5d1f45b0efa061255589d"
+    },
+    {
+      "notice_id": "t20260924_490370",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260924_490370.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-09-24",
+      "sha256": "91f002ffa8491597f22dc4d17022e09f96a43f3846c786f696791413a238d01f"
+    },
+    {
+      "notice_id": "t20260928_490570",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260928_490570.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-09-28",
+      "sha256": "4357cd625b3968ca36644368e3415f3da3349ddefdbc1836c775298e134e66ea"
+    },
+    {
+      "notice_id": "t20260930_490769",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260930_490769.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-09-30",
+      "sha256": "5c787bdf5c332a95640f7c64edd6343150b2c99920668e9a517b0be97926331a"
+    },
+    {
+      "notice_id": "t20261001_490824",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261001_490824.shtml",
+      "title": "长江武汉航道局关于罗湖洲水道航标失常的航道通告",
+      "list_date": "2026-10-01",
+      "sha256": "b497d38de93489394a048ad275d0d8e68a3376ab257021ad95f4a36a19befffa"
+    },
+    {
+      "notice_id": "t20261003_490888",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261003_490888.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-10-03",
+      "sha256": "7e37d8ebcf7741f0517172a05d2585551a18e0a113af2528cf20f4d55012e043"
+    },
+    {
+      "notice_id": "t20261004_490916",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261004_490916.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-10-04",
+      "sha256": "1f13c733ad18f98f6517bba613af8553b537db935be5ec67d4f6c102f8c2ebbe"
+    },
+    {
+      "notice_id": "t20261010_491265",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261010_491265.shtml",
+      "title": "长江武汉航道局关于蕲春水道航标失常的航道通告",
+      "list_date": "2026-10-10",
+      "sha256": "b2e845f69cf23de3dc4b7b26bb96cc7958f21bb2766fcc85ae13bd9c146a4326"
+    },
+    {
+      "notice_id": "t20261014_491632",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261014_491632.shtml",
+      "title": "长江武汉航道局关于戴家洲水道航标失常的航道通告",
+      "list_date": "2026-10-14",
+      "sha256": "02af274c2e01f0c7f43a984b4e544deab012a81f6afee3d6fed9c7f429f50021"
+    },
+    {
+      "notice_id": "t20261014_491687",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261014_491687.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-10-14",
+      "sha256": "09ed6a7b7849fc5d2207426d3a04a8714e48031f8417f663522a6ab593dcd907"
+    },
+    {
+      "notice_id": "t20261017_491896",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261017_491896.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-10-17",
+      "sha256": "064fb2ccd25f084efbb576e80ed17ee57be9ff1d7de68f9aec9afa2d4b5ac61f"
+    },
+    {
+      "notice_id": "t20261019_492013",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261019_492013.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-10-19",
+      "sha256": "dfbea89c06d5780d6706a59762ed2081fc0f0b2a05ecb12c39c52f990566098a"
+    },
+    {
+      "notice_id": "t20261020_492089",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261020_492089.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-10-20",
+      "sha256": "ab65c049f95b026ba3aa59a79d0ffd2f287c07fc1ac358193f32a0cd4d8f6ef9"
+    },
+    {
+      "notice_id": "t20261022_492297",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261022_492297.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-10-22",
+      "sha256": "c1093792ccddece25cfaa834ded16239ddcdd6eb1fbb8b0593d3fe6af15a042b"
+    },
+    {
+      "notice_id": "t20261022_492303",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261022_492303.shtml",
+      "title": "长江武汉航道局关于搁排矶水道航标失常的航道通告",
+      "list_date": "2026-10-22",
+      "sha256": "0c61bccaf0197ad6ad0f3b74c0c3e6e0ebab18603db2dd66f2bb72a59f8f0416"
+    },
+    {
+      "notice_id": "t20261023_492361",
+      "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261023_492361.shtml",
+      "title": "长江武汉航道局关于航标优化调整的航道通告",
+      "list_date": "2026-10-23",
+      "sha256": "96eb29a856f2a1d12e4c8b5dc580506c0cd1cc08b4e27390c8dcbab896ffc245"
+    }
+  ]
+}

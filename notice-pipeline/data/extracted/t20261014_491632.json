@@ -1,0 +1,44 @@
+{
+  "notice_id": "t20261014_491632",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"MALFUNCTION\",\"evidence\":\"漂失\"},\"effective_time\":{\"value\":\"2026年10月14日05:32\",\"evidence\":\"2026年10月14日05:32\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"戴直#2红危浮\",\"evidence\":\"戴直#2红危浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":\"漂失\",\"evidence\":\"漂失\"}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "MALFUNCTION",
+          "evidence": "漂失"
+        },
+        "effective_time": {
+          "value": "2026年10月14日05:32",
+          "evidence": "2026年10月14日05:32"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "戴直#2红危浮",
+          "evidence": "戴直#2红危浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": "漂失",
+          "evidence": "漂失"
+        }
+      }
+    ]
+  }
+}

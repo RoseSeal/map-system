@@ -1,0 +1,330 @@
+{
+  "notice_id": "t20260918_489986",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260918_489986.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕204号",
+  "published_at": "2026-09-18T17:07:00+08:00",
+  "source_item_count": 7,
+  "llm_item_count": 7,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、09月18日10:16设置阳逻水道阳逻桥#1白浮（虚拟）电子航道图虚拟航标，位置：30°28′2″.3N，114°33′39″.4E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月18日10:16",
+          "evidence": "09月18日10:16设置"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道阳逻桥#1白浮"
+        },
+        "aton_name": {
+          "value": "阳逻桥#1白浮",
+          "evidence": "阳逻桥#1白浮"
+        },
+        "position_raw": {
+          "value": "30°28′2″.3N，114°33′39″.4E",
+          "evidence": "位置：30°28′2″.3N，114°33′39″.4E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.5609444,
+        "lat": 30.4673056
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.5609444,
+          "lat": 30.4673056
+        }
+      ],
+      "effective_at": "2026-09-18T10:16:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "2、09月18日10:16设置阳逻水道阳逻桥#2白浮（虚拟）电子航道图虚拟航标，位置：30°38′42″.5N，114°33′21″.3E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月18日10:16",
+          "evidence": "09月18日10:16设置"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道阳逻桥#2白浮"
+        },
+        "aton_name": {
+          "value": "阳逻桥#2白浮",
+          "evidence": "阳逻桥#2白浮"
+        },
+        "position_raw": {
+          "value": "30°38′42″.5N，114°33′21″.3E",
+          "evidence": "位置：30°38′42″.5N，114°33′21″.3E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": true,
+          "evidence": "（虚拟）"
+        }
+      },
+      "position": {
+        "lon": 114.5559167,
+        "lat": 30.6451389
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.5559167,
+          "lat": 30.6451389
+        }
+      ],
+      "effective_at": "2026-09-18T10:16:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 3,
+      "source_index": 2,
+      "source_text": "1、09月18日08:59沌口水道其春石白浮，位置调整为长江中游航道里程15.4千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日08:59",
+          "evidence": "09月18日08:59"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道其春石白浮"
+        },
+        "aton_name": {
+          "value": "其春石白浮",
+          "evidence": "其春石白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程15.4千米，左岸",
+          "evidence": "位置调整为长江中游航道里程15.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-18T08:59:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 4,
+      "source_index": 3,
+      "source_text": "2、09月18日09:16沌口水道沌南洲白浮，位置调整为长江中游航道里程17.1千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日09:16",
+          "evidence": "09月18日09:16"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道沌南洲白浮"
+        },
+        "aton_name": {
+          "value": "沌南洲白浮",
+          "evidence": "沌南洲白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程17.1千米，左岸",
+          "evidence": "位置调整为长江中游航道里程17.1千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-18T09:16:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 5,
+      "source_index": 4,
+      "source_text": "3、09月18日09:29沌口水道沌口桥#1白浮，位置调整为长江中游航道里程18.3千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日09:29",
+          "evidence": "09月18日09:29"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道沌口桥#1白浮"
+        },
+        "aton_name": {
+          "value": "沌口桥#1白浮",
+          "evidence": "沌口桥#1白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程18.3千米，左岸",
+          "evidence": "位置调整为长江中游航道里程18.3千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-18T09:29:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 6,
+      "source_index": 5,
+      "source_text": "4、09月18日09:53沌口水道沌口桥#2白浮，位置调整为长江中游航道里程19.3千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日09:53",
+          "evidence": "09月18日09:53"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道沌口桥#2白浮"
+        },
+        "aton_name": {
+          "value": "沌口桥#2白浮",
+          "evidence": "沌口桥#2白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程19.3千米，左岸",
+          "evidence": "位置调整为长江中游航道里程19.3千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-18T09:53:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 7,
+      "source_index": 6,
+      "source_text": "5、09月18日10:15沌口水道钟家湾#1白浮，位置调整为长江中游航道里程21.2千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月18日10:15",
+          "evidence": "09月18日10:15"
+        },
+        "waterway": {
+          "value": "沌口水道",
+          "evidence": "沌口水道钟家湾#1白浮"
+        },
+        "aton_name": {
+          "value": "钟家湾#1白浮",
+          "evidence": "钟家湾#1白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程21.2千米，左岸",
+          "evidence": "位置调整为长江中游航道里程21.2千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-18T10:15:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

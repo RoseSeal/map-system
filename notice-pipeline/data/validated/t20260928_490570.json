@@ -1,0 +1,236 @@
+{
+  "notice_id": "t20260928_490570",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260928_490570.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕213号",
+  "published_at": "2026-09-28T17:11:00+08:00",
+  "source_item_count": 5,
+  "llm_item_count": 5,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、09月27日17:33罗湖洲水道碛矶港#6红危浮，位置调整为自烟灯山测点起，方位354.3度，距离2.84千米；2000国家大地坐标系地理坐标30°36′33″.1N、114°48′20″.1E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月27日17:33",
+          "evidence": "09月27日17:33"
+        },
+        "waterway": {
+          "value": "罗湖洲水道",
+          "evidence": "罗湖洲水道"
+        },
+        "aton_name": {
+          "value": "碛矶港#6红危浮",
+          "evidence": "碛矶港#6红危浮"
+        },
+        "position_raw": {
+          "value": "30°36′33″.1N、114°48′20″.1E",
+          "evidence": "30°36′33″.1N、114°48′20″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.8055833,
+        "lat": 30.6091944
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.8055833,
+          "lat": 30.6091944
+        }
+      ],
+      "effective_at": "2026-09-27T17:33:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "2、09月28日08:01嘉鱼水道复兴洲#6红浮，位置调整为长江中游航道里程131.0千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月28日08:01",
+          "evidence": "09月28日08:01"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道"
+        },
+        "aton_name": {
+          "value": "复兴洲#6红浮",
+          "evidence": "复兴洲#6红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程131.0千米，右岸",
+          "evidence": "长江中游航道里程131.0千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-28T08:01:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 3,
+      "source_index": 2,
+      "source_text": "3、09月28日08:21嘉鱼水道复兴洲#9红浮，位置调整为长江中游航道里程133.1千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月28日08:21",
+          "evidence": "09月28日08:21"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道"
+        },
+        "aton_name": {
+          "value": "复兴洲#9红浮",
+          "evidence": "复兴洲#9红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程133.1千米，右岸",
+          "evidence": "长江中游航道里程133.1千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-28T08:21:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 4,
+      "source_index": 3,
+      "source_text": "4、09月28日08:35嘉鱼水道嘉鱼#1红浮，位置调整为长江中游航道里程134.1千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月28日08:35",
+          "evidence": "09月28日08:35"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道"
+        },
+        "aton_name": {
+          "value": "嘉鱼#1红浮",
+          "evidence": "嘉鱼#1红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程134.1千米，右岸",
+          "evidence": "长江中游航道里程134.1千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-28T08:35:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 5,
+      "source_index": 4,
+      "source_text": "5、09月28日09:05嘉鱼水道复兴洲#5红浮，位置调整为长江中游航道里程129.5千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月28日09:05",
+          "evidence": "09月28日09:05"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道"
+        },
+        "aton_name": {
+          "value": "复兴洲#5红浮",
+          "evidence": "复兴洲#5红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程129.5千米，右岸",
+          "evidence": "长江中游航道里程129.5千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-28T09:05:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

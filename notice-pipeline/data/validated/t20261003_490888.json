@@ -1,0 +1,389 @@
+{
+  "notice_id": "t20261003_490888",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261003_490888.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕219号",
+  "published_at": "2026-10-03T17:21:00+08:00",
+  "source_item_count": 8,
+  "llm_item_count": 8,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、10月03日08:37黄石水道黄石#4白浮，位置调整为自黄石钟楼测点起，方位348.9度，距离1.66千米；2000国家大地坐标系地理坐标30°13′39″.7N、115°5′6″.5E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日08:37",
+          "evidence": "10月03日08:37"
+        },
+        "waterway": {
+          "value": "黄石水道",
+          "evidence": "黄石水道"
+        },
+        "aton_name": {
+          "value": "黄石#4白浮",
+          "evidence": "黄石#4白浮"
+        },
+        "position_raw": {
+          "value": "30°13′39″.7N、115°5′6″.5E",
+          "evidence": "30°13′39″.7N、115°5′6″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.0851389,
+        "lat": 30.2276944
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.0851389,
+          "lat": 30.2276944
+        }
+      ],
+      "effective_at": "2026-10-03T08:37:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "2、10月03日08:47黄石水道黄石#5白浮，位置调整为自黄石钟楼测点起，方位334.5度，距离2.76千米；2000国家大地坐标系地理坐标30°14′9″.3N、115°4′37″.5E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日08:47",
+          "evidence": "10月03日08:47"
+        },
+        "waterway": {
+          "value": "黄石水道",
+          "evidence": "黄石水道"
+        },
+        "aton_name": {
+          "value": "黄石#5白浮",
+          "evidence": "黄石#5白浮"
+        },
+        "position_raw": {
+          "value": "30°14′9″.3N、115°4′37″.5E",
+          "evidence": "30°14′9″.3N、115°4′37″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.0770833,
+        "lat": 30.2359167
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.0770833,
+          "lat": 30.2359167
+        }
+      ],
+      "effective_at": "2026-10-03T08:47:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 3,
+      "source_index": 2,
+      "source_text": "3、10月03日09:49戴家洲水道戴直#2白危浮，位置调整为自回风矶测点起，方位359.7度，距离3.23千米；2000国家大地坐标系地理坐标30°18′53″.3N、115°5′19″.7E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日09:49",
+          "evidence": "10月03日09:49"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "戴直#2白危浮",
+          "evidence": "戴直#2白危浮"
+        },
+        "position_raw": {
+          "value": "30°18′53″.3N、115°5′19″.7E",
+          "evidence": "30°18′53″.3N、115°5′19″.7E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.0888056,
+        "lat": 30.3148056
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.0888056,
+          "lat": 30.3148056
+        }
+      ],
+      "effective_at": "2026-10-03T09:49:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 4,
+      "source_index": 3,
+      "source_text": "4、10月03日10:56鲤鱼山水道富池红浮，位置调整为自马鞍山测点起，方位113.3度，距离3.94千米；2000国家大地坐标系地理坐标29°53′3″.4N、115°26′11″.5E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日10:56",
+          "evidence": "10月03日10:56"
+        },
+        "waterway": {
+          "value": "鲤鱼山水道",
+          "evidence": "鲤鱼山水道"
+        },
+        "aton_name": {
+          "value": "富池红浮",
+          "evidence": "富池红浮"
+        },
+        "position_raw": {
+          "value": "29°53′3″.4N、115°26′11″.5E",
+          "evidence": "29°53′3″.4N、115°26′11″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.4365278,
+        "lat": 29.8842778
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.4365278,
+          "lat": 29.8842778
+        }
+      ],
+      "effective_at": "2026-10-03T10:56:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 5,
+      "source_index": 4,
+      "source_text": "5、10月03日12:42水洪口水道水洪口红浮，位置调整为长江中游航道里程70.7千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日12:42",
+          "evidence": "10月03日12:42"
+        },
+        "waterway": {
+          "value": "水洪口水道",
+          "evidence": "水洪口水道"
+        },
+        "aton_name": {
+          "value": "水洪口红浮",
+          "evidence": "水洪口红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程70.7千米，右岸",
+          "evidence": "长江中游航道里程70.7千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-03T12:42:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 6,
+      "source_index": 5,
+      "source_text": "6、10月03日13:13水洪口水道汉南港码头白浮，位置调整为长江中游航道里程62.0千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日13:13",
+          "evidence": "10月03日13:13"
+        },
+        "waterway": {
+          "value": "水洪口水道",
+          "evidence": "水洪口水道"
+        },
+        "aton_name": {
+          "value": "汉南港码头白浮",
+          "evidence": "汉南港码头白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程62.0千米，左岸",
+          "evidence": "长江中游航道里程62.0千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-03T13:13:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 7,
+      "source_index": 6,
+      "source_text": "7、10月03日13:33水洪口水道水洪口#2白浮，位置调整为长江中游航道里程65.4千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日13:33",
+          "evidence": "10月03日13:33"
+        },
+        "waterway": {
+          "value": "水洪口水道",
+          "evidence": "水洪口水道"
+        },
+        "aton_name": {
+          "value": "水洪口#2白浮",
+          "evidence": "水洪口#2白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程65.4千米，左岸",
+          "evidence": "长江中游航道里程65.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-03T13:33:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 8,
+      "source_index": 7,
+      "source_text": "8、10月03日14:00水洪口水道水洪口#3白浮，位置调整为长江中游航道里程66.4千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月03日14:00",
+          "evidence": "10月03日14:00"
+        },
+        "waterway": {
+          "value": "水洪口水道",
+          "evidence": "水洪口水道"
+        },
+        "aton_name": {
+          "value": "水洪口#3白浮",
+          "evidence": "水洪口#3白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程66.4千米，左岸",
+          "evidence": "长江中游航道里程66.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-03T14:00:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

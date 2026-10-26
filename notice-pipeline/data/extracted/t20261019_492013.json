@@ -1,0 +1,44 @@
+{
+  "notice_id": "t20261019_492013",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"SET\",\"evidence\":\"设置\"},\"effective_time\":{\"value\":\"10月19日12:39\",\"evidence\":\"10月19日12:39\"},\"waterway\":{\"value\":\"牧鹅洲水道\",\"evidence\":\"牧鹅洲水道\"},\"aton_name\":{\"value\":\"阳逻二厂禁止抛锚标\",\"evidence\":\"阳逻二厂禁止抛锚标\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°34′4″.0N、114°38′20″.0E\",\"evidence\":\"30°34′4″.0N、114°38′20″.0E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "10月19日12:39",
+          "evidence": "10月19日12:39"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道"
+        },
+        "aton_name": {
+          "value": "阳逻二厂禁止抛锚标",
+          "evidence": "阳逻二厂禁止抛锚标"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°34′4″.0N、114°38′20″.0E",
+          "evidence": "30°34′4″.0N、114°38′20″.0E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

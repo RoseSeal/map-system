@@ -1,0 +1,64 @@
+{
+  "notice_id": "t20261023_492361",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261023_492361.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕231号",
+  "published_at": "2026-10-23T17:35:00+08:00",
+  "source_item_count": 1,
+  "llm_item_count": 1,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、10月23日09:35搁排矶水道沙村#2红浮，位置调整为自马鞍山测点起，方位358.9度，距离3.53千米；2000国家大地坐标系地理坐标29°55′54″.6N、115°23′57″.5E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月23日09:35",
+          "evidence": "10月23日09:35"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道沙村#2红浮"
+        },
+        "aton_name": {
+          "value": "沙村#2红浮",
+          "evidence": "沙村#2红浮"
+        },
+        "position_raw": {
+          "value": "29°55′54″.6N、115°23′57″.5E",
+          "evidence": "29°55′54″.6N、115°23′57″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.3993056,
+        "lat": 29.9318333
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.3993056,
+          "lat": 29.9318333
+        }
+      ],
+      "effective_at": "2026-10-23T09:35:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

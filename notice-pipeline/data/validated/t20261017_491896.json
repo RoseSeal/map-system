@@ -1,0 +1,64 @@
+{
+  "notice_id": "t20261017_491896",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261017_491896.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕226号",
+  "published_at": "2026-10-17T17:08:00+08:00",
+  "source_item_count": 1,
+  "llm_item_count": 1,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、10月17日09:48搁排矶水道华新骨料#2专用浮，位置调整为自达义脑测点起，方位118.0度，距离2.69千米；2000国家大地坐标系地理坐标29°57′46″.8N、115°22′44″.7E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月17日09:48",
+          "evidence": "10月17日09:48"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道"
+        },
+        "aton_name": {
+          "value": "华新骨料#2专用浮",
+          "evidence": "华新骨料#2专用浮"
+        },
+        "position_raw": {
+          "value": "29°57′46″.8N、115°22′44″.7E",
+          "evidence": "29°57′46″.8N、115°22′44″.7E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.3790833,
+        "lat": 29.963
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.3790833,
+          "lat": 29.963
+        }
+      ],
+      "effective_at": "2026-10-17T09:48:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

@@ -1,0 +1,64 @@
+{
+  "notice_id": "t20261019_492013",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261019_492013.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕227号",
+  "published_at": "2026-10-19T17:13:00+08:00",
+  "source_item_count": 1,
+  "llm_item_count": 1,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、10月19日12:39设置牧鹅洲水道阳逻二厂禁止抛锚标，自观音山测点起，方位309.7度，距离1.25千米，灯质黄色快闪光;2000国家大地坐标系地理坐标30°34′4″.0N、114°38′20″.0E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "10月19日12:39",
+          "evidence": "10月19日12:39"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道"
+        },
+        "aton_name": {
+          "value": "阳逻二厂禁止抛锚标",
+          "evidence": "阳逻二厂禁止抛锚标"
+        },
+        "position_raw": {
+          "value": "30°34′4″.0N、114°38′20″.0E",
+          "evidence": "30°34′4″.0N、114°38′20″.0E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.6388889,
+        "lat": 30.5677778
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.6388889,
+          "lat": 30.5677778
+        }
+      ],
+      "effective_at": "2026-10-19T12:39:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

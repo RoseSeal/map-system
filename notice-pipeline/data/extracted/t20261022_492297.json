@@ -1,0 +1,214 @@
+{
+  "notice_id": "t20261022_492297",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"SET\",\"evidence\":\"设置\"},\"effective_time\":{\"value\":\"10月22日09:59\",\"evidence\":\"10月22日09:59设置\"},\"waterway\":{\"value\":\"湖广水道\",\"evidence\":\"湖广水道叶家洲#1白浮\"},\"aton_name\":{\"value\":\"叶家洲#1白浮\",\"evidence\":\"叶家洲#1白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°34′41″.7N、114°39′40″.3E\",\"evidence\":\"2000国家大地坐标系地理坐标30°34′41″.7N、114°39′40″.3E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"SET\",\"evidence\":\"设置\"},\"effective_time\":{\"value\":\"10月22日10:04\",\"evidence\":\"10月22日10:04设置\"},\"waterway\":{\"value\":\"牧鹅洲水道\",\"evidence\":\"牧鹅洲水道叶家洲#2白浮\"},\"aton_name\":{\"value\":\"叶家洲#2白浮\",\"evidence\":\"叶家洲#2白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°34′5″.1N、114°38′24″.6E\",\"evidence\":\"2000国家大地坐标系地理坐标30°34′5″.1N、114°38′24″.6E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"SET\",\"evidence\":\"设置\"},\"effective_time\":{\"value\":\"10月22日10:08\",\"evidence\":\"10月22日10:08设置\"},\"waterway\":{\"value\":\"牧鹅洲水道\",\"evidence\":\"牧鹅洲水道叶家洲#3白浮\"},\"aton_name\":{\"value\":\"叶家洲#3白浮\",\"evidence\":\"叶家洲#3白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°33′55″.1N、114°38′16″.7E\",\"evidence\":\"2000国家大地坐标系地理坐标30°33′55″.1N、114°38′16″.7E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"REMOVE\",\"evidence\":\"撤除\"},\"effective_time\":{\"value\":\"10月22日09:57\",\"evidence\":\"10月22日09:57撤除\"},\"waterway\":{\"value\":\"湖广水道\",\"evidence\":\"湖广水道叶家洲白浮\"},\"aton_name\":{\"value\":\"叶家洲白浮\",\"evidence\":\"叶家洲白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"REMOVE\",\"evidence\":\"撤除\"},\"effective_time\":{\"value\":\"10月22日10:03\",\"evidence\":\"10月22日10:03撤除\"},\"waterway\":{\"value\":\"牧鹅洲水道\",\"evidence\":\"牧鹅洲水道阳逻二水厂施#1白浮\"},\"aton_name\":{\"value\":\"阳逻二水厂施#1白浮\",\"evidence\":\"阳逻二水厂施#1白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"REMOVE\",\"evidence\":\"撤除\"},\"effective_time\":{\"value\":\"10月22日10:07\",\"evidence\":\"10月22日10:07撤除\"},\"waterway\":{\"value\":\"牧鹅洲水道\",\"evidence\":\"牧鹅洲水道阳逻二水厂施#2白浮\"},\"aton_name\":{\"value\":\"阳逻二水厂施#2白浮\",\"evidence\":\"阳逻二水厂施#2白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "10月22日09:59",
+          "evidence": "10月22日09:59设置"
+        },
+        "waterway": {
+          "value": "湖广水道",
+          "evidence": "湖广水道叶家洲#1白浮"
+        },
+        "aton_name": {
+          "value": "叶家洲#1白浮",
+          "evidence": "叶家洲#1白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°34′41″.7N、114°39′40″.3E",
+          "evidence": "2000国家大地坐标系地理坐标30°34′41″.7N、114°39′40″.3E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "10月22日10:04",
+          "evidence": "10月22日10:04设置"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道叶家洲#2白浮"
+        },
+        "aton_name": {
+          "value": "叶家洲#2白浮",
+          "evidence": "叶家洲#2白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°34′5″.1N、114°38′24″.6E",
+          "evidence": "2000国家大地坐标系地理坐标30°34′5″.1N、114°38′24″.6E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "10月22日10:08",
+          "evidence": "10月22日10:08设置"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道叶家洲#3白浮"
+        },
+        "aton_name": {
+          "value": "叶家洲#3白浮",
+          "evidence": "叶家洲#3白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°33′55″.1N、114°38′16″.7E",
+          "evidence": "2000国家大地坐标系地理坐标30°33′55″.1N、114°38′16″.7E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "REMOVE",
+          "evidence": "撤除"
+        },
+        "effective_time": {
+          "value": "10月22日09:57",
+          "evidence": "10月22日09:57撤除"
+        },
+        "waterway": {
+          "value": "湖广水道",
+          "evidence": "湖广水道叶家洲白浮"
+        },
+        "aton_name": {
+          "value": "叶家洲白浮",
+          "evidence": "叶家洲白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "REMOVE",
+          "evidence": "撤除"
+        },
+        "effective_time": {
+          "value": "10月22日10:03",
+          "evidence": "10月22日10:03撤除"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道阳逻二水厂施#1白浮"
+        },
+        "aton_name": {
+          "value": "阳逻二水厂施#1白浮",
+          "evidence": "阳逻二水厂施#1白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "REMOVE",
+          "evidence": "撤除"
+        },
+        "effective_time": {
+          "value": "10月22日10:07",
+          "evidence": "10月22日10:07撤除"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道阳逻二水厂施#2白浮"
+        },
+        "aton_name": {
+          "value": "阳逻二水厂施#2白浮",
+          "evidence": "阳逻二水厂施#2白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

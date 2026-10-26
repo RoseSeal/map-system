@@ -1,0 +1,44 @@
+{
+  "notice_id": "t20261020_492089",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月20日13:50\",\"evidence\":\"10月20日13:50\"},\"waterway\":{\"value\":\"蕲春水道\",\"evidence\":\"蕲春水道\"},\"aton_name\":{\"value\":\"黄颡口红浮\",\"evidence\":\"黄颡口红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°1′24″.0N、115°19′30″.2E\",\"evidence\":\"30°1′24″.0N、115°19′30″.2E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月20日13:50",
+          "evidence": "10月20日13:50"
+        },
+        "waterway": {
+          "value": "蕲春水道",
+          "evidence": "蕲春水道"
+        },
+        "aton_name": {
+          "value": "黄颡口红浮",
+          "evidence": "黄颡口红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°1′24″.0N、115°19′30″.2E",
+          "evidence": "30°1′24″.0N、115°19′30″.2E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

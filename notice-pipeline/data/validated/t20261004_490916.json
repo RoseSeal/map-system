@@ -1,0 +1,107 @@
+{
+  "notice_id": "t20261004_490916",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261004_490916.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕220号",
+  "published_at": "2026-10-04T17:03:00+08:00",
+  "source_item_count": 2,
+  "llm_item_count": 2,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、10月04日10:09汉金关水道汉金关红浮，位置调整为长江中游航道里程104.7千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月04日10:09",
+          "evidence": "10月04日10:09"
+        },
+        "waterway": {
+          "value": "汉金关水道",
+          "evidence": "汉金关水道"
+        },
+        "aton_name": {
+          "value": "汉金关红浮",
+          "evidence": "汉金关红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程104.7千米，右岸",
+          "evidence": "长江中游航道里程104.7千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-04T10:09:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "2、10月04日10:42沙洲水道交投沥青红浮，位置调整为自黄柏山测点起，方位178.9度，距离5.29千米；2000国家大地坐标系地理坐标30°28′38″.6N、114°49′17″.1E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月04日10:42",
+          "evidence": "10月04日10:42"
+        },
+        "waterway": {
+          "value": "沙洲水道",
+          "evidence": "沙洲水道"
+        },
+        "aton_name": {
+          "value": "交投沥青红浮",
+          "evidence": "交投沥青红浮"
+        },
+        "position_raw": {
+          "value": "30°28′38″.6N、114°49′17″.1E",
+          "evidence": "30°28′38″.6N、114°49′17″.1E"
+        },
+        "position_text": {
+          "value": "自黄柏山测点起，方位178.9度，距离5.29千米",
+          "evidence": "自黄柏山测点起，方位178.9度，距离5.29千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.8214167,
+        "lat": 30.4773889
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.8214167,
+          "lat": 30.4773889
+        }
+      ],
+      "effective_at": "2026-10-04T10:42:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

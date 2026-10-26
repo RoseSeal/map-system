@@ -1,0 +1,362 @@
+{
+  "notice_id": "t20260930_490769",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260930_490769.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕215号",
+  "published_at": "2026-09-30T17:02:00+08:00",
+  "source_item_count": 7,
+  "llm_item_count": 7,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、09月30日10:37设置搁排矶水道富池码头红浮，自马鞍山测点起，方位3.2度，距离4.98千米，灯质红色单闪光，2000国家大地坐标系地理坐标29°56′41″.2N、115°24′8″.6E。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月30日10:37",
+          "evidence": "09月30日10:37设置"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道富池码头红浮"
+        },
+        "aton_name": {
+          "value": "富池码头红浮",
+          "evidence": "搁排矶水道富池码头红浮"
+        },
+        "position_raw": {
+          "value": "29°56′41″.2N、115°24′8″.6E",
+          "evidence": "29°56′41″.2N、115°24′8″.6E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.4023889,
+        "lat": 29.9447778
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.4023889,
+          "lat": 29.9447778
+        }
+      ],
+      "effective_at": "2026-09-30T10:37:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "1、09月30日10:44撤除搁排矶水道富池码头侧面岸标。",
+      "fields": {
+        "action": {
+          "value": "REMOVE",
+          "evidence": "撤除"
+        },
+        "effective_time": {
+          "value": "09月30日10:44",
+          "evidence": "09月30日10:44撤除"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道富池码头侧面岸标"
+        },
+        "aton_name": {
+          "value": "富池码头侧面岸标",
+          "evidence": "搁排矶水道富池码头侧面岸标"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-30T10:44:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 3,
+      "source_index": 2,
+      "source_text": "1、09月30日10:59青山夹水道武钢运河口白浮，位置调整为自青山测点起，方位49.3度，距离2.29千米；2000国家大地坐标系地理坐标30°40′12″.3N、114°25′59″.6E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日10:59",
+          "evidence": "09月30日10:59青山夹水道武钢运河口白浮，位置调整为"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道武钢运河口白浮"
+        },
+        "aton_name": {
+          "value": "武钢运河口白浮",
+          "evidence": "青山夹水道武钢运河口白浮"
+        },
+        "position_raw": {
+          "value": "30°40′12″.3N、114°25′59″.6E",
+          "evidence": "30°40′12″.3N、114°25′59″.6E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.4332222,
+        "lat": 30.6700833
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.4332222,
+          "lat": 30.6700833
+        }
+      ],
+      "effective_at": "2026-09-30T10:59:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 4,
+      "source_index": 3,
+      "source_text": "2、09月30日11:17青山夹水道青山桥进口白浮，位置调整为自青山测点起，方位57.8度，距离3.43千米；2000国家大地坐标系地理坐标30°40′25″.5N、114°26′42″.7E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日11:17",
+          "evidence": "09月30日11:17青山夹水道青山桥进口白浮，位置调整为"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道青山桥进口白浮"
+        },
+        "aton_name": {
+          "value": "青山桥进口白浮",
+          "evidence": "青山夹水道青山桥进口白浮"
+        },
+        "position_raw": {
+          "value": "30°40′25″.5N、114°26′42″.7E",
+          "evidence": "30°40′25″.5N、114°26′42″.7E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.4451944,
+        "lat": 30.67375
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.4451944,
+          "lat": 30.67375
+        }
+      ],
+      "effective_at": "2026-09-30T11:17:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 5,
+      "source_index": 4,
+      "source_text": "3、09月30日11:30青山夹水道青山桥#2白浮，位置调整为自青山测点起，方位61.7度，距离4.96千米；2000国家大地坐标系地理坐标30°40′45″.1N、114°27′37″.1E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日11:30",
+          "evidence": "09月30日11:30青山夹水道青山桥#2白浮，位置调整为"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道青山桥#2白浮"
+        },
+        "aton_name": {
+          "value": "青山桥#2白浮",
+          "evidence": "青山夹水道青山桥#2白浮"
+        },
+        "position_raw": {
+          "value": "30°40′45″.1N、114°27′37″.1E",
+          "evidence": "30°40′45″.1N、114°27′37″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.4603056,
+        "lat": 30.6791944
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.4603056,
+          "lat": 30.6791944
+        }
+      ],
+      "effective_at": "2026-09-30T11:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 6,
+      "source_index": 5,
+      "source_text": "4、09月30日11:55搁排矶水道猴儿矶危险水域浮，位置调整为自达义脑测点起，方位345.4度，距离3.41千米；2000国家大地坐标系地理坐标30°0′19″.5N、115°20′51″.1E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日11:55",
+          "evidence": "09月30日11:55搁排矶水道猴儿矶危险水域浮，位置调整为"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道猴儿矶危险水域浮"
+        },
+        "aton_name": {
+          "value": "猴儿矶危险水域浮",
+          "evidence": "搁排矶水道猴儿矶危险水域浮"
+        },
+        "position_raw": {
+          "value": "30°0′19″.5N、115°20′51″.1E",
+          "evidence": "30°0′19″.5N、115°20′51″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.3475278,
+        "lat": 30.0054167
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.3475278,
+          "lat": 30.0054167
+        }
+      ],
+      "effective_at": "2026-09-30T11:55:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 7,
+      "source_index": 6,
+      "source_text": "5、09月30日12:13搁排矶水道猴儿矶红浮，位置调整为自达义脑测点起，方位343.6度，距离3.71千米；2000国家大地坐标系地理坐标30°0′28″.3N、115°20′44″.9E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日12:13",
+          "evidence": "09月30日12:13搁排矶水道猴儿矶红浮，位置调整为"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道猴儿矶红浮"
+        },
+        "aton_name": {
+          "value": "猴儿矶红浮",
+          "evidence": "搁排矶水道猴儿矶红浮"
+        },
+        "position_raw": {
+          "value": "30°0′28″.3N、115°20′44″.9E",
+          "evidence": "30°0′28″.3N、115°20′44″.9E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.3458056,
+        "lat": 30.0078611
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.3458056,
+          "lat": 30.0078611
+        }
+      ],
+      "effective_at": "2026-09-30T12:13:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

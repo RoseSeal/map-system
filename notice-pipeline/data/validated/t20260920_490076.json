@@ -1,0 +1,64 @@
+{
+  "notice_id": "t20260920_490076",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260920_490076.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕206号",
+  "published_at": "2026-09-20T17:11:00+08:00",
+  "source_item_count": 1,
+  "llm_item_count": 1,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、09月20日09:08阳逻水道乙烯重件码头#1红浮，位置调整为自白浒山测点起，方位326.5度，距离4.24千米；2000国家大地坐标系地理坐标30°35′15″.8N、114°34′23″.2E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月20日09:08",
+          "evidence": "09月20日09:08"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道"
+        },
+        "aton_name": {
+          "value": "乙烯重件码头#1红浮",
+          "evidence": "乙烯重件码头#1红浮"
+        },
+        "position_raw": {
+          "value": "30°35′15″.8N、114°34′23″.2E",
+          "evidence": "30°35′15″.8N、114°34′23″.2E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.5731111,
+        "lat": 30.5877222
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.5731111,
+          "lat": 30.5877222
+        }
+      ],
+      "effective_at": "2026-09-20T09:08:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

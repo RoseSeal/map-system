@@ -1,0 +1,56 @@
+{
+  "notice_id": "t20261001_490824",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261001_490824.shtml",
+  "title": "长江武汉航道局关于罗湖洲水道航标失常的航道通告",
+  "notice_no": "汉道通〔2026〕216号",
+  "published_at": "2026-10-01T08:44:00+08:00",
+  "source_item_count": 1,
+  "llm_item_count": 1,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "自2026年10月1日08:40起，罗湖洲水道人民洲整治下提示浮标漂失，因安全作业条件受限暂无法恢复。我局将在具备条件后尽快恢复，恢复后将不再另行发布通告。\n请注意识别，谨慎驾驶，以策安全。",
+      "fields": {
+        "action": {
+          "value": "MALFUNCTION",
+          "evidence": "漂失"
+        },
+        "effective_time": {
+          "value": "2026年10月1日08:40",
+          "evidence": "2026年10月1日08:40"
+        },
+        "waterway": {
+          "value": "罗湖洲水道",
+          "evidence": "罗湖洲水道"
+        },
+        "aton_name": {
+          "value": "人民洲整治下提示浮标",
+          "evidence": "人民洲整治下提示浮标"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": "漂失",
+          "evidence": "漂失"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-01T08:40:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

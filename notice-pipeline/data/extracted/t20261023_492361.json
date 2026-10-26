@@ -1,0 +1,44 @@
+{
+  "notice_id": "t20261023_492361",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月23日09:35\",\"evidence\":\"10月23日09:35\"},\"waterway\":{\"value\":\"搁排矶水道\",\"evidence\":\"搁排矶水道沙村#2红浮\"},\"aton_name\":{\"value\":\"沙村#2红浮\",\"evidence\":\"沙村#2红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"29°55′54″.6N、115°23′57″.5E\",\"evidence\":\"29°55′54″.6N、115°23′57″.5E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月23日09:35",
+          "evidence": "10月23日09:35"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道沙村#2红浮"
+        },
+        "aton_name": {
+          "value": "沙村#2红浮",
+          "evidence": "沙村#2红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "29°55′54″.6N、115°23′57″.5E",
+          "evidence": "29°55′54″.6N、115°23′57″.5E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

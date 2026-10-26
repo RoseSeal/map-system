@@ -1,0 +1,792 @@
+{
+  "notice_id": "t20260917_489903",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260917_489903.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕203号",
+  "published_at": "2026-09-17T17:28:00+08:00",
+  "source_item_count": 17,
+  "llm_item_count": 17,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、09月17日11:34设置嘉鱼水道大沙白浮，长江中游航道里程132.4千米，左岸，灯质绿色单闪光。",
+      "fields": {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月17日11:34",
+          "evidence": "09月17日11:34设置"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道大沙白浮"
+        },
+        "aton_name": {
+          "value": "大沙白浮",
+          "evidence": "大沙白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程132.4千米，左岸",
+          "evidence": "长江中游航道里程132.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T11:34:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "1、09月16日17:18阳逻水道阳逻红浮，位置调整为自阳逻测点起，方位302.0度，距离1.97千米；2000国家大地坐标系地理坐标30°40′16″.9N、114°32′10″.2E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日17:18",
+          "evidence": "09月16日17:18阳逻水道阳逻红浮，位置调整"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道阳逻红浮"
+        },
+        "aton_name": {
+          "value": "阳逻红浮",
+          "evidence": "阳逻红浮"
+        },
+        "position_raw": {
+          "value": "30°40′16″.9N、114°32′10″.2E",
+          "evidence": "2000国家大地坐标系地理坐标30°40′16″.9N、114°32′10″.2E"
+        },
+        "position_text": {
+          "value": "自阳逻测点起，方位302.0度，距离1.97千米",
+          "evidence": "自阳逻测点起，方位302.0度，距离1.97千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.5361667,
+        "lat": 30.6713611
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.5361667,
+          "lat": 30.6713611
+        }
+      ],
+      "effective_at": "2026-09-16T17:18:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 3,
+      "source_index": 2,
+      "source_text": "2、09月17日08:40武桥水道鹦鹉洲桥进口红浮，位置调整为自龟山测点起，方位194.9度，距离4.17千米；2000国家大地坐标系地理坐标30°31′15″.9N、114°15′49″.1E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日08:40",
+          "evidence": "09月17日08:40武桥水道鹦鹉洲桥进口红浮，位置调整"
+        },
+        "waterway": {
+          "value": "武桥水道",
+          "evidence": "武桥水道鹦鹉洲桥进口红浮"
+        },
+        "aton_name": {
+          "value": "鹦鹉洲桥进口红浮",
+          "evidence": "鹦鹉洲桥进口红浮"
+        },
+        "position_raw": {
+          "value": "30°31′15″.9N、114°15′49″.1E",
+          "evidence": "2000国家大地坐标系地理坐标30°31′15″.9N、114°15′49″.1E"
+        },
+        "position_text": {
+          "value": "自龟山测点起，方位194.9度，距离4.17千米",
+          "evidence": "自龟山测点起，方位194.9度，距离4.17千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.2636389,
+        "lat": 30.5210833
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.2636389,
+          "lat": 30.5210833
+        }
+      ],
+      "effective_at": "2026-09-17T08:40:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 4,
+      "source_index": 3,
+      "source_text": "3、09月17日08:50白沙洲水道白沙洲#1红危浮，位置调整为长江中游航道里程7.5千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日08:50",
+          "evidence": "09月17日08:50白沙洲水道白沙洲#1红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道白沙洲#1红危浮"
+        },
+        "aton_name": {
+          "value": "白沙洲#1红危浮",
+          "evidence": "白沙洲#1红危浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程7.5千米，右岸",
+          "evidence": "长江中游航道里程7.5千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T08:50:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 5,
+      "source_index": 4,
+      "source_text": "4、09月17日09:02白沙洲水道白沙洲#2红危浮，位置调整为长江中游航道里程8.6千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日09:02",
+          "evidence": "09月17日09:02白沙洲水道白沙洲#2红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道白沙洲#2红危浮"
+        },
+        "aton_name": {
+          "value": "白沙洲#2红危浮",
+          "evidence": "白沙洲#2红危浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程8.6千米，右岸",
+          "evidence": "长江中游航道里程8.6千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T09:02:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 6,
+      "source_index": 5,
+      "source_text": "5、09月17日09:13白沙洲水道白沙洲红浮，位置调整为长江中游航道里程9.4千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日09:13",
+          "evidence": "09月17日09:13白沙洲水道白沙洲红浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道白沙洲红浮"
+        },
+        "aton_name": {
+          "value": "白沙洲红浮",
+          "evidence": "白沙洲红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程9.4千米，右岸",
+          "evidence": "长江中游航道里程9.4千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T09:13:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 7,
+      "source_index": 6,
+      "source_text": "6、09月17日09:39嘉鱼水道复兴洲#4红浮，位置调整为长江中游航道里程127.6千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日09:39",
+          "evidence": "09月17日09:39嘉鱼水道复兴洲#4红浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道复兴洲#4红浮"
+        },
+        "aton_name": {
+          "value": "复兴洲#4红浮",
+          "evidence": "复兴洲#4红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程127.6千米，右岸",
+          "evidence": "长江中游航道里程127.6千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T09:39:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 8,
+      "source_index": 7,
+      "source_text": "7、09月17日09:49白沙洲水道白沙洲桥#3白浮，位置调整为长江中游航道里程12.0千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日09:49",
+          "evidence": "09月17日09:49白沙洲水道白沙洲桥#3白浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道白沙洲桥#3白浮"
+        },
+        "aton_name": {
+          "value": "白沙洲桥#3白浮",
+          "evidence": "白沙洲桥#3白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程12.0千米，左岸",
+          "evidence": "长江中游航道里程12.0千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T09:49:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 9,
+      "source_index": 8,
+      "source_text": "8、09月17日10:01白沙洲水道中营寺白浮，位置调整为长江中游航道里程13.3千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:01",
+          "evidence": "09月17日10:01白沙洲水道中营寺白浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道中营寺白浮"
+        },
+        "aton_name": {
+          "value": "中营寺白浮",
+          "evidence": "中营寺白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程13.3千米，左岸",
+          "evidence": "长江中游航道里程13.3千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T10:01:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 10,
+      "source_index": 9,
+      "source_text": "9、09月17日10:03嘉鱼水道复兴洲#7红危浮，位置调整为长江中游航道里程132.0千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:03",
+          "evidence": "09月17日10:03嘉鱼水道复兴洲#7红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道复兴洲#7红危浮"
+        },
+        "aton_name": {
+          "value": "复兴洲#7红危浮",
+          "evidence": "复兴洲#7红危浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程132.0千米，右岸",
+          "evidence": "长江中游航道里程132.0千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T10:03:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 11,
+      "source_index": 10,
+      "source_text": "10、09月17日10:16嘉鱼水道复兴洲#8红危浮，位置调整为长江中游航道里程132.5千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:16",
+          "evidence": "09月17日10:16嘉鱼水道复兴洲#8红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道复兴洲#8红危浮"
+        },
+        "aton_name": {
+          "value": "复兴洲#8红危浮",
+          "evidence": "复兴洲#8红危浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程132.5千米，右岸",
+          "evidence": "长江中游航道里程132.5千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T10:16:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 12,
+      "source_index": 11,
+      "source_text": "11、09月17日10:30嘉鱼水道复兴洲#9红浮，位置调整为长江中游航道里程133.0千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:30",
+          "evidence": "09月17日10:30嘉鱼水道复兴洲#9红浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道复兴洲#9红浮"
+        },
+        "aton_name": {
+          "value": "复兴洲#9红浮",
+          "evidence": "复兴洲#9红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程133.0千米，右岸",
+          "evidence": "长江中游航道里程133.0千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T10:30:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 13,
+      "source_index": 12,
+      "source_text": "12、09月17日10:53嘉鱼水道嘉鱼#1红浮，位置调整为长江中游航道里程133.9千米，右岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:53",
+          "evidence": "09月17日10:53嘉鱼水道嘉鱼#1红浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道嘉鱼#1红浮"
+        },
+        "aton_name": {
+          "value": "嘉鱼#1红浮",
+          "evidence": "嘉鱼#1红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程133.9千米，右岸",
+          "evidence": "长江中游航道里程133.9千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-17T10:53:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 14,
+      "source_index": 13,
+      "source_text": "13、09月17日12:24黄石水道黄石#2白浮，位置调整为自黄石钟楼测点起，方位86.1度，距离2.62千米；2000国家大地坐标系地理坐标30°12′53″.5N、115°6′54″.9E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日12:24",
+          "evidence": "09月17日12:24黄石水道黄石#2白浮，位置调整"
+        },
+        "waterway": {
+          "value": "黄石水道",
+          "evidence": "黄石水道黄石#2白浮"
+        },
+        "aton_name": {
+          "value": "黄石#2白浮",
+          "evidence": "黄石#2白浮"
+        },
+        "position_raw": {
+          "value": "30°12′53″.5N、115°6′54″.9E",
+          "evidence": "2000国家大地坐标系地理坐标30°12′53″.5N、115°6′54″.9E"
+        },
+        "position_text": {
+          "value": "自黄石钟楼测点起，方位86.1度，距离2.62千米",
+          "evidence": "自黄石钟楼测点起，方位86.1度，距离2.62千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.11525,
+        "lat": 30.2148611
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.11525,
+          "lat": 30.2148611
+        }
+      ],
+      "effective_at": "2026-09-17T12:24:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 15,
+      "source_index": 14,
+      "source_text": "14、09月17日12:31黄石水道黄石#1白浮，位置调整为自西塞山测点起，方位271.5度，距离2.99千米；2000国家大地坐标系地理坐标30°12′47″.9N、115°7′39″.5E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日12:31",
+          "evidence": "09月17日12:31黄石水道黄石#1白浮，位置调整"
+        },
+        "waterway": {
+          "value": "黄石水道",
+          "evidence": "黄石水道黄石#1白浮"
+        },
+        "aton_name": {
+          "value": "黄石#1白浮",
+          "evidence": "黄石#1白浮"
+        },
+        "position_raw": {
+          "value": "30°12′47″.9N、115°7′39″.5E",
+          "evidence": "2000国家大地坐标系地理坐标30°12′47″.9N、115°7′39″.5E"
+        },
+        "position_text": {
+          "value": "自西塞山测点起，方位271.5度，距离2.99千米",
+          "evidence": "自西塞山测点起，方位271.5度，距离2.99千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.1276389,
+        "lat": 30.2133056
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.1276389,
+          "lat": 30.2133056
+        }
+      ],
+      "effective_at": "2026-09-17T12:31:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 16,
+      "source_index": 15,
+      "source_text": "15、09月17日12:52牯牛沙水道道士袱#2红危浮，位置调整为自耀鹰顶测点起，方位294.8度，距离3.74千米；2000国家大地坐标系地理坐标30°12′55″.6N、115°12′8″.3E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日12:52",
+          "evidence": "09月17日12:52牯牛沙水道道士袱#2红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "牯牛沙水道",
+          "evidence": "牯牛沙水道道士袱#2红危浮"
+        },
+        "aton_name": {
+          "value": "道士袱#2红危浮",
+          "evidence": "道士袱#2红危浮"
+        },
+        "position_raw": {
+          "value": "30°12′55″.6N、115°12′8″.3E",
+          "evidence": "2000国家大地坐标系地理坐标30°12′55″.6N、115°12′8″.3E"
+        },
+        "position_text": {
+          "value": "自耀鹰顶测点起，方位294.8度，距离3.74千米",
+          "evidence": "自耀鹰顶测点起，方位294.8度，距离3.74千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.2023056,
+        "lat": 30.2154444
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.2023056,
+          "lat": 30.2154444
+        }
+      ],
+      "effective_at": "2026-09-17T12:52:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 17,
+      "source_index": 16,
+      "source_text": "16、09月17日13:10牯牛沙水道牯牛沙#3红浮，位置调整为自耀鹰顶测点起，方位273.8度，距离1.51千米；2000国家大地坐标系地理坐标30°12′2″.3N、115°13′15″.4E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日13:10",
+          "evidence": "09月17日13:10牯牛沙水道牯牛沙#3红浮，位置调整"
+        },
+        "waterway": {
+          "value": "牯牛沙水道",
+          "evidence": "牯牛沙水道牯牛沙#3红浮"
+        },
+        "aton_name": {
+          "value": "牯牛沙#3红浮",
+          "evidence": "牯牛沙#3红浮"
+        },
+        "position_raw": {
+          "value": "30°12′2″.3N、115°13′15″.4E",
+          "evidence": "2000国家大地坐标系地理坐标30°12′2″.3N、115°13′15″.4E"
+        },
+        "position_text": {
+          "value": "自耀鹰顶测点起，方位273.8度，距离1.51千米",
+          "evidence": "自耀鹰顶测点起，方位273.8度，距离1.51千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.2209444,
+        "lat": 30.2006389
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.2209444,
+          "lat": 30.2006389
+        }
+      ],
+      "effective_at": "2026-09-17T13:10:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

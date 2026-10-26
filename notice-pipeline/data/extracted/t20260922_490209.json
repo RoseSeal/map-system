@@ -1,0 +1,350 @@
+{
+  "notice_id": "t20260922_490209",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日09:00\",\"evidence\":\"09月22日09:00\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"圆港戴下左右通航浮\",\"evidence\":\"圆港戴下左右通航浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°17′30″.5N、115°5′25″.1E\",\"evidence\":\"30°17′30″.5N、115°5′25″.1E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日09:11\",\"evidence\":\"09月22日09:11\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"圆港戴圆#1红浮\",\"evidence\":\"圆港戴圆#1红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°17′51″.9N、115°5′46″.9E\",\"evidence\":\"30°17′51″.9N、115°5′46″.9E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日09:25\",\"evidence\":\"09月22日09:25\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"圆港戴圆#2红浮\",\"evidence\":\"圆港戴圆#2红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°18′37″.9N、115°6′11″.1E\",\"evidence\":\"30°18′37″.9N、115°6′11″.1E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日09:39\",\"evidence\":\"09月22日09:39\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"圆港戴圆#3红浮\",\"evidence\":\"圆港戴圆#3红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°19′33″.8N、115°6′34″.6E\",\"evidence\":\"30°19′33″.8N、115°6′34″.6E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日09:51\",\"evidence\":\"09月22日09:51\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"圆港戴圆#4红浮\",\"evidence\":\"圆港戴圆#4红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°20′25″.6N、115°6′39″.3E\",\"evidence\":\"30°20′25″.6N、115°6′39″.3E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日10:12\",\"evidence\":\"09月22日10:12\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"圆港戴圆#5红浮\",\"evidence\":\"圆港戴圆#5红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°21′28″.0N、115°6′19″.0E\",\"evidence\":\"30°21′28″.0N、115°6′19″.0E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日10:29\",\"evidence\":\"09月22日10:29\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"圆港戴圆#6红浮\",\"evidence\":\"圆港戴圆#6红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°22′31″.0N、115°5′37″.2E\",\"evidence\":\"30°22′31″.0N、115°5′37″.2E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日11:05\",\"evidence\":\"09月22日11:05\"},\"waterway\":{\"value\":\"搁排矶水道\",\"evidence\":\"搁排矶水道\"},\"aton_name\":{\"value\":\"新塘白浮\",\"evidence\":\"新塘白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°0′48″.6N、115°20′40″.0E\",\"evidence\":\"30°0′48″.6N、115°20′40″.0E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日11:18\",\"evidence\":\"09月22日11:18\"},\"waterway\":{\"value\":\"戴家洲水道\",\"evidence\":\"戴家洲水道\"},\"aton_name\":{\"value\":\"戴直#10红浮\",\"evidence\":\"戴直#10红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°23′57″.3N、115°1′32″.0E\",\"evidence\":\"30°23′57″.3N、115°1′32″.0E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月22日11:28\",\"evidence\":\"09月22日11:28\"},\"waterway\":{\"value\":\"搁排矶水道\",\"evidence\":\"搁排矶水道\"},\"aton_name\":{\"value\":\"通济白浮\",\"evidence\":\"通济白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°1′22″.8N、115°19′52″.2E\",\"evidence\":\"30°1′22″.8N、115°19′52″.2E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:00",
+          "evidence": "09月22日09:00"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴下左右通航浮",
+          "evidence": "圆港戴下左右通航浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°17′30″.5N、115°5′25″.1E",
+          "evidence": "30°17′30″.5N、115°5′25″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:11",
+          "evidence": "09月22日09:11"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#1红浮",
+          "evidence": "圆港戴圆#1红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°17′51″.9N、115°5′46″.9E",
+          "evidence": "30°17′51″.9N、115°5′46″.9E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:25",
+          "evidence": "09月22日09:25"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#2红浮",
+          "evidence": "圆港戴圆#2红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°18′37″.9N、115°6′11″.1E",
+          "evidence": "30°18′37″.9N、115°6′11″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:39",
+          "evidence": "09月22日09:39"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#3红浮",
+          "evidence": "圆港戴圆#3红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°19′33″.8N、115°6′34″.6E",
+          "evidence": "30°19′33″.8N、115°6′34″.6E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:51",
+          "evidence": "09月22日09:51"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#4红浮",
+          "evidence": "圆港戴圆#4红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°20′25″.6N、115°6′39″.3E",
+          "evidence": "30°20′25″.6N、115°6′39″.3E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日10:12",
+          "evidence": "09月22日10:12"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#5红浮",
+          "evidence": "圆港戴圆#5红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°21′28″.0N、115°6′19″.0E",
+          "evidence": "30°21′28″.0N、115°6′19″.0E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日10:29",
+          "evidence": "09月22日10:29"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#6红浮",
+          "evidence": "圆港戴圆#6红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°22′31″.0N、115°5′37″.2E",
+          "evidence": "30°22′31″.0N、115°5′37″.2E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日11:05",
+          "evidence": "09月22日11:05"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道"
+        },
+        "aton_name": {
+          "value": "新塘白浮",
+          "evidence": "新塘白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°0′48″.6N、115°20′40″.0E",
+          "evidence": "30°0′48″.6N、115°20′40″.0E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日11:18",
+          "evidence": "09月22日11:18"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "戴直#10红浮",
+          "evidence": "戴直#10红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°23′57″.3N、115°1′32″.0E",
+          "evidence": "30°23′57″.3N、115°1′32″.0E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日11:28",
+          "evidence": "09月22日11:28"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道"
+        },
+        "aton_name": {
+          "value": "通济白浮",
+          "evidence": "通济白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°1′22″.8N、115°19′52″.2E",
+          "evidence": "30°1′22″.8N、115°19′52″.2E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

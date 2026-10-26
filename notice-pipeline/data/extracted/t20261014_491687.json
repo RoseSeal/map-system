@@ -1,0 +1,44 @@
+{
+  "notice_id": "t20261014_491687",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月14日14:25\",\"evidence\":\"10月14日14:25\"},\"waterway\":{\"value\":\"搁排矶水道\",\"evidence\":\"搁排矶水道\"},\"aton_name\":{\"value\":\"华新骨料#2专用浮\",\"evidence\":\"华新骨料#2专用浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"29°57′45″.8N、115°22′44″.9E\",\"evidence\":\"29°57′45″.8N、115°22′44″.9E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月14日14:25",
+          "evidence": "10月14日14:25"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道"
+        },
+        "aton_name": {
+          "value": "华新骨料#2专用浮",
+          "evidence": "华新骨料#2专用浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "29°57′45″.8N、115°22′44″.9E",
+          "evidence": "29°57′45″.8N、115°22′44″.9E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

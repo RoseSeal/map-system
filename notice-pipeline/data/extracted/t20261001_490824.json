@@ -1,0 +1,44 @@
+{
+  "notice_id": "t20261001_490824",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"MALFUNCTION\",\"evidence\":\"漂失\"},\"effective_time\":{\"value\":\"2026年10月1日08:40\",\"evidence\":\"2026年10月1日08:40\"},\"waterway\":{\"value\":\"罗湖洲水道\",\"evidence\":\"罗湖洲水道\"},\"aton_name\":{\"value\":\"人民洲整治下提示浮标\",\"evidence\":\"人民洲整治下提示浮标\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":\"漂失\",\"evidence\":\"漂失\"}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "MALFUNCTION",
+          "evidence": "漂失"
+        },
+        "effective_time": {
+          "value": "2026年10月1日08:40",
+          "evidence": "2026年10月1日08:40"
+        },
+        "waterway": {
+          "value": "罗湖洲水道",
+          "evidence": "罗湖洲水道"
+        },
+        "aton_name": {
+          "value": "人民洲整治下提示浮标",
+          "evidence": "人民洲整治下提示浮标"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": "漂失",
+          "evidence": "漂失"
+        }
+      }
+    ]
+  }
+}

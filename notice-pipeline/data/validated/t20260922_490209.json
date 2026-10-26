@@ -1,0 +1,523 @@
+{
+  "notice_id": "t20260922_490209",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260922_490209.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕208号",
+  "published_at": "2026-09-22T17:40:00+08:00",
+  "source_item_count": 10,
+  "llm_item_count": 10,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、09月22日09:00戴家洲水道圆港戴下左右通航浮，位置调整为自回风矶测点起，方位13.5度，距离0.69千米；2000国家大地坐标系地理坐标30°17′30″.5N、115°5′25″.1E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:00",
+          "evidence": "09月22日09:00"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴下左右通航浮",
+          "evidence": "圆港戴下左右通航浮"
+        },
+        "position_raw": {
+          "value": "30°17′30″.5N、115°5′25″.1E",
+          "evidence": "30°17′30″.5N、115°5′25″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.0903056,
+        "lat": 30.2918056
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.0903056,
+          "lat": 30.2918056
+        }
+      ],
+      "effective_at": "2026-09-22T09:00:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "2、09月22日09:11戴家洲水道圆港戴圆#1红浮，位置调整为自回风矶测点起，方位32.6度，距离1.51千米；2000国家大地坐标系地理坐标30°17′51″.9N、115°5′46″.9E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:11",
+          "evidence": "09月22日09:11"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#1红浮",
+          "evidence": "圆港戴圆#1红浮"
+        },
+        "position_raw": {
+          "value": "30°17′51″.9N、115°5′46″.9E",
+          "evidence": "30°17′51″.9N、115°5′46″.9E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.0963611,
+        "lat": 30.29775
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.0963611,
+          "lat": 30.29775
+        }
+      ],
+      "effective_at": "2026-09-22T09:11:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 3,
+      "source_index": 2,
+      "source_text": "3、09月22日09:25戴家洲水道圆港戴圆#2红浮，位置调整为自回风矶测点起，方位30.7度，距离3.08千米；2000国家大地坐标系地理坐标30°18′37″.9N、115°6′11″.1E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:25",
+          "evidence": "09月22日09:25"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#2红浮",
+          "evidence": "圆港戴圆#2红浮"
+        },
+        "position_raw": {
+          "value": "30°18′37″.9N、115°6′11″.1E",
+          "evidence": "30°18′37″.9N、115°6′11″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.1030833,
+        "lat": 30.3105278
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.1030833,
+          "lat": 30.3105278
+        }
+      ],
+      "effective_at": "2026-09-22T09:25:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 4,
+      "source_index": 3,
+      "source_text": "4、09月22日09:39戴家洲水道圆港戴圆#3红浮，位置调整为自回风矶测点起，方位27.1度，距离4.91千米；2000国家大地坐标系地理坐标30°19′33″.8N、115°6′34″.6E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:39",
+          "evidence": "09月22日09:39"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#3红浮",
+          "evidence": "圆港戴圆#3红浮"
+        },
+        "position_raw": {
+          "value": "30°19′33″.8N、115°6′34″.6E",
+          "evidence": "30°19′33″.8N、115°6′34″.6E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.1096111,
+        "lat": 30.3260556
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.1096111,
+          "lat": 30.3260556
+        }
+      ],
+      "effective_at": "2026-09-22T09:39:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 5,
+      "source_index": 4,
+      "source_text": "5、09月22日09:51戴家洲水道圆港戴圆#4红浮，位置调整为自寡妇矶测点起，方位103.0度，距离4.11千米；2000国家大地坐标系地理坐标30°20′25″.6N、115°6′39″.3E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日09:51",
+          "evidence": "09月22日09:51"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#4红浮",
+          "evidence": "圆港戴圆#4红浮"
+        },
+        "position_raw": {
+          "value": "30°20′25″.6N、115°6′39″.3E",
+          "evidence": "30°20′25″.6N、115°6′39″.3E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.1109167,
+        "lat": 30.3404444
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.1109167,
+          "lat": 30.3404444
+        }
+      ],
+      "effective_at": "2026-09-22T09:51:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 6,
+      "source_index": 5,
+      "source_text": "6、09月22日10:12戴家洲水道圆港戴圆#5红浮，位置调整为自寡妇矶测点起，方位78.2度，距离3.52千米；2000国家大地坐标系地理坐标30°21′28″.0N、115°6′19″.0E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日10:12",
+          "evidence": "09月22日10:12"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#5红浮",
+          "evidence": "圆港戴圆#5红浮"
+        },
+        "position_raw": {
+          "value": "30°21′28″.0N、115°6′19″.0E",
+          "evidence": "30°21′28″.0N、115°6′19″.0E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.1052778,
+        "lat": 30.3577778
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.1052778,
+          "lat": 30.3577778
+        }
+      ],
+      "effective_at": "2026-09-22T10:12:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 7,
+      "source_index": 6,
+      "source_text": "7、09月22日10:29戴家洲水道圆港戴圆#6红浮，位置调整为自寡妇矶测点起，方位44.3度，距离3.63千米；2000国家大地坐标系地理坐标30°22′31″.0N、115°5′37″.2E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日10:29",
+          "evidence": "09月22日10:29"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "圆港戴圆#6红浮",
+          "evidence": "圆港戴圆#6红浮"
+        },
+        "position_raw": {
+          "value": "30°22′31″.0N、115°5′37″.2E",
+          "evidence": "30°22′31″.0N、115°5′37″.2E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.0936667,
+        "lat": 30.3752778
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.0936667,
+          "lat": 30.3752778
+        }
+      ],
+      "effective_at": "2026-09-22T10:29:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 8,
+      "source_index": 7,
+      "source_text": "8、09月22日11:05搁排矶水道新塘白浮，位置调整为自达义脑测点起，方位344.0度，距离4.33千米；2000国家大地坐标系地理坐标30°0′48″.6N、115°20′40″.0E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日11:05",
+          "evidence": "09月22日11:05"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道"
+        },
+        "aton_name": {
+          "value": "新塘白浮",
+          "evidence": "新塘白浮"
+        },
+        "position_raw": {
+          "value": "30°0′48″.6N、115°20′40″.0E",
+          "evidence": "30°0′48″.6N、115°20′40″.0E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.3444444,
+        "lat": 30.0135
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.3444444,
+          "lat": 30.0135
+        }
+      ],
+      "effective_at": "2026-09-22T11:05:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 9,
+      "source_index": 8,
+      "source_text": "9、09月22日11:18戴家洲水道戴直#10红浮，位置调整为自耀子山测点起，方位336.3度，距离1.28千米；2000国家大地坐标系地理坐标30°23′57″.3N、115°1′32″.0E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日11:18",
+          "evidence": "09月22日11:18"
+        },
+        "waterway": {
+          "value": "戴家洲水道",
+          "evidence": "戴家洲水道"
+        },
+        "aton_name": {
+          "value": "戴直#10红浮",
+          "evidence": "戴直#10红浮"
+        },
+        "position_raw": {
+          "value": "30°23′57″.3N、115°1′32″.0E",
+          "evidence": "30°23′57″.3N、115°1′32″.0E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.0255556,
+        "lat": 30.39925
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.0255556,
+          "lat": 30.39925
+        }
+      ],
+      "effective_at": "2026-09-22T11:18:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 10,
+      "source_index": 9,
+      "source_text": "10、09月22日11:28搁排矶水道通济白浮，位置调整为自达义脑测点起，方位333.2度，距离5.76千米；2000国家大地坐标系地理坐标30°1′22″.8N、115°19′52″.2E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月22日11:28",
+          "evidence": "09月22日11:28"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道"
+        },
+        "aton_name": {
+          "value": "通济白浮",
+          "evidence": "通济白浮"
+        },
+        "position_raw": {
+          "value": "30°1′22″.8N、115°19′52″.2E",
+          "evidence": "30°1′22″.8N、115°19′52″.2E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.3311667,
+        "lat": 30.023
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.3311667,
+          "lat": 30.023
+        }
+      ],
+      "effective_at": "2026-09-22T11:28:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

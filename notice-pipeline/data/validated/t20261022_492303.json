@@ -1,0 +1,56 @@
+{
+  "notice_id": "t20261022_492303",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261022_492303.shtml",
+  "title": "长江武汉航道局关于搁排矶水道航标失常的航道通告",
+  "notice_no": "汉道通〔2026〕230号",
+  "published_at": "2026-10-22T20:42:00+08:00",
+  "source_item_count": 1,
+  "llm_item_count": 1,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "自2026年10月22日20:38起，搁排矶水道沙村#2红浮漂失，因安全作业条件受限暂无法恢复。我局将在具备条件后尽快恢复，恢复后将不再另行发布通告。\n请注意识别，谨慎驾驶，以策安全。",
+      "fields": {
+        "action": {
+          "value": "MALFUNCTION",
+          "evidence": "漂失"
+        },
+        "effective_time": {
+          "value": "2026年10月22日20:38",
+          "evidence": "2026年10月22日20:38"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道"
+        },
+        "aton_name": {
+          "value": "沙村#2红浮",
+          "evidence": "沙村#2红浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": "漂失",
+          "evidence": "漂失"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-22T20:38:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

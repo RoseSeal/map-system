@@ -1,0 +1,566 @@
+{
+  "notice_id": "t20260916_489827",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260916_489827.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕202号",
+  "published_at": "2026-09-16T17:11:00+08:00",
+  "source_item_count": 11,
+  "llm_item_count": 11,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、09月16日07:55龙口水道龙口#1白浮，位置调整为长江中游航道里程140.4千米，左岸。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日07:55",
+          "evidence": "09月16日07:55"
+        },
+        "waterway": {
+          "value": "龙口水道",
+          "evidence": "龙口水道"
+        },
+        "aton_name": {
+          "value": "龙口#1白浮",
+          "evidence": "龙口#1白浮"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程140.4千米，左岸",
+          "evidence": "长江中游航道里程140.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-09-16T07:55:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 2,
+      "source_index": 1,
+      "source_text": "2、09月16日09:29青山夹水道天兴洲整治#1禁止抛锚浮，位置调整为自青山测点起，方位272.9度，距离2.7千米；2000国家大地坐标系地理坐标30°39′25″.1N、114°23′17″.4E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日09:29",
+          "evidence": "09月16日09:29"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道"
+        },
+        "aton_name": {
+          "value": "天兴洲整治#1禁止抛锚浮",
+          "evidence": "天兴洲整治#1禁止抛锚浮"
+        },
+        "position_raw": {
+          "value": "30°39′25″.1N、114°23′17″.4E",
+          "evidence": "30°39′25″.1N、114°23′17″.4E"
+        },
+        "position_text": {
+          "value": "自青山测点起，方位272.9度，距离2.7千米",
+          "evidence": "自青山测点起，方位272.9度，距离2.7千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.3881667,
+        "lat": 30.6569722
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3881667,
+          "lat": 30.6569722
+        }
+      ],
+      "effective_at": "2026-09-16T09:29:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 3,
+      "source_index": 2,
+      "source_text": "3、09月16日09:41青山夹水道天兴洲桥进口白浮，位置调整为自青山测点起，方位261.8度，距离3.86千米；2000国家大地坐标系地理坐标30°38′59″.4N、114°22′35″.4E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日09:41",
+          "evidence": "09月16日09:41"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道"
+        },
+        "aton_name": {
+          "value": "天兴洲桥进口白浮",
+          "evidence": "天兴洲桥进口白浮"
+        },
+        "position_raw": {
+          "value": "30°38′59″.4N、114°22′35″.4E",
+          "evidence": "30°38′59″.4N、114°22′35″.4E"
+        },
+        "position_text": {
+          "value": "自青山测点起，方位261.8度，距离3.86千米",
+          "evidence": "自青山测点起，方位261.8度，距离3.86千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.3765,
+        "lat": 30.6498333
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3765,
+          "lat": 30.6498333
+        }
+      ],
+      "effective_at": "2026-09-16T09:41:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 4,
+      "source_index": 3,
+      "source_text": "4、09月16日10:00青山夹水道青山夹上口白浮，位置调整为自余家头测点起，方位40.2度，距离3.48千米；2000国家大地坐标系地理坐标30°38′29″.9N、114°21′44″.9E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:00",
+          "evidence": "09月16日10:00"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道"
+        },
+        "aton_name": {
+          "value": "青山夹上口白浮",
+          "evidence": "青山夹上口白浮"
+        },
+        "position_raw": {
+          "value": "30°38′29″.9N、114°21′44″.9E",
+          "evidence": "30°38′29″.9N、114°21′44″.9E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位40.2度，距离3.48千米",
+          "evidence": "自余家头测点起，方位40.2度，距离3.48千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.3624722,
+        "lat": 30.6416389
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3624722,
+          "lat": 30.6416389
+        }
+      ],
+      "effective_at": "2026-09-16T10:00:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 5,
+      "source_index": 4,
+      "source_text": "5、09月16日10:16汉口水道二七桥#1白浮，位置调整为自余家头测点起，方位28.6度，距离2.03千米；2000国家大地坐标系地理坐标30°37′58″.3N、114°21′0″.4E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:16",
+          "evidence": "09月16日10:16"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道"
+        },
+        "aton_name": {
+          "value": "二七桥#1白浮",
+          "evidence": "二七桥#1白浮"
+        },
+        "position_raw": {
+          "value": "30°37′58″.3N、114°21′0″.4E",
+          "evidence": "30°37′58″.3N、114°21′0″.4E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位28.6度，距离2.03千米",
+          "evidence": "自余家头测点起，方位28.6度，距离2.03千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.3501111,
+        "lat": 30.6328611
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3501111,
+          "lat": 30.6328611
+        }
+      ],
+      "effective_at": "2026-09-16T10:16:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 6,
+      "source_index": 5,
+      "source_text": "6、09月16日10:29汉口水道二七桥#2白浮，位置调整为自余家头测点起，方位16.3度，距离1.46千米；2000国家大地坐标系地理坐标30°37′44″.7N、114°20′41″.3E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:29",
+          "evidence": "09月16日10:29"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道"
+        },
+        "aton_name": {
+          "value": "二七桥#2白浮",
+          "evidence": "二七桥#2白浮"
+        },
+        "position_raw": {
+          "value": "30°37′44″.7N、114°20′41″.3E",
+          "evidence": "30°37′44″.7N、114°20′41″.3E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位16.3度，距离1.46千米",
+          "evidence": "自余家头测点起，方位16.3度，距离1.46千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.3448056,
+        "lat": 30.6290833
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3448056,
+          "lat": 30.6290833
+        }
+      ],
+      "effective_at": "2026-09-16T10:29:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 7,
+      "source_index": 6,
+      "source_text": "7、09月16日10:44汉口水道二七桥#3白浮，位置调整为自余家头测点起，方位336.1度，距离0.88千米；2000国家大地坐标系地理坐标30°37′25″.4N、114°20′16″.2E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:44",
+          "evidence": "09月16日10:44"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道"
+        },
+        "aton_name": {
+          "value": "二七桥#3白浮",
+          "evidence": "二七桥#3白浮"
+        },
+        "position_raw": {
+          "value": "30°37′25″.4N、114°20′16″.2E",
+          "evidence": "30°37′25″.4N、114°20′16″.2E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位336.1度，距离0.88千米",
+          "evidence": "自余家头测点起，方位336.1度，距离0.88千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.3378333,
+        "lat": 30.6237222
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3378333,
+          "lat": 30.6237222
+        }
+      ],
+      "effective_at": "2026-09-16T10:44:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 8,
+      "source_index": 7,
+      "source_text": "8、09月16日10:55汉口水道二七桥#4白浮，位置调整为自余家头测点起，方位282.8度，距离1.05千米；2000国家大地坐标系地理坐标30°37′7″.5N、114°19′49″.7E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日10:55",
+          "evidence": "09月16日10:55"
+        },
+        "waterway": {
+          "value": "汉口水道",
+          "evidence": "汉口水道"
+        },
+        "aton_name": {
+          "value": "二七桥#4白浮",
+          "evidence": "二七桥#4白浮"
+        },
+        "position_raw": {
+          "value": "30°37′7″.5N、114°19′49″.7E",
+          "evidence": "30°37′7″.5N、114°19′49″.7E"
+        },
+        "position_text": {
+          "value": "自余家头测点起，方位282.8度，距离1.05千米",
+          "evidence": "自余家头测点起，方位282.8度，距离1.05千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.3304722,
+        "lat": 30.61875
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.3304722,
+          "lat": 30.61875
+        }
+      ],
+      "effective_at": "2026-09-16T10:55:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 9,
+      "source_index": 8,
+      "source_text": "9、09月16日14:47牧鹅洲水道牧鹅洲下口白浮，位置调整为自观音山测点起，方位265.4度，距离1.68千米；2000国家大地坐标系地理坐标30°33′30″.9N、114°37′50″.8E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日14:47",
+          "evidence": "09月16日14:47"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道"
+        },
+        "aton_name": {
+          "value": "牧鹅洲下口白浮",
+          "evidence": "牧鹅洲下口白浮"
+        },
+        "position_raw": {
+          "value": "30°33′30″.9N、114°37′50″.8E",
+          "evidence": "30°33′30″.9N、114°37′50″.8E"
+        },
+        "position_text": {
+          "value": "自观音山测点起，方位265.4度，距离1.68千米",
+          "evidence": "自观音山测点起，方位265.4度，距离1.68千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.6307778,
+        "lat": 30.5585833
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.6307778,
+          "lat": 30.5585833
+        }
+      ],
+      "effective_at": "2026-09-16T14:47:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 10,
+      "source_index": 9,
+      "source_text": "10、09月16日15:16牧鹅洲水道牧鹅洲#1白浮，位置调整为自白浒山测点起，方位84.9度，距离2.48千米；2000国家大地坐标系地理坐标30°33′24″.7N、114°37′15″.2E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日15:16",
+          "evidence": "09月16日15:16"
+        },
+        "waterway": {
+          "value": "牧鹅洲水道",
+          "evidence": "牧鹅洲水道"
+        },
+        "aton_name": {
+          "value": "牧鹅洲#1白浮",
+          "evidence": "牧鹅洲#1白浮"
+        },
+        "position_raw": {
+          "value": "30°33′24″.7N、114°37′15″.2E",
+          "evidence": "30°33′24″.7N、114°37′15″.2E"
+        },
+        "position_text": {
+          "value": "自白浒山测点起，方位84.9度，距离2.48千米",
+          "evidence": "自白浒山测点起，方位84.9度，距离2.48千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.6208889,
+        "lat": 30.5568611
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.6208889,
+          "lat": 30.5568611
+        }
+      ],
+      "effective_at": "2026-09-16T15:16:00+08:00",
+      "issues": []
+    },
+    {
+      "index": 11,
+      "source_index": 10,
+      "source_text": "11、09月16日16:50阳逻水道阳逻红浮，位置调整为自阳逻测点起，方位300.3度，距离1.97千米；2000国家大地坐标系地理坐标30°40′15″.3N、114°32′8″.7E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日16:50",
+          "evidence": "09月16日16:50"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道"
+        },
+        "aton_name": {
+          "value": "阳逻红浮",
+          "evidence": "阳逻红浮"
+        },
+        "position_raw": {
+          "value": "30°40′15″.3N、114°32′8″.7E",
+          "evidence": "30°40′15″.3N、114°32′8″.7E"
+        },
+        "position_text": {
+          "value": "自阳逻测点起，方位300.3度，距离1.97千米",
+          "evidence": "自阳逻测点起，方位300.3度，距离1.97千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 114.53575,
+        "lat": 30.6709167
+      },
+      "baseline_positions": [
+        {
+          "lon": 114.53575,
+          "lat": 30.6709167
+        }
+      ],
+      "effective_at": "2026-09-16T16:50:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

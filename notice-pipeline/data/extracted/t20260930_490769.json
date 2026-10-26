@@ -1,0 +1,248 @@
+{
+  "notice_id": "t20260930_490769",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"SET\",\"evidence\":\"设置\"},\"effective_time\":{\"value\":\"09月30日10:37\",\"evidence\":\"09月30日10:37设置\"},\"waterway\":{\"value\":\"搁排矶水道\",\"evidence\":\"搁排矶水道富池码头红浮\"},\"aton_name\":{\"value\":\"富池码头红浮\",\"evidence\":\"搁排矶水道富池码头红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"29°56′41″.2N、115°24′8″.6E\",\"evidence\":\"29°56′41″.2N、115°24′8″.6E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"REMOVE\",\"evidence\":\"撤除\"},\"effective_time\":{\"value\":\"09月30日10:44\",\"evidence\":\"09月30日10:44撤除\"},\"waterway\":{\"value\":\"搁排矶水道\",\"evidence\":\"搁排矶水道富池码头侧面岸标\"},\"aton_name\":{\"value\":\"富池码头侧面岸标\",\"evidence\":\"搁排矶水道富池码头侧面岸标\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月30日10:59\",\"evidence\":\"09月30日10:59青山夹水道武钢运河口白浮，位置调整为\"},\"waterway\":{\"value\":\"青山夹水道\",\"evidence\":\"青山夹水道武钢运河口白浮\"},\"aton_name\":{\"value\":\"武钢运河口白浮\",\"evidence\":\"青山夹水道武钢运河口白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°40′12″.3N、114°25′59″.6E\",\"evidence\":\"30°40′12″.3N、114°25′59″.6E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月30日11:17\",\"evidence\":\"09月30日11:17青山夹水道青山桥进口白浮，位置调整为\"},\"waterway\":{\"value\":\"青山夹水道\",\"evidence\":\"青山夹水道青山桥进口白浮\"},\"aton_name\":{\"value\":\"青山桥进口白浮\",\"evidence\":\"青山夹水道青山桥进口白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°40′25″.5N、114°26′42″.7E\",\"evidence\":\"30°40′25″.5N、114°26′42″.7E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月30日11:30\",\"evidence\":\"09月30日11:30青山夹水道青山桥#2白浮，位置调整为\"},\"waterway\":{\"value\":\"青山夹水道\",\"evidence\":\"青山夹水道青山桥#2白浮\"},\"aton_name\":{\"value\":\"青山桥#2白浮\",\"evidence\":\"青山夹水道青山桥#2白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°40′45″.1N、114°27′37″.1E\",\"evidence\":\"30°40′45″.1N、114°27′37″.1E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月30日11:55\",\"evidence\":\"09月30日11:55搁排矶水道猴儿矶危险水域浮，位置调整为\"},\"waterway\":{\"value\":\"搁排矶水道\",\"evidence\":\"搁排矶水道猴儿矶危险水域浮\"},\"aton_name\":{\"value\":\"猴儿矶危险水域浮\",\"evidence\":\"搁排矶水道猴儿矶危险水域浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°0′19″.5N、115°20′51″.1E\",\"evidence\":\"30°0′19″.5N、115°20′51″.1E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整为\"},\"effective_time\":{\"value\":\"09月30日12:13\",\"evidence\":\"09月30日12:13搁排矶水道猴儿矶红浮，位置调整为\"},\"waterway\":{\"value\":\"搁排矶水道\",\"evidence\":\"搁排矶水道猴儿矶红浮\"},\"aton_name\":{\"value\":\"猴儿矶红浮\",\"evidence\":\"搁排矶水道猴儿矶红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°0′28″.3N、115°20′44″.9E\",\"evidence\":\"30°0′28″.3N、115°20′44″.9E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月30日10:37",
+          "evidence": "09月30日10:37设置"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道富池码头红浮"
+        },
+        "aton_name": {
+          "value": "富池码头红浮",
+          "evidence": "搁排矶水道富池码头红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "29°56′41″.2N、115°24′8″.6E",
+          "evidence": "29°56′41″.2N、115°24′8″.6E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "REMOVE",
+          "evidence": "撤除"
+        },
+        "effective_time": {
+          "value": "09月30日10:44",
+          "evidence": "09月30日10:44撤除"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道富池码头侧面岸标"
+        },
+        "aton_name": {
+          "value": "富池码头侧面岸标",
+          "evidence": "搁排矶水道富池码头侧面岸标"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日10:59",
+          "evidence": "09月30日10:59青山夹水道武钢运河口白浮，位置调整为"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道武钢运河口白浮"
+        },
+        "aton_name": {
+          "value": "武钢运河口白浮",
+          "evidence": "青山夹水道武钢运河口白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°40′12″.3N、114°25′59″.6E",
+          "evidence": "30°40′12″.3N、114°25′59″.6E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日11:17",
+          "evidence": "09月30日11:17青山夹水道青山桥进口白浮，位置调整为"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道青山桥进口白浮"
+        },
+        "aton_name": {
+          "value": "青山桥进口白浮",
+          "evidence": "青山夹水道青山桥进口白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°40′25″.5N、114°26′42″.7E",
+          "evidence": "30°40′25″.5N、114°26′42″.7E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日11:30",
+          "evidence": "09月30日11:30青山夹水道青山桥#2白浮，位置调整为"
+        },
+        "waterway": {
+          "value": "青山夹水道",
+          "evidence": "青山夹水道青山桥#2白浮"
+        },
+        "aton_name": {
+          "value": "青山桥#2白浮",
+          "evidence": "青山夹水道青山桥#2白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°40′45″.1N、114°27′37″.1E",
+          "evidence": "30°40′45″.1N、114°27′37″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日11:55",
+          "evidence": "09月30日11:55搁排矶水道猴儿矶危险水域浮，位置调整为"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道猴儿矶危险水域浮"
+        },
+        "aton_name": {
+          "value": "猴儿矶危险水域浮",
+          "evidence": "搁排矶水道猴儿矶危险水域浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°0′19″.5N、115°20′51″.1E",
+          "evidence": "30°0′19″.5N、115°20′51″.1E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整为"
+        },
+        "effective_time": {
+          "value": "09月30日12:13",
+          "evidence": "09月30日12:13搁排矶水道猴儿矶红浮，位置调整为"
+        },
+        "waterway": {
+          "value": "搁排矶水道",
+          "evidence": "搁排矶水道猴儿矶红浮"
+        },
+        "aton_name": {
+          "value": "猴儿矶红浮",
+          "evidence": "搁排矶水道猴儿矶红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°0′28″.3N、115°20′44″.9E",
+          "evidence": "30°0′28″.3N、115°20′44″.9E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

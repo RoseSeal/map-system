@@ -1,0 +1,44 @@
+{
+  "notice_id": "t20260920_490076",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月20日09:08\",\"evidence\":\"09月20日09:08\"},\"waterway\":{\"value\":\"阳逻水道\",\"evidence\":\"阳逻水道\"},\"aton_name\":{\"value\":\"乙烯重件码头#1红浮\",\"evidence\":\"乙烯重件码头#1红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°35′15″.8N、114°34′23″.2E\",\"evidence\":\"30°35′15″.8N、114°34′23″.2E\"},\"position_text\":{\"value\":null,\"evidence\":null},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月20日09:08",
+          "evidence": "09月20日09:08"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道"
+        },
+        "aton_name": {
+          "value": "乙烯重件码头#1红浮",
+          "evidence": "乙烯重件码头#1红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°35′15″.8N、114°34′23″.2E",
+          "evidence": "30°35′15″.8N、114°34′23″.2E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

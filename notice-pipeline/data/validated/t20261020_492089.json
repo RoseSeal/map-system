@@ -1,0 +1,64 @@
+{
+  "notice_id": "t20261020_492089",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261020_492089.shtml",
+  "title": "长江武汉航道局关于航标优化调整的航道通告",
+  "notice_no": "汉道通〔2026〕228号",
+  "published_at": "2026-10-20T17:11:00+08:00",
+  "source_item_count": 1,
+  "llm_item_count": 1,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "1、10月20日13:50蕲春水道黄颡口红浮，位置调整为自凤凰山测点起，方位185.5度，距离3.3千米；2000国家大地坐标系地理坐标30°1′24″.0N、115°19′30″.2E。",
+      "fields": {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月20日13:50",
+          "evidence": "10月20日13:50"
+        },
+        "waterway": {
+          "value": "蕲春水道",
+          "evidence": "蕲春水道"
+        },
+        "aton_name": {
+          "value": "黄颡口红浮",
+          "evidence": "黄颡口红浮"
+        },
+        "position_raw": {
+          "value": "30°1′24″.0N、115°19′30″.2E",
+          "evidence": "30°1′24″.0N、115°19′30″.2E"
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": {
+        "lon": 115.3250556,
+        "lat": 30.0233333
+      },
+      "baseline_positions": [
+        {
+          "lon": 115.3250556,
+          "lat": 30.0233333
+        }
+      ],
+      "effective_at": "2026-10-20T13:50:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

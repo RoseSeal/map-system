@@ -1,0 +1,588 @@
+{
+  "notice_id": "t20260917_489903",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"SET\",\"evidence\":\"设置\"},\"effective_time\":{\"value\":\"09月17日11:34\",\"evidence\":\"09月17日11:34设置\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道大沙白浮\"},\"aton_name\":{\"value\":\"大沙白浮\",\"evidence\":\"大沙白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程132.4千米，左岸\",\"evidence\":\"长江中游航道里程132.4千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月16日17:18\",\"evidence\":\"09月16日17:18阳逻水道阳逻红浮，位置调整\"},\"waterway\":{\"value\":\"阳逻水道\",\"evidence\":\"阳逻水道阳逻红浮\"},\"aton_name\":{\"value\":\"阳逻红浮\",\"evidence\":\"阳逻红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°40′16″.9N、114°32′10″.2E\",\"evidence\":\"2000国家大地坐标系地理坐标30°40′16″.9N、114°32′10″.2E\"},\"position_text\":{\"value\":\"自阳逻测点起，方位302.0度，距离1.97千米\",\"evidence\":\"自阳逻测点起，方位302.0度，距离1.97千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日08:40\",\"evidence\":\"09月17日08:40武桥水道鹦鹉洲桥进口红浮，位置调整\"},\"waterway\":{\"value\":\"武桥水道\",\"evidence\":\"武桥水道鹦鹉洲桥进口红浮\"},\"aton_name\":{\"value\":\"鹦鹉洲桥进口红浮\",\"evidence\":\"鹦鹉洲桥进口红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°31′15″.9N、114°15′49″.1E\",\"evidence\":\"2000国家大地坐标系地理坐标30°31′15″.9N、114°15′49″.1E\"},\"position_text\":{\"value\":\"自龟山测点起，方位194.9度，距离4.17千米\",\"evidence\":\"自龟山测点起，方位194.9度，距离4.17千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日08:50\",\"evidence\":\"09月17日08:50白沙洲水道白沙洲#1红危浮，位置调整\"},\"waterway\":{\"value\":\"白沙洲水道\",\"evidence\":\"白沙洲水道白沙洲#1红危浮\"},\"aton_name\":{\"value\":\"白沙洲#1红危浮\",\"evidence\":\"白沙洲#1红危浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程7.5千米，右岸\",\"evidence\":\"长江中游航道里程7.5千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日09:02\",\"evidence\":\"09月17日09:02白沙洲水道白沙洲#2红危浮，位置调整\"},\"waterway\":{\"value\":\"白沙洲水道\",\"evidence\":\"白沙洲水道白沙洲#2红危浮\"},\"aton_name\":{\"value\":\"白沙洲#2红危浮\",\"evidence\":\"白沙洲#2红危浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程8.6千米，右岸\",\"evidence\":\"长江中游航道里程8.6千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日09:13\",\"evidence\":\"09月17日09:13白沙洲水道白沙洲红浮，位置调整\"},\"waterway\":{\"value\":\"白沙洲水道\",\"evidence\":\"白沙洲水道白沙洲红浮\"},\"aton_name\":{\"value\":\"白沙洲红浮\",\"evidence\":\"白沙洲红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程9.4千米，右岸\",\"evidence\":\"长江中游航道里程9.4千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日09:39\",\"evidence\":\"09月17日09:39嘉鱼水道复兴洲#4红浮，位置调整\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道复兴洲#4红浮\"},\"aton_name\":{\"value\":\"复兴洲#4红浮\",\"evidence\":\"复兴洲#4红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程127.6千米，右岸\",\"evidence\":\"长江中游航道里程127.6千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日09:49\",\"evidence\":\"09月17日09:49白沙洲水道白沙洲桥#3白浮，位置调整\"},\"waterway\":{\"value\":\"白沙洲水道\",\"evidence\":\"白沙洲水道白沙洲桥#3白浮\"},\"aton_name\":{\"value\":\"白沙洲桥#3白浮\",\"evidence\":\"白沙洲桥#3白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程12.0千米，左岸\",\"evidence\":\"长江中游航道里程12.0千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日10:01\",\"evidence\":\"09月17日10:01白沙洲水道中营寺白浮，位置调整\"},\"waterway\":{\"value\":\"白沙洲水道\",\"evidence\":\"白沙洲水道中营寺白浮\"},\"aton_name\":{\"value\":\"中营寺白浮\",\"evidence\":\"中营寺白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程13.3千米，左岸\",\"evidence\":\"长江中游航道里程13.3千米，左岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日10:03\",\"evidence\":\"09月17日10:03嘉鱼水道复兴洲#7红危浮，位置调整\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道复兴洲#7红危浮\"},\"aton_name\":{\"value\":\"复兴洲#7红危浮\",\"evidence\":\"复兴洲#7红危浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程132.0千米，右岸\",\"evidence\":\"长江中游航道里程132.0千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日10:16\",\"evidence\":\"09月17日10:16嘉鱼水道复兴洲#8红危浮，位置调整\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道复兴洲#8红危浮\"},\"aton_name\":{\"value\":\"复兴洲#8红危浮\",\"evidence\":\"复兴洲#8红危浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程132.5千米，右岸\",\"evidence\":\"长江中游航道里程132.5千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日10:30\",\"evidence\":\"09月17日10:30嘉鱼水道复兴洲#9红浮，位置调整\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道复兴洲#9红浮\"},\"aton_name\":{\"value\":\"复兴洲#9红浮\",\"evidence\":\"复兴洲#9红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程133.0千米，右岸\",\"evidence\":\"长江中游航道里程133.0千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日10:53\",\"evidence\":\"09月17日10:53嘉鱼水道嘉鱼#1红浮，位置调整\"},\"waterway\":{\"value\":\"嘉鱼水道\",\"evidence\":\"嘉鱼水道嘉鱼#1红浮\"},\"aton_name\":{\"value\":\"嘉鱼#1红浮\",\"evidence\":\"嘉鱼#1红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程133.9千米，右岸\",\"evidence\":\"长江中游航道里程133.9千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日12:24\",\"evidence\":\"09月17日12:24黄石水道黄石#2白浮，位置调整\"},\"waterway\":{\"value\":\"黄石水道\",\"evidence\":\"黄石水道黄石#2白浮\"},\"aton_name\":{\"value\":\"黄石#2白浮\",\"evidence\":\"黄石#2白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°12′53″.5N、115°6′54″.9E\",\"evidence\":\"2000国家大地坐标系地理坐标30°12′53″.5N、115°6′54″.9E\"},\"position_text\":{\"value\":\"自黄石钟楼测点起，方位86.1度，距离2.62千米\",\"evidence\":\"自黄石钟楼测点起，方位86.1度，距离2.62千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日12:31\",\"evidence\":\"09月17日12:31黄石水道黄石#1白浮，位置调整\"},\"waterway\":{\"value\":\"黄石水道\",\"evidence\":\"黄石水道黄石#1白浮\"},\"aton_name\":{\"value\":\"黄石#1白浮\",\"evidence\":\"黄石#1白浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°12′47″.9N、115°7′39″.5E\",\"evidence\":\"2000国家大地坐标系地理坐标30°12′47″.9N、115°7′39″.5E\"},\"position_text\":{\"value\":\"自西塞山测点起，方位271.5度，距离2.99千米\",\"evidence\":\"自西塞山测点起，方位271.5度，距离2.99千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日12:52\",\"evidence\":\"09月17日12:52牯牛沙水道道士袱#2红危浮，位置调整\"},\"waterway\":{\"value\":\"牯牛沙水道\",\"evidence\":\"牯牛沙水道道士袱#2红危浮\"},\"aton_name\":{\"value\":\"道士袱#2红危浮\",\"evidence\":\"道士袱#2红危浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°12′55″.6N、115°12′8″.3E\",\"evidence\":\"2000国家大地坐标系地理坐标30°12′55″.6N、115°12′8″.3E\"},\"position_text\":{\"value\":\"自耀鹰顶测点起，方位294.8度，距离3.74千米\",\"evidence\":\"自耀鹰顶测点起，方位294.8度，距离3.74千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"09月17日13:10\",\"evidence\":\"09月17日13:10牯牛沙水道牯牛沙#3红浮，位置调整\"},\"waterway\":{\"value\":\"牯牛沙水道\",\"evidence\":\"牯牛沙水道牯牛沙#3红浮\"},\"aton_name\":{\"value\":\"牯牛沙#3红浮\",\"evidence\":\"牯牛沙#3红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°12′2″.3N、115°13′15″.4E\",\"evidence\":\"2000国家大地坐标系地理坐标30°12′2″.3N、115°13′15″.4E\"},\"position_text\":{\"value\":\"自耀鹰顶测点起，方位273.8度，距离1.51千米\",\"evidence\":\"自耀鹰顶测点起，方位273.8度，距离1.51千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "SET",
+          "evidence": "设置"
+        },
+        "effective_time": {
+          "value": "09月17日11:34",
+          "evidence": "09月17日11:34设置"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道大沙白浮"
+        },
+        "aton_name": {
+          "value": "大沙白浮",
+          "evidence": "大沙白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程132.4千米，左岸",
+          "evidence": "长江中游航道里程132.4千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月16日17:18",
+          "evidence": "09月16日17:18阳逻水道阳逻红浮，位置调整"
+        },
+        "waterway": {
+          "value": "阳逻水道",
+          "evidence": "阳逻水道阳逻红浮"
+        },
+        "aton_name": {
+          "value": "阳逻红浮",
+          "evidence": "阳逻红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°40′16″.9N、114°32′10″.2E",
+          "evidence": "2000国家大地坐标系地理坐标30°40′16″.9N、114°32′10″.2E"
+        },
+        "position_text": {
+          "value": "自阳逻测点起，方位302.0度，距离1.97千米",
+          "evidence": "自阳逻测点起，方位302.0度，距离1.97千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日08:40",
+          "evidence": "09月17日08:40武桥水道鹦鹉洲桥进口红浮，位置调整"
+        },
+        "waterway": {
+          "value": "武桥水道",
+          "evidence": "武桥水道鹦鹉洲桥进口红浮"
+        },
+        "aton_name": {
+          "value": "鹦鹉洲桥进口红浮",
+          "evidence": "鹦鹉洲桥进口红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°31′15″.9N、114°15′49″.1E",
+          "evidence": "2000国家大地坐标系地理坐标30°31′15″.9N、114°15′49″.1E"
+        },
+        "position_text": {
+          "value": "自龟山测点起，方位194.9度，距离4.17千米",
+          "evidence": "自龟山测点起，方位194.9度，距离4.17千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日08:50",
+          "evidence": "09月17日08:50白沙洲水道白沙洲#1红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道白沙洲#1红危浮"
+        },
+        "aton_name": {
+          "value": "白沙洲#1红危浮",
+          "evidence": "白沙洲#1红危浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程7.5千米，右岸",
+          "evidence": "长江中游航道里程7.5千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日09:02",
+          "evidence": "09月17日09:02白沙洲水道白沙洲#2红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道白沙洲#2红危浮"
+        },
+        "aton_name": {
+          "value": "白沙洲#2红危浮",
+          "evidence": "白沙洲#2红危浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程8.6千米，右岸",
+          "evidence": "长江中游航道里程8.6千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日09:13",
+          "evidence": "09月17日09:13白沙洲水道白沙洲红浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道白沙洲红浮"
+        },
+        "aton_name": {
+          "value": "白沙洲红浮",
+          "evidence": "白沙洲红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程9.4千米，右岸",
+          "evidence": "长江中游航道里程9.4千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日09:39",
+          "evidence": "09月17日09:39嘉鱼水道复兴洲#4红浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道复兴洲#4红浮"
+        },
+        "aton_name": {
+          "value": "复兴洲#4红浮",
+          "evidence": "复兴洲#4红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程127.6千米，右岸",
+          "evidence": "长江中游航道里程127.6千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日09:49",
+          "evidence": "09月17日09:49白沙洲水道白沙洲桥#3白浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道白沙洲桥#3白浮"
+        },
+        "aton_name": {
+          "value": "白沙洲桥#3白浮",
+          "evidence": "白沙洲桥#3白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程12.0千米，左岸",
+          "evidence": "长江中游航道里程12.0千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:01",
+          "evidence": "09月17日10:01白沙洲水道中营寺白浮，位置调整"
+        },
+        "waterway": {
+          "value": "白沙洲水道",
+          "evidence": "白沙洲水道中营寺白浮"
+        },
+        "aton_name": {
+          "value": "中营寺白浮",
+          "evidence": "中营寺白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程13.3千米，左岸",
+          "evidence": "长江中游航道里程13.3千米，左岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:03",
+          "evidence": "09月17日10:03嘉鱼水道复兴洲#7红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道复兴洲#7红危浮"
+        },
+        "aton_name": {
+          "value": "复兴洲#7红危浮",
+          "evidence": "复兴洲#7红危浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程132.0千米，右岸",
+          "evidence": "长江中游航道里程132.0千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:16",
+          "evidence": "09月17日10:16嘉鱼水道复兴洲#8红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道复兴洲#8红危浮"
+        },
+        "aton_name": {
+          "value": "复兴洲#8红危浮",
+          "evidence": "复兴洲#8红危浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程132.5千米，右岸",
+          "evidence": "长江中游航道里程132.5千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:30",
+          "evidence": "09月17日10:30嘉鱼水道复兴洲#9红浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道复兴洲#9红浮"
+        },
+        "aton_name": {
+          "value": "复兴洲#9红浮",
+          "evidence": "复兴洲#9红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程133.0千米，右岸",
+          "evidence": "长江中游航道里程133.0千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日10:53",
+          "evidence": "09月17日10:53嘉鱼水道嘉鱼#1红浮，位置调整"
+        },
+        "waterway": {
+          "value": "嘉鱼水道",
+          "evidence": "嘉鱼水道嘉鱼#1红浮"
+        },
+        "aton_name": {
+          "value": "嘉鱼#1红浮",
+          "evidence": "嘉鱼#1红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程133.9千米，右岸",
+          "evidence": "长江中游航道里程133.9千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日12:24",
+          "evidence": "09月17日12:24黄石水道黄石#2白浮，位置调整"
+        },
+        "waterway": {
+          "value": "黄石水道",
+          "evidence": "黄石水道黄石#2白浮"
+        },
+        "aton_name": {
+          "value": "黄石#2白浮",
+          "evidence": "黄石#2白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°12′53″.5N、115°6′54″.9E",
+          "evidence": "2000国家大地坐标系地理坐标30°12′53″.5N、115°6′54″.9E"
+        },
+        "position_text": {
+          "value": "自黄石钟楼测点起，方位86.1度，距离2.62千米",
+          "evidence": "自黄石钟楼测点起，方位86.1度，距离2.62千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日12:31",
+          "evidence": "09月17日12:31黄石水道黄石#1白浮，位置调整"
+        },
+        "waterway": {
+          "value": "黄石水道",
+          "evidence": "黄石水道黄石#1白浮"
+        },
+        "aton_name": {
+          "value": "黄石#1白浮",
+          "evidence": "黄石#1白浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°12′47″.9N、115°7′39″.5E",
+          "evidence": "2000国家大地坐标系地理坐标30°12′47″.9N、115°7′39″.5E"
+        },
+        "position_text": {
+          "value": "自西塞山测点起，方位271.5度，距离2.99千米",
+          "evidence": "自西塞山测点起，方位271.5度，距离2.99千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日12:52",
+          "evidence": "09月17日12:52牯牛沙水道道士袱#2红危浮，位置调整"
+        },
+        "waterway": {
+          "value": "牯牛沙水道",
+          "evidence": "牯牛沙水道道士袱#2红危浮"
+        },
+        "aton_name": {
+          "value": "道士袱#2红危浮",
+          "evidence": "道士袱#2红危浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°12′55″.6N、115°12′8″.3E",
+          "evidence": "2000国家大地坐标系地理坐标30°12′55″.6N、115°12′8″.3E"
+        },
+        "position_text": {
+          "value": "自耀鹰顶测点起，方位294.8度，距离3.74千米",
+          "evidence": "自耀鹰顶测点起，方位294.8度，距离3.74千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "09月17日13:10",
+          "evidence": "09月17日13:10牯牛沙水道牯牛沙#3红浮，位置调整"
+        },
+        "waterway": {
+          "value": "牯牛沙水道",
+          "evidence": "牯牛沙水道牯牛沙#3红浮"
+        },
+        "aton_name": {
+          "value": "牯牛沙#3红浮",
+          "evidence": "牯牛沙#3红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°12′2″.3N、115°13′15″.4E",
+          "evidence": "2000国家大地坐标系地理坐标30°12′2″.3N、115°13′15″.4E"
+        },
+        "position_text": {
+          "value": "自耀鹰顶测点起，方位273.8度，距离1.51千米",
+          "evidence": "自耀鹰顶测点起，方位273.8度，距离1.51千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}

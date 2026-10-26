@@ -1,0 +1,56 @@
+{
+  "notice_id": "t20261010_491265",
+  "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202610/t20261010_491265.shtml",
+  "title": "长江武汉航道局关于蕲春水道航标失常的航道通告",
+  "notice_no": "汉道通〔2026〕223号",
+  "published_at": "2026-10-10T10:41:00+08:00",
+  "source_item_count": 1,
+  "llm_item_count": 1,
+  "extraction_error": null,
+  "items": [
+    {
+      "index": 1,
+      "source_index": 0,
+      "source_text": "自2026年10月10日10:38起，蕲春水道新港有色码头#1专用浮漂失，暂无法恢复。我局将在具备条件后尽快恢复，恢复后将不再另行发布通告。\n请注意识别，谨慎驾驶，以策安全。",
+      "fields": {
+        "action": {
+          "value": "MALFUNCTION",
+          "evidence": "漂失"
+        },
+        "effective_time": {
+          "value": "2026年10月10日10:38",
+          "evidence": "2026年10月10日10:38"
+        },
+        "waterway": {
+          "value": "蕲春水道",
+          "evidence": "蕲春水道"
+        },
+        "aton_name": {
+          "value": "新港有色码头#1专用浮",
+          "evidence": "新港有色码头#1专用浮漂失"
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": null,
+          "evidence": null
+        },
+        "malfunction_kind": {
+          "value": "漂失",
+          "evidence": "漂失"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        }
+      },
+      "position": null,
+      "baseline_positions": [],
+      "effective_at": "2026-10-10T10:38:00+08:00",
+      "issues": []
+    }
+  ],
+  "unextracted_sources": []
+}

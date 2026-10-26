@@ -1,0 +1,78 @@
+{
+  "notice_id": "t20261004_490916",
+  "model": "glm-4.5-air",
+  "prompt_version": "aton-extract-v1",
+  "raw_reply": "{\"items\":[{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月04日10:09\",\"evidence\":\"10月04日10:09\"},\"waterway\":{\"value\":\"汉金关水道\",\"evidence\":\"汉金关水道\"},\"aton_name\":{\"value\":\"汉金关红浮\",\"evidence\":\"汉金关红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":null,\"evidence\":null},\"position_text\":{\"value\":\"长江中游航道里程104.7千米，右岸\",\"evidence\":\"长江中游航道里程104.7千米，右岸\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}},{\"action\":{\"value\":\"ADJUST\",\"evidence\":\"位置调整\"},\"effective_time\":{\"value\":\"10月04日10:42\",\"evidence\":\"10月04日10:42\"},\"waterway\":{\"value\":\"沙洲水道\",\"evidence\":\"沙洲水道\"},\"aton_name\":{\"value\":\"交投沥青红浮\",\"evidence\":\"交投沥青红浮\"},\"is_virtual\":{\"value\":false,\"evidence\":null},\"position_raw\":{\"value\":\"30°28′38″.6N、114°49′17″.1E\",\"evidence\":\"30°28′38″.6N、114°49′17″.1E\"},\"position_text\":{\"value\":\"自黄柏山测点起，方位178.9度，距离5.29千米\",\"evidence\":\"自黄柏山测点起，方位178.9度，距离5.29千米\"},\"malfunction_kind\":{\"value\":null,\"evidence\":null}}]}",
+  "result": {
+    "items": [
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月04日10:09",
+          "evidence": "10月04日10:09"
+        },
+        "waterway": {
+          "value": "汉金关水道",
+          "evidence": "汉金关水道"
+        },
+        "aton_name": {
+          "value": "汉金关红浮",
+          "evidence": "汉金关红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": null,
+          "evidence": null
+        },
+        "position_text": {
+          "value": "长江中游航道里程104.7千米，右岸",
+          "evidence": "长江中游航道里程104.7千米，右岸"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      {
+        "action": {
+          "value": "ADJUST",
+          "evidence": "位置调整"
+        },
+        "effective_time": {
+          "value": "10月04日10:42",
+          "evidence": "10月04日10:42"
+        },
+        "waterway": {
+          "value": "沙洲水道",
+          "evidence": "沙洲水道"
+        },
+        "aton_name": {
+          "value": "交投沥青红浮",
+          "evidence": "交投沥青红浮"
+        },
+        "is_virtual": {
+          "value": false,
+          "evidence": null
+        },
+        "position_raw": {
+          "value": "30°28′38″.6N、114°49′17″.1E",
+          "evidence": "30°28′38″.6N、114°49′17″.1E"
+        },
+        "position_text": {
+          "value": "自黄柏山测点起，方位178.9度，距离5.29千米",
+          "evidence": "自黄柏山测点起，方位178.9度，距离5.29千米"
+        },
+        "malfunction_kind": {
+          "value": null,
+          "evidence": null
+        }
+      }
+    ]
+  }
+}
