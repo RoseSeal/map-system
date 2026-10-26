@@ -13,6 +13,7 @@
 - 模拟器：[`simulator/wuhan_yangtze_ais_simulator.py`](../../simulator/wuhan_yangtze_ais_simulator.py)，1 Hz 发布到 `usv/AisMessage`，单次跑完，全部船舶到达终点 35 s 后自动退出。
 - 航线参考 `trajectory-service` 清洗航段 `seg_id=8302`，已对照卫星影像确认位于江面。航线是合成的，不是真实 AIS 回放，也不构成航行指导。
 - 三船：本船 `123456789` 顺流下行；`900001222` 上行，与本船对遇；`900002222` 与本船同向、航速较低，被本船追越。
+- 本船航线读取后端计划航线文件 `backend/map-service/src/main/resources/routes/wuhan-demo-own.route.json`：首段为原对遇 / 追越航段，之后转向经过汉口水道武汉二桥 #2、#1 红浮（虚拟，长江武汉航道局 2026-09-24 通告），两浮标位于本船右舷约 120 m。新航段经历史 AIS 核对（每个抽样点 100 m 内有船迹）。
 - 对遇两船先以 3 kn 航行 30 s，再在 90 s 内加速到巡航速度，使风险等级逐级升高。
 - 底图为 Esri World Imagery 在线卫星影像，需要联网；离线时只剩深色背景。
 
@@ -57,11 +58,14 @@ python3 simulator/wuhan_yangtze_ais_simulator.py
 3. 目标进入危险后，右侧出现系统 advisory 卡片，带有效期。
 4. 后端日志中每条 `Advisory triggered: dedup=true targets=[...]` 都对应“目标首次进入危险”或“风险等级升级”，危险持续期间不再重复触发；生成失败时出现 `Advisory retry deferred`（ADR-016）。
 5. 风险等级在阈值附近来回波动时，同一会遇不会重复触发。
+6. 地图显示虚线计划航线与航标通告点（按最后动作着色）；点击航标弹出详情卡，可看到每条通告的原文依据、通告编号与原文链接、数据截止时间。
+7. 本船出发后，右侧“航标通告提醒”分区出现武汉二桥 #2、#1 红浮的提醒卡片（与 advisory 卡片分开），含预计接近时间、通告来源与原文依据，约每 30 s 刷新 ETA；地图上对应航标出现缓冲圈。本船驶过后卡片消失。默认前瞻 60 min 覆盖整条演示航线，所以提醒在出发后不久就出现；如需呈现“驶近才出现”，可在 `application-local.properties` 设置较小的 `navigation.notice-alert.lookahead-minutes`。
 
 ### 0.5 限制
 
 - 航线和速度都是合成的。真实 AIS 典型采样间隔约 153 s，本场景 1 Hz 发布，只用于展示实时链路。
 - 规则工具基于 COLREGs Part B；武汉内河实际适用《内河避碰规则》，演示中的规则引用只作示意，不作为让路责任结论。
+- 航标通告数据为 `notice-pipeline/` 固定快照（覆盖截止见航标详情卡），截止之后的航标变动系统未知；演示航线为合成航线。
 
 ## 1. 演示定位
 

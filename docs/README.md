@@ -35,7 +35,7 @@
 
 说明：
 
-- 当前活跃版本为 v1.3-route-review（2026-10-26 立项，step-1 规划中）。此前 2026-10 的 milestone 外增量（advisory 会遇级去重 ADR-016、智谱默认路由、武汉演示场景）直接收口到当前真值文档。v1.2-trajectory-prediction 已于 2026-07-12 收口，归档与 closure summary 见 [`history/v1.2-trajectory-prediction/README.md`](./history/v1.2-trajectory-prediction/README.md)。
+- 当前活跃版本为 v1.3-route-review（2026-10-26 立项；step-1 已于 2026-10-27 完成，step-2 未开始）。此前 2026-10 的 milestone 外增量（advisory 会遇级去重 ADR-016、智谱默认路由、武汉演示场景）直接收口到当前真值文档。v1.2-trajectory-prediction 已于 2026-07-12 收口，归档与 closure summary 见 [`history/v1.2-trajectory-prediction/README.md`](./history/v1.2-trajectory-prediction/README.md)。
 - v1.1-graphrag milestone 已于 2026-07-01 收口；归档与 closure summary 见 [`history/v1.1-graphrag/README.md`](./history/v1.1-graphrag/README.md)。
 - v1.0 milestone 已于 2026-05-07 收口；归档与 closure summary 见 [`history/v1.0/README.md`](./history/v1.0/README.md)。
 - 未冻结的规划项继续收口到 `TODO.md`。

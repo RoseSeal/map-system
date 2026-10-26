@@ -1,7 +1,7 @@
 ﻿# 海图系统 (Map-System) — Architecture Overview v0.1
 
 > 用途：项目架构概览 / AI 上下文输入 / 对外介绍
-> 最后更新：2026-07-11（v1.2 收口同步：学习型轨迹预测层、`TrajectoryPredictionPort`、GRU 推理 sidecar、预测风险等级单向提升）
+> 最后更新：2026-10-26（v1.3 step-1：`navigation` 包、本船计划航线、航标通告离线流水线与 `NOTICE_ALERT` 提醒链路）
 > 维护原则：仅记录稳定的架构事实、链路与关键决策
 
 ---
@@ -46,7 +46,8 @@
 | MQTT Listener | 订阅外部输入消息，触发处理链入口 |
 | `WeatherMqttConfig` + `WeatherMessageHandler` | 订阅 `usv/Weather`，维护共享 `WeatherContextHolder` 快照供 SSE/风险元数据消费 |
 | `S57Controller` + `S57TileRepository` | 提供 `/api/s57/*` 海图 tile、layer metadata、style 与 safety contour HTTP 接口（含 HTTP command 写入 safety contour） |
-| `RiskSseController` | 提供 `/api/v2/risk` SSE 入口；承载 `RISK_UPDATE` / `ENVIRONMENT_UPDATE` / `EXPLANATION` / `ADVISORY` / `ERROR` |
+| `RiskSseController` | 提供 `/api/v2/risk` SSE 入口；承载 `RISK_UPDATE` / `ENVIRONMENT_UPDATE` / `EXPLANATION` / `ADVISORY` / `NOTICE_ALERT` / `ERROR` |
+| `NavigationController`（`navigation/api/`） | 提供 `/api/v2/navigation/route/active`（当前计划航线）与 `/api/v2/navigation/notices/aton`（航标通告状态 GeoJSON） |
 | `ChatWebSocketHandler` | 提供 `/api/v2/chat` 双向问答与语音交互入口；连接建立时下发 `CAPABILITY` 握手，chat agent 路径下发 `AGENT_STEP` |
 
 #### 领域层（Domain）
@@ -80,6 +81,9 @@
 | `ColregsGraph` + `GraphQueryPort` | COLREGS Part B 进程内规则图；`GraphQueryPort` 与历史案例查询 port 分离，继续服务确定性法规依据检索 |
 | `HistoricalCaseQueryPort` + `LightRagCaseGraphAdapter` | 历史相似案例检索 port 与 HTTP adapter；启用 `llm.case-graph.enabled=true` 时调用 `graphrag-service` 的 `/retrieve`，禁用时不加载该分支，不影响 `GraphQueryPort` / `MemoryGraphAdapter` |
 | `TrajectoryPredictionPort`（`risk/engine/trajectoryprediction/`） | 目标船轨迹预测抽象；`CvPredictionEngine` 为默认与降级实现，`LearningTrajectoryPredictionAdapter` 为学习型实现，二者并存、受 `engine.trajectory-prediction.learned-enabled` 独立开关控制 |
+| `PlannedRouteRepository` + `RouteGeometry`（`navigation/route/`） | 启动时从 classpath 加载并校验本船计划航线（航点 + 航段偏航限），提供沿航线投影（沿线距离、带符号横向偏移）；武汉演示模拟器读取同一航线文件 |
+| `AtonNoticeRepository`（`navigation/notice/`） | 加载 `notice-pipeline` 离线推演的航标状态 `classpath:notices/aton_state.json`；运行时不调用 LLM、不推演状态 |
+| `NoticeAlertMonitor`（`navigation/notice/`） | 同步监听 `RiskAssessmentCompletedEvent`，沿计划航线判断前瞻窗口是否经过有效航标缓冲范围，按航标维护接近状态并经 `RiskStreamPublisher` 下发 `NOTICE_ALERT`；不触碰风险主链路与 advisory 触发 |
 | `LearningTrajectoryPredictionAdapter` | GRU 推理 sidecar 的 HTTP adapter；维护挂 flag 的降采样原始点窗口 buffer（~150s 节奏、K=10、基于 `msgTime`），批量请求 sidecar 后把骨架预测点（~+153/306/459s）以 t=0 当前位置为起点分段线性密化到 `stepSeconds` 粒度；单目标失败回退 CV，连续失败熔断 30s；产出带 `predictionSource=GRU|CV` 的 `CvPredictionResult` |
 
 ### 4.2 副服务
@@ -88,6 +92,7 @@
 | --- | --- |
 | `listener-service` | 外部输入消息入库，服务离线分析与大数据处理，当前暂挂起 |
 | `graphrag-service` | 顶层 Python LightRAG sidecar；基于 `data/cases/*.md` 合成案例语料离线构建 `runtime/index/`，通过 `/health` 与 `/retrieve` 提供历史相似案例检索，并承载非门槛 eval track |
+| `notice-pipeline` | 顶层 Python 离线流水线（仅标准库）：抓取长江武汉航道局航标通告 HTML 快照 → 智谱 LLM 逐字抽取字段与坐标原文串 → 程序换算度分秒并逐字校验依据 → 按时间推演航标状态 → 发布 `aton_state.json` 至后端资源；附抽取评测（`eval/report.md`） |
 | `trajectory-service` | 顶层 Python 服务：离线轨迹预测管线（NBSDC 真实内河 AIS → 清洗切段 → 窗口化 → GRU 训练与下游风险评测，产物见 `results/`）+ `server/` onnxruntime/FastAPI 推理 sidecar（`/health` 与 `/predict` 批量端点，加载 ONNX 导出权重）；训练与 serving 共用 `inland_traj/features.py` 特征构造 |
 
 ## 五、核心消息链路
@@ -212,6 +217,24 @@ Advisory evidence_items / chat agent 工具结论
 ```
 
 当 advisory `evidence_items` 使用 `[source: historical_case]` 时，后置校验要求 evidence 引用本轮 `query_historical_case_graph` 成功 tool result 中返回的 `case_id`。该校验不改变 `ADVISORY` payload 结构，`evidence_items` 仍为 `string[]`。
+
+### 5.7 链路 G：计划航线航标通告提醒
+
+```text
+notice-pipeline（离线，人工触发）
+  │  通告快照 → LLM 逐字抽取 → 校验 → 状态推演 → aton_state.json
+  ▼
+AtonNoticeRepository + PlannedRouteRepository（启动加载）
+  ▼
+ShipDispatcher → RiskStreamPublisher.publishRiskFrame → RiskAssessmentCompletedEvent
+  ▼
+NoticeAlertMonitor（同步监听，仅本船消息时间变化时计算）
+  │  沿航线投影 → 偏航限检查 → 前瞻窗口 ∩ 航标缓冲范围 → 接近状态机
+  ▼
+RiskStreamPublisher.publishNoticeAlert → SSE /api/v2/risk（NOTICE_ALERT）
+```
+
+命中、ETA 与生命周期均为确定性计算；LLM 只在离线流水线中抽取原文字段。协议见 `EVENT_SCHEMA.md` §4.8。
 
 ## 六、能力边界
 
@@ -437,7 +460,7 @@ RiskAssessmentResult consume(OwnShipContext ownShip, Collection<TargetShipContex
 
 ### PlannedRoute 接口
 
-本船预规划航线需在系统外部录入后存入系统。接入接口尚未确定，候选方案：REST 接口预存、WebSocket 客户端下发、数据库 lookup（按 MMSI）。确定前 `plannedRoute` 字段为 null，相关逻辑跳过。
+v1.3 step-1 起，本船计划航线由 `navigation.route.active-resource` 指定的 classpath 文件加载（`PlannedRouteRepository`），经 `GET /api/v2/navigation/route/active` 读取；当前只服务航标通告提醒链路（链路 G），风险引擎仍不消费计划航线，本节 `OwnShipContext.plannedRoute` 的接入仍属预案。
 
 ### 可扩展性
 

@@ -139,6 +139,15 @@ S-57 chart serving:
 - [backend/map-service/.../chart/api/S57Controller.java](backend/map-service/src/main/java/com/whut/map/map_service/chart/api/S57Controller.java)
 - [backend/map-service/.../chart/repository/S57TileRepository.java](backend/map-service/src/main/java/com/whut/map/map_service/chart/repository/S57TileRepository.java)
 
+Planned route and aid-to-navigation notice alerts (v1.3):
+- [backend/map-service/.../navigation/route/PlannedRouteRepository.java](backend/map-service/src/main/java/com/whut/map/map_service/navigation/route/PlannedRouteRepository.java)
+- [backend/map-service/.../navigation/route/RouteGeometry.java](backend/map-service/src/main/java/com/whut/map/map_service/navigation/route/RouteGeometry.java)
+- [backend/map-service/.../navigation/notice/NoticeAlertMonitor.java](backend/map-service/src/main/java/com/whut/map/map_service/navigation/notice/NoticeAlertMonitor.java) — along-route hit detection and `NOTICE_ALERT` lifecycle
+- [backend/map-service/.../navigation/api/NavigationController.java](backend/map-service/src/main/java/com/whut/map/map_service/navigation/api/NavigationController.java)
+- [backend/map-service/src/main/resources/routes/wuhan-demo-own.route.json](backend/map-service/src/main/resources/routes/wuhan-demo-own.route.json) — demo own-ship route shared with the Wuhan simulator
+- [notice-pipeline/README.md](notice-pipeline/README.md) — offline fetch / extract / validate / derive / eval pipeline producing `aton_state.json`
+- [frontend/src/store/useNavigationStore.ts](frontend/src/store/useNavigationStore.ts), [frontend/src/components/Map/navigationLayers.ts](frontend/src/components/Map/navigationLayers.ts), [frontend/src/components/Dashboard/NoticeAlertCard.tsx](frontend/src/components/Dashboard/NoticeAlertCard.tsx)
+
 Tracking stores:
 - [backend/map-service/.../tracking/store/ShipStateStore.java](backend/map-service/src/main/java/com/whut/map/map_service/tracking/store/ShipStateStore.java)
 - [backend/map-service/.../tracking/store/ShipTrajectoryStore.java](backend/map-service/src/main/java/com/whut/map/map_service/tracking/store/ShipTrajectoryStore.java)

@@ -2,7 +2,7 @@
 > schema_version: v2
 > 文档状态：current / 已实施
 > 生效日期：2026-04-01（v1.0 增量已合入：ADVISORY / ENVIRONMENT_UPDATE / AGENT_STEP / CAPABILITY / LLM_PROVIDER_SELECTION）
-> 最后更新：2026-07-11（v1.2 收口，`predicted_trajectory.prediction_type` 增补 `"gru"` 枚举值）
+> 最后更新：2026-10-26（v1.3 step-1，risk SSE 新增 `NOTICE_ALERT` 航标通告提醒事件）
 > 变更摘要：risk 改为 SSE，chat 保持 WebSocket，解释流并入 SSE 风险通道；CHAT 上行支持最后一轮非破坏式重答；v1.0 期间扩展 advisory pipeline、environment 事件拆分、agent step 可见性与 LLM provider 运行时切换；v1.1 增补 historical_case evidence 来源约束；v1.2 增补 learned 轨迹预测的 `prediction_type="gru"` 标识。
 
 ## 变更记录
@@ -22,6 +22,7 @@
 | v2 | 2026-05-26 | 增补 WebSocket `CLEAR_EXPIRED_EXPLANATIONS` / `EXPIRED_EXPLANATIONS_CLEARED` 与 `selected_explanation_refs` 字段 |
 | v2 | 2026-07-01 | `ADVISORY.evidence_items` 增补 `[source: historical_case]` 来源约束：历史相似案例事实必须引用 `query_historical_case_graph` 成功 tool result 中返回的 `case_id` |
 | v2 | 2026-07-11 | `target.predicted_trajectory.prediction_type` 增补枚举值 `"gru"`：learned 轨迹预测启用且本帧由 GRU sidecar 生成时标识生成器；默认、禁用与降级路径仍为 `"cv"`，字段结构不变 |
+| v2 | 2026-10-26 | risk SSE 新增 `NOTICE_ALERT`：本船计划航线前瞻窗口经过有效航标缓冲范围时的确定性提醒，附通告来源与原文依据 |
 
 ## 1. 文档定位
 
@@ -139,6 +140,7 @@ data: {"event_id":"server-event-xxx", ...payload}
 | `ENVIRONMENT_UPDATE` | 环境状态快照事件 |
 | `EXPLANATION` | 风险解释事件 |
 | `ADVISORY` | 场景级 AI 航行建议事件 |
+| `NOTICE_ALERT` | 计划航线航标通告提醒事件（确定性计算，不经 LLM） |
 | `ERROR` | risk 连接错误事件 |
 
 ### 4.3 `RISK_UPDATE` payload
@@ -352,6 +354,72 @@ data: {"event_id":"server-event-xxx", ...payload}
 新增错误码：
 
 - `ADVISORY_SCHEMA_FAILED`：advisory 输出解析校验失败
+
+### 4.8 `NOTICE_ALERT` payload（risk）
+
+说明：
+
+- 本船沿当前计划航线（`GET /api/v2/navigation/route/active`）前瞻 `lookahead_minutes` 内将进入某个状态为 `VALID` 的航标 `buffer_m` 缓冲范围时下发；命中与 ETA 由后端沿航线确定性计算，不经 LLM
+- 航标数据来自离线流水线 `notice-pipeline/` 推演的武汉航道局航标通告状态（`GET /api/v2/navigation/notices/aton`）；`data_cutoff` 为快照覆盖的最晚发布日期，之后的变更系统未知
+- 生命周期：每个航标每次接近对应一个 `alert_id`。首次进入前瞻窗口发送 `status=ACTIVE`；活动期间以同一 `alert_id` 周期性重发 `ACTIVE` 刷新 ETA（前端按 `alert_id` upsert，不视为新提醒）；驶过缓冲范围、偏离航线或航线更换时发送 `status=CLEARED`
+- 不进入最新快照 replay 缓存，新连接不补发；活动提醒在下一次刷新周期重新出现。断线期间可能错过 `CLEARED`，客户端应在连接建立（含重连）或断开时丢弃本地活动提醒，以后续刷新为准
+
+```json
+{
+  "event_id": "server-event-xxx",
+  "alert_id": "notice-alert-uuid",
+  "status": "ACTIVE",
+  "clear_reason": null,
+  "timestamp": "2026-10-26T02:00:00Z",
+  "route_id": "wuhan-demo-own",
+  "aton": {
+    "aton_id": "7a7657243835",
+    "name": "武汉二桥#1红浮",
+    "waterway": "汉口水道",
+    "is_virtual": true,
+    "state": "VALID",
+    "last_action": "SET",
+    "effective_at": "2026-09-24T15:30:00+08:00",
+    "lon": 114.3228333,
+    "lat": 30.6059167
+  },
+  "distance_along_route_m": 1240.0,
+  "lateral_offset_m": 120.0,
+  "eta_seconds": 210,
+  "buffer_m": 200.0,
+  "lookahead_minutes": 60.0,
+  "notice": {
+    "notice_id": "t20260924_490370",
+    "notice_no": "汉道通〔2026〕210号",
+    "title": "长江武汉航道局关于航标优化调整的航道通告",
+    "published_at": "2026-09-24",
+    "url": "https://www.cjhdj.com.cn/hdfw/hdtg/xy/202609/t20260924_490370.shtml",
+    "item_seq": 5
+  },
+  "evidence": { "action": "设置", "position_raw": "位置：30°36′21″.3N，114°19′22″.2E" },
+  "data_cutoff": "2026-10-23"
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `event_id` | `string` | 服务端事件 ID |
+| `alert_id` | `string` | 本次接近的提醒 ID；刷新与清除沿用同一 ID |
+| `status` | `string` | `ACTIVE` / `CLEARED` |
+| `clear_reason` | `string\|null` | `PASSED`（驶过）/ `OFF_ROUTE`（到有限航段的距离超过航段偏航限）/ `ROUTE_CHANGED`（计划航线更换）；`ACTIVE` 时为 `null` |
+| `timestamp` | `string` | 计算时刻（ISO 8601） |
+| `route_id` | `string` | 计算所依据的计划航线 ID |
+| `aton` | `object` | 航标身份、状态、最后动作、生效时间与 WGS84 位置 |
+| `distance_along_route_m` | `number` | 本船沿航线到缓冲范围进入点的距离；`CLEARED` 时为 `0` |
+| `lateral_offset_m` | `number` | 航标到计划航线的最短距离 |
+| `eta_seconds` | `number\|null` | 预计进入缓冲范围的秒数（沿航线距离 / 当前 SOG）；`CLEARED` 时为 `null` |
+| `buffer_m` | `number` | 缓冲半径（后端配置 `navigation.notice-alert.buffer-m`；前端绘制缓冲圈以此为准，不复制阈值） |
+| `lookahead_minutes` | `number` | 前瞻时域（后端配置） |
+| `notice` | `object\|null` | 决定航标当前状态的通告条目：通告 ID、编号、标题、发布日期、原文 URL、条目序号 |
+| `evidence` | `object` | 该条目各字段的原文片段（字段名 → 原文），均已在通告快照中逐字校验 |
+| `data_cutoff` | `string\|null` | 通告快照覆盖的最晚发布日期 |
 
 ## 5. Chat 连接协议
 
@@ -836,7 +904,10 @@ SSE 与 WebSocket chat 下行共用：
 | PredictionType | `linear` / `cv` |
 | EncounterType | `HEAD_ON` / `OVERTAKING` / `CROSSING` / `UNDEFINED` |
 | SafetyDomainShape | `ellipse` |
-| RiskSseEventType | `RISK_UPDATE` / `ENVIRONMENT_UPDATE` / `EXPLANATION` / `ADVISORY` / `ERROR` |
+| RiskSseEventType | `RISK_UPDATE` / `ENVIRONMENT_UPDATE` / `EXPLANATION` / `ADVISORY` / `NOTICE_ALERT` / `ERROR` |
+| NoticeAlertStatus | `ACTIVE` / `CLEARED` |
+| NoticeAlertClearReason | `PASSED` / `OFF_ROUTE` / `ROUTE_CHANGED` |
+| AtonState | `VALID` / `POSITION_UNVERIFIED` / `MALFUNCTION` / `REMOVED` |
 | AdvisoryScope | `SCENE` |
 | AdvisoryStatus | `ACTIVE` / `SUPERSEDED` |
 | AdvisoryActionType | `COURSE_CHANGE` / `SPEED_CHANGE` / `MAINTAIN_COURSE` / `MONITOR` / `UNKNOWN` |
