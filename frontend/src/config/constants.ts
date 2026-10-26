@@ -117,6 +117,7 @@ export const BACKEND_CONFIG = {
   CHAT_WS_PATH: '/api/v2/chat',
   RISK_SSE_URL: `${HTTP_ORIGIN}/api/v2/risk`,
   CHAT_WS_URL: `${WS_ORIGIN}/api/v2/chat`,
+  NAVIGATION_API_URL: `${HTTP_ORIGIN}/api/v2/navigation`,
 } as const;
 
 /** S-57 MVT tile source */

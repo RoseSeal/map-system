@@ -210,7 +210,7 @@ export interface EnvironmentContext {
 // Risk SSE types
 // ============================================================
 
-export type RiskSseEventType = 'RISK_UPDATE' | 'ENVIRONMENT_UPDATE' | 'EXPLANATION' | 'ADVISORY' | 'ERROR';
+export type RiskSseEventType = 'RISK_UPDATE' | 'ENVIRONMENT_UPDATE' | 'EXPLANATION' | 'ADVISORY' | 'NOTICE_ALERT' | 'ERROR';
 export type EnvironmentUpdateReason =
   | 'WEATHER_UPDATED'
   | 'WEATHER_EXPIRED'
@@ -240,6 +240,117 @@ export interface AdvisoryPayload {
   affected_targets: string[];
   recommended_action: RecommendedAction;
   evidence_items: string[];
+}
+
+// ============================================================
+// Planned route and aid-to-navigation notices (v1.3)
+// ============================================================
+
+export interface RouteWaypoint {
+  seq: number;
+  lon: number;
+  lat: number;
+  turn_radius_m: number;
+}
+
+export interface RouteLeg {
+  from_seq: number;
+  to_seq: number;
+  speed_kn: number;
+  xtd_port_m: number;
+  xtd_starboard_m: number;
+}
+
+export interface PlannedRoute {
+  route_id: string;
+  name: string;
+  synthetic: boolean;
+  waypoints: RouteWaypoint[];
+  legs: RouteLeg[];
+}
+
+export type AtonState = 'VALID' | 'POSITION_UNVERIFIED' | 'MALFUNCTION' | 'REMOVED';
+export type AtonAction = 'SET' | 'ADJUST' | 'REMOVE' | 'MALFUNCTION' | 'RESTORE';
+
+export interface AtonHistoryEntry {
+  notice_id: string;
+  item_seq: number;
+  action: AtonAction;
+  effective_at: string;
+  position_raw: string | null;
+  position_text: string | null;
+  evidence: Record<string, string>;
+}
+
+export interface NoticeMeta {
+  notice_id: string;
+  notice_no: string | null;
+  title: string;
+  published_at: string;
+  url: string;
+}
+
+export interface AtonProperties {
+  aton_id: string;
+  waterway: string;
+  name: string;
+  is_virtual: boolean;
+  state: AtonState;
+  last_action: AtonAction;
+  effective_at: string;
+  history: AtonHistoryEntry[];
+  notices: NoticeMeta[];
+}
+
+export interface AtonFeature {
+  type: 'Feature';
+  id: string;
+  geometry: { type: 'Point'; coordinates: LonLat };
+  properties: AtonProperties;
+}
+
+export interface AtonCoverage {
+  published_from: string;
+  published_to: string;
+  fetched_at: string;
+}
+
+export interface AtonFeatureCollection {
+  type: 'FeatureCollection';
+  coverage: AtonCoverage;
+  assumptions: string[];
+  features: AtonFeature[];
+}
+
+export type NoticeAlertStatus = 'ACTIVE' | 'CLEARED';
+export type NoticeAlertClearReason = 'PASSED' | 'OFF_ROUTE' | 'ROUTE_CHANGED';
+
+export interface NoticeAlertPayload {
+  event_id: string;
+  alert_id: string;
+  status: NoticeAlertStatus;
+  clear_reason: NoticeAlertClearReason | null;
+  timestamp: string;
+  route_id: string;
+  aton: {
+    aton_id: string;
+    name: string;
+    waterway: string;
+    is_virtual: boolean;
+    state: AtonState;
+    last_action: AtonAction;
+    effective_at: string;
+    lon: number;
+    lat: number;
+  };
+  distance_along_route_m: number;
+  lateral_offset_m: number;
+  eta_seconds: number | null;
+  buffer_m: number;
+  lookahead_minutes: number;
+  notice: (NoticeMeta & { item_seq: number }) | null;
+  evidence: Record<string, string>;
+  data_cutoff: string | null;
 }
 
 export interface RiskUpdatePayload {

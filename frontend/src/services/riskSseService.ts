@@ -2,6 +2,7 @@ import type {
   AdvisoryPayload,
   EnvironmentUpdatePayload,
   ExplanationPayload,
+  NoticeAlertPayload,
   RiskUpdatePayload,
   SseErrorPayload,
 } from '../types/schema';
@@ -12,6 +13,7 @@ type RiskUpdateCallback = (payload: RiskUpdatePayload) => void;
 type EnvironmentUpdateCallback = (payload: EnvironmentUpdatePayload) => void;
 type ExplanationCallback = (payload: ExplanationPayload) => void;
 type AdvisoryCallback = (payload: AdvisoryPayload) => void;
+type NoticeAlertCallback = (payload: NoticeAlertPayload) => void;
 type ErrorCallback = (payload: SseErrorPayload) => void;
 type ConnectionStatusCallback = (state: DisplayConnectionState, error?: string | null) => void;
 
@@ -23,6 +25,7 @@ class RiskSseService {
   private environmentUpdateCallbacks = new Set<EnvironmentUpdateCallback>();
   private explanationCallbacks = new Set<ExplanationCallback>();
   private advisoryCallbacks = new Set<AdvisoryCallback>();
+  private noticeAlertCallbacks = new Set<NoticeAlertCallback>();
   private errorCallbacks = new Set<ErrorCallback>();
   private connectionStatusCallbacks = new Set<ConnectionStatusCallback>();
   private currentUrl = DEFAULT_RISK_SSE_URL;
@@ -43,6 +46,7 @@ class RiskSseService {
     eventSource.addEventListener('ENVIRONMENT_UPDATE', this.handleEnvironmentUpdate as EventListener);
     eventSource.addEventListener('EXPLANATION', this.handleExplanation as EventListener);
     eventSource.addEventListener('ADVISORY', this.handleAdvisory as EventListener);
+    eventSource.addEventListener('NOTICE_ALERT', this.handleNoticeAlert as EventListener);
     eventSource.addEventListener('ERROR', this.handleErrorEvent as EventListener);
     eventSource.onerror = (event) => {
       console.error('[riskSseService] EventSource error', event);
@@ -63,6 +67,7 @@ class RiskSseService {
     this.eventSource.removeEventListener('ENVIRONMENT_UPDATE', this.handleEnvironmentUpdate as EventListener);
     this.eventSource.removeEventListener('EXPLANATION', this.handleExplanation as EventListener);
     this.eventSource.removeEventListener('ADVISORY', this.handleAdvisory as EventListener);
+    this.eventSource.removeEventListener('NOTICE_ALERT', this.handleNoticeAlert as EventListener);
     this.eventSource.removeEventListener('ERROR', this.handleErrorEvent as EventListener);
     this.eventSource.close();
     this.eventSource = null;
@@ -94,6 +99,13 @@ class RiskSseService {
     this.advisoryCallbacks.add(cb);
     return () => {
       this.advisoryCallbacks.delete(cb);
+    };
+  }
+
+  onNoticeAlert(cb: NoticeAlertCallback): () => void {
+    this.noticeAlertCallbacks.add(cb);
+    return () => {
+      this.noticeAlertCallbacks.delete(cb);
     };
   }
 
@@ -145,6 +157,15 @@ class RiskSseService {
     }
 
     this.advisoryCallbacks.forEach((cb) => cb(payload));
+  };
+
+  private handleNoticeAlert = (event: Event): void => {
+    const payload = parseSsePayload<NoticeAlertPayload>(event);
+    if (!payload) {
+      return;
+    }
+
+    this.noticeAlertCallbacks.forEach((cb) => cb(payload));
   };
 
   private handleErrorEvent = (event: Event): void => {

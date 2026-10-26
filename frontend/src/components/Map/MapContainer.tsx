@@ -36,6 +36,15 @@ import {
   generateLinearTrajectory,
 } from '../../utils';
 import { useMapSettingsStore } from '../../store/useMapSettingsStore';
+import {
+  selectActiveNoticeAlerts,
+  selectAtonCollection,
+  selectPlannedRoute,
+  selectSelectedAtonId,
+  useNavigationStore,
+} from '../../store/useNavigationStore';
+import { buildNavigationLayers } from './navigationLayers';
+import { AtonDetailCard } from './AtonDetailCard';
 import type { LonLat, OwnShip, RGBAColor, WeatherZoneContext } from '../../types/schema';
 
 const CONTOUR_DEBOUNCE_MS = 300;
@@ -71,6 +80,7 @@ const DECK_LAYER_ID_PREFIXES = [
   'own-traj-',
   'target-traj-',
   'cpa-',
+  'nav-',
 ] as const;
 
 const WEATHER_FOG_POLYGON: GeoJSON.FeatureCollection<GeoJSON.Polygon> = {
@@ -145,6 +155,11 @@ export function MapContainer() {
   const selectedTargetIds = useRiskStore((state) => state.selectedTargetIds);
   const selectTarget = useRiskStore((state) => state.selectTarget);
   const { isDarkMode } = useThemeStore();
+  const plannedRoute = useNavigationStore(selectPlannedRoute);
+  const atonCollection = useNavigationStore(selectAtonCollection);
+  const activeNoticeAlerts = useNavigationStore(selectActiveNoticeAlerts);
+  const selectedAtonId = useNavigationStore(selectSelectedAtonId);
+  const selectAton = useNavigationStore((state) => state.selectAton);
 
   const liveSafetyContourVal = environment?.safety_contour_val ?? 10;
   const effectiveSafetyContourVal = liveSafetyContourVal;
@@ -336,7 +351,14 @@ export function MapContainer() {
   }, [weatherZones, mapLoaded]);
 
   const buildDeckLayers = useCallback(() => {
-    const layers: Layer[] = [];
+    const layers: Layer[] = buildNavigationLayers({
+      route: plannedRoute,
+      atons: atonCollection,
+      activeAlerts: activeNoticeAlerts,
+      selectedAtonId,
+      isDarkMode,
+      onSelectAton: selectAton,
+    });
 
     if (!ownShip) return layers;
 
@@ -618,7 +640,8 @@ export function MapContainer() {
     }
 
     return layers;
-  }, [allTargets, ownShip, selectedTargetIds, selectTarget, targets, isDarkMode]);
+  }, [allTargets, ownShip, selectedTargetIds, selectTarget, targets, isDarkMode,
+    plannedRoute, atonCollection, activeNoticeAlerts, selectedAtonId, selectAton]);
 
   useEffect(() => {
     if (!deckOverlay.current) return;
@@ -691,6 +714,7 @@ export function MapContainer() {
         className="h-full w-full"
         style={{ minHeight: '100vh' }}
       />
+      <AtonDetailCard />
     </div>
   );
 }

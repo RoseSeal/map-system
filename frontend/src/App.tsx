@@ -6,6 +6,7 @@ import {
 } from './components';
 import { useAiSpeechBroadcast } from './hooks/useAiSpeechBroadcast';
 import { chatWsService, riskSseService } from './services';
+import { useNavigationStore } from './store/useNavigationStore';
 
 function App() {
   useAiSpeechBroadcast();
@@ -13,6 +14,7 @@ function App() {
   useEffect(() => {
     riskSseService.connect();
     chatWsService.connect();
+    void useNavigationStore.getState().loadNavigationData();
 
     return () => {
       riskSseService.disconnect();

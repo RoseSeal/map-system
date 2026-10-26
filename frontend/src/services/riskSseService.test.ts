@@ -3,6 +3,7 @@ import {
   advisoryFixture,
   environmentUpdateFixture,
   explanationForAlarmFixture,
+  noticeAlertFixture,
   riskUpdateFixture,
   sseErrorFixture,
 } from '../test/fixtures';
@@ -135,6 +136,17 @@ describe('riskSseService', () => {
     offError();
   });
 
+  it('parses and forwards NOTICE_ALERT events', () => {
+    const noticeAlertSpy = vi.fn();
+    const offNoticeAlert = riskSseService.onNoticeAlert(noticeAlertSpy);
+
+    riskSseService.connect('http://localhost:8080/api/v2/risk');
+    MockEventSource.instances[0].emit('NOTICE_ALERT', noticeAlertFixture);
+
+    expect(noticeAlertSpy).toHaveBeenCalledWith(noticeAlertFixture);
+    offNoticeAlert();
+  });
+
   it('ignores invalid JSON payloads', () => {
     const riskUpdateSpy = vi.fn();
     const offRisk = riskSseService.onRiskUpdate(riskUpdateSpy);
@@ -161,6 +173,7 @@ describe('riskSseService', () => {
       'ENVIRONMENT_UPDATE',
       'EXPLANATION',
       'ADVISORY',
+      'NOTICE_ALERT',
       'ERROR',
     ]));
     expect(connectionSpy).toHaveBeenLastCalledWith('disconnected', null);

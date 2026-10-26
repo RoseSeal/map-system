@@ -37,6 +37,7 @@ import {
   useRiskStore,
 } from '../../store';
 import { AdvisoryCard } from './AdvisoryCard';
+import { NoticeAlertCard } from './NoticeAlertCard';
 import { useThemeStore } from '../../store/useThemeStore';
 import { useMapSettingsStore } from '../../store/useMapSettingsStore';
 import {
@@ -1126,6 +1127,7 @@ export function RiskExplanationPanel() {
             )}
 
             <div className="scrollbar-apple flex-1 min-h-0 space-y-2.5 overflow-y-auto p-4">
+              <NoticeAlertCard isDarkMode={isDarkMode} />
               {activeAdvisory && <AdvisoryCard isDarkMode={isDarkMode} />}
 
               {displayedCards.length === 0 && resolvedExplanations.length === 0 ? (
