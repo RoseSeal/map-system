@@ -1,0 +1,14 @@
+{
+  "route_id": "test-north",
+  "name": "test route due north along 114.3E",
+  "synthetic": true,
+  "waypoints": [
+    { "seq": 1, "lon": 114.3, "lat": 30.58, "turn_radius_m": 0 },
+    { "seq": 2, "lon": 114.3, "lat": 30.59, "turn_radius_m": 0 },
+    { "seq": 3, "lon": 114.3, "lat": 30.60, "turn_radius_m": 0 }
+  ],
+  "legs": [
+    { "from_seq": 1, "to_seq": 2, "speed_kn": 10, "xtd_port_m": 150, "xtd_starboard_m": 150 },
+    { "from_seq": 2, "to_seq": 3, "speed_kn": 10, "xtd_port_m": 150, "xtd_starboard_m": 150 }
+  ]
+}

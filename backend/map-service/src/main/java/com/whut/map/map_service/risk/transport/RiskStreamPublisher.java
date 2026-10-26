@@ -6,6 +6,7 @@ import com.whut.map.map_service.risk.event.RiskFrame;
 import com.whut.map.map_service.shared.dto.sse.AdvisoryPayload;
 import com.whut.map.map_service.shared.dto.sse.EnvironmentUpdatePayload;
 import com.whut.map.map_service.shared.dto.sse.ExplanationPayload;
+import com.whut.map.map_service.shared.dto.sse.NoticeAlertPayload;
 import com.whut.map.map_service.shared.dto.sse.RiskUpdatePayload;
 import com.whut.map.map_service.shared.dto.sse.SseErrorPayload;
 import com.whut.map.map_service.shared.transport.protocol.ProtocolConnections;
@@ -88,6 +89,16 @@ public class RiskStreamPublisher {
             }
 
             publish(SseEventType.ADVISORY, payload);
+        });
+    }
+
+    public void publishNoticeAlert(NoticeAlertPayload payload) {
+        submit("publish notice alert", () -> {
+            if (payload == null) {
+                return;
+            }
+
+            publish(SseEventType.NOTICE_ALERT, payload);
         });
     }
 

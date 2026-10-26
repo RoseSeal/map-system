@@ -5,7 +5,8 @@ public enum SseEventType {
     ENVIRONMENT_UPDATE("ENVIRONMENT_UPDATE"),
     EXPLANATION("EXPLANATION"),
     ERROR("ERROR"),
-    ADVISORY("ADVISORY");
+    ADVISORY("ADVISORY"),
+    NOTICE_ALERT("NOTICE_ALERT");
 
     private final String value;
 

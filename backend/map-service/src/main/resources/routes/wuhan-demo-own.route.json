@@ -1,0 +1,16 @@
+{
+  "route_id": "wuhan-demo-own",
+  "name": "武汉长江段演示本船航线",
+  "synthetic": true,
+  "waypoints": [
+    { "seq": 1, "lon": 114.296169, "lat": 30.574175, "turn_radius_m": 0 },
+    { "seq": 2, "lon": 114.312164, "lat": 30.59843, "turn_radius_m": 0 },
+    { "seq": 3, "lon": 114.31897, "lat": 30.603002, "turn_radius_m": 0 },
+    { "seq": 4, "lon": 114.32477, "lat": 30.610225, "turn_radius_m": 0 }
+  ],
+  "legs": [
+    { "from_seq": 1, "to_seq": 2, "speed_kn": 11.5, "xtd_port_m": 150, "xtd_starboard_m": 150 },
+    { "from_seq": 2, "to_seq": 3, "speed_kn": 11.5, "xtd_port_m": 150, "xtd_starboard_m": 150 },
+    { "from_seq": 3, "to_seq": 4, "speed_kn": 11.5, "xtd_port_m": 150, "xtd_starboard_m": 150 }
+  ]
+}

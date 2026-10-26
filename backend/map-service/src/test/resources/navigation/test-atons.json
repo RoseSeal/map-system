@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "publisher": "长江武汉航道局",
+  "coverage": { "published_from": "2026-09-15", "published_to": "2026-10-23", "fetched_at": "2026-10-26T00:00:00+08:00" },
+  "assumptions": ["test"],
+  "atons": [
+    {
+      "aton_id": "valid-near", "waterway": "测试水道", "name": "近#1红浮", "is_virtual": true, "state": "VALID",
+      "position": { "lon": 114.301044, "lat": 30.59 },
+      "last_action": "SET", "effective_at": "2026-09-24T15:30:00+08:00",
+      "history": [
+        { "notice_id": "t1", "item_seq": 5, "action": "SET", "effective_at": "2026-09-24T15:30:00+08:00",
+          "position_raw": "30°35′24″.0N，114°18′3″.8E", "position_text": null,
+          "evidence": { "action": "设置", "position_raw": "30°35′24″.0N，114°18′3″.8E" } }
+      ]
+    },
+    {
+      "aton_id": "removed-near", "waterway": "测试水道", "name": "近#2白浮", "is_virtual": false, "state": "REMOVED",
+      "position": { "lon": 114.299, "lat": 30.592 },
+      "last_action": "REMOVE", "effective_at": "2026-10-22T10:00:00+08:00",
+      "history": [
+        { "notice_id": "t1", "item_seq": 6, "action": "REMOVE", "effective_at": "2026-10-22T10:00:00+08:00",
+          "position_raw": null, "position_text": null, "evidence": { "action": "撤除" } }
+      ]
+    },
+    {
+      "aton_id": "valid-far", "waterway": "测试水道", "name": "远#1红浮", "is_virtual": false, "state": "VALID",
+      "position": { "lon": 114.306, "lat": 30.59 },
+      "last_action": "SET", "effective_at": "2026-09-24T15:30:00+08:00",
+      "history": [
+        { "notice_id": "t1", "item_seq": 7, "action": "SET", "effective_at": "2026-09-24T15:30:00+08:00",
+          "position_raw": "x", "position_text": null, "evidence": { "action": "设置" } }
+      ]
+    },
+    {
+      "aton_id": "unknown-state", "waterway": "测试水道", "name": "未知", "is_virtual": false, "state": "SOMETHING_NEW",
+      "position": { "lon": 114.3, "lat": 30.59 },
+      "last_action": "SET", "effective_at": "2026-09-24T15:30:00+08:00", "history": []
+    }
+  ],
+  "notices": [
+    { "notice_id": "t1", "notice_no": "汉道通〔2026〕210号", "title": "测试通告", "published_at": "2026-09-24", "url": "https://example.invalid/t1" }
+  ],
+  "review": []
+}
