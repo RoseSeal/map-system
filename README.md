@@ -23,7 +23,9 @@ Optional sidecars: `trajectory-service` (GRU trajectory prediction, ONNX) and `g
 - Wuhan Yangtze reach (main demo): `simulator/wuhan_yangtze_ais_simulator.py` — head-on and overtaking encounters over satellite imagery, exercising risk escalation and advisories.
 - Jamaica Bay (chart demo): `simulator/jamaica_bay_ais_mqtt_publisher.py` — the area covered by the S-57 chart data (loaded into PostGIS, not shipped in this repository).
 
-See [docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md](./docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md) for setup and run steps.
+## Quick Start
+
+Prerequisites: JDK 21, Maven, Node, Python 3, Docker. Setup and run steps for the Wuhan demo are in [docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md](./docs/demo/MAP_SYSTEM_DEMO_SCRIPT.md) §0, including how to run without an LLM API key (`llm.enabled=false`) and a Maven mirror for slow networks.
 
 ## Documentation
 

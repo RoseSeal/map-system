@@ -2,8 +2,13 @@ mqtt.active=local
 llm.provider=zhipu
 # System advisory is off by default; enable it for the demo
 llm.advisory.enabled=true
-llm.zhipu.api-key=YOUR_ZHIPU_API_KEY
+# Fill in a Zhipu API key. Without one, uncomment llm.enabled=false below;
+# the backend then runs without risk explanation, advisories and chat.
+# Do not leave a placeholder value: the SDK rejects it at startup.
+llm.zhipu.api-key=
+# llm.enabled=false
 llm.gemini.api-key=YOUR_GEMINI_API_KEY
+# Gemini settings only apply when llm.provider=gemini; the proxy expects a local proxy on port 7897
 llm.gemini.proxy.enabled=true
 llm.gemini.proxy.host=127.0.0.1
 llm.gemini.proxy.port=7897

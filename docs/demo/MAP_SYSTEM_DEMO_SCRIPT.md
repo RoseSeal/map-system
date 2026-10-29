@@ -1,6 +1,6 @@
 # map-system 演示脚本
 
-> 最后更新：2026-10-21（新增 §0 武汉长江主演示；§1 起为 2026-04-17 的 v1.0 视频脚本，未改动）  
+> 最后更新：2026-10-29（§0.2–0.4 补充环境、无 key 运行与观察时长；§0 武汉长江主演示新增于 2026-10-21；§1 起为 2026-04-17 的 v1.0 视频脚本，未改动）  
 > 范围：§0 使用仓库内模拟器；§1 起基于 `Project_ship-ais` 作为上游消息源可提供的模拟内容。  
 > 目标：展示 `map-system` 的实时风险评估、AI 解释与系统 advisory。
 
@@ -19,11 +19,27 @@
 
 ### 0.2 前置条件
 
+0. 环境：JDK 21、Maven、Node（实测 v25）、Python 3、Docker（需先启动 Docker Desktop）。国内网络下 Maven 直连中央仓库很慢，可在 `~/.m2/settings.xml` 配置镜像：
+
+   ```xml
+   <settings>
+     <mirrors>
+       <mirror>
+         <id>aliyun</id>
+         <mirrorOf>*</mirrorOf>
+         <url>https://maven.aliyun.com/repository/public</url>
+       </mirror>
+     </mirrors>
+   </settings>
+   ```
+
 1. 启动核心依赖：
 
    ```bash
-   docker compose up -d mqtt postgis whisper
+   docker compose up -d mqtt postgis
    ```
+
+   武汉演示不需要语音。语音输入另需 `whisper` 服务：模型 `ggml-base.bin` 不在仓库中，需按 whisper.cpp 官方 `models/download-ggml-model.sh base` 下载并放到 `runtime/whisper-models/`；`ghcr.io/ggml-org/whisper.cpp:main` 没有 arm64 镜像，Apple Silicon 上 `docker compose up` 带上 `whisper` 会让整条命令失败（包括 mqtt、postgis）。postgis 镜像只有 amd64 版本，Apple Silicon 上以仿真运行，有平台警告但可用。
 
 2. 后端以 `myuser` 连接 `mqtt_msg_db`（见 `application.properties`），compose 只初始化默认 `postgres` 账户。首次运行需要手动创建：
 
@@ -31,9 +47,15 @@
    docker exec my_postgis psql -U postgres -c "CREATE ROLE myuser LOGIN PASSWORD 'mypassword';" -c "CREATE DATABASE mqtt_msg_db OWNER myuser;"
    ```
 
-3. 由 `application-local.properties.example` 复制出 `application-local.properties`，确认 `mqtt.active=local`，填入 `llm.zhipu.api-key`，并设置 `llm.advisory.enabled=true`（系统 advisory 默认关闭）。
+3. 在 `backend/map-service/src/main/resources/` 下由 `application-local.properties.example` 复制出 `application-local.properties`，确认 `mqtt.active=local`，填入 `llm.zhipu.api-key`，并设置 `llm.advisory.enabled=true`（系统 advisory 默认关闭）。
+   - 没有 key 时设置 `llm.enabled=false`。此时船舶、风险等级、计划航线与航标通告提醒正常，单目标解释、advisory 卡片与聊天不可用；advisory 仍会触发并推送 `ERROR` 事件，可忽略。
+   - key 留空且 `llm.enabled=true`，或保留占位值，后端都会启动失败。
 4. 可选：`llm.zhipu.base-url` 可指向兼容接口，用于不产生模型费用的复现。
-5. 模拟器需要 Python 与 `paho-mqtt`。
+5. 模拟器只依赖 `paho-mqtt`：
+
+   ```bash
+   python3 -m venv simulator/venv && simulator/venv/bin/pip install paho-mqtt
+   ```
 
 ### 0.3 运行
 
@@ -44,14 +66,18 @@ cd backend/map-service && mvn spring-boot:run
 ```
 
 ```bash
-cd frontend && npm run dev
+cd frontend && npm ci && npm run dev
 ```
 
 ```bash
-python3 simulator/wuhan_yangtze_ais_simulator.py
+simulator/venv/bin/python simulator/wuhan_yangtze_ais_simulator.py
 ```
 
+`npm ci` 按 lockfile 安装，首次约 2 min；`npm install` 会改写 `package-lock.json`。首次 `mvn spring-boot:run` 下载依赖并编译约 2.5 min（使用镜像时）。
+
 ### 0.4 观察点
+
+模拟器启动后，对遇目标约 4 min 进入 `CAUTION`、约 5.5 min 到 `ALARM`，整段演示超过 11 min（2026-10-29 实测）。
 
 1. 地图打开在武汉长江段，三船出现在江面上。
 2. 对遇目标 `900001222` 的风险等级随接近依次升高到 `ALARM`，会遇结束后回到 `SAFE`；风险卡片和单目标解释随之出现。
