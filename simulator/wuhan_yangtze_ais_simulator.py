@@ -12,6 +12,8 @@ head-on / overtaking leg and the following legs pass the Wuhan Second Bridge vir
 Run: simulator/venv/bin/python simulator/wuhan_yangtze_ais_simulator.py
 Default: 1 Hz; stop 35 seconds after every vessel reaches its endpoint.
 The head-on pair starts at 3 kn for 30 s, then accelerates over 90 s.
+--start-at fast-forwards the timeline for a short demo, e.g. 180 reaches the head-on CPA
+in about 2.5 minutes.
 """
 import argparse
 import json
@@ -93,14 +95,15 @@ def build_routes(route_path=DEFAULT_ROUTE):
 
 
 class WuhanPublisher(BaseMqttPublisher):
-    def __init__(self, config, route_path=DEFAULT_ROUTE):
+    def __init__(self, config, route_path=DEFAULT_ROUTE, start_at=0.0):
         super().__init__(config)
         self.routes = build_routes(route_path)
+        self.start_at = start_at
         self.started = None
         self.finished_at = None
 
     def before_loop(self):
-        self.started = time.monotonic()
+        self.started = time.monotonic() - self.start_at
         print('Wuhan Yangtze: 123456789 downstream, 900001222 upstream, 900002222 overtaken')
 
     def publish_tick(self):
@@ -135,12 +138,15 @@ def main():
     parser.add_argument('--username', default=None)
     parser.add_argument('--password', default=None)
     parser.add_argument('--route', default=str(DEFAULT_ROUTE), help='own-ship planned-route JSON')
+    parser.add_argument('--start-at', type=float, default=0.0, help='skip the first N seconds of the timeline')
     args = parser.parse_args()
     if not math.isfinite(args.interval) or args.interval <= 0 or args.ticks < 0:
         parser.error('interval must be finite and positive; ticks must be non-negative')
+    if not math.isfinite(args.start_at) or args.start_at < 0:
+        parser.error('start-at must be finite and non-negative')
     config = MqttConfig(host=args.host, port=args.port, topic=args.topic,
                         username=args.username, password=args.password)
-    WuhanPublisher(config, args.route).run(interval=args.interval, ticks=args.ticks)
+    WuhanPublisher(config, args.route, args.start_at).run(interval=args.interval, ticks=args.ticks)
 
 
 if __name__ == '__main__':
