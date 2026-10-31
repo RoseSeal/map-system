@@ -1,6 +1,6 @@
 # map-system 演示脚本
 
-> 最后更新：2026-10-29（§0.2–0.4 补充环境、无 key 运行与观察时长；§0 武汉长江主演示新增于 2026-10-21；§1 起为 2026-04-17 的 v1.0 视频脚本，未改动）  
+> 最后更新：2026-10-31（§0.2–0.3 补充 Windows PowerShell 启动命令，§2.2 修正默认风险阈值；§0 武汉长江主演示新增于 2026-10-21；§1 起主体沿用 2026-04-17 的 v1.0 视频脚本）  
 > 范围：§0 使用仓库内模拟器；§1 起基于 `Project_ship-ais` 作为上游消息源可提供的模拟内容。  
 > 目标：展示 `map-system` 的实时风险评估、AI 解释与系统 advisory。
 
@@ -57,9 +57,20 @@
    python3 -m venv simulator/venv && simulator/venv/bin/pip install paho-mqtt
    ```
 
+   Windows PowerShell 下，从仓库根目录执行以下命令（无需激活虚拟环境）：
+
+   ```powershell
+   py -3 -m venv simulator/venv
+   .\simulator\venv\Scripts\python.exe -m pip install paho-mqtt
+   ```
+
+   若未安装 Python 启动器 `py`，第一行可改用 `python -m venv simulator/venv`。Docker 与数据库初始化命令同上；Maven 镜像配置位置为 `$HOME\.m2\settings.xml`。
+
 ### 0.3 运行
 
-在三个终端中分别执行：
+首次运行前需完成 §0.2 的配置，包括复制并编辑 `application-local.properties`。
+
+Mac/Linux 下，从仓库根目录打开三个终端，分别执行：
 
 ```bash
 cd backend/map-service && mvn spring-boot:run
@@ -72,6 +83,29 @@ cd frontend && npm ci && npm run dev
 ```bash
 simulator/venv/bin/python simulator/wuhan_yangtze_ais_simulator.py
 ```
+
+Windows PowerShell 下，同样从仓库根目录打开三个终端，分别执行（分行书写以兼容 Windows PowerShell 5.1）：
+
+```powershell
+cd backend/map-service
+.\mvnw.cmd spring-boot:run
+```
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+```powershell
+.\simulator\venv\Scripts\python.exe simulator/wuhan_yangtze_ais_simulator.py
+```
+
+Windows 命令使用仓库自带的 Maven Wrapper（`mvnw.cmd`），无需单独安装 Maven。首次运行会从 `repo.maven.apache.org` 下载 Maven 3.9.12，这一步不经过 `settings.xml` 中的镜像，国内网络下可能较慢；本机已安装 Maven 时也可直接使用 `mvn spring-boot:run`。
+
+若 PowerShell 提示 `npm.ps1` 因执行策略被禁止运行，可改用 `npm.cmd ci` 与 `npm.cmd run dev`，或执行 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 放宽当前用户的执行策略。
+
+若在 IDE 或其他工具的内置终端中启动时出现端口异常或启动失败，可改在独立的 PowerShell 窗口中运行上述命令，并确认后端启动日志显示监听 8080 端口。
 
 `npm ci` 按 lockfile 安装，首次约 2 min；`npm install` 会改写 `package-lock.json`。首次 `mvn spring-boot:run` 下载依赖并编译约 2.5 min（使用镜像时）。
 
@@ -153,11 +187,13 @@ simulator/venv/bin/python simulator/wuhan_yangtze_ais_simulator.py
 - `WARNING`
 - `ALARM`
 
-当前配置阈值为：
+仓库默认阈值见 [`application.properties`](../../backend/map-service/src/main/resources/application.properties)（本地配置可覆盖）：
 
-- `ALARM`：`DCPA <= 0.3 nm` 且 `TCPA <= 300 s`
-- `WARNING`：`DCPA <= 0.5 nm` 且 `TCPA <= 900 s`
-- `CAUTION`：`DCPA <= 1.0 nm` 且 `TCPA <= 1800 s`
+- `ALARM`：`DCPA <= 0.075 nm` 且 `TCPA <= 75 s`
+- `WARNING`：`DCPA <= 0.25 nm` 且 `TCPA <= 450 s`
+- `CAUTION`：`DCPA <= 0.5 nm` 且 `TCPA <= 900 s`
+
+以上为基础阈值。低能见度时，DCPA 阈值按天气修正系数放大（默认 ×1.5 / ×2.0，见 `risk.weather.visibility.*`）；启用 GRU 轨迹预测时，按预测 CPA 判定的等级可能抬高当前等级。
 
 4. 本船安全域可视化
 - 本船安全域以椭圆形式绘制在地图上。
