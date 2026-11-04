@@ -95,24 +95,48 @@ def build_routes(route_path=DEFAULT_ROUTE):
 
 
 class WuhanPublisher(BaseMqttPublisher):
-    def __init__(self, config, route_path=DEFAULT_ROUTE, start_at=0.0):
+    """故障注入开关 --dropout/--jump 用于失败场景验证，不影响默认演示。
+
+    --dropout MMSI:START:END  该船在 [START,END] 秒区间停止发送（场景01 断报）
+    --jump MMSI:TIME:LAT      该船在 TIME 秒这一条报文纬度 +LAT 度（场景02 位置跳变）
+    """
+
+    def __init__(self, config, route_path=DEFAULT_ROUTE, start_at=0.0,
+                 dropouts=(), jumps=()):
         super().__init__(config)
         self.routes = build_routes(route_path)
         self.start_at = start_at
         self.started = None
         self.finished_at = None
+        self.dropouts = {(m, float(s), float(e)) for m, s, e in dropouts}
+        self.jumps = {(m, float(t), float(d)) for m, t, d in jumps}
+        self.jump_done = set()
 
     def before_loop(self):
         self.started = time.monotonic() - self.start_at
         print('Wuhan Yangtze: 123456789 downstream, 900001222 upstream, 900002222 overtaken')
+        if self.dropouts:
+            print('injection dropout windows:', sorted(self.dropouts), flush=True)
+        if self.jumps:
+            print('injection jumps:', sorted(self.jumps), flush=True)
 
     def publish_tick(self):
         elapsed = time.monotonic() - self.started
         timestamp = format_msg_time(datetime.now())
         stopped = True
         for vessel in self.routes:
+            if any(m == vessel.mmsi and s <= elapsed <= e
+                   for m, s, e in self.dropouts):
+                stopped = False
+                continue
             (lon, lat), speed, heading = vessel.sample(elapsed)
             stopped = stopped and speed == 0
+            for m, t, delta in self.jumps:
+                if m == vessel.mmsi and t <= elapsed and (m, t) not in self.jump_done:
+                    lat += delta
+                    self.jump_done.add((m, t))
+                    print(f'INJECTED position jump on {m} at t={elapsed:.0f}s '
+                          f'(+{delta} deg lat)', flush=True)
             payload = json.dumps({
                 'MSGTIME': timestamp, 'MMSI': vessel.mmsi,
                 'LAT': round(lat, 6), 'LON': round(lon, 6),
@@ -128,6 +152,20 @@ class WuhanPublisher(BaseMqttPublisher):
                 self._running = False
 
 
+def parse_injection(specs, fields):
+    """Parse 'MMSI:v1:v2' tuples; raise on malformed input."""
+    parsed = []
+    for spec in specs:
+        parts = spec.split(':')
+        if len(parts) != 3 or not parts[0].isdigit():
+            raise ValueError(f'malformed injection {spec!r}; expected MMSI:{fields}')
+        try:
+            parsed.append((parts[0], float(parts[1]), float(parts[2])))
+        except ValueError:
+            raise ValueError(f'malformed injection {spec!r}; expected MMSI:{fields}')
+    return parsed
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', default='localhost')
@@ -139,14 +177,20 @@ def main():
     parser.add_argument('--password', default=None)
     parser.add_argument('--route', default=str(DEFAULT_ROUTE), help='own-ship planned-route JSON')
     parser.add_argument('--start-at', type=float, default=0.0, help='skip the first N seconds of the timeline')
+    parser.add_argument('--dropout', action='append', default=[],
+                        metavar='MMSI:START:END', help='silence a vessel in [START,END] seconds')
+    parser.add_argument('--jump', action='append', default=[],
+                        metavar='MMSI:TIME:LATDEG', help='one-shot latitude jump at TIME seconds')
     args = parser.parse_args()
     if not math.isfinite(args.interval) or args.interval <= 0 or args.ticks < 0:
         parser.error('interval must be finite and positive; ticks must be non-negative')
     if not math.isfinite(args.start_at) or args.start_at < 0:
         parser.error('start-at must be finite and non-negative')
+    dropouts = parse_injection(args.dropout, 'START:END')
+    jumps = parse_injection(args.jump, 'TIME:LATDEG')
     config = MqttConfig(host=args.host, port=args.port, topic=args.topic,
                         username=args.username, password=args.password)
-    WuhanPublisher(config, args.route, args.start_at).run(interval=args.interval, ticks=args.ticks)
+    WuhanPublisher(config, args.route, args.start_at, dropouts, jumps).run(interval=args.interval, ticks=args.ticks)
 
 
 if __name__ == '__main__':
