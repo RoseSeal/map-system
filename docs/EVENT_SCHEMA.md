@@ -23,6 +23,7 @@
 | v2 | 2026-07-01 | `ADVISORY.evidence_items` 增补 `[source: historical_case]` 来源约束：历史相似案例事实必须引用 `query_historical_case_graph` 成功 tool result 中返回的 `case_id` |
 | v2 | 2026-07-11 | `target.predicted_trajectory.prediction_type` 增补枚举值 `"gru"`：learned 轨迹预测启用且本帧由 GRU sidecar 生成时标识生成器；默认、禁用与降级路径仍为 `"cv"`，字段结构不变 |
 | v2 | 2026-10-26 | risk SSE 新增 `NOTICE_ALERT`：本船计划航线前瞻窗口经过有效航标缓冲范围时的确定性提醒，附通告来源与原文依据 |
+| v2 | 2026-11-23 | `ADVISORY` 新增发布前本船 COG 一致性校验与错误码 `ADVISORY_COG_MISMATCH`；Agent loop 超过最大迭代次数改用独立错误码 `ADVISORY_MAX_ITERATIONS_EXCEEDED` |
 
 ## 1. 文档定位
 
@@ -353,7 +354,9 @@ data: {"event_id":"server-event-xxx", ...payload}
 
 新增错误码：
 
-- `ADVISORY_SCHEMA_FAILED`：advisory 输出解析校验失败
+- `ADVISORY_SCHEMA_FAILED`：advisory 输出解析校验失败（含 JSON/schema 字段缺失、目标 ID 未知、hydrology 与 historical_case 来源校验失败等）
+- `ADVISORY_MAX_ITERATIONS_EXCEEDED`：advisory Agent loop 达到最大迭代次数仍未产出可发布结果。该路径不发送 `ADVISORY`，完成回调释放空覆盖集合，日志保留 `exceeded max iterations` 警告；与解析/来源校验失败的 `ADVISORY_SCHEMA_FAILED` 区分
+- `ADVISORY_COG_MISMATCH`：`summary`、`recommended_action.description` 或 `evidence_items` 中声明的本船当前对地航向（COG），与触发快照 `own_ship.cog_deg`（与 `get_own_ship_state` 返回的 `own_ship.cog_deg` 同源）的圆周最短角差严格大于 1°。若存在本船当前航向声明但快照参考 COG 缺失或无效，同样拒发。参考 COG 有效范围为 `[0, 360)`（见 [Simulator MQTT 消息格式 §4.3](../simulator/SIMULATOR_MESSAGE_FORMAT.md#43-语义约束) 中对 AIS 无效 COG 的约定）；文本中的 `360` 按 `0` 处理，超出范围的声称值直接拒发，不做取模归一。目标船航向、拟转航向、相对转角、方位、船首向/heading 不参与比较；从当前值改为其他航向的机动描述只核对“当前值”。拒发整条建议，不重试、不修正文案、不更新上一条 advisory ID，并记录 `Advisory discarded` 前缀日志（含字段、声称值、参考值，不含完整模型文本）
 
 ### 4.8 `NOTICE_ALERT` payload（risk）
 

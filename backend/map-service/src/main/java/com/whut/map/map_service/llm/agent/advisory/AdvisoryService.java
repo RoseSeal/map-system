@@ -41,6 +41,8 @@ import java.util.regex.Pattern;
 public class AdvisoryService implements AdvisoryTriggerPort {
 
     private static final String ADVISORY_SCHEMA_FAILED = "ADVISORY_SCHEMA_FAILED";
+    private static final String ADVISORY_MAX_ITERATIONS_EXCEEDED = "ADVISORY_MAX_ITERATIONS_EXCEEDED";
+    private static final String ADVISORY_COG_MISMATCH = "ADVISORY_COG_MISMATCH";
     private static final Pattern HISTORICAL_CASE_SOURCE =
             Pattern.compile("\\[source:\\s*historical_case\\]", Pattern.CASE_INSENSITIVE);
 
@@ -130,12 +132,28 @@ public class AdvisoryService implements AdvisoryTriggerPort {
                         publishSchemaFailed();
                         return;
                     }
+                    AdvisoryCogValidator.Result cogCheck = AdvisoryCogValidator.validate(snapshot, parsed);
+                    if (!cogCheck.accepted()) {
+                        log.warn(
+                                "Advisory discarded: field={} claimed_cog={} reference_cog={} reason={}",
+                                cogCheck.field(),
+                                cogCheck.claimedCog(),
+                                cogCheck.referenceCog(),
+                                cogCheck.reason()
+                        );
+                        riskStreamPublisher.publishError(
+                                ADVISORY_COG_MISMATCH,
+                                "Advisory generation failed: " + cogCheck.reason(),
+                                null
+                        );
+                        return;
+                    }
                     publishAdvisory(snapshot, parsed, config, completed.provider());
                     coveredTargets = Set.copyOf(parsed.affectedTargets());
                 }
                 case AgentLoopResult.MaxIterationsExceeded exceeded -> {
                     log.warn("Advisory loop exceeded max iterations ({}), discarding", exceeded.iterations());
-                    publishSchemaFailed();
+                    publishMaxIterationsExceeded(exceeded.iterations());
                 }
                 case AgentLoopResult.ProviderFailed failed -> {
                     log.warn("Advisory provider failed: {} - {}", failed.errorCode(), failed.message());
@@ -189,6 +207,14 @@ public class AdvisoryService implements AdvisoryTriggerPort {
 
     private void publishSchemaFailed() {
         riskStreamPublisher.publishError(ADVISORY_SCHEMA_FAILED, "Advisory generation failed: schema validation error", null);
+    }
+
+    private void publishMaxIterationsExceeded(int iterations) {
+        riskStreamPublisher.publishError(
+                ADVISORY_MAX_ITERATIONS_EXCEEDED,
+                "Advisory generation failed: exceeded max iterations (" + iterations + ")",
+                null
+        );
     }
 
     private boolean hydrologyEvidenceHasToolSource(
