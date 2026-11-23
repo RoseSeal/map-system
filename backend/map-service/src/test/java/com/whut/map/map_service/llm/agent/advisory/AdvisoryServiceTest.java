@@ -12,6 +12,7 @@ import com.whut.map.map_service.llm.client.LlmTaskType;
 import com.whut.map.map_service.llm.config.LlmProperties;
 import com.whut.map.map_service.llm.context.RiskContextHolder;
 import com.whut.map.map_service.llm.dto.LlmRiskContext;
+import com.whut.map.map_service.llm.dto.LlmRiskOwnShipContext;
 import com.whut.map.map_service.llm.dto.LlmRiskTargetContext;
 import com.whut.map.map_service.risk.transport.RiskStreamPublisher;
 import com.whut.map.map_service.risk.transport.SseEventFactory;
@@ -74,6 +75,39 @@ class AdvisoryServiceTest {
                         .speedKn(8.0).courseDeg(90.0).build()
         );
         return new AgentSnapshot(version, LlmRiskContext.builder().targets(targets).build(), Map.of());
+    }
+
+    private AgentSnapshot snapshotWithCog(long version, Double cog) {
+        List<LlmRiskTargetContext> targets = List.of(
+                LlmRiskTargetContext.builder().targetId("t1").riskLevel(RiskLevel.ALARM)
+                        .dcpaNm(0.1).tcpaSec(100).longitude(114.0).latitude(30.0)
+                        .speedKn(8.0).courseDeg(90.0).build()
+        );
+        LlmRiskOwnShipContext ownShip = cog == null
+                ? null
+                : LlmRiskOwnShipContext.builder().id("own-1").cog(cog).build();
+        return new AgentSnapshot(
+                version,
+                LlmRiskContext.builder().targets(targets).ownShip(ownShip).build(),
+                Map.of()
+        );
+    }
+
+    private AdvisoryOutputParser.ParsedAdvisory parsedCog(String summary, String description, List<String> evidence) {
+        RecommendedAction action = RecommendedAction.builder()
+                .type(AdvisoryActionType.MONITOR)
+                .description(description)
+                .urgency(AdvisoryUrgency.LOW)
+                .build();
+        return new AdvisoryOutputParser.ParsedAdvisory(summary, List.of("t1"), action, evidence);
+    }
+
+    private void stubCompletedAndParsed(AdvisoryOutputParser.ParsedAdvisory parsed) {
+        when(riskContextHolder.getVersion()).thenReturn(10L);
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed(
+                        "text", 3, 2, null, "zhipu", List.of(AgentToolNames.GET_RISK_SNAPSHOT)));
+        when(outputParser.parse(eq("text"), any())).thenReturn(parsed);
     }
 
     private AdvisoryOutputParser.ParsedAdvisory validParsed() {
@@ -357,6 +391,100 @@ class AdvisoryServiceTest {
         service.onAdvisoryTrigger(snapshotV(10L), ignored -> {});
 
         verify(riskStreamPublisher).publishAdvisory(any());
+    }
+
+    @Test
+    void maxIterationsExceededPublishesDedicatedErrorAndReleasesCallback() {
+        when(riskContextHolder.getVersion()).thenReturn(10L);
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.maxIterationsExceeded(5, 3));
+
+        AtomicReference<Set<String>> completed = new AtomicReference<>();
+        service.onAdvisoryTrigger(snapshotV(10L), completed::set);
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_MAX_ITERATIONS_EXCEEDED"), any(), any());
+        verify(riskStreamPublisher, never()).publishError(eq("ADVISORY_SCHEMA_FAILED"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+        assertThat(completed.get()).isEmpty();
+    }
+
+    @Test
+    void cogMismatchInActionDescriptionRejectsWithoutPublishing() {
+        stubCompletedAndParsed(parsedCog(
+                "场景摘要",
+                "将航向从296度改为341度",
+                List.of("DCPA 0.1 nm")
+        ));
+
+        AtomicReference<Set<String>> completed = new AtomicReference<>();
+        service.onAdvisoryTrigger(snapshotWithCog(10L, 29.6), completed::set);
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_COG_MISMATCH"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+        assertThat(completed.get()).isEmpty();
+    }
+
+    @Test
+    void cogMismatchInSummaryRejectsWithoutPublishing() {
+        stubCompletedAndParsed(parsedCog(
+                "本船当前对地航向 296 度",
+                "保持航向",
+                List.of("DCPA 0.1 nm")
+        ));
+
+        service.onAdvisoryTrigger(snapshotWithCog(10L, 29.6), ignored -> {});
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_COG_MISMATCH"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+    }
+
+    @Test
+    void missingReferenceCogRejectsClaimWithMismatchError() {
+        stubCompletedAndParsed(parsedCog(
+                "本船当前对地航向 29.6 度",
+                "保持航向",
+                List.of("DCPA 0.1 nm")
+        ));
+
+        AtomicReference<Set<String>> completed = new AtomicReference<>();
+        service.onAdvisoryTrigger(snapshotWithCog(10L, null), completed::set);
+
+        verify(riskStreamPublisher).publishError(eq("ADVISORY_COG_MISMATCH"), any(), any());
+        verify(riskStreamPublisher, never()).publishAdvisory(any());
+        assertThat(completed.get()).isEmpty();
+    }
+
+    @Test
+    void matchingCogClaimStillPublishes() {
+        stubCompletedAndParsed(parsedCog(
+                "本船当前对地航向 29.6 度",
+                "将航向从29.6度改为341度",
+                List.of("DCPA 0.1 nm")
+        ));
+
+        service.onAdvisoryTrigger(snapshotWithCog(10L, 29.6), ignored -> {});
+
+        verify(riskStreamPublisher).publishAdvisory(any());
+        verify(riskStreamPublisher, never()).publishError(eq("ADVISORY_COG_MISMATCH"), any(), any());
+    }
+
+    @Test
+    void rejectedCogAdvisoryDoesNotBecomeSupersedesReference() {
+        when(riskContextHolder.getVersion()).thenReturn(10L);
+        when(orchestrator.run(any(LlmTaskType.class), any(), anyList(), anyInt(), any()))
+                .thenReturn(AgentLoopResult.completed(
+                        "text", 3, 2, null, "zhipu", List.of(AgentToolNames.GET_RISK_SNAPSHOT)));
+        when(outputParser.parse(eq("text"), any())).thenReturn(
+                parsedCog("本船当前对地航向 296 度", "保持航向", List.of("DCPA 0.1 nm")),
+                validParsed()
+        );
+
+        service.onAdvisoryTrigger(snapshotWithCog(10L, 29.6), ignored -> {});
+        service.onAdvisoryTrigger(snapshotWithCog(10L, 29.6), ignored -> {});
+
+        ArgumentCaptor<AdvisoryPayload> captor = ArgumentCaptor.forClass(AdvisoryPayload.class);
+        verify(riskStreamPublisher, org.mockito.Mockito.times(1)).publishAdvisory(captor.capture());
+        assertThat(captor.getValue().getSupersedesId()).isNull();
     }
 
     private void stubCompletedWithHistoricalResult(ToolResult historicalResult) {
