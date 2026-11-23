@@ -1,7 +1,7 @@
 # Map-System 待办与延后事项清单 (TODO)
 
 > 文档状态：active（roadmap 性质）
-> 最后更新：2026-10-26
+> 最后更新：2026-11-23
 > 定位声明：项目自 2026-07-12（v1.2 收口）起进入 showcase 态，无 active milestone；本清单整体转为 **roadmap**——记录已识别的升级方向与工程债，**无排期、无 owner、无交付承诺**。重启活跃开发时按 §0 规则把条目挂入新 milestone。2026-10-26 起 v1.3-route-review 进入规划（见 [`v1.3-route-review/OVERVIEW.md`](./v1.3-route-review/OVERVIEW.md)）。
 > 摘要：仅记录“未实现且未挂到当前有效实施链”的事项；凡已进入 `docs/v*` 总 plan、step 文档或已命名 milestone 的工作，均不得在此重复登记。
 > 移出记录：原 §2「CT (Constant Turn) 航迹预测模型」已于 2026-07-01 被 v1.2-trajectory-prediction 承接（以学习型模型实现并于 2026-07-12 收口，见 `docs/history/v1.2-trajectory-prediction/`），按 §0 移出规则移除。原 §3「`evidence_items` 从 string[] 升级为结构化对象」与 §4「chat agent 工具调用参数与返回结果审计视图」已于 2026-10-26 被 v1.3-route-review 承接（分别见其 step-3、step-2，[`v1.3-route-review/OVERVIEW.md`](./v1.3-route-review/OVERVIEW.md)），按 §0 移出规则移除。
@@ -33,6 +33,7 @@
 - **轨迹预测特征引入地图/水文先验**：当前 GRU 预测器仅使用运动学特征（相对末点坐标、dt、SOG、COG），系出于泛化性与数据可得性考虑（见 `docs/history/v1.2-trajectory-prediction/`）。但内河航道形态高度固定，引入航道几何先验（如 S-57 航道中心线构造"沿航道弧长 + 横向偏移"坐标系，或航道栅格 embedding）与水文特征（水位、流速），预计对弯道预测精度与下游漏报有明显提升。与本节"航道约束建模"互补：本项作用于**模型输入特征**，后者作用于**预测输出的合法性过滤**。触发条件：需要进一步压降弯道 FDE/漏报，或 S-57 数据接入落地后。（来源：2026-07 竞赛答辩洞察）
 - **失常航标提醒**：v1.3 step-1 的航标状态推演会把漂失、熄灭等失常航标标记为 `MALFUNCTION`，但它们不参与航线命中，也不单独提醒。原因：原文写明“恢复后不再另行通告”，失常状态何时结束无法确定，“注意识别”类提醒的语义与失效条件需要单独设计。触发条件：通告覆盖区间内出现与计划航线相关、且能匹配到坐标的失常航标。（来源：[`v1.3-route-review/step-1.md`](./v1.3-route-review/step-1.md) §7）
 - **OVERTAKING 追越场景相对速度收敛检查**：`EncounterClassifier` 当前仅依据几何关系（目标在本船船尾扇区且航向差小）判定追越，不验证目标是否真的在相对收近；目标实际速度低于本船时"追越"判定可能不成立，导致 Rule 13 责任表述过度确定。升级方向为在分类器层引入相对速度收敛条件校验，并同步更新 `QueryRegulatoryContextTool` 的 resolver 决策矩阵。触发条件：演示阶段或规则推理质量评审发现误判。（来源：agent/step5.md §6）
+- **风险等级阈值滞回**：`RiskAssessmentEngine` 按 DCPA/TCPA 阈值逐帧判定等级，没有滞回或最短保持时间；指标在阈值附近波动时，等级在相邻两档之间逐帧往返。实测中目标 `900002222` 在 CAUTION/WARNING、WARNING/ALARM 阈值处各于 1–2 s 内往返 2 次。下游的前端等级显示与 advisory 触发记账均取瞬时等级。升级方向：进入与退出采用不同阈值，或要求连续若干帧确认后才变更等级。触发条件：演示中出现等级闪动，或下游逻辑按等级变化计数。（来源：2026-11-10 武汉演示完整时间线实测，`0640239`，glm-4.5-air，单次运行；记录见 competition 仓库 `task/03-定题可行性/运行证据/adv_full_说明.md`）
 
 ## 3. LLM 与 AI 智能体 (Agent)
 
@@ -45,6 +46,10 @@
 - **`evaluate_maneuver` 多目标批量与组合机动评估**：当前工具每次仅针对单目标评估单一机动动作，不支持对多个目标同时评估同一机动的综合安全效果，也不支持先减速后转向等组合机动场景；触发条件为单步评估无法覆盖典型复杂态势。
 - **`query_regulatory_context` 能见度受限（Rule 19）完整推理**：当前接口已预留 `visibility_condition` 字段，`MemoryGraphAdapter` 在开阔能见度查询中会过滤掉 Rule 19；待天气模块完整集成后，weather context 应向工具调用层透传当前能见度状态，使 Rule 19 在受限能见度条件下正确进入命中集合。
 - **`EvaluateManeuverWithWeatherTool.lookahead_min` 预测时段语义实现**：当前工具仅接受 `lookahead_min = 0` 或缺省，非零值返回 `INVALID_ARGUMENT`；预测时段语义（评估拟议机动在未来 N 分钟内的气象可行性）已预留参数但未实现。升级方向为结合轨迹预测能力实现有限时域内的气象可行性评估。触发条件：天气 track 后续 milestone 或轨迹预测精度达到评估基线。（来源：weather/step4.md §10 Deferred）
+- **advisory 迭代预算不足以完成多目标工具序列**：`AgentLoopOrchestrator` 每次迭代要么执行一个工具调用，要么给出最终回答；`llm.advisory.max-iterations` 默认 10，循环最多执行 10 次工具调用，要在上限内给出最终回答则工具调用不能超过 9 次。实测中两个目标同时非 SAFE 时，观察到的调用序列为 `get_risk_snapshot`、`get_top_risk_targets`、`get_target_detail`×2、`get_own_ship_state`、`get_weather_context`、`query_regulatory_context`×1–2、`evaluate_maneuver` 类×2–3，共 10 次，循环在给出最终回答前达到上限。`system-advisory.txt` 只对特定动作类型要求评估类调用，该序列是本次运行的观察，不是提示词规定的固定序列；该条件下 4 次触发全部失败，对遇目标从 CAUTION 升至 ALARM 再回到 SAFE 的全过程没有建议发布。该次运行中至多一个目标非 SAFE 时为 5–8 次调用，4 次均成功。2026-11-11 的两次重复运行中，两个目标同时非 SAFE 的 8 次触发同样全部超限，另有 2 次只有一个目标非 SAFE 的触发也达到上限；`llm.advisory.max-iterations=20` 的一次运行 7 次触发全部发布，单次最多 12 次工具调用。升级方向：按非 SAFE 目标数确定迭代上限，或允许单次迭代执行多个工具调用，或在接近上限时要求模型收敛为最终回答；与本节「多目标场景建议聚合」「`evaluate_maneuver` 多目标批量与组合机动评估」相关。触发条件：同时存在两个及以上非 SAFE 目标（实测 12 次触发全部超限）；只有一个目标非 SAFE 时也出现过。（来源：2026-11-10、11-11 武汉演示完整时间线实测，`0640239`，glm-4.5-air，基线有效运行 3 次、上限 20 运行 1 次；记录见 competition 仓库 `task/03-定题可行性/运行证据/adv_full_说明.md`、`s05_说明.md`）
+- **advisory 迭代超限的错误事件与原因不符**：`AdvisoryService` 对 `MaxIterationsExceeded` 调用 `publishSchemaFailed()`，前端收到 `ADVISORY_SCHEMA_FAILED` 与“schema validation error”，无法与输出格式错误区分。升级方向：为迭代超限使用独立错误码，涉及协议取值时同步 `EVENT_SCHEMA.md`。触发条件：处理上一项时一并修正。进展：分支 `feat/s05-advisory-verification`（`734a37d`）已改用 `ADVISORY_MAX_ITERATIONS_EXCEEDED`，合入 main 后移出本项。（来源：2026-11-10 武汉演示完整时间线实测，`0640239`，glm-4.5-air，单次运行；记录见 competition 仓库 `task/03-定题可行性/运行证据/adv_full_说明.md`）
+- **advisory 到期后危险仍持续时无续期**：建议固定有效 `llm.advisory.valid-seconds`（默认 120 s）；`SceneRiskStateTracker` 对同一会遇在已覆盖等级之内不再触发。会遇持续时间超过有效期时，建议到期后直至风险升级或会遇结束都没有有效建议。实测中目标 `900002222` 的 ALARM 建议到期后，该目标仍处于 ALARM 或 WARNING 约 130 s，期间无建议。ADR-016 已将“生成后复核”“依据变化时撤回”与固定有效期列为后续路线，本项是其中到期续期部分的实测表现。升级方向：到期时会遇仍危险则按当前等级重新触发，或按 TCPA 设定有效期。触发条件：会遇持续时间超过 `valid-seconds`。（来源：2026-11-10 武汉演示完整时间线实测，`0640239`，glm-4.5-air，单次运行；记录见 competition 仓库 `task/03-定题可行性/运行证据/adv_full_说明.md`）
+- **advisory 文本数值与工具输出的一致性校验**：实测 4 条建议中有 2 条把本船航向写作 296°（同期 COG 为 29.6°），其中一条是 ALARM 级建议的动作描述“将航向从 296 度改为 326 度”。advisory 的工具入参与返回值没有留存（DEBUG 日志只记工具名），错误出自工具输出还是模型转述未能确认；`evaluate_maneuver` 的入参是相对转角，但实际传入的转角、目标与返回值是否对应发布的动作和 CPA 数值，同样待核对。升级方向：留存 advisory 工具调用的入参与返回摘要；对建议文本中的航向、航速、CPA 等数值与工具输出做一致性校验，校验须绑定同一快照、目标与工具调用，不一致时丢弃或标注。与 v1.3 step-3 的结构化 `evidence_items` 相关，该步落地后复核本项范围。触发条件：建议文本进入演示或评测。进展：分支 `feat/s05-advisory-verification`（`734a37d`）已对本船当前 COG 做发布前文本校验，偏差大于 1° 拒发并报 `ADVISORY_COG_MISMATCH`；航速、CPA 等数值、工具调用留存以及与具体工具调用的绑定仍待处理，合入 main 后本项收窄为这些部分。（来源：2026-11-10 武汉演示完整时间线实测，`0640239`，glm-4.5-air，单次运行；记录见 competition 仓库 `task/03-定题可行性/运行证据/adv_full_说明.md`）
 
 ## 4. 前端协同与展示 (Frontend)
 
