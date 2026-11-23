@@ -1,7 +1,7 @@
 # Simulator MQTT 消息格式需求
 
-> 文档状态：current / 已整理
-> 最后更新：2026-04-22
+> 文档状态：AIS 与 Weather 为现行契约，雷达与视觉为新增模拟器输出契约
+> 最后更新：2026-11-23
 > 依据：[`../simulator`](../simulator) 当前脚本实现，以及后端接收 DTO [`MqttAisDto.java`](../backend/map-service/src/main/java/com/whut/map/map_service/source/ais/mqtt/MqttAisDto.java) 与 [`WeatherMqttDto.java`](../backend/map-service/src/main/java/com/whut/map/map_service/source/weather/mqtt/WeatherMqttDto.java)
 
 ## 1. 文档定位
@@ -12,7 +12,7 @@
 - 明确后端当前实际接收的字段命名与类型
 - 为新增 simulator 场景提供直接可复用的格式基线
 
-本文档描述的是**当前实现契约**，不是未来方案设计。风险 SSE / WebSocket 对外协议见 [`EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md)。
+AIS 与 Weather 各节描述当前实现，§8 用于实现武汉模拟器新增的雷达、视觉输出。风险 SSE / WebSocket 对外协议见 [`EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md)。
 
 ## 2. 脚本与 Topic 对照
 
@@ -282,3 +282,70 @@
 - [`../simulator/csv_ais_replay_publisher.py`](../simulator/csv_ais_replay_publisher.py)
 - [`../simulator/weather_mqtt_publisher.py`](../simulator/weather_mqtt_publisher.py)
 - [`../docs/EVENT_SCHEMA.md`](../docs/EVENT_SCHEMA.md)
+
+## 8. 雷达与视觉地理位置观测
+
+两路输出共用一套字段，沿用 §3 和 §6 的 MQTT 约定。`sourceType`、`sourceConfidence`、`qualityFlags` 对应 [架构 §九](../docs/ARCHITECTURE.md#九多源数据融合fusion-层设计预案) 的来源与质量字段。本轮契约供模拟器和离线核对使用，后端 Mapper 和融合接入由后续实现。
+
+### 8.1 Topic 与字段
+
+| Topic | `sourceType` |
+|---|---|
+| `usv/RadarObservation` | `RADAR` |
+| `usv/VisionObservation` | `VISION` |
+
+每次 `publish()` 发送一条单目标观测，payload 是 UTF-8 JSON object。以下字段均必填且不可为 `null`，数值字段使用有限的 JSON number。Topic 和 `sourceType` 必须对应。
+
+| 字段 | 类型 | 约束 |
+|---|---|---|
+| `sourceType` | string | 枚举 `RADAR`、`VISION`，区分观测来源 |
+| `timestampUtc` | string | 观测 tick 的 UTC 时间，ISO 8601，尾缀 `Z`，例如 `2026-11-23T08:00:00.000Z`。同一 tick 的两路观测和离线真值使用同一采样时间 |
+| `latitude` | number | 加入位置噪声后的 WGS 84 纬度，单位十进制度，范围 `[-90, 90]` |
+| `longitude` | number | 加入位置噪声后的 WGS 84 经度，单位十进制度，范围 `[-180, 180]` |
+| `sourceConfidence` | number | 来源对观测质量的估计，范围 `[0, 1]`。模拟器可按来源配置常量并记录其依据或假设。该值不使用观测与真值的实际误差，也不代表融合置信度 |
+| `qualityFlags` | array of strings | 大写 `UPPER_SNAKE_CASE` 的不重复标签。无已知问题填 `[]`。武汉模拟器加入位置噪声的观测填 `POSITION_NOISE`，它表示使用了加噪过程，不携带实际偏移量 |
+
+同一来源在同一 tick 可发布多条消息。无 MMSI、目标身份、跨源关联 ID、AIS 开关或真值字段。离线核对先按 `timestampUtc` 对齐，再按地理位置进行一对一匹配，位置误差以米计。
+
+### 8.2 噪声、丢帧与离线真值
+
+- 每个 tick 在 AIS 丢报和位置跳变处理前采样全部目标，另写无噪声真值文件。真值文件记录采样时间、离线目标标识、无噪声位置及 AIS 开关，仅用于评测。
+- 雷达、视觉各自对同一 tick 的真值位置施加配置的噪声，并按各自的丢帧参数决定是否发送该目标观测。噪声尺度、丢帧比例和随机种子由 CLI 参数指定。位置噪声尺度以米表示，位置转换后才写经纬度。固定参数和种子应能重现同样的缺帧与位置偏移。
+- 丢帧表现为该来源在该 tick 缺少该目标的观测，从离线真值与实际消息之差计数。丢弃时无需发空消息或占位记录。若该 tick 所有目标均被丢弃，该来源没有消息。
+- 场景配置一个 AIS 关闭的目标。关闭期间该目标不发 AIS 报文，仍进入真值采样与雷达、视觉模拟。验收使用能让两路均观察到该目标的噪声和丢帧参数，按时间和位置核对三路结果。
+
+### 8.3 示例
+
+`usv/RadarObservation`
+
+```json
+{
+  "sourceType": "RADAR",
+  "timestampUtc": "2026-11-23T08:00:00.000Z",
+  "latitude": 30.574981,
+  "longitude": 114.296722,
+  "sourceConfidence": 0.85,
+  "qualityFlags": ["POSITION_NOISE"]
+}
+```
+
+`usv/VisionObservation`
+
+```json
+{
+  "sourceType": "VISION",
+  "timestampUtc": "2026-11-23T08:00:00.000Z",
+  "latitude": 30.574922,
+  "longitude": 114.296756,
+  "sourceConfidence": 0.7,
+  "qualityFlags": ["POSITION_NOISE"]
+}
+```
+
+示例展示同一 tick 对同一目标的两条加噪观测。置信度数值为演示假设。
+
+### 8.4 FVessel 像素观测与映射条件
+
+[`fvessel_tracking_converter.py`](https://github.com/RoseSeal/map-system/blob/e66c71c/simulator/fvessel_tracking_converter.py) 在 `feat/fvessel-gt-replay-20261119` 上将 `gt_tracking` 转为按帧回放的 JSONL。每行固定五个字段 `source`（`fvessel_gt`）、`video`、`frame`、`track_id`、`bbox_xywh_px`（图像左上角位置与框宽高，单位像素）。`track_id` 仅在视频内标记轨迹。AIS fusion 标注只用于离线普查匹配计数。
+
+未来的视觉适配器需从视频帧率和有 UTC 锚点的时间信息取得 `timestampUtc`，并用已验证的相机标定、位姿及像素到水面地理坐标的映射取得经纬度，再按来源质量规则填充 `sourceConfidence` 和 `qualityFlags`。映射前，五字段 JSONL 用于像素级离线回放。原 `track_id`、像素框和 fusion 匹配结果不进入 MQTT 观测。
